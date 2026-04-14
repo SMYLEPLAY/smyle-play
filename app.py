@@ -74,6 +74,10 @@ def create_app(config_class=None):
     def index():
         return send_from_directory(BASE_DIR, 'index.html')
 
+    @app.route('/watt')
+    def watt_page():
+        return send_from_directory(BASE_DIR, 'watt.html')
+
     # ── API Playlists / Tracks ────────────────────────────────────────────
 
     @app.route('/api/tracks')
@@ -183,6 +187,88 @@ def create_app(config_class=None):
             logger.info(f'Feedback #{fb.id} reçu ({ftype})')
 
         return jsonify({'ok': True})
+
+    # ── API PLUG WATT ─────────────────────────────────────────────────────
+    #
+    # Architecture Cloudflare R2 (scalable) :
+    #   Bucket : smyle-play-audio
+    #   └── WATT/
+    #       └── {userId}/          ← un dossier par artiste
+    #           ├── {ts}-track1.wav
+    #           └── {ts}-track2.mp3
+    #
+    # URL publique : https://pub-xxx.r2.dev/WATT/{userId}/{filename}
+    # ────────────────────────────────────────────────────────────────────
+
+    @app.route('/api/watt/upload', methods=['POST'])
+    def watt_upload():
+        """Upload d'un son artiste vers Cloudflare R2 (WATT/{userId}/{ts}-{filename})"""
+        import time, re, mimetypes
+
+        user_id  = request.form.get('userId', 'guest')
+        track_name = request.form.get('name', '').strip()
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'Aucun fichier fourni'}), 400
+
+        f = request.files['file']
+        if not f.filename:
+            return jsonify({'error': 'Fichier vide'}), 400
+
+        # Sécuriser le nom de fichier
+        ext  = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'wav'
+        safe = re.sub(r'[^a-z0-9_-]', '_', track_name.lower())[:40]
+        ts   = int(time.time())
+        key  = f'WATT/{user_id}/{ts}-{safe}.{ext}'
+
+        mime, _ = mimetypes.guess_type(f.filename)
+        ct = mime or 'audio/wav'
+
+        if app.r2_client:
+            # ── Upload réel vers R2 ──────────────────────────────
+            try:
+                app.r2_client.upload_fileobj(
+                    f.stream,
+                    app.config.get('R2_BUCKET', 'smyle-play-audio'),
+                    key,
+                    ExtraArgs={'ContentType': ct},
+                )
+                base_url = app.config.get('CLOUD_AUDIO_BASE_URL', '').rstrip('/')
+                url      = f'{base_url}/{key}' if base_url else f'/api/watt/stream/{key}'
+                logger.info(f'[WATT] Upload R2 : {key}')
+                return jsonify({'ok': True, 'url': url, 'key': key})
+            except Exception as e:
+                logger.error(f'[WATT] Erreur upload R2 : {e}')
+                return jsonify({'error': str(e)}), 500
+        else:
+            # ── Mode sans R2 (dev local) : renvoie clé simulée ───
+            logger.info(f'[WATT] Mode sans R2 — clé simulée : {key}')
+            return jsonify({'ok': True, 'url': None, 'key': key, 'mock': True})
+
+    @app.route('/api/watt/ranking', methods=['GET'])
+    def watt_ranking():
+        """Classement WATT : artistes triés par écoutes puis abonnés (placeholder DB)"""
+        # Quand PostgreSQL est actif, cette route lira WATTArtistProfile + PlayCount
+        # Pour l'instant, retourne une liste vide (le client gère en localStorage)
+        return jsonify({'ranking': []})
+
+    @app.route('/api/watt/profile', methods=['GET', 'POST'])
+    def watt_profile():
+        """Profil artiste WATT (lecture / mise à jour)"""
+        if not db_enabled:
+            return jsonify({'ok': True, 'mock': True})
+
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            # TODO : upsert WATTArtistProfile dans DB
+            return jsonify({'ok': True})
+        else:
+            # TODO : lire WATTArtistProfile depuis DB
+            return jsonify({'profile': None})
 
     # ── Healthcheck ────────────────────────────────────────────────────────
 

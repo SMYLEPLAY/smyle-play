@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PLUG WATT · SMYLE PLAY</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="watt.css" />
+</head>
+<body class="watt-page">
+
+<!-- ═══════ CANVAS — réseau électrique en fond ═══════════════════════════════ -->
+<canvas id="watt-canvas"></canvas>
+
+<!-- ═══════ NAVIGATION ═══════════════════════════════════════════════════════ -->
+<nav class="watt-nav">
+  <a href="/" class="watt-nav-home">
+    <svg width="22" height="30" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg" style="transform:rotate(-11deg)">
+      <g transform="translate(30,42)">
+        <circle cx="24" cy="0" r="2.4" fill="#0c0018"/><circle cx="0" cy="24" r="2.4" fill="#0c0018"/>
+        <circle cx="-24" cy="0" r="2.4" fill="#0c0018"/><circle cx="0" cy="-24" r="2.4" fill="#0c0018"/>
+        <circle cx="-5.5" cy="-5" r="3.2" fill="#ffffff" opacity="0.96"/>
+        <circle cx="5.5" cy="-5" r="3.2" fill="#ffffff" opacity="0.96"/>
+        <circle cx="-10" cy="2" r="2" fill="#ffffff" opacity="0.90"/>
+        <circle cx="2.5" cy="10" r="2" fill="#ffffff" opacity="0.90"/>
+        <circle cx="10" cy="3" r="2" fill="#ffffff" opacity="0.90"/>
+      </g>
+    </svg>
+    <span class="watt-nav-logo">SMYLE PLAY</span>
+  </a>
+
+  <div class="watt-nav-center">
+    <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    <span class="watt-nav-label">PLUG WATT</span>
+  </div>
+
+  <div class="watt-nav-right" id="wattNavUser">
+    <!-- rempli par watt.js -->
+  </div>
+</nav>
+
+<!-- ═══════ HERO ══════════════════════════════════════════════════════════════ -->
+<section class="watt-hero">
+  <div class="watt-hero-inner">
+    <div class="watt-hero-bolt-wrap">
+      <svg class="watt-hero-bolt" viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    </div>
+    <h1 class="watt-hero-title">PLUG WATT</h1>
+    <p class="watt-hero-sub">World Artist Ties Talent</p>
+    <p class="watt-hero-desc">Branche-toi au réseau créatif IA</p>
+    <div class="watt-hero-price">
+      <span class="watt-price-num">0,99 €</span>
+      <span class="watt-price-per">/ mois</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ MAIN CONTENT ══════════════════════════════════════════════════════ -->
+<div class="watt-main" id="wattMain">
+
+  <!-- ── GATE A : Non connecté ─────────────────────────────────────────────── -->
+  <div id="gate-login" class="watt-gate" style="display:none">
+    <div class="watt-gate-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40">
+        <path d="M15 3H7a2 2 0 00-2 2v14a2 2 0 002 2h8M10 12h11m-4-4l4 4-4 4"/>
+      </svg>
+    </div>
+    <h2 class="watt-gate-title">Connexion requise</h2>
+    <p class="watt-gate-desc">Connecte-toi pour accéder à l'espace PLUG WATT<br>et rejoindre le réseau créatif IA.</p>
+    <div class="watt-gate-actions">
+      <button class="watt-btn-primary" onclick="openWattAuth('login')">Se connecter</button>
+      <button class="watt-btn-ghost" onclick="openWattAuth('signup')">Créer un compte</button>
+    </div>
+  </div>
+
+  <!-- ── GATE B : Connecté mais pas abonné ─────────────────────────────────── -->
+  <div id="gate-subscribe" class="watt-gate watt-gate-sub" style="display:none">
+    <div class="watt-gate-icon-wrap watt-gate-icon-bolt">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="40" height="40">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    </div>
+    <h2 class="watt-gate-title">Deviens Artiste PLUG WATT</h2>
+    <p class="watt-gate-desc">Accède à tous les outils pour publier ta musique IA<br>et rejoindre la communauté des créateurs.</p>
+
+    <div class="watt-sub-features">
+      <div class="watt-sub-feat"><span class="wsf-icon">⬆</span><span>Upload de tes sons IA (WAV · MP3 · FLAC)</span></div>
+      <div class="watt-sub-feat"><span class="wsf-icon">👤</span><span>Profil artiste personnalisé</span></div>
+      <div class="watt-sub-feat"><span class="wsf-icon">📊</span><span>Statistiques d'écoutes en temps réel</span></div>
+      <div class="watt-sub-feat"><span class="wsf-icon">🏆</span><span>Présence dans le classement WATT mondial</span></div>
+      <div class="watt-sub-feat"><span class="wsf-icon">🌐</span><span>Connexion au réseau créatif IA</span></div>
+    </div>
+
+    <div class="watt-sub-cta-block">
+      <div class="watt-sub-price-display">
+        <span class="watt-sub-price-amount">0,99 €</span>
+        <span class="watt-sub-price-period">/ mois · Sans engagement</span>
+      </div>
+      <button class="watt-btn-primary watt-btn-xl" onclick="openPayModal()">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style="flex-shrink:0">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        Activer PLUG WATT
+      </button>
+      <p class="watt-sub-note">Annulation possible à tout moment · Paiement sécurisé</p>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD : Abonné actif ───────────────────────────────────────────── -->
+  <div id="watt-dashboard" style="display:none">
+
+    <!-- Bienvenue -->
+    <div class="watt-welcome-bar" id="wattWelcomeBar">
+      <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span>Bienvenue dans ton espace <strong>PLUG WATT</strong></span>
+      <span class="watt-welcome-badge">Artiste Premium</span>
+    </div>
+
+    <!-- Stats rapides -->
+    <div class="watt-stats-row">
+      <div class="watt-stat-card">
+        <div class="watt-stat-val" id="statTotalPlays">0</div>
+        <div class="watt-stat-lbl">Écoutes</div>
+      </div>
+      <div class="watt-stat-card">
+        <div class="watt-stat-val" id="statTotalTracks">0</div>
+        <div class="watt-stat-lbl">Sons publiés</div>
+      </div>
+      <div class="watt-stat-card">
+        <div class="watt-stat-val" id="statFollowers">0</div>
+        <div class="watt-stat-lbl">Abonnés</div>
+      </div>
+      <div class="watt-stat-card watt-stat-rank">
+        <div class="watt-stat-val" id="statRanking">—</div>
+        <div class="watt-stat-lbl">Classement WATT</div>
+      </div>
+    </div>
+
+    <!-- Panels : Profil + Upload -->
+    <div class="watt-panels-grid">
+
+      <!-- ── Profil Artiste ── -->
+      <div class="watt-panel" id="panelProfile">
+        <div class="watt-panel-hdr">
+          <span class="watt-panel-hdr-icon">👤</span>
+          <h3 class="watt-panel-hdr-title">Mon Profil Artiste</h3>
+          <button class="watt-panel-edit-btn" onclick="toggleEditProfile()">Modifier</button>
+        </div>
+        <div class="watt-panel-body">
+
+          <!-- Vue -->
+          <div id="profileView">
+            <div class="watt-avatar-row">
+              <div class="watt-avatar" id="avatarDisplay">??</div>
+              <div>
+                <div class="watt-profile-name" id="profileName">—</div>
+                <div class="watt-profile-genre" id="profileGenre">Genre non défini</div>
+              </div>
+            </div>
+            <div class="watt-profile-bio" id="profileBio">Pas encore de bio...</div>
+            <div class="watt-profile-links" id="profileLinks"></div>
+          </div>
+
+          <!-- Édition -->
+          <div id="profileEdit" style="display:none">
+            <input class="watt-input" id="editArtistName"   placeholder="Nom d'artiste *" />
+            <input class="watt-input" id="editGenre"        placeholder="Genre musical (ex : Ambient IA, Lofi IA...)" />
+            <textarea class="watt-textarea" id="editBio"    placeholder="Ta bio artiste..." rows="3"></textarea>
+            <input class="watt-input" id="editSoundcloud"   placeholder="SoundCloud URL (optionnel)" />
+            <input class="watt-input" id="editInstagram"    placeholder="Instagram @handle (optionnel)" />
+            <div class="watt-edit-btns">
+              <button class="watt-btn-primary" onclick="saveProfile()">Sauvegarder</button>
+              <button class="watt-btn-ghost"   onclick="cancelEditProfile()">Annuler</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Upload ── -->
+      <div class="watt-panel" id="panelUpload">
+        <div class="watt-panel-hdr">
+          <span class="watt-panel-hdr-icon">⬆</span>
+          <h3 class="watt-panel-hdr-title">Uploader un Son</h3>
+        </div>
+        <div class="watt-panel-body">
+
+          <!-- Zone drag & drop -->
+          <div class="watt-dropzone" id="wattDropzone"
+               ondragover="handleDragOver(event)"
+               ondragleave="handleDragLeave(event)"
+               ondrop="handleFileDrop(event)"
+               onclick="document.getElementById('audioFileInput').click()">
+            <div class="watt-dropzone-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div class="watt-dropzone-text">Glisse ton fichier ici<br>ou clique pour parcourir</div>
+            <div class="watt-dropzone-fmt">WAV · MP3 · FLAC · AAC · M4A · max 100 MB</div>
+          </div>
+          <input type="file" id="audioFileInput"
+                 accept=".wav,.mp3,.flac,.aac,.m4a,.ogg"
+                 style="display:none"
+                 onchange="handleFileSelect(event)" />
+
+          <!-- Formulaire (visible après sélection fichier) -->
+          <div id="uploadForm" style="display:none">
+            <div class="watt-upload-fileinfo" id="uploadFileInfo"></div>
+            <input class="watt-input" id="uploadTrackName" placeholder="Titre du morceau *" required />
+            <input class="watt-input" id="uploadGenreTag"  placeholder="Genre (ex : Ambient, Lofi, Electro...)" />
+            <textarea class="watt-textarea" id="uploadDesc" placeholder="Description (optionnel)" rows="2"></textarea>
+            <div class="watt-edit-btns">
+              <button class="watt-btn-primary" onclick="uploadTrack()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Publier sur WATT
+              </button>
+              <button class="watt-btn-ghost" onclick="cancelUpload()">Annuler</button>
+            </div>
+          </div>
+
+          <!-- Barre de progression -->
+          <div id="uploadProgressWrap" style="display:none">
+            <div class="watt-progress-bar"><div class="watt-progress-fill" id="uploadFill" style="width:0%"></div></div>
+            <div class="watt-progress-lbl" id="uploadLbl">Préparation...</div>
+          </div>
+
+          <!-- Architecture R2 (note technique) -->
+          <div class="watt-r2-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Stockage : Cloudflare R2 · <code>WATT/{userId}/{filename}</code>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /watt-panels-grid -->
+
+    <!-- ── Mes Sons Publiés (pleine largeur) ── -->
+    <div class="watt-panel watt-panel-wide">
+      <div class="watt-panel-hdr">
+        <span class="watt-panel-hdr-icon">🎶</span>
+        <h3 class="watt-panel-hdr-title">Mes Sons Publiés</h3>
+        <span class="watt-panel-count" id="myTracksCount">0 sons</span>
+      </div>
+      <div class="watt-panel-body" id="myTracksList">
+        <div class="watt-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="36" height="36" style="opacity:.25">
+            <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+          </svg>
+          <p>Aucun son publié pour l'instant.<br>Upload ton premier morceau pour apparaître sur WATT.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Classement WATT Communauté (pleine largeur) ── -->
+    <div class="watt-panel watt-panel-wide">
+      <div class="watt-panel-hdr">
+        <span class="watt-panel-hdr-icon">🏆</span>
+        <h3 class="watt-panel-hdr-title">Classement WATT</h3>
+        <span class="watt-panel-sub">Trié par écoutes · puis par abonnés</span>
+      </div>
+      <div class="watt-panel-body" id="wattRankingList">
+        <!-- rempli par watt.js -->
+      </div>
+    </div>
+
+    <!-- ── Concept visuel : réseau de connexions ── -->
+    <div class="watt-panel watt-panel-wide watt-panel-web">
+      <div class="watt-panel-hdr">
+        <span class="watt-panel-hdr-icon">🌐</span>
+        <h3 class="watt-panel-hdr-title">Réseau WATT — Connexions Créatives</h3>
+        <span class="watt-panel-sub">Test visuel v1.0 · concept en développement</span>
+      </div>
+      <div class="watt-web-container">
+        <canvas id="watt-network-canvas"></canvas>
+        <div class="watt-web-legend">
+          <span class="wl-dot wl-artist"></span> Artiste
+          <span class="wl-dot wl-track"></span> Morceau
+          <span class="wl-dot wl-playlist"></span> Playlist
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /watt-dashboard -->
+
+</div><!-- /wattMain -->
+
+<!-- ═══════ FOOTER ════════════════════════════════════════════════════════════ -->
+<footer class="watt-footer">
+  <a href="/" class="watt-footer-back">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Retour à SMYLE PLAY
+  </a>
+  <span class="watt-footer-brand">PLUG WATT · SMYLE PLAY · 2025</span>
+</footer>
+
+<!-- ═══════ MODAL AUTH ════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="wattAuthModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeWattAuthModal()">✕</button>
+    <div class="modal-tabs">
+      <button id="wtab-login"  class="modal-tab active" onclick="switchWattTab('login')">Connexion</button>
+      <button id="wtab-signup" class="modal-tab"        onclick="switchWattTab('signup')">S'inscrire</button>
+    </div>
+    <form id="wform-login" onsubmit="wattLogin(); return false;">
+      <input class="modal-input" id="wlogin-email"    type="email"    placeholder="Email" required />
+      <input class="modal-input" id="wlogin-password" type="password" placeholder="Mot de passe" required />
+      <button type="submit" class="modal-submit">Se connecter</button>
+    </form>
+    <form id="wform-signup" style="display:none" onsubmit="wattSignup(); return false;">
+      <input class="modal-input" id="wsignup-name"     type="text"     placeholder="Ton prénom" required />
+      <input class="modal-input" id="wsignup-email"    type="email"    placeholder="Email" required />
+      <input class="modal-input" id="wsignup-password" type="password" placeholder="Mot de passe (min 6 car.)" required />
+      <button type="submit" class="modal-submit">Créer mon compte</button>
+    </form>
+    <p class="modal-msg" id="wAuthMsg"></p>
+  </div>
+</div>
+
+<!-- ═══════ MODAL PAIEMENT / ACCÈS BÊTA ════════════════════════════════════════ -->
+<div class="modal-overlay" id="wattPayModal">
+  <div class="modal-box watt-pay-modal-box">
+    <button class="modal-close" onclick="closePayModal()">✕</button>
+
+    <div class="watt-pay-header">
+      <svg viewBox="0 0 24 24" fill="#FFD700" width="22" height="22"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span class="watt-pay-title">Activer PLUG WATT</span>
+    </div>
+    <p class="watt-pay-sub">0,99 € / mois · Sans engagement · Annulation libre</p>
+
+    <div class="watt-pay-notice">
+      <div class="watt-pay-notice-body">
+        <strong>Phase bêta en cours</strong><br>
+        Le paiement en ligne sera disponible très prochainement.<br>
+        Pour activer ton accès maintenant, deux options :
+      </div>
+    </div>
+
+    <div class="watt-pay-options">
+      <!-- Option 1 : demande d'accès par email -->
+      <div class="watt-pay-option">
+        <div class="watt-pay-opt-title">Option 1 · Demande d'accès</div>
+        <button class="watt-btn-primary" onclick="requestPlugWattAccess()" style="width:100%">
+          ⚡ Envoyer ma demande par email
+        </button>
+      </div>
+
+      <!-- Option 2 : code bêta -->
+      <div class="watt-pay-option">
+        <div class="watt-pay-opt-title">Option 2 · Code d'accès bêta</div>
+        <input class="watt-input" id="betaCode" placeholder="Entre ton code d'accès" />
+        <button class="watt-btn-ghost" style="width:100%;margin-top:8px" onclick="activateWithCode()">
+          Activer avec mon code
+        </button>
+      </div>
+    </div>
+
+    <p class="premium-modal-msg" id="payMsg"></p>
+  </div>
+</div>
+
+<!-- ═══════ TOAST ════════════════════════════════════════════════════════════ -->
+<div id="watt-toast"></div>
+
+<script src="watt.js"></script>
+</body>
+</html>
