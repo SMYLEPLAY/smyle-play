@@ -78,6 +78,10 @@ def create_app(config_class=None):
     def watt_page():
         return send_from_directory(BASE_DIR, 'watt.html')
 
+    @app.route('/dashboard')
+    def dashboard_page():
+        return send_from_directory(BASE_DIR, 'dashboard.html')
+
     # ── API Playlists / Tracks ────────────────────────────────────────────
 
     @app.route('/api/tracks')

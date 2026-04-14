@@ -500,12 +500,11 @@ function activateWithCode() {
   }
 
   msgEl.style.color = '#FFD700';
-  msgEl.textContent = '⚡ PLUG WATT activé ! Bienvenue dans le réseau.';
+  msgEl.textContent = '⚡ PLUG WATT activé ! Redirection vers ton dashboard…';
 
   setTimeout(() => {
     closePayModal();
-    renderPageState();
-    wattToast('⚡ PLUG WATT activé — bienvenue !');
+    window.location.href = '/dashboard';
   }, 1400);
 }
 
