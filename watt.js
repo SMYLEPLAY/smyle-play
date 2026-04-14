@@ -1,10 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    PLUG WATT — watt.js
-   Dashboard artiste premium · Réseau électrique animé · Upload R2
+   Page artiste PLUG WATT · Réseau électrique animé · Upload R2
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// ── BETA CODE ────────────────────────────────────────────────────────────────
-const BETA_CODES = ['WATT2025', 'PLUGWATT', 'SMYLE99', 'WATT01'];
+// ── BÊTA GRATUITE — pas de code ni de paiement requis ────────────────────────
 
 // ── 1. CANVAS ELECTRIC WEB (fond de page) ────────────────────────────────────
 
@@ -340,50 +339,31 @@ function getCurrentUser() { return JSON.parse(localStorage.getItem('smyle_curren
 function setCurrentUser(u){ localStorage.setItem('smyle_current_user', JSON.stringify(u)); }
 function clearCurrentUser(){ localStorage.removeItem('smyle_current_user'); }
 
-function isPlugWattActive() {
-  const status = JSON.parse(localStorage.getItem('smyle_plugwatt_status') || 'null');
-  return status && status.active === true;
-}
-
-function activatePlugWattLocally(userId) {
-  localStorage.setItem('smyle_plugwatt_status', JSON.stringify({
-    active: true,
-    userId,
-    activatedAt: Date.now(),
-    plan: 'beta',
-  }));
-}
-
 // ── 4. ÉTAT DE L'UI ───────────────────────────────────────────────────────────
+// Bêta gratuite : connecté → gate-subscribe (CTA dashboard), sinon → gate-login
 
 function renderPageState() {
-  const user    = getCurrentUser();
-  const premium = isPlugWattActive();
+  const user = getCurrentUser();
 
-  document.getElementById('gate-login').style.display      = (!user) ? '' : 'none';
-  document.getElementById('gate-subscribe').style.display  = (user && !premium) ? '' : 'none';
-  document.getElementById('watt-dashboard').style.display  = (user && premium)  ? '' : 'none';
+  document.getElementById('gate-login').style.display     = (!user) ? '' : 'none';
+  document.getElementById('gate-subscribe').style.display = (user)  ? '' : 'none';
+  document.getElementById('watt-dashboard').style.display = 'none'; // mini-dashboard retiré → /dashboard
 
   renderNavUser(user);
-  if (user && premium) {
-    renderProfile();
-    renderMyTracks();
-    renderWattRanking();
-    updateStats();
-    initNetworkCanvas();
-  }
+}
+
+// Accès direct au dashboard (bêta gratuite — pas de vérification de paiement)
+function enterDashboard() {
+  window.location.href = '/dashboard';
 }
 
 function renderNavUser(user) {
   const area = document.getElementById('wattNavUser');
   if (!area) return;
   if (user) {
-    const badge = isPlugWattActive()
-      ? `<span style="font-size:9px;letter-spacing:.2em;color:rgba(255,215,0,.5);text-transform:uppercase;border:1px solid rgba(255,215,0,.2);padding:2px 8px;border-radius:2px">⚡ PLUG WATT</span>`
-      : '';
     area.innerHTML = `
       <span class="watt-nav-user-name">${user.name}</span>
-      ${badge}
+      <span style="font-size:9px;letter-spacing:.2em;color:rgba(255,215,0,.5);text-transform:uppercase;border:1px solid rgba(255,215,0,.2);padding:2px 8px;border-radius:2px">⚡ WATT</span>
       <button class="watt-nav-logout-btn" onclick="wattLogout()">Déco</button>
     `;
   } else {
@@ -424,8 +404,8 @@ function wattLogin() {
   }
   setCurrentUser(user);
   closeWattAuthModal();
-  renderPageState();
   wattToast('Connexion réussie — bienvenue ' + user.name + ' !');
+  setTimeout(() => { window.location.href = '/dashboard'; }, 800);
 }
 
 function wattSignup() {
@@ -446,66 +426,14 @@ function wattSignup() {
   saveUsers(users);
   setCurrentUser(user);
   closeWattAuthModal();
-  renderPageState();
   wattToast('Compte créé — bienvenue ' + name + ' !');
+  setTimeout(() => { window.location.href = '/dashboard'; }, 800);
 }
 
 function wattLogout() {
   clearCurrentUser();
   renderPageState();
   wattToast('Déconnecté.');
-}
-
-// ── 6. PAIEMENT / ACTIVATION ──────────────────────────────────────────────────
-
-function openPayModal() {
-  document.getElementById('wattPayModal').classList.add('open');
-  document.getElementById('payMsg').textContent = '';
-  document.getElementById('betaCode').value = '';
-}
-
-function closePayModal() {
-  document.getElementById('wattPayModal').classList.remove('open');
-}
-
-function requestPlugWattAccess() {
-  const user = getCurrentUser();
-  const name = user ? user.name : 'Anonyme';
-  const email = user ? user.email : '';
-  const subject = encodeURIComponent('[SMYLE PLAY] Demande accès PLUG WATT');
-  const body    = encodeURIComponent(
-    `Bonjour,\n\nJe souhaite activer mon accès PLUG WATT (0,99 €/mois).\n\nNom : ${name}\nEmail : ${email}\n\nMerci !`
-  );
-  window.location.href = `mailto:smyletheplan@gmail.com?subject=${subject}&body=${body}`;
-  document.getElementById('payMsg').style.color = '#FFD700';
-  document.getElementById('payMsg').textContent = '✓ Email préparé — envoie-le pour recevoir ton code bêta.';
-}
-
-function activateWithCode() {
-  const code = document.getElementById('betaCode').value.trim().toUpperCase();
-  const msgEl = document.getElementById('payMsg');
-
-  if (!BETA_CODES.includes(code)) {
-    msgEl.style.color = '#ff5555';
-    msgEl.textContent = 'Code invalide. Contacte l\'équipe pour obtenir ton accès.';
-    return;
-  }
-
-  const user = getCurrentUser();
-  if (user) {
-    activatePlugWattLocally(user.id);
-  } else {
-    // Activer sans user (mode démo)
-    activatePlugWattLocally('guest');
-  }
-
-  msgEl.style.color = '#FFD700';
-  msgEl.textContent = '⚡ PLUG WATT activé ! Redirection vers ton dashboard…';
-
-  setTimeout(() => {
-    closePayModal();
-    window.location.href = '/dashboard';
-  }, 1400);
 }
 
 // ── 7. PROFIL ARTISTE ─────────────────────────────────────────────────────────

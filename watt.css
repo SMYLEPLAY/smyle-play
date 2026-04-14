@@ -203,28 +203,20 @@
   margin-bottom: 28px;
 }
 
-.watt-hero-price {
+.watt-hero-beta-badge {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
-  padding: 10px 28px;
-  border: 1px solid rgba(255, 215, 0, 0.25);
-  border-radius: 3px;
-  background: rgba(255, 215, 0, 0.04);
-}
-
-.watt-price-num {
-  font-size: 28px;
-  font-weight: 900;
-  color: var(--watt-gold);
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
-}
-
-.watt-price-per {
+  padding: 7px 20px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 20px;
+  background: rgba(255, 215, 0, 0.06);
   font-size: 11px;
-  letter-spacing: .25em;
-  color: var(--watt-text-dim);
+  font-weight: 700;
+  letter-spacing: .18em;
   text-transform: uppercase;
+  color: var(--watt-gold);
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
 
 /* ── MAIN ─────────────────────────────────────────────────────────────────── */
@@ -334,24 +326,20 @@
   gap: 12px;
 }
 
-.watt-sub-price-display {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.watt-sub-price-amount {
-  font-size: 32px;
-  font-weight: 900;
-  color: var(--watt-gold);
-  text-shadow: 0 0 14px rgba(255, 215, 0, 0.5);
-}
-
-.watt-sub-price-period {
+.watt-beta-open-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 20px;
+  background: rgba(255, 215, 0, 0.06);
   font-size: 10px;
-  letter-spacing: .22em;
-  color: var(--watt-text-dim);
+  font-weight: 700;
+  letter-spacing: .18em;
   text-transform: uppercase;
+  color: var(--watt-gold);
+  margin-bottom: 4px;
 }
 
 .watt-sub-note {
@@ -991,66 +979,6 @@
 #watt-toast.visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
-}
-
-/* ── PAYMENT MODAL ────────────────────────────────────────────────────────── */
-.watt-pay-modal-box {
-  border-color: rgba(255, 215, 0, 0.22) !important;
-}
-
-.watt-pay-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.watt-pay-title {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .28em;
-  text-transform: uppercase;
-  color: var(--watt-gold);
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
-}
-
-.watt-pay-sub {
-  font-size: 10px;
-  letter-spacing: .15em;
-  color: rgba(255, 215, 0, 0.35);
-  text-transform: uppercase;
-  margin-bottom: 22px;
-}
-
-.watt-pay-notice {
-  padding: 14px 16px;
-  border: 1px solid rgba(255, 215, 0, 0.12);
-  border-radius: 4px;
-  background: rgba(255, 215, 0, 0.03);
-  font-size: 11px;
-  line-height: 1.7;
-  color: rgba(255, 245, 200, 0.5);
-  margin-bottom: 22px;
-}
-
-.watt-pay-options {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.watt-pay-option {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.watt-pay-opt-title {
-  font-size: 9px;
-  letter-spacing: .25em;
-  text-transform: uppercase;
-  color: rgba(255, 215, 0, 0.38);
-  margin-bottom: 2px;
 }
 
 /* ── RESPONSIVE ───────────────────────────────────────────────────────────── */

@@ -32,7 +32,7 @@
   <div class="dash-topbar-center">
     <svg viewBox="0 0 24 24" fill="#FFD700" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
     <span class="dash-topbar-brand">PLUG WATT</span>
-    <span class="dash-topbar-badge">Dashboard Artiste</span>
+    <span class="dash-topbar-badge">Dashboard · Bêta</span>
   </div>
 
   <div class="dash-topbar-right">
@@ -129,7 +129,7 @@
           <div class="dash-kpi-val" id="kpiFollowers">0</div>
           <div class="dash-kpi-lbl">Abonnés</div>
         </div>
-        <div class="dash-kpi dash-kpi-rank">
+        <div class="dash-kpi dash-kpi-rank" title="Classement dans la communauté WATT">
           <div class="dash-kpi-val" id="kpiRank">—</div>
           <div class="dash-kpi-lbl">Rang WATT</div>
         </div>
@@ -457,15 +457,15 @@
 <!-- ═══════ TOAST ════════════════════════════════════════════════════════════ -->
 <div id="dash-toast" class="dash-toast"></div>
 
-<!-- ═══════ GUARD : redirige si non activé ══════════════════════════════════ -->
+<!-- ═══════ GUARD (fallback si JS désactivé) ═════════════════════════════════ -->
 <div id="dash-guard" class="dash-guard" style="display:none">
   <div class="dash-guard-box">
     <svg viewBox="0 0 24 24" fill="currentColor" width="40" height="40" style="color:#FFD700">
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
     </svg>
-    <h2>Accès réservé aux artistes WATT</h2>
-    <p>Active ton abonnement PLUG WATT pour accéder à ce dashboard.</p>
-    <a href="/watt" class="dash-btn-primary">⚡ Activer PLUG WATT — 0,99 € / mois</a>
+    <h2>Rejoins la bêta WATT</h2>
+    <p>Crée ton compte pour accéder au dashboard artiste.</p>
+    <a href="/watt" class="dash-btn-primary">⚡ Rejoindre PLUG WATT — Gratuit</a>
   </div>
 </div>
 

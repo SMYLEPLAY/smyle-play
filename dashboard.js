@@ -263,10 +263,8 @@ function saveUsers(u)     { localStorage.setItem('smyle_users', JSON.stringify(u
 function getCurrentUser() { return JSON.parse(localStorage.getItem('smyle_current_user')  || 'null'); }
 function setCurrentUser(u){ localStorage.setItem('smyle_current_user', JSON.stringify(u)); }
 function clearCurrentUser(){ localStorage.removeItem('smyle_current_user'); }
-function isPlugWattActive(){
-  const s = JSON.parse(localStorage.getItem('smyle_plugwatt_status') || 'null');
-  return s && s.active === true;
-}
+// Bêta gratuite — accès libre (le paiement sera ajouté ultérieurement)
+function isPlugWattActive(){ return true; }
 
 function getWattProfile() {
   return JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
@@ -337,13 +335,12 @@ function getPlaysHistory(period) {
 }
 
 // ── 4. GUARD D'ACCÈS ──────────────────────────────────────────────────────────
+// Bêta gratuite : accès libre, pas de vérification de paiement.
+// Le guard redirige uniquement si l'utilisateur n'est pas connecté.
 
 function checkAccess() {
-  if (!isPlugWattActive()) {
-    document.getElementById('dash-guard').style.display = 'flex';
-    return false;
-  }
-  document.getElementById('dash-guard').style.display = 'none';
+  const guardEl = document.getElementById('dash-guard');
+  if (guardEl) guardEl.style.display = 'none';
   return true;
 }
 
