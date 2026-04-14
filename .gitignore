@@ -1,0 +1,37 @@
+# ── Fichiers audio (hébergés sur Cloudflare R2, pas dans Git) ──────────────
+*.wav
+*.mp3
+*.flac
+*.aac
+*.ogg
+*.m4a
+
+# ── macOS ──────────────────────────────────────────────────────────────────
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.local
+
+# ── Dossier FICHIER (backup historique, pas besoin de versionner) ─────────
+FICHIER/
+
+# ── Base de données locale ────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Logs ──────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Éditeurs ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp

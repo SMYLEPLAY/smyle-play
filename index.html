@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMYLE PLAY</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ HEADER -->
+<header>
+  <div class="header-logo">
+    <!-- Logo masque SMYLE — perles noires, yeux & sourire blancs, tilt -11° -->
+    <svg class="header-logo-icon" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(30,42)">
+        <!-- Anneau extérieur : perles noires profondes avec reflet violet -->
+        <circle cx="24"   cy="0"     r="2.4" fill="#0c0018"/>
+        <circle cx="22.1" cy="8.9"   r="2.4" fill="#0e001e"/>
+        <circle cx="16.9" cy="16.9"  r="2.4" fill="#0c0016"/>
+        <circle cx="8.9"  cy="22.1"  r="2.4" fill="#0e001e"/>
+        <circle cx="0"    cy="24"    r="2.4" fill="#0c0018"/>
+        <circle cx="-8.9" cy="22.1"  r="2.4" fill="#0e001e"/>
+        <circle cx="-16.9"cy="16.9"  r="2.4" fill="#0c0016"/>
+        <circle cx="-22.1"cy="8.9"   r="2.4" fill="#0e001e"/>
+        <circle cx="-24"  cy="0"     r="2.4" fill="#0c0018"/>
+        <circle cx="-22.1"cy="-8.9"  r="2.4" fill="#0e001e"/>
+        <circle cx="-16.9"cy="-16.9" r="2.4" fill="#0c0016"/>
+        <circle cx="-8.9" cy="-22.1" r="2.4" fill="#0e001e"/>
+        <circle cx="0"    cy="-24"   r="2.4" fill="#0c0018"/>
+        <circle cx="8.9"  cy="-22.1" r="2.4" fill="#0e001e"/>
+        <circle cx="16.9" cy="-16.9" r="2.4" fill="#0c0016"/>
+        <circle cx="22.1" cy="-8.9"  r="2.4" fill="#0e001e"/>
+        <!-- Interstitiels : noir légèrement plus chaud -->
+        <circle cx="23.6" cy="4.4"   r="2.1" fill="#110020"/>
+        <circle cx="20.6" cy="12.7"  r="2.1" fill="#110020"/>
+        <circle cx="12.7" cy="20.6"  r="2.1" fill="#110020"/>
+        <circle cx="4.4"  cy="23.6"  r="2.1" fill="#110020"/>
+        <circle cx="-4.4" cy="23.6"  r="2.1" fill="#110020"/>
+        <circle cx="-12.7"cy="20.6"  r="2.1" fill="#110020"/>
+        <circle cx="-20.6"cy="12.7"  r="2.1" fill="#110020"/>
+        <circle cx="-23.6"cy="4.4"   r="2.1" fill="#110020"/>
+        <circle cx="-23.6"cy="-4.4"  r="2.1" fill="#110020"/>
+        <circle cx="-20.6"cy="-12.7" r="2.1" fill="#110020"/>
+        <circle cx="-12.7"cy="-20.6" r="2.1" fill="#110020"/>
+        <circle cx="-4.4" cy="-23.6" r="2.1" fill="#110020"/>
+        <circle cx="4.4"  cy="-23.6" r="2.1" fill="#110020"/>
+        <circle cx="12.7" cy="-20.6" r="2.1" fill="#110020"/>
+        <circle cx="20.6" cy="-12.7" r="2.1" fill="#110020"/>
+        <!-- Anneau intérieur : noir mat -->
+        <circle cx="15"   cy="0"     r="1.9" fill="#130025"/>
+        <circle cx="13.5" cy="7.5"   r="1.9" fill="#130025"/>
+        <circle cx="7.5"  cy="13.5"  r="1.9" fill="#130025"/>
+        <circle cx="0"    cy="15"    r="1.9" fill="#130025"/>
+        <circle cx="-7.5" cy="13.5"  r="1.9" fill="#130025"/>
+        <circle cx="-13.5"cy="7.5"   r="1.9" fill="#130025"/>
+        <circle cx="-15"  cy="0"     r="1.9" fill="#130025"/>
+        <circle cx="-13.5"cy="-7.5"  r="1.9" fill="#130025"/>
+        <circle cx="-7.5" cy="-13.5" r="1.9" fill="#130025"/>
+        <circle cx="0"    cy="-15"   r="1.9" fill="#130025"/>
+        <circle cx="7.5"  cy="-13.5" r="1.9" fill="#130025"/>
+        <circle cx="13.5" cy="-7.5"  r="1.9" fill="#130025"/>
+        <!-- YEUX : perles blanches lumineuses -->
+        <circle cx="-5.5" cy="-5"   r="3.2" fill="#ffffff" opacity="0.96"/>
+        <circle cx="5.5"  cy="-5"   r="3.2" fill="#ffffff" opacity="0.96"/>
+        <!-- Pupilles légères -->
+        <circle cx="-5.5" cy="-5"   r="1.4" fill="#1a0030" opacity="0.55"/>
+        <circle cx="5.5"  cy="-5"   r="1.4" fill="#1a0030" opacity="0.55"/>
+        <!-- SOURIRE : 7 perles blanches -->
+        <circle cx="-10"  cy="2"    r="2"   fill="#ffffff" opacity="0.90"/>
+        <circle cx="-6.5" cy="7"    r="2"   fill="#ffffff" opacity="0.90"/>
+        <circle cx="-2"   cy="9.8"  r="2"   fill="#ffffff" opacity="0.90"/>
+        <circle cx="2.5"  cy="10"   r="2"   fill="#ffffff" opacity="0.90"/>
+        <circle cx="7"    cy="7.5"  r="2"   fill="#ffffff" opacity="0.90"/>
+        <circle cx="10"   cy="3"    r="2"   fill="#ffffff" opacity="0.90"/>
+        <!-- Reflet nacré global -->
+        <ellipse cx="0" cy="-2" rx="11" ry="10" fill="none" stroke="rgba(200,150,255,.06)" stroke-width="8"/>
+      </g>
+    </svg>
+    <span class="logo-text">SMYLE PLAY</span>
+  </div>
+
+  <!-- Zone auth (remplie dynamiquement par renderAuthArea) -->
+  <div id="authArea"></div>
+
+  <!-- Bouton MY MIX -->
+  <button class="mix-toggle-btn" onclick="toggleMixPanel()">
+    MY MIX
+    <span class="mix-count" id="mix-count">0</span>
+  </button>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════ HERO -->
+<section class="hero">
+  <h1 class="hero-title">SMYLE PLAY</h1>
+  <p class="hero-sub">Playlists IA · Suno · WATT</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ CARDS GRID (3 playlists) -->
+<div class="playlists-grid">
+
+  <!-- SUNSET LOVER -->
+  <div class="playlist-card card-sunset" onclick="openPlaylist('sunset-lover', this)">
+    <div class="card-bg"></div>
+    <div class="card-deco-wrap">
+      <!-- Soleil + horizon + reflet eau -->
+      <div class="sun-disc"></div>
+      <div class="sun-horizon"></div>
+      <div class="water-reflection"></div>
+    </div>
+    <button class="card-quick-play" onclick="quickPlay(event,'sunset-lover')" title="Lancer">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </button>
+    <div class="card-content">
+      <div class="card-neon">Sunset Lover</div>
+      <div class="card-subtitle">
+        <span id="count-sunset-lover">— titres</span> · Deep house &amp; nu-disco
+      </div>
+      <div class="card-play-hint">Écouter ›</div>
+    </div>
+  </div>
+
+  <!-- JUNGLE OSMOSE -->
+  <div class="playlist-card card-jungle" onclick="openPlaylist('jungle-osmose', this)">
+    <div class="card-bg"></div>
+    <div class="card-deco-wrap">
+      <!-- Deux grandes feuilles de palmier qui couvrent toute la carte -->
+      <div class="palm-left"></div>
+      <div class="palm-right"></div>
+      <!-- Lumière centrale révélée à l'ouverture -->
+      <div class="jungle-light"></div>
+    </div>
+    <button class="card-quick-play" onclick="quickPlay(event,'jungle-osmose')" title="Lancer">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </button>
+    <div class="card-content">
+      <div class="card-neon">Jungle Osmose</div>
+      <div class="card-subtitle">
+        <span id="count-jungle-osmose">— titres</span> · Afrobeat &amp; tropical
+      </div>
+      <div class="card-play-hint">Écouter ›</div>
+    </div>
+  </div>
+
+  <!-- NIGHT CITY -->
+  <div class="playlist-card card-night" onclick="openPlaylist('night-city', this)">
+    <div class="card-bg"></div>
+    <div class="card-deco-wrap">
+      <!-- Ciel étoilé -->
+      <div class="starfield"></div>
+      <!-- Lune -->
+      <div class="city-moon"></div>
+      <!-- Skyline SVG : immeubles + fenêtres allumées + route en perspective -->
+      <svg class="city-buildings-svg" viewBox="0 0 300 300" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
+        <!-- Route en perspective vers la ville -->
+        <polygon points="150,300 72,175 228,175" fill="#02040f" opacity=".92"/>
+        <polygon points="150,300 100,175 200,175" fill="#030614" opacity=".55"/>
+        <!-- Lignes de route -->
+        <line x1="150" y1="300" x2="150" y2="178" stroke="rgba(0,85,255,.12)" stroke-width="1.2" stroke-dasharray="4,8"/>
+        <!-- ── Immeubles gauche ── -->
+        <rect x="0"  y="148" width="22" height="152" fill="#050e28"/>
+        <rect x="18" y="108" width="17" height="192" fill="#040b22"/>
+        <rect x="32" y="82"  width="28" height="218" fill="#060f2c"/>
+        <rect x="57" y="118" width="19" height="182" fill="#050c24"/>
+        <rect x="73" y="72"  width="22" height="228" fill="#070f2c"/>
+        <rect x="92" y="112" width="15" height="188" fill="#040a1e"/>
+        <rect x="105"y="138" width="30" height="162" fill="#05102a"/>
+        <!-- ── Immeubles droite ── -->
+        <rect x="165"y="138" width="30" height="162" fill="#05102a"/>
+        <rect x="193"y="112" width="15" height="188" fill="#040a1e"/>
+        <rect x="205"y="72"  width="22" height="228" fill="#070f2c"/>
+        <rect x="224"y="118" width="19" height="182" fill="#050c24"/>
+        <rect x="240"y="82"  width="28" height="218" fill="#060f2c"/>
+        <rect x="265"y="108" width="17" height="192" fill="#040b22"/>
+        <rect x="278"y="148" width="22" height="152" fill="#050e28"/>
+        <!-- ── Fenêtres allumées ── -->
+        <rect x="4"   y="155" width="3" height="3" fill="rgba(255,225,155,.32)"/>
+        <rect x="9"   y="163" width="3" height="3" fill="rgba(200,225,255,.28)"/>
+        <rect x="23"  y="115" width="3" height="3" fill="rgba(255,225,155,.38)"/>
+        <rect x="28"  y="125" width="3" height="3" fill="rgba(200,225,255,.32)"/>
+        <rect x="37"  y="90"  width="3" height="3" fill="rgba(255,245,190,.42)"/>
+        <rect x="45"  y="104" width="3" height="3" fill="rgba(200,225,255,.30)"/>
+        <rect x="52"  y="118" width="3" height="3" fill="rgba(255,205,105,.28)"/>
+        <rect x="37"  y="108" width="3" height="3" fill="rgba(255,225,155,.24)"/>
+        <rect x="78"  y="80"  width="3" height="3" fill="rgba(255,225,155,.48)"/>
+        <rect x="84"  y="92"  width="3" height="3" fill="rgba(200,225,255,.38)"/>
+        <rect x="90"  y="108" width="3" height="3" fill="rgba(255,245,190,.32)"/>
+        <rect x="78"  y="100" width="3" height="3" fill="rgba(255,205,105,.30)"/>
+        <rect x="108" y="145" width="3" height="3" fill="rgba(255,225,155,.28)"/>
+        <rect x="115" y="155" width="3" height="3" fill="rgba(200,225,255,.32)"/>
+        <rect x="186" y="145" width="3" height="3" fill="rgba(200,225,255,.32)"/>
+        <rect x="193" y="155" width="3" height="3" fill="rgba(255,225,155,.28)"/>
+        <rect x="208" y="80"  width="3" height="3" fill="rgba(255,245,190,.48)"/>
+        <rect x="215" y="92"  width="3" height="3" fill="rgba(200,225,255,.38)"/>
+        <rect x="221" y="108" width="3" height="3" fill="rgba(255,245,190,.32)"/>
+        <rect x="208" y="100" width="3" height="3" fill="rgba(255,205,105,.30)"/>
+        <rect x="245" y="90"  width="3" height="3" fill="rgba(255,225,155,.42)"/>
+        <rect x="252" y="104" width="3" height="3" fill="rgba(200,225,255,.30)"/>
+        <rect x="258" y="118" width="3" height="3" fill="rgba(255,225,155,.26)"/>
+        <rect x="269" y="115" width="3" height="3" fill="rgba(255,225,155,.36)"/>
+        <rect x="274" y="125" width="3" height="3" fill="rgba(200,225,255,.30)"/>
+        <rect x="283" y="155" width="3" height="3" fill="rgba(255,225,155,.30)"/>
+        <!-- Halo urbain au sol -->
+        <ellipse cx="150" cy="302" rx="85" ry="14" fill="rgba(0,55,200,.1)"/>
+      </svg>
+      <!-- Route perspective : lumière + bandes -->
+      <div class="city-road-light"></div>
+      <div class="city-road-lanes"></div>
+    </div>
+    <button class="card-quick-play" onclick="quickPlay(event,'night-city')" title="Lancer">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </button>
+    <div class="card-content">
+      <div class="card-neon">Night City</div>
+      <div class="card-subtitle">
+        <span id="count-night-city">— titres</span> · Lo-fi jazz &amp; soul
+      </div>
+      <div class="card-play-hint">Écouter ›</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ HIT MIX (bannière) -->
+<div class="hitmix-section">
+  <div class="hitmix-card" onclick="openPlaylist('hit-mix', this)">
+    <span class="hitmix-label">HIT MIX</span>
+    <div class="hitmix-main">
+      <div class="hitmix-title">Hit Mix</div>
+      <div class="hitmix-sub">
+        <span id="count-hit-mix">— titres</span> · Best of the lab · IA sélection
+      </div>
+    </div>
+    <div class="hitmix-play">Écouter</div>
+    <button class="card-quick-play" onclick="quickPlay(event,'hit-mix')" title="Lancer">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+<!-- ═══════════════════════════════════════════════════════════ TRACK PANEL (droite) -->
+<div class="track-panel" id="trackPanel">
+  <div class="panel-header">
+    <button class="panel-close" onclick="closePanel()">✕</button>
+    <div class="panel-playlist-name" id="panel-title">—</div>
+    <div class="panel-sub" id="panel-sub"></div>
+    <div class="panel-total-dur" id="panel-total-dur"></div>
+  </div>
+  <div class="track-list" id="track-list"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ MIX PANEL (gauche) -->
+<div class="mix-panel" id="mixPanel">
+  <div class="mix-panel-header">
+    <div class="mix-panel-title">MY MIX</div>
+    <div class="mix-panel-sub" id="mix-sub">0 titre</div>
+  </div>
+  <div class="mix-actions">
+    <button class="mix-action-btn primary" onclick="playMixFromIdx(0)">▶ Lancer le mix</button>
+    <button class="mix-action-btn"         onclick="openSaveMix()">Sauvegarder la playlist</button>
+    <button class="mix-action-btn"         onclick="clearMix()">Vider le mix</button>
+  </div>
+  <div class="mix-track-list" id="mix-list">
+    <div class="mix-empty">Ajoute des morceaux<br>depuis n'importe quelle playlist</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ PLAYER (barre du bas) -->
+<div id="player">
+  <!-- État vide (avant toute lecture) -->
+  <span class="player-empty" id="player-empty">Sélectionne un morceau pour écouter</span>
+
+  <!-- Infos piste (caché jusqu'à la 1ʳᵉ lecture) -->
+  <div class="player-info" id="player-info" style="display:none">
+    <div class="player-track-name"    id="player-track-name">—</div>
+    <div class="player-playlist-name" id="player-playlist-name">—</div>
+  </div>
+
+  <!-- Contrôles -->
+  <div class="player-controls" id="player-controls" style="display:none">
+    <button class="ctrl-btn" onclick="prevTrack()" title="Précédent">
+      <svg viewBox="0 0 24 24"><polygon points="19,20 9,12 19,4"/><rect x="5" y="4" width="3" height="16"/></svg>
+    </button>
+    <button class="ctrl-btn play-pause" id="btn-play" onclick="togglePlay()">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </button>
+    <button class="ctrl-btn" onclick="nextTrack()" title="Suivant">
+      <svg viewBox="0 0 24 24"><polygon points="5,4 15,12 5,20"/><rect x="16" y="4" width="3" height="16"/></svg>
+    </button>
+    <button class="ctrl-btn" id="btn-loop" onclick="toggleLoop()" title="Boucle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/>
+        <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Barre de progression -->
+  <div class="player-progress" id="player-progress" style="display:none">
+    <span class="player-time" id="time-current">0:00</span>
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <span class="player-time" id="time-duration">0:00</span>
+  </div>
+
+  <!-- Tag de mode (MY MIX) -->
+  <span class="player-mode-tag" id="player-mode-tag"></span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ MODAL AUTH -->
+<div class="modal-overlay" id="authModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    <div class="modal-tabs">
+      <button id="tab-login"  class="modal-tab active" onclick="switchAuthTab('login')">Connexion</button>
+      <button id="tab-signup" class="modal-tab"        onclick="switchAuthTab('signup')">S'inscrire</button>
+    </div>
+
+    <!-- Connexion -->
+    <form id="form-login" onsubmit="submitLogin(); return false;">
+      <input class="modal-input" id="login-email"    type="email"    placeholder="Email" required />
+      <input class="modal-input" id="login-password" type="password" placeholder="Mot de passe" required />
+      <button type="submit" class="modal-submit">Se connecter</button>
+    </form>
+
+    <!-- Inscription -->
+    <form id="form-signup" style="display:none" onsubmit="submitSignup(); return false;">
+      <input class="modal-input" id="signup-name"     type="text"     placeholder="Ton prénom" required />
+      <input class="modal-input" id="signup-email"    type="email"    placeholder="Email" required />
+      <input class="modal-input" id="signup-password" type="password" placeholder="Mot de passe (min 6 car.)" required />
+      <button type="submit" class="modal-submit">Créer mon compte</button>
+    </form>
+
+    <p class="modal-msg" id="authMsg"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ MODAL SAVE MIX -->
+<div class="modal-overlay" id="saveMixModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeSaveMix()">✕</button>
+    <div class="modal-title">Sauvegarder My Mix</div>
+    <input class="modal-input" id="mix-save-name" type="text" placeholder="Nom de ta playlist…" />
+    <button class="modal-submit" onclick="confirmSaveMix()">Sauvegarder</button>
+    <p class="modal-msg" id="saveMixMsg"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ MODAL CONTACT -->
+<div class="modal-overlay" id="contactModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeContactModal()">✕</button>
+    <div class="modal-title">Contact · SMYLE PLAY</div>
+    <form id="contact-form" onsubmit="submitContact(); return false;">
+      <input  class="modal-input"      id="contact-name"  type="text"  placeholder="Ton prénom (optionnel)" />
+      <input  class="modal-input"      id="contact-email" type="email" placeholder="Ton email (optionnel)" />
+      <select class="modal-input contact-select" id="contact-type">
+        <option value="Suggestion">Suggestion</option>
+        <option value="Bug">Bug / Problème technique</option>
+        <option value="Collaboration">Collaboration</option>
+        <option value="Autre">Autre</option>
+      </select>
+      <textarea class="modal-input contact-textarea" id="contact-msg"
+                placeholder="Ton message…" rows="4" required></textarea>
+      <button type="submit" class="modal-submit">Envoyer</button>
+    </form>
+    <p class="contact-success" id="contact-success"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ FOOTER -->
+<footer style="padding:32px 48px 96px;text-align:center">
+  <p style="font-size:10px;letter-spacing:.3em;color:rgba(136,0,255,.2);text-transform:uppercase">
+    © 2025 SMYLE PLAY · Musiques générées par IA · <a href="https://suno.ai" target="_blank" style="color:rgba(136,0,255,.35);text-decoration:none">Suno</a>
+    · <span onclick="openContactModal()" style="cursor:pointer;color:rgba(136,0,255,.35)">Contact</span>
+  </p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
