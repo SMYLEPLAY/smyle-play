@@ -1,0 +1,591 @@
+{
+  "sunset-lover": {
+    "label": "SUNSET LOVER",
+    "folder": "SUNSET LOVER",
+    "theme": "sunset-lover",
+    "tracks": [
+      {
+        "id": "sl-sw001amberdrivedriftwav",
+        "file": "sw-001 — AMBER DRIVE Drift.wav",
+        "name": "Amber Drive",
+        "duration": 188.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20AMBER%20DRIVE%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001cocktailsdriftwav",
+        "file": "sw-001 — COCKTAILS Drift.wav",
+        "name": "Cocktails",
+        "duration": 241.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20COCKTAILS%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001goldenhourdriftwav",
+        "file": "sw-001 — Golden Hour Drift.wav",
+        "name": "Golden Hour",
+        "duration": 257.5,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20Golden%20Hour%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001hotwaterdriftwav",
+        "file": "sw-001 — HOT WATER Drift.wav",
+        "name": "Hot Water",
+        "duration": 214.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20HOT%20WATER%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001ibizasoleildriftwav",
+        "file": "sw-001 — IBIZA SOLEIL Drift.wav",
+        "name": "Ibiza Soleil",
+        "duration": 234.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20IBIZA%20SOLEIL%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001lastnightdriftwav",
+        "file": "sw-001 — LAST NIGHT Drift.wav",
+        "name": "Last Night",
+        "duration": 199.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20LAST%20NIGHT%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001liquidechromedriftw",
+        "file": "sw-001 — LIQUIDE CHROME Drift.wav",
+        "name": "Liquide Chrome",
+        "duration": 479.4,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20LIQUIDE%20CHROME%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001minimaldancedriftwa",
+        "file": "sw-001 — MINIMAL DANCE Drift.wav",
+        "name": "Minimal Dance",
+        "duration": 192.2,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20MINIMAL%20DANCE%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001nylonsunsetdriftwav",
+        "file": "sw-001 — NYLON SUNSET Drift.wav",
+        "name": "Nylon Sunset",
+        "duration": 169.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20NYLON%20SUNSET%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001openwaterdriftwav",
+        "file": "sw-001 — OPEN WATER Drift.wav",
+        "name": "Open Water",
+        "duration": 479.4,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20OPEN%20WATER%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001partydriftwav",
+        "file": "sw-001 — PARTY Drift.wav",
+        "name": "Party",
+        "duration": 162.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20PARTY%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001planedriftwav",
+        "file": "sw-001 — PLANE Drift.wav",
+        "name": "Plane",
+        "duration": 268.2,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20PLANE%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001privateplagedriftwa",
+        "file": "sw-001 — PRIVATE PLAGE Drift.wav",
+        "name": "Private Plage",
+        "duration": 213.4,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20PRIVATE%20PLAGE%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001redmoonlightdriftwa",
+        "file": "sw-001 — RED MOONLIGHT Drift.wav",
+        "name": "Red Moonlight",
+        "duration": 272.3,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20RED%20MOONLIGHT%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001ridingdriftwav",
+        "file": "sw-001 — RIDING Drift.wav",
+        "name": "Riding",
+        "duration": 254.3,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20RIDING%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001rooftoplevitationdr",
+        "file": "sw-001 — ROOFTOP LEVITATION Drift.wav",
+        "name": "Rooftop Levitation",
+        "duration": 218.7,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20ROOFTOP%20LEVITATION%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001senoritadriftwav",
+        "file": "sw-001 — SENORITA Drift.wav",
+        "name": "Senorita",
+        "duration": 187.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20SENORITA%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001smoothconfortdriftw",
+        "file": "sw-001 — SMOOTH CONFORT Drift.wav",
+        "name": "Smooth Confort",
+        "duration": 229.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20SMOOTH%20CONFORT%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001summersadnessdriftw",
+        "file": "sw-001 — SUMMER SADNESS Drift.wav",
+        "name": "Summer Sadness",
+        "duration": 219.5,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20SUMMER%20SADNESS%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001underdriftwav",
+        "file": "sw-001 — UNDER Drift.wav",
+        "name": "Under",
+        "duration": 242.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20UNDER%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001yatchmiragedriftwav",
+        "file": "sw-001 — YATCH MIRAGE Drift.wav",
+        "name": "Yatch Mirage",
+        "duration": 282.2,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20YATCH%20MIRAGE%20Drift.wav"
+      },
+      {
+        "id": "sl-sw001memoriesdriftwav",
+        "file": "sw-001 — memories Drift.wav",
+        "name": "Memories",
+        "duration": 228.7,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20memories%20Drift.wav"
+      }
+    ],
+    "total_duration": 5436.1,
+    "r2_folder": "SUNSET LOVER"
+  },
+  "jungle-osmose": {
+    "label": "JUNGLE OSMOSE",
+    "folder": " JUNGLE OSMOSE",
+    "theme": "jungle-osmose",
+    "tracks": [
+      {
+        "id": "jo-sw001bluelightdriftwav",
+        "file": "sw-001 — Blue Light Drift.wav",
+        "name": "Blue Light",
+        "duration": 209.0,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20Blue%20Light%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001calmraindriftwav",
+        "file": "sw-001 — CALM RAIN Drift.wav",
+        "name": "Calm Rain",
+        "duration": 188.5,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20CALM%20RAIN%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001caraibesdriftwav",
+        "file": "sw-001 — CARAIBES Drift.wav",
+        "name": "Caraibes",
+        "duration": 151.7,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20CARAIBES%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001coldreflexiondriftw",
+        "file": "sw-001 — COLD REFLEXION Drift.wav",
+        "name": "Cold Reflexion",
+        "duration": 124.3,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20COLD%20REFLEXION%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001comprendodriftwav",
+        "file": "sw-001 — COMPRENDO Drift.wav",
+        "name": "Comprendo",
+        "duration": 127.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20COMPRENDO%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001corpstropicaldriftw",
+        "file": "sw-001 — CORPS TROPICAL Drift.wav",
+        "name": "Corps Tropical",
+        "duration": 164.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20CORPS%20TROPICAL%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001crydriftwav",
+        "file": "sw-001 — CRY Drift.wav",
+        "name": "Cry",
+        "duration": 137.5,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20CRY%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001dancehallritualdrif",
+        "file": "sw-001 — DANCEHALL RITUAL Drift.wav",
+        "name": "Dancehall Ritual",
+        "duration": 183.3,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20DANCEHALL%20RITUAL%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001flydriftwav",
+        "file": "sw-001 — FLY Drift.wav",
+        "name": "Fly",
+        "duration": 163.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20FLY%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001forethumidedriftwav",
+        "file": "sw-001 — FORET HUMIDE Drift.wav",
+        "name": "Foret Humide",
+        "duration": 192.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20FORET%20HUMIDE%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001foreverdriftwav",
+        "file": "sw-001 — Forever Drift.wav",
+        "name": "Forever",
+        "duration": 212.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20Forever%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001happydaydriftwav",
+        "file": "sw-001 — HAPPY DAY Drift.wav",
+        "name": "Happy Day",
+        "duration": 167.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20HAPPY%20DAY%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001ideasdriftwav",
+        "file": "sw-001 — IDEAS Drift.wav",
+        "name": "Ideas",
+        "duration": 158.0,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20IDEAS%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001instantdriftwav",
+        "file": "sw-001 — INSTANT Drift.wav",
+        "name": "Instant",
+        "duration": 178.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20INSTANT%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001junglefeverdriftwav",
+        "file": "sw-001 — JUNGLE FEVER Drift.wav",
+        "name": "Jungle Fever",
+        "duration": 178.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20JUNGLE%20FEVER%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001ladyfirstdriftwav",
+        "file": "sw-001 — LADY FIRST Drift.wav",
+        "name": "Lady First",
+        "duration": 162.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20LADY%20FIRST%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001leverdejungledriftw",
+        "file": "sw-001 — LEVER DE JUNGLE Drift.wav",
+        "name": "Lever De Jungle",
+        "duration": 184.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20LEVER%20DE%20JUNGLE%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001lightdriftwav",
+        "file": "sw-001 — LIGHT Drift.wav",
+        "name": "Light",
+        "duration": 179.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20LIGHT%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001marimbaritualdriftw",
+        "file": "sw-001 — MARIMBA RITUAL Drift.wav",
+        "name": "Marimba Ritual",
+        "duration": 184.4,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20MARIMBA%20RITUAL%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001mexicananpartywav",
+        "file": "sw-001 — Mexicanan party .wav",
+        "name": "Mexicanan Party",
+        "duration": 202.5,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20Mexicanan%20party%20.wav"
+      },
+      {
+        "id": "jo-sw001neoncanopydriftwav",
+        "file": "sw-001 — NEON CANOPY Drift.wav",
+        "name": "Neon Canopy",
+        "duration": 236.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20NEON%20CANOPY%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001osmosedriftwav",
+        "file": "sw-001 — OSMOSE Drift.wav",
+        "name": "Osmose",
+        "duration": 132.5,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20OSMOSE%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001rememberdriftwav",
+        "file": "sw-001 — REMEMBER Drift.wav",
+        "name": "Remember",
+        "duration": 152.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20REMEMBER%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001raininparadisedrift",
+        "file": "sw-001 — Rain in paradise Drift.wav",
+        "name": "Rain In Paradise",
+        "duration": 193.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20Rain%20in%20paradise%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001unforgetabledriftwa",
+        "file": "sw-001 — UNFORGETABLE Drift.wav",
+        "name": "Unforgetable",
+        "duration": 102.2,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20UNFORGETABLE%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001wakeupdriftwav",
+        "file": "sw-001 — WAKE UP Drift.wav",
+        "name": "Wake Up",
+        "duration": 168.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20WAKE%20UP%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001waydriftwav",
+        "file": "sw-001 — WAY Drift.wav",
+        "name": "Way",
+        "duration": 209.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20WAY%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001jungleopeningdriftw",
+        "file": "sw-001 — jungle opening Drift.wav",
+        "name": "Jungle Opening",
+        "duration": 195.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20jungle%20opening%20Drift.wav"
+      },
+      {
+        "id": "jo-sw001nuitkoradriftwav",
+        "file": "sw-001 — nuit kora Drift.wav",
+        "name": "Nuit Kora",
+        "duration": 193.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20nuit%20kora%20Drift.wav"
+      }
+    ],
+    "total_duration": 5035.8,
+    "r2_folder": "JUNGLE OSMOSE"
+  },
+  "night-city": {
+    "label": "NIGHT CITY",
+    "folder": "NIGHT CITY",
+    "theme": "night-city",
+    "tracks": [
+      {
+        "id": "nc-sw001arresteddriftwav",
+        "file": "sw-001 — ARRESTED Drift.wav",
+        "name": "Arrested",
+        "duration": 152.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20ARRESTED%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001cinematicsjazzdrift",
+        "file": "sw-001 — CINEMATICS JAZZ Drift.wav",
+        "name": "Cinematics Jazz",
+        "duration": 205.0,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20CINEMATICS%20JAZZ%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001clearbusinessdriftw",
+        "file": "sw-001 — CLEAR BUSINESS Drift.wav",
+        "name": "Clear Business",
+        "duration": 191.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20CLEAR%20BUSINESS%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001fretlessjourneydrif",
+        "file": "sw-001 — FRETLESS JOURNEY Drift.wav",
+        "name": "Fretless Journey",
+        "duration": 204.0,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20FRETLESS%20JOURNEY%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001funktransmissiondri",
+        "file": "sw-001 — FUNK TRANSMISSION Drift.wav",
+        "name": "Funk Transmission",
+        "duration": 145.7,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20FUNK%20TRANSMISSION%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001jazzhopenocturnedri",
+        "file": "sw-001 — JAZZ HOPE NOCTURNE Drift.wav",
+        "name": "Jazz Hope Nocturne",
+        "duration": 208.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20JAZZ%20HOPE%20NOCTURNE%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001lofisoulstudydriftw",
+        "file": "sw-001 — LOFI SOUL STUDY Drift.wav",
+        "name": "Lofi Soul Study",
+        "duration": 186.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20LOFI%20SOUL%20STUDY%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001lowridedriftwav",
+        "file": "sw-001 — LOWRIDE Drift.wav",
+        "name": "Lowride",
+        "duration": 179.3,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20LOWRIDE%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001midnightgroovedrift",
+        "file": "sw-001 — MIDNIGHT GROOVE Drift.wav",
+        "name": "Midnight Groove",
+        "duration": 138.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20MIDNIGHT%20GROOVE%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001minimalattentiondri",
+        "file": "sw-001 — MINIMAL ATTENTION Drift.wav",
+        "name": "Minimal Attention",
+        "duration": 143.2,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20MINIMAL%20ATTENTION%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001modernechodriftwav",
+        "file": "sw-001 — MODERN ECHO Drift.wav",
+        "name": "Modern Echo",
+        "duration": 187.3,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20MODERN%20ECHO%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001rendezvousdriftwav",
+        "file": "sw-001 — RENDEZ VOUS  Drift.wav",
+        "name": "Rendez Vous",
+        "duration": 244.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20RENDEZ%20VOUS%20%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001sexyflirtdriftwav",
+        "file": "sw-001 — SEXY FLIRT Drift.wav",
+        "name": "Sexy Flirt",
+        "duration": 158.0,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20SEXY%20FLIRT%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001soulelevationdriftw",
+        "file": "sw-001 — SOUL ELEVATION Drift.wav",
+        "name": "Soul Elevation",
+        "duration": 127.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20SOUL%20ELEVATION%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001soulfulmetropolisdr",
+        "file": "sw-001 — SOULFUL METROPOLIS Drift.wav",
+        "name": "Soulful Metropolis",
+        "duration": 174.5,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20SOULFUL%20METROPOLIS%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001speakfrenchdriftmp3",
+        "file": "sw-001 — SPEAK FRENCH Drift.mp3.wav",
+        "name": "Speak French",
+        "duration": 204.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20SPEAK%20FRENCH%20Drift.mp3.wav"
+      },
+      {
+        "id": "nc-sw001sweetconversationdr",
+        "file": "sw-001 — SWEET CONVERSATION Drift.wav",
+        "name": "Sweet Conversation",
+        "duration": 159.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20SWEET%20CONVERSATION%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001underthemoondriftwa",
+        "file": "sw-001 — UNDER THE MOON Drift.wav",
+        "name": "Under The Moon",
+        "duration": 183.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20UNDER%20THE%20MOON%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001urbanmovesdriftwav",
+        "file": "sw-001 — URBAN MOVES Drift.wav",
+        "name": "Urban Moves",
+        "duration": 111.2,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20URBAN%20MOVES%20Drift.wav"
+      },
+      {
+        "id": "nc-sw001zeropretextedriftwa",
+        "file": "sw-001 — ZERO PRETEXTE Drift.wav",
+        "name": "Zero Pretexte",
+        "duration": 189.1,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20ZERO%20PRETEXTE%20Drift.wav"
+      }
+    ],
+    "total_duration": 3496.0,
+    "r2_folder": "NIGHT CITY"
+  },
+  "hit-mix": {
+    "label": "HIT MIX",
+    "folder": "HIT MIX",
+    "theme": "hit-mix",
+    "tracks": [
+      {
+        "id": "hm-alreadyinsideyouwav",
+        "file": "Already Inside You.wav",
+        "name": "Already Inside You",
+        "duration": 163.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/Already%20Inside%20You.wav"
+      },
+      {
+        "id": "hm-lostwav",
+        "file": "LOST.wav",
+        "name": "Lost",
+        "duration": 109.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/LOST.wav"
+      },
+      {
+        "id": "hm-loadingwav",
+        "file": "Loading.wav",
+        "name": "Loading",
+        "duration": 142.4,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/Loading.wav"
+      },
+      {
+        "id": "hm-nochewav",
+        "file": "NOCHE.wav",
+        "name": "Noche",
+        "duration": 315.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/NOCHE.wav"
+      },
+      {
+        "id": "hm-toomuchicewav",
+        "file": "Too much ice.wav",
+        "name": "Too Much Ice",
+        "duration": 148.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/Too%20much%20ice.wav"
+      },
+      {
+        "id": "hm-energywav",
+        "file": "energy.wav",
+        "name": "Energy",
+        "duration": 157.8,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/energy.wav"
+      },
+      {
+        "id": "hm-latenightwav",
+        "file": "late night.wav",
+        "name": "Late Night",
+        "duration": 130.9,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/late%20night.wav"
+      },
+      {
+        "id": "hm-mylovewav",
+        "file": "my love.wav",
+        "name": "My Love",
+        "duration": 147.2,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/my%20love.wav"
+      }
+    ],
+    "total_duration": 1316.5,
+    "r2_folder": "HIT MIX"
+  }
+}

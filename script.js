@@ -22,24 +22,31 @@ let dragSrcIdx       = null;
 // ── 2. CHARGEMENT DYNAMIQUE DES PLAYLISTS ────────────────────────────────────
 
 async function fetchPlaylists() {
+  // Charge directement /tracks.json (catalogue statique avec URLs R2 intégrées)
+  // Plus fiable que /api/tracks sur Railway (pas de scan filesystem)
   try {
-    const res = await fetch('/api/tracks');
+    const res = await fetch('/tracks.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     PLAYLISTS = await res.json();
-
-    // Mettre à jour les compteurs sur les cartes
-    Object.keys(PLAYLISTS).forEach(key => {
-      const el = document.getElementById(`count-${key}`);
-      if (el) {
-        const n = PLAYLISTS[key].tracks.length;
-        el.textContent = `${n} titre${n > 1 ? 's' : ''}`;
-      }
-    });
-
   } catch (err) {
-    console.error('[SMYLE] /api/tracks inaccessible :', err);
-    showToast('⚠ Lance DEMARRER SMYLE PLAY.command d\'abord');
+    // Fallback : essayer /api/tracks si tracks.json inaccessible
+    console.warn('[SMYLE] /tracks.json erreur, essai /api/tracks :', err.message);
+    try {
+      const res2 = await fetch('/api/tracks');
+      if (res2.ok) PLAYLISTS = await res2.json();
+    } catch (e2) {
+      console.error('[SMYLE] Impossible de charger les playlists :', e2);
+    }
   }
+
+  // Mettre à jour les compteurs sur les cartes
+  Object.keys(PLAYLISTS).forEach(key => {
+    const el = document.getElementById(`count-${key}`);
+    if (el) {
+      const n = (PLAYLISTS[key]?.tracks || []).length;
+      el.textContent = `${n} titre${n > 1 ? 's' : ''}`;
+    }
+  });
 }
 
 // ── 3. ENCODE FILE PATH ──────────────────────────────────────────────────────

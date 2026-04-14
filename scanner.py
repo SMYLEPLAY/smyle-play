@@ -77,9 +77,10 @@ def scan_local(cfg: dict, base_dir: str, cloud_base_url: str, audio_extensions: 
 
             cloud_url = None
             if cloud_base_url:
+                r2_folder = cfg.get('r2_folder', cfg['folder'].strip())
                 cloud_url = (
                     cloud_base_url + '/' +
-                    urllib.parse.quote(cfg['folder'], safe='') + '/' +
+                    urllib.parse.quote(r2_folder, safe='') + '/' +
                     urllib.parse.quote(f, safe='')
                 )
 
@@ -111,7 +112,8 @@ def scan_r2(cfg: dict, r2_client, bucket: str, cloud_base_url: str) -> dict:
     """
     tracks    = []
     total_dur = 0.0
-    prefix    = cfg['folder'].lstrip('/') + '/'  # ex: "SUNSET LOVER/"
+    r2_folder = cfg.get('r2_folder', cfg['folder'].strip())
+    prefix    = r2_folder.lstrip('/') + '/'  # ex: "SUNSET LOVER/"
 
     try:
         paginator = r2_client.get_paginator('list_objects_v2')
@@ -127,7 +129,7 @@ def scan_r2(cfg: dict, r2_client, bucket: str, cloud_base_url: str) -> dict:
 
                 cloud_url = (
                     cloud_base_url + '/' +
-                    urllib.parse.quote(cfg['folder'], safe='') + '/' +
+                    urllib.parse.quote(r2_folder, safe='') + '/' +
                     urllib.parse.quote(filename, safe='')
                 )
                 tracks.append({
@@ -150,14 +152,47 @@ def scan_r2(cfg: dict, r2_client, bucket: str, cloud_base_url: str) -> dict:
     }
 
 
+# ── Fallback tracks.json ──────────────────────────────────────────────────────
+
+def load_static_tracks(base_dir: str, cloud_base_url: str = '') -> dict | None:
+    """
+    Charge tracks.json (commis dans le repo).
+    Si cloud_base_url est défini, injecte les URLs R2 dans chaque track.
+    Retourne None si le fichier n'existe pas.
+    """
+    import json
+    path = os.path.join(base_dir, 'tracks.json')
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+        if cloud_base_url:
+            for pl in data.values():
+                for track in pl.get('tracks', []):
+                    if not track.get('url'):
+                        r2_folder = pl.get('r2_folder', pl['folder'].strip())
+                        track['url'] = (
+                            cloud_base_url + '/' +
+                            urllib.parse.quote(r2_folder, safe='') + '/' +
+                            urllib.parse.quote(track['file'], safe='')
+                        )
+        return data
+    except Exception as e:
+        logger.error(f'tracks.json load error: {e}')
+        return None
+
+
 # ── Point d'entrée principal ─────────────────────────────────────────────────
 
 def scan_playlists(base_dir: str, cloud_base_url: str = '', playlists_config: list = None,
                    audio_extensions: tuple = None, r2_client=None, r2_bucket: str = '') -> dict:
     """
-    Scanne toutes les playlists.
-    - Mode local  : parcourt les dossiers sur le disque
-    - Mode cloud  : utilise R2 si r2_client fourni ET dossier local absent
+    Scanne toutes les playlists — ordre de priorité :
+    1. Dossiers audio locaux (dev / Railway avec volume)
+    2. Bucket R2 (prod, si r2_client configuré)
+    3. tracks.json statique commis dans le repo (fallback universel)
+    4. Playlists vides
     """
     from config import Config
     if playlists_config is None:
@@ -165,22 +200,46 @@ def scan_playlists(base_dir: str, cloud_base_url: str = '', playlists_config: li
     if audio_extensions is None:
         audio_extensions = Config.AUDIO_EXTENSIONS
 
-    result = {}
-    for cfg in playlists_config:
-        folder_path = os.path.join(base_dir, cfg['folder'])
-        local_exists = os.path.isdir(folder_path)
+    # Vérifie si des dossiers audio existent localement
+    any_local = any(
+        os.path.isdir(os.path.join(base_dir, cfg['folder']))
+        for cfg in playlists_config
+    )
 
-        if local_exists:
-            # Dev local ou Railway avec volumes persistants
-            result[cfg['key']] = scan_local(cfg, base_dir, cloud_base_url, audio_extensions)
-        elif r2_client and r2_bucket and cloud_base_url:
-            # Production sans fichiers locaux → liste depuis R2
+    if any_local:
+        # Mode dev local — scan direct
+        result = {}
+        for cfg in playlists_config:
+            folder_path = os.path.join(base_dir, cfg['folder'])
+            if os.path.isdir(folder_path):
+                result[cfg['key']] = scan_local(cfg, base_dir, cloud_base_url, audio_extensions)
+            else:
+                result[cfg['key']] = {
+                    'label': cfg['label'], 'folder': cfg['folder'],
+                    'theme': cfg['theme'], 'tracks': [], 'total_duration': 0,
+                }
+        return result
+
+    # Pas de fichiers locaux — essayer R2
+    if r2_client and r2_bucket and cloud_base_url:
+        logger.info('Mode R2 : scan du bucket Cloudflare')
+        result = {}
+        for cfg in playlists_config:
             result[cfg['key']] = scan_r2(cfg, r2_client, r2_bucket, cloud_base_url)
-        else:
-            # Fallback : playlist vide
-            result[cfg['key']] = {
-                'label': cfg['label'], 'folder': cfg['folder'],
-                'theme': cfg['theme'], 'tracks': [], 'total_duration': 0,
-            }
+        return result
 
-    return result
+    # Fallback : tracks.json statique commis dans Git
+    static = load_static_tracks(base_dir, cloud_base_url)
+    if static:
+        logger.info('Mode tracks.json : utilisation du catalogue statique')
+        return static
+
+    # Dernier recours : playlists vides
+    logger.warning('Aucune source audio disponible — playlists vides')
+    return {
+        cfg['key']: {
+            'label': cfg['label'], 'folder': cfg['folder'],
+            'theme': cfg['theme'], 'tracks': [], 'total_duration': 0,
+        }
+        for cfg in playlists_config
+    }

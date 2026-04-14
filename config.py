@@ -38,11 +38,13 @@ class Config:
     R2_BUCKET     = os.environ.get('R2_BUCKET', 'smyle-play-audio')
 
     # ── Playlists ──────────────────────────────────────────────────────────
+    # 'folder'    = nom du dossier sur le disque local (Mac dev)
+    # 'r2_folder' = nom du dossier dans Cloudflare R2 (production)
     PLAYLISTS = [
-        {'key': 'sunset-lover',  'label': 'SUNSET LOVER',  'folder': 'SUNSET LOVER',  'theme': 'sunset-lover'},
-        {'key': 'jungle-osmose', 'label': 'JUNGLE OSMOSE', 'folder': ' JUNGLE OSMOSE','theme': 'jungle-osmose'},
-        {'key': 'night-city',    'label': 'NIGHT CITY',    'folder': 'NIGHT CITY',    'theme': 'night-city'},
-        {'key': 'hit-mix',       'label': 'HIT MIX',       'folder': 'HIT MIX',       'theme': 'hit-mix'},
+        {'key': 'sunset-lover',  'label': 'SUNSET LOVER',  'folder': 'SUNSET LOVER',   'r2_folder': 'SUNSET LOVER',  'theme': 'sunset-lover'},
+        {'key': 'jungle-osmose', 'label': 'JUNGLE OSMOSE', 'folder': ' JUNGLE OSMOSE', 'r2_folder': 'JUNGLE OSMOSE', 'theme': 'jungle-osmose'},
+        {'key': 'night-city',    'label': 'NIGHT CITY',    'folder': 'NIGHT CITY',     'r2_folder': 'NIGHT CITY',    'theme': 'night-city'},
+        {'key': 'hit-mix',       'label': 'HIT MIX',       'folder': 'HIT MIX',        'r2_folder': 'HIT MIX',       'theme': 'hit-mix'},
     ]
     AUDIO_EXTENSIONS = ('.wav', '.mp3', '.flac', '.aac', '.ogg', '.m4a')
 
