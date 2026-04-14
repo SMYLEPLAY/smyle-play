@@ -279,9 +279,13 @@ function loadTrack(playlistKey, idx) {
   mixPlaying      = false;
 
   // URL cloud R2 si disponible, sinon chemin local
-  audio.src = track.url || encodeFilePath(pl.folder, track.file);
+  const primaryUrl = track.url || encodeFilePath(pl.folder, track.file);
+  audio._trackRef  = track;          // garde une référence pour le retry
+  audio._retried   = false;
+  audio.src = primaryUrl;
+  console.log('[SMYLE] Loading:', primaryUrl);
   audio.load();
-  audio.play().catch(e => console.warn('[SMYLE]', e));
+  audio.play().catch(e => console.warn('[SMYLE] play():', e.message));
   isPlaying = true;
 
   // Thème du player
@@ -348,10 +352,48 @@ audio.addEventListener('timeupdate', () => {
 
 audio.addEventListener('ended', () => {
   if (loopMode) { audio.currentTime = 0; audio.play().catch(() => {}); return; }
-  // Ne pas forcer isPlaying=false ici : nextTrack → loadTrack → audio.play()
-  // reprend immédiatement et les events 'play'/'pause' gèrent l'état
   nextTrack();
 });
+
+// Gestion d'erreur : fichier introuvable ou non lisible sur R2
+audio.addEventListener('error', () => {
+  const failedUrl = audio.src;
+  const code = audio.error ? audio.error.code : '?';
+  console.error('[SMYLE] Audio error code=' + code + ' url=' + failedUrl);
+
+  // Tentative avec URL alternative (variante espace devant le dossier)
+  // ex: JUNGLE%20OSMOSE/ → %20JUNGLE%20OSMOSE/
+  if (!audio._retried && audio._trackRef) {
+    const track   = audio._trackRef;
+    const altUrl  = track.url_alt || buildAltUrl(failedUrl);
+    if (altUrl && altUrl !== failedUrl) {
+      console.warn('[SMYLE] Retry with alt URL:', altUrl);
+      audio._retried = true;
+      audio.src = altUrl;
+      audio.load();
+      audio.play().catch(() => {});
+      return;
+    }
+  }
+
+  // Échec définitif
+  console.error('[SMYLE] Both URLs failed:', failedUrl);
+  showToast('⚠ Fichier indisponible — passage au suivant');
+  isPlaying = false;
+  updatePlayBtn();
+  setTimeout(() => { if (!isPlaying) nextTrack(); }, 1500);
+});
+
+function buildAltUrl(url) {
+  // Si l'URL contient /JUNGLE%20OSMOSE/, essayer /%20JUNGLE%20OSMOSE/
+  if (url.includes('/JUNGLE%20OSMOSE/'))
+    return url.replace('/JUNGLE%20OSMOSE/', '/%20JUNGLE%20OSMOSE/');
+  // Si déjà avec espace, essayer sans
+  if (url.includes('/%20JUNGLE%20OSMOSE/'))
+    return url.replace('/%20JUNGLE%20OSMOSE/', '/JUNGLE%20OSMOSE/');
+  return null;
+}
+
 audio.addEventListener('play',  () => { isPlaying = true;  updatePlayBtn(); });
 audio.addEventListener('pause', () => { isPlaying = false; updatePlayBtn(); });
 
