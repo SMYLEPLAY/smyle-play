@@ -83,6 +83,18 @@
   <!-- Zone auth (remplie dynamiquement par renderAuthArea) -->
   <div id="authArea"></div>
 
+  <!-- Bouton Artiste Premium -->
+  <button class="premium-header-btn" onclick="openPremiumModal()" title="Espace Artiste Premium">
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Artiste
+  </button>
+
+  <!-- Bouton Contact / Support -->
+  <button class="support-btn" onclick="openContactModal()" title="Contact · Support">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    Support
+  </button>
+
   <!-- Bouton MY MIX -->
   <button class="mix-toggle-btn" onclick="toggleMixPanel()">
     MY MIX
@@ -93,7 +105,8 @@
 <!-- ═══════════════════════════════════════════════════════════ HERO -->
 <section class="hero">
   <h1 class="hero-title">SMYLE PLAY</h1>
-  <p class="hero-sub">Playlists IA · Suno · WATT</p>
+  <p class="hero-sub">Playlists IA · WATT</p>
+  <p class="hero-tagline">Tu ne sais pas où poster tes sons IA ?<br>Viens proposer ton travail ici.<br>Même les produits digitaux ont le droit d'avoir leur attention.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ CARDS GRID (3 playlists) -->
@@ -238,6 +251,54 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════ WATT SECTION -->
+<div class="watt-section">
+  <div class="watt-header">
+    <div class="watt-logo">
+      <svg class="watt-bolt" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span class="watt-title">WATT</span>
+    </div>
+    <div class="watt-desc">
+      <span class="watt-acronym">World Artist Ties Talent</span>
+      <span class="watt-badge">Premium Community</span>
+    </div>
+    <button class="watt-join-btn" onclick="openAuthModal('signup')">Rejoindre WATT</button>
+  </div>
+
+  <div class="watt-body">
+    <!-- Colonne gauche : classement artistes -->
+    <div class="watt-ranking">
+      <div class="watt-ranking-title">🏆 Classement Artistes</div>
+      <div class="watt-ranking-list" id="watt-ranking-list">
+        <!-- Rempli dynamiquement par script.js -->
+        <div class="watt-artist-row watt-placeholder">
+          <span class="watt-rank">01</span>
+          <div class="watt-artist-info">
+            <div class="watt-artist-name">— Bientôt disponible —</div>
+            <div class="watt-artist-stats">Rejoins WATT pour apparaître ici</div>
+          </div>
+          <div class="watt-artist-plays">— ▶</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne droite : infos premium -->
+    <div class="watt-info">
+      <div class="watt-info-title">Espace Artiste Premium</div>
+      <ul class="watt-features">
+        <li><span class="watt-check">✦</span> Upload de tes sons IA</li>
+        <li><span class="watt-check">✦</span> Profil artiste personnalisé</li>
+        <li><span class="watt-check">✦</span> Statistiques d'écoutes</li>
+        <li><span class="watt-check">✦</span> Présence dans le classement WATT</li>
+        <li><span class="watt-check">✦</span> Playlists personnelles sauvegardées</li>
+      </ul>
+      <button class="watt-premium-btn" onclick="openAuthModal('signup')">
+        Accès Artiste Premium →
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════ OVERLAY -->
 <div class="overlay" id="overlay" onclick="closeAll()"></div>
 
@@ -296,6 +357,11 @@
         <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
       </svg>
     </button>
+    <button class="ctrl-btn ctrl-add-mix" id="btn-add-mix" onclick="addCurrentToMix()" title="Ajouter au My Mix">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
   </div>
 
   <!-- Barre de progression -->
@@ -350,6 +416,57 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════ MODAL PREMIUM -->
+<div class="modal-overlay" id="premiumModal">
+  <div class="modal-box premium-modal-box">
+    <button class="modal-close" onclick="closePremiumModal()">✕</button>
+    <div class="premium-modal-header">
+      <svg viewBox="0 0 24 24" fill="#ffd700" width="22" height="22"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span class="premium-modal-title">Espace Artiste Premium</span>
+    </div>
+    <p class="premium-modal-sub">Accède à tous les outils pour partager ta musique IA sur SMYLE PLAY.</p>
+
+    <div class="premium-features-grid">
+      <div class="premium-feat">
+        <span class="premium-feat-icon">🎵</span>
+        <div>
+          <div class="premium-feat-name">Upload Sonore</div>
+          <div class="premium-feat-desc">Dépose tes créations IA directement sur la plateforme</div>
+        </div>
+      </div>
+      <div class="premium-feat">
+        <span class="premium-feat-icon">⚡</span>
+        <div>
+          <div class="premium-feat-name">WATT Community</div>
+          <div class="premium-feat-desc">Apparais dans le classement mondial des artistes IA</div>
+        </div>
+      </div>
+      <div class="premium-feat">
+        <span class="premium-feat-icon">📊</span>
+        <div>
+          <div class="premium-feat-name">Statistiques</div>
+          <div class="premium-feat-desc">Écoutes, abonnés, évolution de ton audience</div>
+        </div>
+      </div>
+      <div class="premium-feat">
+        <span class="premium-feat-icon">🎛️</span>
+        <div>
+          <div class="premium-feat-name">Profil Artiste</div>
+          <div class="premium-feat-desc">Page dédiée avec bio, liens, style musical</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="premium-cta-block">
+      <div class="premium-price">Bientôt disponible</div>
+      <button class="watt-premium-btn" onclick="submitPremiumInterest()">
+        Je suis intéressé(e) — me notifier
+      </button>
+      <p class="premium-modal-msg" id="premiumMsg"></p>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════ MODAL CONTACT -->
 <div class="modal-overlay" id="contactModal">
   <div class="modal-box">
@@ -375,8 +492,9 @@
 <!-- ═══════════════════════════════════════════════════════════ FOOTER -->
 <footer style="padding:32px 48px 96px;text-align:center">
   <p style="font-size:10px;letter-spacing:.3em;color:rgba(136,0,255,.2);text-transform:uppercase">
-    © 2025 SMYLE PLAY · Musiques générées par IA · <a href="https://suno.ai" target="_blank" style="color:rgba(136,0,255,.35);text-decoration:none">Suno</a>
+    © 2025 SMYLE PLAY · Playlists IA · WATT
     · <span onclick="openContactModal()" style="cursor:pointer;color:rgba(136,0,255,.35)">Contact</span>
+    · <a href="https://suno.ai" target="_blank" style="color:rgba(136,0,255,.18);text-decoration:none;font-size:9px">sons générés via Suno</a>
   </p>
 </footer>
 

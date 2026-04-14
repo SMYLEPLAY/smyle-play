@@ -695,12 +695,111 @@ function submitContact() {
   // Ouvrir le client mail de l'utilisateur en fallback
   const subject = encodeURIComponent(`[SMYLE PLAY] ${type} — ${name || 'Anonyme'}`);
   const body    = encodeURIComponent(`Catégorie : ${type}\nNom : ${name || '—'}\nEmail : ${email || '—'}\n\n${msg}`);
-  const mailto  = `mailto:contact@smyleplay.com?subject=${subject}&body=${body}`;
+  const mailto  = `mailto:smyletheplan@gmail.com?subject=${subject}&body=${body}`;
   window.location.href = mailto;
 
   document.getElementById('contact-success').style.color = '#44cc88';
   document.getElementById('contact-success').textContent = 'Message enregistré — merci pour ton retour !';
   setTimeout(closeContactModal, 2200);
+}
+
+// ── 14a. PREMIUM MODAL ───────────────────────────────────────────────────────
+
+function openPremiumModal() {
+  document.getElementById('premiumModal').classList.add('open');
+  document.getElementById('premiumMsg').textContent = '';
+}
+
+function closePremiumModal() {
+  document.getElementById('premiumModal').classList.remove('open');
+}
+
+function submitPremiumInterest() {
+  const user = getCurrentUser();
+  // Sauvegarder l'intérêt en localStorage
+  const interests = JSON.parse(localStorage.getItem('smyle_premium_interests') || '[]');
+  const email = user ? user.email : 'anonyme';
+  if (!interests.includes(email)) {
+    interests.push(email);
+    localStorage.setItem('smyle_premium_interests', JSON.stringify(interests));
+  }
+  const msg = document.getElementById('premiumMsg');
+  msg.style.color = '#ffd700';
+  msg.textContent = '✓ Noté ! Tu seras averti(e) à l\'ouverture de l\'espace artiste.';
+  // Ouvrir client mail pour notifier l'équipe
+  if (user) {
+    const subject = encodeURIComponent('[SMYLE PLAY] Intérêt Premium Artiste');
+    const body = encodeURIComponent(`Utilisateur intéressé : ${user.name} <${user.email}>`);
+    setTimeout(() => { window.location.href = `mailto:smyletheplan@gmail.com?subject=${subject}&body=${body}`; }, 1200);
+  }
+}
+
+// ── 14b. ADD CURRENT TRACK TO MIX (bouton + dans le player) ──────────────────
+
+function addCurrentToMix() {
+  if (!currentPlaylist || currentTrackIdx < 0) {
+    showToast('Lance un morceau d\'abord !');
+    return;
+  }
+  const track = PLAYLISTS[currentPlaylist]?.tracks[currentTrackIdx];
+  if (!track) return;
+
+  if (myMixTracks.find(m => m.id === track.id)) {
+    showToast('Déjà dans My Mix !');
+    return;
+  }
+  myMixTracks.push({ playlistKey: currentPlaylist, trackIdx: currentTrackIdx, id: track.id });
+  renderMixPanel();
+  showToast(`« ${track.name} » ajouté à My Mix`);
+
+  // Feedback visuel sur le bouton +
+  const btn = document.getElementById('btn-add-mix');
+  if (btn) {
+    btn.classList.add('added');
+    setTimeout(() => btn.classList.remove('added'), 1200);
+  }
+}
+
+// ── 14c. WATT RANKING ─────────────────────────────────────────────────────────
+
+function renderWattRanking() {
+  const container = document.getElementById('watt-ranking-list');
+  if (!container) return;
+
+  // Agréger les écoutes par playlist (simulation classement artiste)
+  // Dans la version premium, chaque artiste aura ses propres tracks
+  // Ici on affiche les playlists comme "artistes" avec leur total d'écoutes
+  const wattArtists = JSON.parse(localStorage.getItem('smyle_watt_artists') || '[]');
+
+  if (!wattArtists.length) {
+    container.innerHTML = `
+      <div class="watt-artist-row watt-placeholder">
+        <span class="watt-rank">—</span>
+        <div class="watt-artist-info">
+          <div class="watt-artist-name">Aucun artiste inscrit pour l'instant</div>
+          <div class="watt-artist-stats">Sois le premier à rejoindre WATT</div>
+        </div>
+        <div class="watt-artist-plays">— ▶</div>
+      </div>`;
+    return;
+  }
+
+  // Tri : 1. par écoutes totales, 2. par abonnés
+  const sorted = [...wattArtists].sort((a, b) => {
+    if (b.totalPlays !== a.totalPlays) return b.totalPlays - a.totalPlays;
+    return (b.followers || 0) - (a.followers || 0);
+  });
+
+  container.innerHTML = sorted.map((artist, i) => `
+    <div class="watt-artist-row">
+      <span class="watt-rank">${String(i + 1).padStart(2, '0')}</span>
+      <div class="watt-artist-info">
+        <div class="watt-artist-name">${artist.name}</div>
+        <div class="watt-artist-stats">${artist.followers || 0} abonnés · ${artist.trackCount || 0} sons</div>
+      </div>
+      <div class="watt-artist-plays">${fmtPlays(artist.totalPlays || 0)} ▶</div>
+    </div>
+  `).join('');
 }
 
 // ── 15. TOAST ─────────────────────────────────────────────────────────────────
@@ -740,6 +839,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAuthArea();
   renderMixPanel();
   updatePlayBtn();
+  renderWattRanking();
 
   // 3. Volume initial
   audio.volume = 0.8;
@@ -753,6 +853,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('contactModal').addEventListener('click', e => {
     if (e.target === document.getElementById('contactModal')) closeContactModal();
+  });
+  document.getElementById('premiumModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('premiumModal')) closePremiumModal();
   });
 
   // 5. Raccourcis clavier
