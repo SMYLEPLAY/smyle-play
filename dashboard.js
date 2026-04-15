@@ -119,14 +119,45 @@ class DashNetwork {
     this.hover  = null;
     this.resize();
     this.buildGraph();
+
     canvas.addEventListener('mousemove', e => {
-      const r = canvas.getBoundingClientRect();
+      const r  = canvas.getBoundingClientRect();
       const sx = canvas.width  / r.width;
       const sy = canvas.height / r.height;
       this.mouse.x = (e.clientX - r.left) * sx;
       this.mouse.y = (e.clientY - r.top)  * sy;
+      // Curseur pointer si nœud cliquable
+      const hit = this.nodes.find(n => Math.hypot(this.mouse.x - n.x, this.mouse.y - n.y) < n.r + 8);
+      canvas.style.cursor = (hit && hit.slug) ? 'pointer' : 'default';
     });
-    canvas.addEventListener('mouseleave', () => { this.mouse.x = -9999; this.mouse.y = -9999; });
+
+    canvas.addEventListener('click', e => {
+      const r  = canvas.getBoundingClientRect();
+      const sx = canvas.width  / r.width;
+      const sy = canvas.height / r.height;
+      const mx = (e.clientX - r.left) * sx;
+      const my = (e.clientY - r.top)  * sy;
+      const hit = this.nodes.find(n => Math.hypot(mx - n.x, my - n.y) < n.r + 8);
+      if (hit && hit.slug) window.location.href = `/artiste/${hit.slug}`;
+    });
+
+    // Touch support
+    canvas.addEventListener('touchend', e => {
+      if (e.changedTouches.length === 0) return;
+      const t  = e.changedTouches[0];
+      const r  = canvas.getBoundingClientRect();
+      const sx = canvas.width  / r.width;
+      const sy = canvas.height / r.height;
+      const mx = (t.clientX - r.left) * sx;
+      const my = (t.clientY - r.top)  * sy;
+      const hit = this.nodes.find(n => Math.hypot(mx - n.x, my - n.y) < n.r + 12);
+      if (hit && hit.slug) { e.preventDefault(); window.location.href = `/artiste/${hit.slug}`; }
+    }, { passive: false });
+
+    canvas.addEventListener('mouseleave', () => {
+      this.mouse.x = -9999; this.mouse.y = -9999;
+      canvas.style.cursor = 'default';
+    });
     window.addEventListener('resize', () => { this.resize(); this.buildGraph(); });
     this.animate();
   }
@@ -138,63 +169,95 @@ class DashNetwork {
   }
 
   nodeColor(type) {
-    return { artist: '#FFD700', track: '#00CFFF', playlist: '#FF6B6B', watt: '#ffffff' }[type] || '#888';
+    return { artist: '#FFD700', track: '#00CFFF', me: '#ffffff', watt: '#ffffff' }[type] || '#888';
   }
 
+  // ── Construit le graphe depuis les données localStorage ──────────────────
   buildGraph() {
     const W = this.W, H = this.H;
     const cx = W / 2, cy = H / 2;
 
-    // Nœud central = TOI
-    const me = { id: 'me', type: 'watt', label: 'Toi', x: cx, y: cy, vx: 0, vy: 0, r: 18, fixed: true };
+    // ── Données réelles depuis localStorage ─────────────────────────────
+    const profile   = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+    const myTracks  = JSON.parse(localStorage.getItem('smyle_watt_tracks')   || '[]');
+    const community = JSON.parse(localStorage.getItem('smyle_watt_community') || '[]');
 
-    // Artistes autour
-    const artists = [
-      { id: 'a1', type: 'artist', label: 'NightWave', angle: 0 },
-      { id: 'a2', type: 'artist', label: 'LunaAI', angle: 60 },
-      { id: 'a3', type: 'artist', label: 'ZephyrIA', angle: 120 },
-      { id: 'a4', type: 'artist', label: 'Aurora', angle: 180 },
-      { id: 'a5', type: 'artist', label: 'NebulaX', angle: 240 },
-      { id: 'a6', type: 'artist', label: 'EchoBot', angle: 300 },
-    ].map(a => {
-      const rad = a.angle * Math.PI / 180;
-      const d   = Math.min(W, H) * 0.28;
-      return { ...a, x: cx + Math.cos(rad) * d, y: cy + Math.sin(rad) * d, vx: 0, vy: 0, r: 13, fixed: false };
+    // ── Nœud central "moi" ───────────────────────────────────────────────
+    const meName = (profile && profile.artistName) ? profile.artistName : 'Toi';
+    const meSlug = profile ? (profile.slug || slugify(profile.artistName || '')) : '';
+    const me = {
+      id: 'me', type: 'watt',
+      label: meName, slug: meSlug,
+      x: cx, y: cy, vx: 0, vy: 0, r: 20, fixed: true,
+    };
+
+    // ── Artistes (communauté réelle ou démo) ─────────────────────────────
+    const DEMO_ARTISTS = [
+      { artistName: 'NightWave', genre: 'Dark Electro', slug: 'nightwave', tracks: [] },
+      { artistName: 'LunaAI',    genre: 'Ambient IA',   slug: 'lunaai',    tracks: [] },
+      { artistName: 'ZephyrIA',  genre: 'Lofi IA',      slug: 'zephyria',  tracks: [] },
+      { artistName: 'Aurora',    genre: 'Cinematic IA', slug: 'aurora',    tracks: [] },
+      { artistName: 'NebulaX',   genre: 'Deep House IA',slug: 'nebulax',   tracks: [] },
+      { artistName: 'EchoBot',   genre: 'Trap IA',      slug: 'echobot',   tracks: [] },
+    ];
+    const artistSource = community.length > 0 ? community : DEMO_ARTISTS;
+    const maxA = Math.min(artistSource.length, 8);
+
+    const artists = artistSource.slice(0, maxA).map((a, i) => {
+      const angle = (360 / maxA) * i;
+      const rad   = angle * Math.PI / 180;
+      const d     = Math.min(W, H) * 0.28;
+      const aSlug = a.slug || slugify(a.artistName || '');
+      return {
+        id: `a${i}`, type: 'artist',
+        label: a.artistName || '?',
+        slug: aSlug,
+        trackCount: Array.isArray(a.tracks) ? a.tracks.length : 0,
+        x: cx + Math.cos(rad) * d,
+        y: cy + Math.sin(rad) * d,
+        vx: 0, vy: 0, r: 13, fixed: false,
+      };
     });
 
-    // Morceaux (orbite externe)
-    const tracks = [
-      { id: 't1', type: 'track', label: 'Neon Dreams', angle: 30 },
-      { id: 't2', type: 'track', label: 'Cosmic Drift', angle: 90 },
-      { id: 't3', type: 'track', label: 'Dark Matter', angle: 150 },
-      { id: 't4', type: 'track', label: 'Electric Rain', angle: 210 },
-      { id: 't5', type: 'track', label: 'Pulse Wave', angle: 270 },
-      { id: 't6', type: 'track', label: 'Shadow Walk', angle: 330 },
-    ].map(t => {
-      const rad = t.angle * Math.PI / 180;
-      const d   = Math.min(W, H) * 0.44;
-      return { ...t, x: cx + Math.cos(rad) * d, y: cy + Math.sin(rad) * d, vx: 0, vy: 0, r: 9, fixed: false };
+    // ── Pistes (miennes réelles ou démo) ────────────────────────────────
+    const DEMO_TRACKS = ['Neon Dreams','Cosmic Drift','Dark Matter','Electric Rain','Pulse Wave','Shadow Walk'];
+    const trackNames  = myTracks.length > 0
+      ? myTracks.slice(0, 6).map(t => t.name || 'Sans titre')
+      : DEMO_TRACKS;
+    const maxT  = Math.min(trackNames.length, 6);
+    const angleOffset = artists.length > 0 ? (360 / maxA / 2) : 0;
+
+    const tracks = trackNames.slice(0, maxT).map((name, i) => {
+      const angle = (360 / maxT) * i + angleOffset;
+      const rad   = angle * Math.PI / 180;
+      const d     = Math.min(W, H) * 0.44;
+      return {
+        id: `t${i}`, type: 'track',
+        label: name, slug: '',
+        x: cx + Math.cos(rad) * d,
+        y: cy + Math.sin(rad) * d,
+        vx: 0, vy: 0, r: 9, fixed: false,
+      };
     });
 
     this.nodes = [me, ...artists, ...tracks];
 
-    // Connexions
+    // ── Arêtes ───────────────────────────────────────────────────────────
     this.edges = [];
-    artists.forEach(a => {
-      this.edges.push({ n1: 'me', n2: a.id, alpha: 0.4 });
-    });
+    artists.forEach(a => this.edges.push({ n1: 'me', n2: a.id, alpha: 0.4 }));
     tracks.forEach((t, i) => {
-      this.edges.push({ n1: artists[i % artists.length].id, n2: t.id, alpha: 0.25 });
+      const target = artists.length > 0 ? artists[i % artists.length].id : 'me';
+      this.edges.push({ n1: target, n2: t.id, alpha: 0.25 });
     });
-    this.edges.push({ n1: 'a1', n2: 'a3', alpha: 0.15 });
-    this.edges.push({ n1: 'a2', n2: 'a5', alpha: 0.15 });
+    if (artists.length >= 3) this.edges.push({ n1: artists[0].id, n2: artists[2].id, alpha: 0.15 });
+    if (artists.length >= 5) this.edges.push({ n1: artists[1].id, n2: artists[4].id, alpha: 0.15 });
+    if (artists.length >= 6) this.edges.push({ n1: artists[3].id, n2: artists[5].id, alpha: 0.12 });
 
-    // Particules
+    // ── Particules ───────────────────────────────────────────────────────
     this.particles = [];
-    this.edges.slice(0, 7).forEach(e => {
-      for (let i = 0; i < 2; i++) {
+    this.edges.slice(0, 8).forEach(e => {
+      for (let i = 0; i < 2; i++)
         this.particles.push({ edge: e, progress: Math.random(), speed: 0.003 + Math.random() * 0.004 });
-      }
     });
   }
 
@@ -204,7 +267,7 @@ class DashNetwork {
     const { ctx, W, H, nodes, edges, particles, mouse } = this;
     ctx.clearRect(0, 0, W, H);
 
-    // Fond léger
+    // Fond
     ctx.fillStyle = 'rgba(10,8,14,0.5)';
     ctx.fillRect(0, 0, W, H);
 
@@ -220,14 +283,14 @@ class DashNetwork {
       if (!a || !b) return;
       const isHov = this.hover && (this.hover.id === e.n1 || this.hover.id === e.n2);
       ctx.save();
-      ctx.strokeStyle = `rgba(255,215,0,${isHov ? e.alpha * 3 : e.alpha})`;
+      ctx.strokeStyle = `rgba(255,215,0,${isHov ? Math.min(e.alpha * 3, 0.9) : e.alpha})`;
       ctx.lineWidth   = isHov ? 1.5 : 0.8;
-      ctx.shadowColor = '#FFD700'; ctx.shadowBlur = isHov ? 8 : 3;
+      ctx.shadowColor = '#FFD700'; ctx.shadowBlur = isHov ? 10 : 3;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       ctx.restore();
     });
 
-    // Particules sur arêtes
+    // Particules
     particles.forEach(p => {
       p.progress += p.speed;
       if (p.progress >= 1) p.progress = 0;
@@ -237,7 +300,7 @@ class DashNetwork {
       const y = a.y + (b.y - a.y) * p.progress;
       ctx.save();
       ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,237,55,0.8)';
+      ctx.fillStyle = 'rgba(255,237,55,0.85)';
       ctx.shadowColor = '#FFE737'; ctx.shadowBlur = 8;
       ctx.fill(); ctx.restore();
     });
@@ -246,21 +309,70 @@ class DashNetwork {
     nodes.forEach(n => {
       const isHov = this.hover && this.hover.id === n.id;
       const col   = this.nodeColor(n.type);
+
+      // Halo supplémentaire sur hover pour nœuds cliquables
+      if (isHov && n.slug) {
+        ctx.save();
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 7, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,215,0,0.35)`;
+        ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
+      }
+
       ctx.save();
-      ctx.shadowColor = col; ctx.shadowBlur = isHov ? 24 : 10;
+      ctx.shadowColor = col; ctx.shadowBlur = isHov ? 28 : 10;
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r + (isHov ? 3 : 0), 0, Math.PI * 2);
       ctx.fillStyle = col;
-      ctx.globalAlpha = isHov ? 1 : 0.85;
+      ctx.globalAlpha = isHov ? 1 : 0.88;
       ctx.fill(); ctx.restore();
 
-      // Label
-      if (isHov || n.type === 'watt') {
+      // Initiales dans le nœud central (>= 22px)
+      if (n.type === 'watt') {
+        const initials = n.label.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
         ctx.save();
-        ctx.font = `${n.type === 'watt' ? '700' : '600'} 11px -apple-system, sans-serif`;
-        ctx.fillStyle = n.type === 'watt' ? '#fff' : col;
+        ctx.font = '700 10px -apple-system,sans-serif';
+        ctx.fillStyle = '#0a080e';
         ctx.textAlign = 'center';
-        ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 4;
-        ctx.fillText(n.label, n.x, n.y - n.r - 6);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(initials, n.x, n.y);
+        ctx.textBaseline = 'alphabetic';
+        ctx.restore();
+      }
+
+      // Labels artistes — toujours visibles (+ grand sur hover)
+      if (n.type === 'watt' || n.type === 'artist' || isHov) {
+        ctx.save();
+        const fSize = (n.type === 'watt') ? 12 : (isHov ? 12 : 10);
+        const fW    = (n.type === 'watt' || isHov) ? '700' : '500';
+        ctx.font = `${fW} ${fSize}px -apple-system, sans-serif`;
+        ctx.fillStyle = n.type === 'watt' ? '#0a080e' : (isHov ? '#fff' : col);
+        ctx.globalAlpha = isHov ? 1 : (n.type === 'artist' ? 0.78 : 0.9);
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0,0,0,.95)'; ctx.shadowBlur = 6;
+        const labelY = n.type === 'watt' ? n.y - n.r - 8 : n.y - n.r - 5;
+        ctx.fillText(n.label, n.x, labelY);
+        ctx.restore();
+      }
+
+      // Badge "N sons" sous les nœuds artistes avec pistes connues
+      if (n.type === 'artist' && n.trackCount > 0) {
+        ctx.save();
+        ctx.font = '500 8px -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255,215,0,0.55)';
+        ctx.globalAlpha = isHov ? 1 : 0.7;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 4;
+        ctx.fillText(`${n.trackCount} son${n.trackCount > 1 ? 's' : ''}`, n.x, n.y + n.r + 12);
+        ctx.restore();
+      }
+
+      // Indicateur "cliquable" (petit chevron) sur hover
+      if (isHov && n.slug) {
+        ctx.save();
+        ctx.font = '600 9px -apple-system, sans-serif';
+        ctx.fillStyle = 'rgba(255,215,0,0.9)';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0,0,0,.95)'; ctx.shadowBlur = 4;
+        ctx.fillText('→ profil', n.x, n.y + n.r + (n.trackCount > 0 ? 22 : 12));
         ctx.restore();
       }
     });
