@@ -367,6 +367,18 @@ function getCurrentUser() { return JSON.parse(safeStorage.getItem('smyle_current
 function setCurrentUser(u){ return safeStorage.setItem('smyle_current_user', JSON.stringify(u)); }
 function clearCurrentUser(){ safeStorage.removeItem('smyle_current_user'); }
 
+// ── Slugify (identique à dashboard.js) ──────────────────────────────────────
+function slugify(name) {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 // ── 4. ÉTAT DE L'UI ───────────────────────────────────────────────────────────
 // Bêta gratuite : connecté → gate-subscribe (CTA dashboard), sinon → gate-login
 
@@ -375,9 +387,10 @@ function renderPageState() {
 
   document.getElementById('gate-login').style.display     = (!user) ? '' : 'none';
   document.getElementById('gate-subscribe').style.display = (user)  ? '' : 'none';
-  document.getElementById('watt-dashboard').style.display = 'none'; // mini-dashboard retiré → /dashboard
 
   renderNavUser(user);
+  renderPublicRanking();
+  renderPublicTracks();
 }
 
 // Accès direct au dashboard (bêta gratuite — pas de vérification de paiement)
@@ -904,6 +917,117 @@ function renderWattRanking() {
   `).join('');
 }
 
+// ── 11b. CLASSEMENT PUBLIC (sans auth) ───────────────────────────────────────
+
+const DEMO_RANKING = [
+  { name: 'NightWave', genre: 'Dark Electro', plays: 1842, trackCount: 4, slug: 'nightwave' },
+  { name: 'LunaAI',    genre: 'Ambient',      plays:  934, trackCount: 3, slug: 'lunaai'    },
+  { name: 'ZephyrIA',  genre: 'Lofi',         plays:  611, trackCount: 5, slug: 'zephyria'  },
+  { name: 'Aurora',    genre: 'Cinematic',    plays:  408, trackCount: 2, slug: 'aurora'    },
+  { name: 'NebulaX',   genre: 'Deep House',   plays:  290, trackCount: 3, slug: 'nebulax'   },
+  { name: 'EchoBot',   genre: 'Trap',         plays:  177, trackCount: 6, slug: 'echobot'   },
+];
+
+const DEMO_TRACKS_PUBLIC = [
+  { name: 'Midnight Circuit',  artistName: 'NightWave', genre: 'Dark Electro', slug: 'nightwave', uploadedAt: Date.now() - 86400000 * 1  },
+  { name: 'Nebula Drift',      artistName: 'LunaAI',    genre: 'Ambient',      slug: 'lunaai',    uploadedAt: Date.now() - 86400000 * 3  },
+  { name: 'Lo-Fi Awakening',   artistName: 'ZephyrIA',  genre: 'Lofi',         slug: 'zephyria',  uploadedAt: Date.now() - 86400000 * 5  },
+  { name: 'Solar Overture',    artistName: 'Aurora',    genre: 'Cinematic',    slug: 'aurora',    uploadedAt: Date.now() - 86400000 * 7  },
+  { name: 'Bass Reactor',      artistName: 'EchoBot',   genre: 'Trap',         slug: 'echobot',   uploadedAt: Date.now() - 86400000 * 9  },
+  { name: 'Pulse of the Deep', artistName: 'NebulaX',   genre: 'Deep House',   slug: 'nebulax',   uploadedAt: Date.now() - 86400000 * 11 },
+];
+
+function renderPublicRanking() {
+  const el = document.getElementById('wattPublicRankingList');
+  if (!el) return;
+
+  // Construire depuis les données réelles
+  const allUsers = getUsers();
+  let artistData = allUsers.map(u => {
+    const tracks   = getMyWattTracks(u.id);
+    if (!tracks.length) return null;
+    const profile  = JSON.parse(safeStorage.getItem(`smyle_watt_profile_${u.id}`) || 'null');
+    const plays    = tracks.reduce((s, t) => s + (t.plays || 0), 0);
+    const name     = profile?.artistName || u.name;
+    const slug     = profile?.slug || slugify(name);
+    const genre    = profile?.genre || '';
+    return { name, genre, plays, trackCount: tracks.length, slug };
+  }).filter(Boolean);
+
+  artistData.sort((a, b) => b.plays - a.plays);
+
+  const useDemo = !artistData.length;
+  if (useDemo) artistData = DEMO_RANKING;
+
+  const demoNote = useDemo
+    ? `<div class="watt-pub-demo-note">Exemple · Inscris-toi pour apparaître dans le classement</div>`
+    : '';
+
+  el.innerHTML = demoNote + artistData.map((a, i) => `
+    <div class="watt-pub-rank-item rank-pos-${i < 3 ? i + 1 : 'other'}"
+         onclick="window.location.href='/artiste/${a.slug}'"
+         role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter')window.location.href='/artiste/${a.slug}'">
+      <span class="watt-pub-rank-num">${String(i + 1).padStart(2, '0')}</span>
+      <div class="watt-pub-rank-info">
+        <div class="watt-pub-rank-name">${a.name}</div>
+        <div class="watt-pub-rank-meta">${a.genre}${a.trackCount ? ' · ' + a.trackCount + ' son' + (a.trackCount > 1 ? 's' : '') : ''}</div>
+      </div>
+      <div class="watt-pub-rank-plays">${fmtPlaysW(a.plays)}<span class="watt-pub-plays-unit"> ▶</span></div>
+      <span class="watt-pub-arrow">→</span>
+    </div>
+  `).join('');
+}
+
+function renderPublicTracks() {
+  const el = document.getElementById('wattPublicRecentList');
+  if (!el) return;
+
+  // Agréger tous les sons de tous les users
+  const allUsers = getUsers();
+  let allTracks  = [];
+  allUsers.forEach(u => {
+    const uTracks  = getMyWattTracks(u.id);
+    const profile  = JSON.parse(safeStorage.getItem(`smyle_watt_profile_${u.id}`) || 'null');
+    const artist   = profile?.artistName || u.name;
+    const slug     = profile?.slug || slugify(artist);
+    uTracks.forEach(t => allTracks.push({ ...t, artistName: artist, slug }));
+  });
+
+  allTracks.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+  const recent = allTracks.slice(0, 6);
+
+  const useDemo = !recent.length;
+  const tracks  = useDemo ? DEMO_TRACKS_PUBLIC : recent;
+
+  const demoNote = useDemo
+    ? `<div class="watt-pub-demo-note">Exemple · Publie tes sons pour apparaître ici</div>`
+    : '';
+
+  el.innerHTML = demoNote + tracks.map(t => {
+    const d = new Date(t.uploadedAt);
+    const dateStr = d.toLocaleDateString('fr', { day: 'numeric', month: 'short' });
+    return `
+      <div class="watt-pub-track-item"
+           onclick="window.location.href='/artiste/${t.slug}'"
+           role="button" tabindex="0"
+           onkeydown="if(event.key==='Enter')window.location.href='/artiste/${t.slug}'">
+        <div class="watt-pub-track-icon">
+          <svg viewBox="0 0 24 24" fill="rgba(255,215,0,.25)" stroke="rgba(255,215,0,.55)" stroke-width="1.5" width="13" height="13">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+        <div class="watt-pub-track-info">
+          <div class="watt-pub-track-name">${t.name}</div>
+          <div class="watt-pub-track-meta">${t.artistName} · <span class="watt-pub-genre">${t.genre}</span></div>
+        </div>
+        <div class="watt-pub-track-date">${dateStr}</div>
+        <span class="watt-pub-arrow">→</span>
+      </div>
+    `;
+  }).join('');
+}
+
 // ── 12. CANVAS RÉSEAU (panel visual) ─────────────────────────────────────────
 
 let networkInstance = null;
@@ -949,19 +1073,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // État de la page
   renderPageState();
 
-  // Fermeture modals sur clic overlay
+  // Fermeture modal auth sur clic overlay
   document.getElementById('wattAuthModal').addEventListener('click', e => {
     if (e.target === document.getElementById('wattAuthModal')) closeWattAuthModal();
-  });
-  document.getElementById('wattPayModal').addEventListener('click', e => {
-    if (e.target === document.getElementById('wattPayModal')) closePayModal();
   });
 
   // Raccourci Escape
   document.addEventListener('keydown', e => {
-    if (e.code === 'Escape') {
-      closeWattAuthModal();
-      closePayModal();
-    }
+    if (e.code === 'Escape') closeWattAuthModal();
   });
 });

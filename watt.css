@@ -1228,3 +1228,276 @@
   padding-top: 10px;
   margin-top: 4px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPRINT H — Blocs Publics (Classement + Derniers Sons)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hero : genre tags ───────────────────────────────────────────────────── */
+.watt-hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  margin: 14px 0 18px;
+}
+.watt-hero-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.55);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  border-radius: 2px;
+  padding: 3px 10px;
+}
+
+/* ── Section publique (BLOC 2 + BLOC 3) ──────────────────────────────────── */
+.watt-public-section {
+  position: relative;
+  z-index: 10;
+  max-width: 780px;
+  margin: 0 auto 32px;
+  padding: 0 24px;
+}
+
+/* ── En-tête de section ──────────────────────────────────────────────────── */
+.watt-pub-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.10);
+  margin-bottom: 4px;
+}
+.watt-pub-hdr-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.watt-pub-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.88);
+  margin: 0;
+}
+.watt-pub-subtitle {
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.32);
+}
+
+/* ── Corps de section ────────────────────────────────────────────────────── */
+.watt-pub-body {
+  padding: 6px 0;
+}
+
+/* ── Loading dots ────────────────────────────────────────────────────────── */
+.watt-pub-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 0;
+  justify-content: center;
+}
+.watt-pub-loading-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 215, 0, 0.4);
+  animation: wattPulse 1.2s ease-in-out infinite;
+}
+.watt-pub-loading-dot:nth-child(2) { animation-delay: .2s; }
+.watt-pub-loading-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes wattPulse {
+  0%, 100% { opacity: .4; transform: scale(1); }
+  50%       { opacity: 1;  transform: scale(1.4); }
+}
+
+/* ── Note démo ───────────────────────────────────────────────────────────── */
+.watt-pub-demo-note {
+  font-size: 9px;
+  letter-spacing: .08em;
+  color: rgba(255, 215, 0, 0.28);
+  text-align: right;
+  padding: 6px 0 10px;
+  border-bottom: 1px dashed rgba(255, 215, 0, 0.08);
+  margin-bottom: 6px;
+}
+
+/* ── Ligne classement ────────────────────────────────────────────────────── */
+.watt-pub-rank-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.05);
+  transition: background .15s ease, border-color .15s ease;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.watt-pub-rank-item:hover {
+  background: rgba(255, 215, 0, 0.04);
+  border-bottom-color: rgba(255, 215, 0, 0.12);
+}
+.watt-pub-rank-item:active {
+  background: rgba(255, 215, 0, 0.07);
+}
+.watt-pub-rank-item:last-child {
+  border-bottom: none;
+}
+
+/* Podium colours */
+.rank-pos-1 .watt-pub-rank-num { color: #FFD700; text-shadow: 0 0 8px rgba(255,215,0,.5); }
+.rank-pos-2 .watt-pub-rank-num { color: #C8C8C8; }
+.rank-pos-3 .watt-pub-rank-num { color: #CD7F32; }
+
+.watt-pub-rank-num {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: rgba(255, 215, 0, 0.30);
+  min-width: 26px;
+  flex-shrink: 0;
+}
+.watt-pub-rank-info {
+  flex: 1;
+  min-width: 0;
+}
+.watt-pub-rank-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 245, 200, 0.88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.watt-pub-rank-meta {
+  font-size: 9px;
+  letter-spacing: .06em;
+  color: rgba(255, 215, 0, 0.38);
+  margin-top: 2px;
+}
+.watt-pub-rank-plays {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 215, 0, 0.60);
+  flex-shrink: 0;
+}
+.watt-pub-plays-unit {
+  font-size: 9px;
+  color: rgba(255, 215, 0, 0.35);
+}
+.watt-pub-arrow {
+  font-size: 12px;
+  color: rgba(255, 215, 0, 0.22);
+  flex-shrink: 0;
+  transition: color .15s, transform .15s;
+}
+.watt-pub-rank-item:hover .watt-pub-arrow,
+.watt-pub-track-item:hover .watt-pub-arrow {
+  color: rgba(255, 215, 0, 0.55);
+  transform: translateX(3px);
+}
+
+/* ── Ligne son récent ────────────────────────────────────────────────────── */
+.watt-pub-track-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.05);
+  transition: background .15s ease;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.watt-pub-track-item:hover {
+  background: rgba(255, 215, 0, 0.04);
+}
+.watt-pub-track-item:active {
+  background: rgba(255, 215, 0, 0.07);
+}
+.watt-pub-track-item:last-child {
+  border-bottom: none;
+}
+.watt-pub-track-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 215, 0, 0.04);
+}
+.watt-pub-track-info {
+  flex: 1;
+  min-width: 0;
+}
+.watt-pub-track-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 245, 200, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.watt-pub-track-meta {
+  font-size: 9px;
+  letter-spacing: .05em;
+  color: rgba(255, 215, 0, 0.38);
+  margin-top: 2px;
+}
+.watt-pub-genre {
+  color: rgba(255, 215, 0, 0.25);
+}
+.watt-pub-track-date {
+  font-size: 9px;
+  letter-spacing: .06em;
+  color: rgba(255, 215, 0, 0.28);
+  flex-shrink: 0;
+}
+
+/* ── Gate note bas ───────────────────────────────────────────────────────── */
+.watt-gate-note {
+  font-size: 9px;
+  letter-spacing: .08em;
+  color: rgba(255, 215, 0, 0.28);
+  margin-top: 14px;
+  text-align: center;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .watt-public-section {
+    padding: 0 16px;
+  }
+  .watt-pub-hdr {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .watt-pub-rank-item,
+  .watt-pub-track-item {
+    padding: 12px 8px;
+  }
+  .watt-pub-rank-name,
+  .watt-pub-track-name {
+    font-size: 12px;
+  }
+  .watt-hero-tags {
+    gap: 5px;
+  }
+}
+@media (max-width: 390px) {
+  .watt-pub-rank-plays {
+    display: none;
+  }
+}
