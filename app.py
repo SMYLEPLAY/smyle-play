@@ -2,16 +2,17 @@
 SMYLE PLAY — Application Flask principale
 ─────────────────────────────────────────
 • Sert les fichiers statiques (index.html, style.css, script.js)
-• Sert les fichiers audio en mode local (dev)
-• Expose l'API JSON : GET /api/tracks, GET /api/playlists
-• Expose l'API auth : POST /api/auth/register, /api/auth/login, /api/auth/logout
-• Expose l'API feedback : POST /api/feedback
-• Expose l'API play counts : POST /api/plays/<track_id>
+• API playlists officielles : GET /api/tracks, GET /api/playlists
+• API auth : POST /api/auth/register, /api/auth/login, /api/auth/logout
+• API WATT artistes : GET/POST /api/watt/profile, /api/artists, /api/tracks/recent
+• API WATT tracks : GET/POST /api/watt/tracks, DELETE /api/watt/tracks/<id>
+• API collabs : POST /api/collabs, GET /api/collabs/inbox
+• API plays : POST /api/plays/<id>, POST /api/watt/plays/<id>
 
 Usage local :
     python3 app.py
 
-Usage production (Railway / Render) :
+Usage production (Railway) :
     gunicorn app:app --bind 0.0.0.0:$PORT --workers 2
 """
 
@@ -46,7 +47,13 @@ def create_app(config_class=None):
             db.create_all()
             logger.info('PostgreSQL connecté — tables créées si absentes')
     else:
-        logger.info('Mode sans base de données (localStorage côté client)')
+        # Mode dev SQLite (fallback pratique pour travailler en local)
+        from models import db
+        db.init_app(app)
+        with app.app_context():
+            db.create_all()
+            logger.info('SQLite local activé — pas de DATABASE_URL')
+        db_enabled = True   # SQLite est utilisable
 
     # ── Client R2 (optionnel) ──────────────────────────────────────────────
     r2_client = None
@@ -86,7 +93,7 @@ def create_app(config_class=None):
     def artiste_page(slug):
         return send_from_directory(BASE_DIR, 'artiste.html')
 
-    # ── API Playlists / Tracks ────────────────────────────────────────────
+    # ── API Playlists / Tracks officiels ──────────────────────────────────
 
     @app.route('/api/tracks')
     @app.route('/api/playlists')
@@ -104,15 +111,15 @@ def create_app(config_class=None):
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
 
-    # ── API Auth (DB uniquement) ──────────────────────────────────────────
+    # ── API Auth ──────────────────────────────────────────────────────────
 
     @app.route('/api/auth/register', methods=['POST'])
     def register():
-        if not db_enabled:
-            return jsonify({'error': 'Auth DB non configurée'}), 503
         from models import db, User
         data = request.get_json() or {}
-        name, email, password = data.get('name','').strip(), data.get('email','').strip(), data.get('password','')
+        name, email, password = (data.get('name','').strip(),
+                                 data.get('email','').strip(),
+                                 data.get('password',''))
         if not all([name, email, password]):
             return jsonify({'error': 'Champs manquants'}), 400
         if len(password) < 6:
@@ -128,8 +135,6 @@ def create_app(config_class=None):
 
     @app.route('/api/auth/login', methods=['POST'])
     def login():
-        if not db_enabled:
-            return jsonify({'error': 'Auth DB non configurée'}), 503
         from models import User
         data = request.get_json() or {}
         email, password = data.get('email','').strip(), data.get('password','')
@@ -146,18 +151,278 @@ def create_app(config_class=None):
 
     @app.route('/api/auth/me')
     def me():
-        if not db_enabled or 'user_id' not in session:
+        if 'user_id' not in session:
             return jsonify({'user': None})
         from models import User
         user = User.query.get(session['user_id'])
         return jsonify({'user': user.to_dict() if user else None})
 
-    # ── API Play counts ───────────────────────────────────────────────────
+    # ── API WATT — Profil artiste (GET = mon profil, POST = sauvegarder) ──
+
+    @app.route('/api/watt/profile', methods=['GET', 'POST'])
+    def watt_profile():
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import db, Artist
+
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            artist_name = data.get('artistName', '').strip()
+            if not artist_name:
+                return jsonify({'error': "Nom d'artiste requis"}), 400
+
+            artist = Artist.query.filter_by(user_id=user_id).first()
+            if not artist:
+                slug = Artist.make_slug(artist_name)
+                artist = Artist(user_id=user_id, slug=slug)
+                db.session.add(artist)
+            else:
+                # Mettre à jour le slug si le nom a changé
+                new_slug = Artist.make_slug(artist_name, exclude_id=artist.id)
+                if new_slug != artist.slug:
+                    artist.slug = new_slug
+
+            artist.artist_name  = artist_name
+            artist.genre        = data.get('genre', '')[:80]
+            artist.bio          = data.get('bio', '')[:500]
+            artist.city         = data.get('city', '')[:80]
+            artist.avatar_color = data.get('avatarColor', '')[:20]
+            artist.soundcloud   = data.get('soundcloud', '')[:200]
+            artist.instagram    = data.get('instagram', '')[:200]
+            artist.youtube      = data.get('youtube', '')[:200]
+            db.session.commit()
+            logger.info(f'[WATT] Profil sauvegardé : {artist.slug}')
+            return jsonify({'ok': True, 'artist': artist.to_dict()})
+
+        else:
+            artist = Artist.query.filter_by(user_id=user_id).first()
+            if not artist:
+                return jsonify({'artist': None})
+            return jsonify({'artist': artist.to_dict(include_tracks=True)})
+
+    # ── API WATT — Mes sons (CRUD) ────────────────────────────────────────
+
+    @app.route('/api/watt/tracks', methods=['GET', 'POST'])
+    def watt_tracks():
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import db, Artist, Track
+
+        artist = Artist.query.filter_by(user_id=user_id).first()
+
+        if request.method == 'POST':
+            if not artist:
+                return jsonify({'error': 'Profil artiste requis avant de publier'}), 400
+            data = request.get_json() or {}
+            track = Track(
+                artist_id  = artist.id,
+                name       = (data.get('name') or 'Sans titre')[:200],
+                genre      = (data.get('genre') or '')[:80],
+                stream_url = data.get('streamUrl') or '',
+                r2_key     = data.get('r2Key') or '',
+            )
+            db.session.add(track)
+            db.session.commit()
+            logger.info(f'[WATT] Track créé : {track.name} (artiste={artist.slug})')
+            return jsonify({'ok': True, 'track': track.to_dict()}), 201
+
+        else:
+            if not artist:
+                return jsonify({'tracks': []})
+            tracks = artist.tracks.all()
+            return jsonify({'tracks': [t.to_dict() for t in tracks]})
+
+    @app.route('/api/watt/tracks/<int:track_id>', methods=['DELETE'])
+    def delete_watt_track(track_id):
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import db, Artist, Track
+
+        artist = Artist.query.filter_by(user_id=user_id).first()
+        if not artist:
+            return jsonify({'error': 'Artiste introuvable'}), 404
+
+        track = Track.query.filter_by(id=track_id, artist_id=artist.id).first()
+        if not track:
+            return jsonify({'error': 'Son introuvable'}), 404
+
+        # Décrémenter le compteur global
+        if track.plays > 0:
+            artist.plays_total = max(0, (artist.plays_total or 0) - track.plays)
+
+        # Supprimer dans R2 si possible
+        if app.r2_client and track.r2_key:
+            try:
+                app.r2_client.delete_object(
+                    Bucket=app.config.get('R2_BUCKET', 'smyle-play-audio'),
+                    Key=track.r2_key,
+                )
+                logger.info(f'[WATT] R2 delete : {track.r2_key}')
+            except Exception as e:
+                logger.warning(f'[WATT] Erreur R2 delete : {e}')
+
+        db.session.delete(track)
+        db.session.commit()
+        return jsonify({'ok': True})
+
+    # ── API WATT — Compteur d'écoutes ─────────────────────────────────────
+
+    @app.route('/api/watt/plays/<int:track_id>', methods=['POST'])
+    def watt_play(track_id):
+        from models import db, Track
+
+        track = Track.query.get(track_id)
+        if track:
+            track.plays += 1
+            track.artist.plays_total = (track.artist.plays_total or 0) + 1
+            db.session.commit()
+        return jsonify({'ok': True, 'plays': track.plays if track else 0})
+
+    # ── API WATT — Classement public (tous artistes) ──────────────────────
+
+    @app.route('/api/artists', methods=['GET'])
+    def get_artists():
+        """Liste des artistes triés par écoutes. Pour le classement et la découverte."""
+        from models import Artist
+        artists = (Artist.query
+                   .order_by(Artist.plays_total.desc(), Artist.created_at.desc())
+                   .limit(50)
+                   .all())
+        return jsonify({'artists': [a.to_dict() for a in artists]})
+
+    # ── API WATT — Profil public d'un artiste ─────────────────────────────
+
+    @app.route('/api/artists/<slug>', methods=['GET'])
+    def get_artist(slug):
+        """Profil public complet d'un artiste (avec ses sons)."""
+        from models import Artist
+
+        artist = Artist.query.filter_by(slug=slug).first()
+        if not artist:
+            return jsonify({'error': 'Artiste introuvable'}), 404
+
+        # Calcul du classement (rang de cet artiste parmi tous)
+        rank = (Artist.query
+                .filter(Artist.plays_total > artist.plays_total)
+                .count()) + 1
+
+        data = artist.to_dict(include_tracks=True)
+        data['rank'] = rank
+        return jsonify({'artist': data})
+
+    # ── API WATT — Derniers sons (feed public) ────────────────────────────
+
+    @app.route('/api/tracks/recent', methods=['GET'])
+    def get_recent_tracks():
+        """Derniers sons publiés par des artistes WATT (feed public)."""
+        from models import Track, Artist
+        from sqlalchemy import desc
+
+        rows = (Track.query
+                .join(Artist)
+                .order_by(desc(Track.uploaded_at))
+                .limit(12)
+                .all())
+
+        result = []
+        for t in rows:
+            d = t.to_dict()
+            d['artistName'] = t.artist.artist_name
+            d['artistSlug'] = t.artist.slug
+            d['genre']      = t.genre or t.artist.genre
+            result.append(d)
+
+        return jsonify({'tracks': result})
+
+    # ── API Collabs ───────────────────────────────────────────────────────
+
+    @app.route('/api/collabs', methods=['POST'])
+    def send_collab():
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import db, Artist, Collab
+
+        data          = request.get_json() or {}
+        receiver_slug = data.get('to', '').strip()
+        message       = data.get('message', '').strip()
+
+        if not message:
+            return jsonify({'error': 'Message requis'}), 400
+        if len(message) > 600:
+            return jsonify({'error': 'Message trop long (max 600 caractères)'}), 400
+
+        sender = Artist.query.filter_by(user_id=user_id).first()
+        if not sender:
+            return jsonify({'error': 'Tu dois créer un profil artiste avant de contacter'}), 400
+
+        receiver = Artist.query.filter_by(slug=receiver_slug).first()
+        if not receiver:
+            return jsonify({'error': 'Artiste destinataire introuvable'}), 404
+
+        if sender.id == receiver.id:
+            return jsonify({'error': 'Tu ne peux pas te contacter toi-même'}), 400
+
+        collab = Collab(sender_id=sender.id, receiver_id=receiver.id, message=message)
+        db.session.add(collab)
+        db.session.commit()
+        logger.info(f'[COLLAB] {sender.slug} → {receiver.slug}')
+        return jsonify({'ok': True}), 201
+
+    @app.route('/api/collabs/inbox', methods=['GET'])
+    def collab_inbox():
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import Artist, Collab
+
+        artist = Artist.query.filter_by(user_id=user_id).first()
+        if not artist:
+            return jsonify({'collabs': []})
+
+        collabs = (Collab.query
+                   .filter_by(receiver_id=artist.id)
+                   .order_by(Collab.created_at.desc())
+                   .limit(30)
+                   .all())
+
+        # Marquer comme vus
+        from models import db
+        for c in collabs:
+            if c.status == 'pending':
+                c.status = 'seen'
+        db.session.commit()
+
+        return jsonify({'collabs': [c.to_dict() for c in collabs]})
+
+    @app.route('/api/collabs/unread', methods=['GET'])
+    def collab_unread():
+        """Nombre de demandes non lues (pour badge dans le dashboard)."""
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'count': 0})
+
+        from models import Artist, Collab
+
+        artist = Artist.query.filter_by(user_id=user_id).first()
+        if not artist:
+            return jsonify({'count': 0})
+
+        count = Collab.query.filter_by(receiver_id=artist.id, status='pending').count()
+        return jsonify({'count': count})
+
+    # ── API Play counts (playlists officielles) ───────────────────────────
 
     @app.route('/api/plays/<track_id>', methods=['POST'])
     def increment_play(track_id):
-        if not db_enabled:
-            return jsonify({'ok': True, 'count': 1})   # localStorage côté client
         from models import db, PlayCount
         user_id = session.get('user_id')
         pc = PlayCount.query.filter_by(track_id=track_id, user_id=user_id).first()
@@ -173,7 +438,8 @@ def create_app(config_class=None):
 
     @app.route('/api/feedback', methods=['POST'])
     def submit_feedback():
-        data = request.get_json() or {}
+        from models import db, Feedback
+        data    = request.get_json() or {}
         name    = data.get('name', '').strip()
         email   = data.get('email', '').strip()
         ftype   = data.get('type', 'Autre')
@@ -181,39 +447,26 @@ def create_app(config_class=None):
         if not message:
             return jsonify({'error': 'Message vide'}), 400
 
-        if db_enabled:
-            from models import db, Feedback
-            fb = Feedback(
-                user_id = session.get('user_id'),
-                name    = name,
-                email   = email,
-                type    = ftype,
-                message = message,
-            )
-            db.session.add(fb)
-            db.session.commit()
-            logger.info(f'Feedback #{fb.id} reçu ({ftype})')
-
+        fb = Feedback(
+            user_id = session.get('user_id'),
+            name    = name,
+            email   = email,
+            type    = ftype,
+            message = message,
+        )
+        db.session.add(fb)
+        db.session.commit()
+        logger.info(f'Feedback #{fb.id} reçu ({ftype})')
         return jsonify({'ok': True})
 
-    # ── API PLUG WATT ─────────────────────────────────────────────────────
-    #
-    # Architecture Cloudflare R2 (scalable) :
-    #   Bucket : smyle-play-audio
-    #   └── WATT/
-    #       └── {userId}/          ← un dossier par artiste
-    #           ├── {ts}-track1.wav
-    #           └── {ts}-track2.mp3
-    #
-    # URL publique : https://pub-xxx.r2.dev/WATT/{userId}/{filename}
-    # ────────────────────────────────────────────────────────────────────
+    # ── API WATT — Upload vers R2 ─────────────────────────────────────────
 
     @app.route('/api/watt/upload', methods=['POST'])
     def watt_upload():
         """Upload d'un son artiste vers Cloudflare R2 (WATT/{userId}/{ts}-{filename})"""
         import time, re, mimetypes
 
-        user_id  = request.form.get('userId', 'guest')
+        user_id    = request.form.get('userId', 'guest')
         track_name = request.form.get('name', '').strip()
 
         if 'file' not in request.files:
@@ -223,7 +476,6 @@ def create_app(config_class=None):
         if not f.filename:
             return jsonify({'error': 'Fichier vide'}), 400
 
-        # Sécuriser le nom de fichier
         ext  = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'wav'
         safe = re.sub(r'[^a-z0-9_-]', '_', track_name.lower())[:40]
         ts   = int(time.time())
@@ -233,7 +485,6 @@ def create_app(config_class=None):
         ct = mime or 'audio/wav'
 
         if app.r2_client:
-            # ── Upload réel vers R2 ──────────────────────────────
             try:
                 app.r2_client.upload_fileobj(
                     f.stream,
@@ -249,46 +500,24 @@ def create_app(config_class=None):
                 logger.error(f'[WATT] Erreur upload R2 : {e}')
                 return jsonify({'error': str(e)}), 500
         else:
-            # ── Mode sans R2 (dev local) : renvoie clé simulée ───
+            # Mode dev sans R2 : on simule l'URL
             logger.info(f'[WATT] Mode sans R2 — clé simulée : {key}')
             return jsonify({'ok': True, 'url': None, 'key': key, 'mock': True})
-
-    @app.route('/api/watt/ranking', methods=['GET'])
-    def watt_ranking():
-        """Classement WATT : artistes triés par écoutes puis abonnés (placeholder DB)"""
-        # Quand PostgreSQL est actif, cette route lira WATTArtistProfile + PlayCount
-        # Pour l'instant, retourne une liste vide (le client gère en localStorage)
-        return jsonify({'ranking': []})
-
-    @app.route('/api/watt/profile', methods=['GET', 'POST'])
-    def watt_profile():
-        """Profil artiste WATT (lecture / mise à jour)"""
-        if not db_enabled:
-            return jsonify({'ok': True, 'mock': True})
-
-        user_id = session.get('user_id')
-        if not user_id:
-            return jsonify({'error': 'Non authentifié'}), 401
-
-        if request.method == 'POST':
-            data = request.get_json() or {}
-            # TODO : upsert WATTArtistProfile dans DB
-            return jsonify({'ok': True})
-        else:
-            # TODO : lire WATTArtistProfile depuis DB
-            return jsonify({'profile': None})
 
     # ── Healthcheck ────────────────────────────────────────────────────────
 
     @app.route('/health')
     def health():
-        return jsonify({'status': 'ok', 'db': db_enabled, 'r2': r2_client is not None})
+        return jsonify({
+            'status': 'ok',
+            'db':     db_enabled,
+            'r2':     r2_client is not None,
+        })
 
-    # ── Fichiers statiques / audio (catch-all) ─────────────────────────────
+    # ── Catch-all SPA ─────────────────────────────────────────────────────
 
     @app.errorhandler(404)
     def not_found(e):
-        # Retourne index.html pour les routes SPA (single page app)
         return send_from_directory(BASE_DIR, 'index.html')
 
     return app

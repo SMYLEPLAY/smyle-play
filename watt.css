@@ -1651,3 +1651,37 @@
   .wpr-card-medal { font-size: 14px; }
   .wpr-card-plays { display: none; }
 }
+
+/* ── LOADING STATE ───────────────────────────────────────────────────────── */
+.watt-loading {
+  text-align:  center;
+  padding:     40px 24px;
+  font-size:   12px;
+  color:       rgba(255,245,200,.3);
+  letter-spacing: .06em;
+}
+
+/* ── EMPTY STATES ────────────────────────────────────────────────────────── */
+.watt-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  opacity: .8;
+}
+.watt-empty-icon {
+  font-size: 36px;
+  margin-bottom: 14px;
+  opacity: .6;
+}
+.watt-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255,215,0,.75);
+  margin-bottom: 8px;
+}
+.watt-empty-sub {
+  font-size: 13px;
+  color: rgba(255,245,200,.45);
+  line-height: 1.6;
+  max-width: 320px;
+  margin: 0 auto;
+}

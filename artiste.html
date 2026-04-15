@@ -190,6 +190,23 @@
         <a href="/#community-hub" class="ap-rank-link">Voir le classement →</a>
       </div>
 
+      <!-- Collab CTA -->
+      <div class="ap-collab-card">
+        <div class="ap-collab-card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Collaborer
+        </div>
+        <p class="ap-collab-card-sub">Tu veux créer avec cet artiste ?</p>
+        <button class="ap-collab-btn" id="ap-collab-btn" onclick="openCollabModal()">
+          ⚡ Proposer une collab
+        </button>
+      </div>
+
       <!-- Join CTA -->
       <div class="ap-join-card">
         <div class="ap-join-text">Tu crées de la musique avec l'IA ?</div>
@@ -203,6 +220,33 @@
   </main>
 
 </div><!-- /.ap-profile -->
+
+<!-- ═══════════════════════════════════════ MODAL COLLAB -->
+<div class="ap-collab-modal" id="ap-collab-modal" style="display:none" onclick="if(event.target===this)closeCollabModal()">
+  <div class="ap-collab-modal-inner">
+    <button class="ap-collab-modal-close" onclick="closeCollabModal()" aria-label="Fermer">✕</button>
+    <div class="ap-collab-modal-title">
+      <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Proposer une collaboration
+    </div>
+    <p class="ap-collab-modal-sub">Décris ton projet ou ton idée en quelques lignes. L'artiste recevra ton message dans son dashboard.</p>
+    <textarea
+      id="ap-collab-msg"
+      class="ap-collab-textarea"
+      placeholder="Ex : Je produis du lofi IA et j'aimerais co-créer une track avec toi sur le thème du voyage spatial..."
+      rows="5"
+      maxlength="600"
+    ></textarea>
+    <div class="ap-collab-char-hint">Max 600 caractères</div>
+    <div class="ap-collab-status" id="ap-collab-status"></div>
+    <div class="ap-collab-modal-actions">
+      <button class="ap-collab-cancel" onclick="closeCollabModal()">Annuler</button>
+      <button class="ap-collab-send" id="ap-collab-send" onclick="sendCollab()">
+        Envoyer la demande →
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- Toast -->
 <div class="ap-toast" id="ap-toast"></div>

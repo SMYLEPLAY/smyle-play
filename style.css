@@ -1102,3 +1102,17 @@ img, video, svg { max-width: 100%; }
 /* Scroll smooth pour panneaux latéraux (iOS) */
 .track-list,
 .mix-track-list { -webkit-overflow-scrolling: touch; }
+
+/* ── HUB EMPTY STATE ─────────────────────────────────────────── */
+.hub-t3-empty {
+  font-size: 12px;
+  color: rgba(200,180,255,.4);
+  padding: 14px 0 6px;
+  text-align: center;
+}
+.hub-t3-empty-link {
+  color: rgba(200,180,255,.65);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(200,180,255,.2);
+}
+.hub-t3-empty-link:hover { color: rgba(200,180,255,.9); }

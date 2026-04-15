@@ -878,72 +878,62 @@ function addCurrentToMix() {
   }
 }
 
-// ── 14c. COMMUNITY HUB — Hub communautaire WATT ──────────────────────────────
+// ── 14c. COMMUNITY HUB — chargé depuis l'API ─────────────────────────────────
 
 function renderCommunityHub() {
-  _renderHubStats();
-  _renderHubTop3();
+  _renderHubFromAPI();   // async — gère ses propres états
 }
 
-function _getWattCommunityData() {
-  // Agréger toutes les données artistes disponibles en localStorage
-  const tracks  = JSON.parse(localStorage.getItem('smyle_watt_tracks')  || '[]');
-  const profile = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
-  const extra   = JSON.parse(localStorage.getItem('smyle_watt_community') || '[]'); // artistes tiers (futur)
+async function _renderHubFromAPI() {
+  let artists = [];
 
-  // Construire la liste d'artistes
-  const artists = [...extra];
-  if (profile && profile.artistName) {
-    const totalPlays = tracks.reduce((s, t) => s + (t.plays || 0), 0);
-    artists.push({
-      artistName: profile.artistName,
-      genre:      profile.genre || '',
-      plays:      totalPlays,
-      followers:  profile.followers || 0,
-      tracks:     tracks.length,
-      isMe:       true,
-    });
+  try {
+    const res  = await fetch('/api/artists');
+    const json = await res.json();
+    artists = json.artists || [];
+  } catch (_) {
+    // Fallback localStorage si l'API est indisponible
+    const profile = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+    const tracks  = JSON.parse(localStorage.getItem('smyle_watt_tracks')  || '[]');
+    if (profile && profile.artistName) {
+      artists = [{
+        artistName: profile.artistName,
+        slug:       profile.slug || '',
+        plays:      tracks.reduce((s, t) => s + (t.plays || 0), 0),
+        trackCount: tracks.length,
+      }];
+    }
   }
-  return { tracks, artists };
-}
 
-function _renderHubStats() {
-  const { tracks, artists } = _getWattCommunityData();
-  const totalPlays = tracks.reduce((s, t) => s + (t.plays || 0), 0);
-
+  // Stats
   const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  setVal('hub-nb-artists', artists.length || 0);
-  setVal('hub-nb-tracks',  tracks.length  || 0);
-  setVal('hub-nb-plays',   totalPlays     || 0);
-}
+  const totalTracks = artists.reduce((s, a) => s + (a.trackCount || 0), 0);
+  const totalPlays  = artists.reduce((s, a) => s + (a.plays || 0), 0);
+  setVal('hub-nb-artists', artists.length);
+  setVal('hub-nb-tracks',  totalTracks);
+  setVal('hub-nb-plays',   _fmtHub(totalPlays));
 
-function _renderHubTop3() {
+  // Top 3
   const el = document.getElementById('hub-top3');
   if (!el) return;
-  const { artists } = _getWattCommunityData();
 
-  // Démo si aucun artiste réel
-  const DEMO = [
-    { artistName: 'NightWave', plays: 1842, slug: 'nightwave' },
-    { artistName: 'LunaAI',    plays:  934, slug: 'lunaai'    },
-    { artistName: 'ZephyrIA',  plays:  611, slug: 'zephyria'  },
-  ];
-  const src = artists.length
-    ? [...artists].sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, 3)
-    : DEMO;
+  if (!artists.length) {
+    el.innerHTML = `<div class="hub-t3-empty">Aucun artiste pour l'instant · <a href="/watt" class="hub-t3-empty-link">Rejoindre WATT →</a></div>`;
+    return;
+  }
 
+  const src    = [...artists].sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, 3);
   const medals = ['🥇', '🥈', '🥉'];
 
   el.innerHTML = src.map((a, i) => {
     const slug = a.slug || _slugify(a.artistName);
     const url  = slug ? `/artiste/${slug}` : '/watt';
-    const playsStr = _fmtHub(a.plays || 0);
     return `<div class="hub-t3-row" onclick="window.location.href='${url}'"
                  role="button" tabindex="0"
                  onkeydown="if(event.key==='Enter')window.location.href='${url}'">
       <span class="hub-t3-medal">${medals[i]}</span>
-      <span class="hub-t3-name">${_esc(a.artistName)}${a.isMe ? '<span class="hub-t3-me"> · Toi</span>' : ''}</span>
-      <span class="hub-t3-plays">${playsStr}&thinsp;▶</span>
+      <span class="hub-t3-name">${_esc(a.artistName)}</span>
+      <span class="hub-t3-plays">${_fmtHub(a.plays || 0)}&thinsp;▶</span>
     </div>`;
   }).join('');
 }

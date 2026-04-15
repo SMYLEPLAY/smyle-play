@@ -629,14 +629,24 @@ function renderMyTracks() {
   }).join('');
 }
 
-function deleteTrack(id) {
-  const tracks = getMyTracks().filter(t => t.id !== id);
-  saveMyTracks(tracks);
+async function deleteTrack(id) {
+  const tracks    = getMyTracks();
+  const trackToDelete = tracks.find(t => t.id === id);
+
+  // Supprimer en localStorage immédiatement
+  saveMyTracks(tracks.filter(t => t.id !== id));
   renderArtistCard();
-  renderMyTracks();   // met à jour compteur + état upload
+  renderMyTracks();
   renderStats();
   renderRanking();
   dashToast('Son supprimé.');
+
+  // Supprimer en DB si l'on a un dbId
+  if (trackToDelete?.dbId) {
+    try {
+      await fetch(`/api/watt/tracks/${trackToDelete.dbId}`, { method: 'DELETE' });
+    } catch (_) { /* silencieux */ }
+  }
 }
 
 // ── 6. AVATAR UPLOAD ──────────────────────────────────────────────────────────
@@ -789,8 +799,10 @@ async function uploadTrack() {
 
   const user = getCurrentUser();
   let uploaded  = false;
-  let streamUrl = null;   // URL R2 publique pour la lecture dans le player principal
+  let streamUrl = null;
+  let r2Key     = null;
 
+  // ── 1. Upload fichier audio vers R2 ─────────────────────────────────────
   try {
     const fd = new FormData();
     fd.append('file',   _pendingFile);
@@ -800,19 +812,39 @@ async function uploadTrack() {
     const res  = await fetch('/api/watt/upload', { method: 'POST', body: fd });
     if (res.ok) {
       const data = await res.json();
-      uploaded  = true;
-      streamUrl = data.url || null;   // URL R2 si disponible
-      setProgress(80, 'Finalisation...');
+      uploaded  = !data.mock;
+      streamUrl = data.url  || null;
+      r2Key     = data.key  || null;
+      setProgress(70, 'Enregistrement…');
     }
-  } catch (_) { /* mode sans backend — lecture locale uniquement */ }
+  } catch (_) { /* mode hors-ligne */ }
 
-  await wait(400);
-  setProgress(95, 'Sauvegarde...');
+  await wait(300);
+  setProgress(85, 'Sauvegarde en base…');
+
+  // ── 2. Enregistrer les métadonnées du track dans la DB ──────────────────
+  let dbTrackId = null;
+  try {
+    const res2 = await fetch('/api/watt/tracks', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, genre, streamUrl, r2Key }),
+    });
+    if (res2.ok) {
+      const data2 = await res2.json();
+      dbTrackId   = data2.track?.id || null;
+    }
+  } catch (_) { /* pas de DB connectée — localStorage prend le relais */ }
+
+  await wait(300);
+  setProgress(95, 'Finalisation…');
   await wait(300);
 
+  // ── 3. Toujours sauvegarder en localStorage (cache local) ───────────────
   const tracks = getMyTracks();
   const newTrack = {
-    id:           `wt-${Date.now()}`,
+    id:           dbTrackId ? `db-${dbTrackId}` : `wt-${Date.now()}`,
+    dbId:         dbTrackId,
     name,
     genre,
     tags,
@@ -824,12 +856,12 @@ async function uploadTrack() {
     date:         new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
     uploadedAt:   Date.now(),
     cloud:        uploaded,
-    streamUrl,    // URL R2 pour streaming depuis l'accueil (null si pas de R2)
+    streamUrl,
   };
   tracks.unshift(newTrack);
   saveMyTracks(tracks);
 
-  setProgress(100, uploaded ? '⚡ Son publié sur WATT !' : '⚡ Son sauvegardé localement !');
+  setProgress(100, uploaded ? '⚡ Son publié sur WATT !' : '⚡ Son sauvegardé !');
   await wait(1000);
 
   cancelUpload();
@@ -867,7 +899,7 @@ function toggleProfileEdit() {
 
 function cancelProfileEdit() { toggleProfileEdit(); }
 
-function saveProfile() {
+async function saveProfile() {
   const artistName = document.getElementById('peArtistName').value.trim();
   if (!artistName) { dashToast('⚠ Le nom d\'artiste est obligatoire.'); return; }
 
@@ -875,21 +907,34 @@ function saveProfile() {
   const profile = {
     artistName,
     slug,
-    genre:      document.getElementById('peGenre').value.trim(),
-    bio:        document.getElementById('peBio').value.trim(),
-    soundcloud: document.getElementById('peSoundcloud').value.trim(),
-    instagram:  document.getElementById('peInstagram').value.trim(),
-    youtube:    document.getElementById('peYoutube').value.trim(),
-    followers:  (getWattProfile() || {}).followers || 0,
+    genre:       document.getElementById('peGenre').value.trim(),
+    bio:         document.getElementById('peBio').value.trim(),
+    city:        document.getElementById('peCity')?.value.trim() || '',
+    soundcloud:  document.getElementById('peSoundcloud').value.trim(),
+    instagram:   document.getElementById('peInstagram').value.trim(),
+    youtube:     document.getElementById('peYoutube').value.trim(),
+    followers:   (getWattProfile() || {}).followers || 0,
   };
+
+  // 1. Sauvegarder en localStorage (immédiat, toujours)
   saveWattProfile(profile);
 
-  // Sync API si disponible
-  fetch('/api/watt/profile', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(profile),
-  }).catch(() => {});
+  // 2. Sync avec la DB (principal pour la communauté)
+  try {
+    const res = await fetch('/api/watt/profile', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(profile),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // Mettre à jour le slug avec le slug validé par le serveur
+      if (data.artist?.slug) {
+        profile.slug = data.artist.slug;
+        saveWattProfile(profile);
+      }
+    }
+  } catch (_) { /* mode hors-ligne — localStorage suffit */ }
 
   toggleProfileEdit();
   renderArtistCard();

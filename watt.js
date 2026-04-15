@@ -389,6 +389,7 @@ function renderPageState() {
   document.getElementById('gate-subscribe').style.display = (user)  ? '' : 'none';
 
   renderNavUser(user);
+  // Les deux fonctions sont async — appel sans await (fire-and-forget, elles gèrent leur propre état)
   renderPublicRanking();
   renderPublicTracks();
 }
@@ -917,56 +918,59 @@ function renderWattRanking() {
   `).join('');
 }
 
-// ── 11b. CLASSEMENT PUBLIC (sans auth) ───────────────────────────────────────
+// ── 11b. CLASSEMENT PUBLIC — chargé depuis l'API ─────────────────────────────
 
-const DEMO_RANKING = [
-  { name: 'NightWave', genre: 'Dark Electro', plays: 1842, trackCount: 4, slug: 'nightwave' },
-  { name: 'LunaAI',    genre: 'Ambient',      plays:  934, trackCount: 3, slug: 'lunaai'    },
-  { name: 'ZephyrIA',  genre: 'Lofi',         plays:  611, trackCount: 5, slug: 'zephyria'  },
-  { name: 'Aurora',    genre: 'Cinematic',    plays:  408, trackCount: 2, slug: 'aurora'    },
-  { name: 'NebulaX',   genre: 'Deep House',   plays:  290, trackCount: 3, slug: 'nebulax'   },
-  { name: 'EchoBot',   genre: 'Trap',         plays:  177, trackCount: 6, slug: 'echobot'   },
-];
-
-const DEMO_TRACKS_PUBLIC = [
-  { name: 'Midnight Circuit',  artistName: 'NightWave', genre: 'Dark Electro', slug: 'nightwave', uploadedAt: Date.now() - 86400000 * 1  },
-  { name: 'Nebula Drift',      artistName: 'LunaAI',    genre: 'Ambient',      slug: 'lunaai',    uploadedAt: Date.now() - 86400000 * 3  },
-  { name: 'Lo-Fi Awakening',   artistName: 'ZephyrIA',  genre: 'Lofi',         slug: 'zephyria',  uploadedAt: Date.now() - 86400000 * 5  },
-  { name: 'Solar Overture',    artistName: 'Aurora',    genre: 'Cinematic',    slug: 'aurora',    uploadedAt: Date.now() - 86400000 * 7  },
-]; // Max 4 — "Voir plus" renvoie vers /watt
-
-function renderPublicRanking() {
+async function renderPublicRanking() {
   const el = document.getElementById('wattPublicRankingList');
   if (!el) return;
 
-  // Construire depuis les données réelles
-  const allUsers = getUsers();
-  let artistData = allUsers.map(u => {
-    const tracks   = getMyWattTracks(u.id);
-    if (!tracks.length) return null;
-    const profile  = JSON.parse(safeStorage.getItem(`smyle_watt_profile_${u.id}`) || 'null');
-    const plays    = tracks.reduce((s, t) => s + (t.plays || 0), 0);
-    const name     = profile?.artistName || u.name;
-    const slug     = profile?.slug || slugify(name);
-    const genre    = profile?.genre || '';
-    return { name, genre, plays, trackCount: tracks.length, slug };
-  }).filter(Boolean);
+  // Skeleton pendant le chargement
+  el.innerHTML = `<div class="watt-loading">Chargement du classement…</div>`;
 
-  artistData.sort((a, b) => b.plays - a.plays);
+  let artistData = [];
+  try {
+    const res  = await fetch('/api/artists');
+    const json = await res.json();
+    artistData = json.artists || [];
+  } catch (_) {
+    // Fallback localStorage si API indisponible (dev sans DB)
+    const allUsers = getUsers();
+    artistData = allUsers.map(u => {
+      const tracks  = getMyWattTracks(u.id);
+      if (!tracks.length) return null;
+      const profile = JSON.parse(safeStorage.getItem(`smyle_watt_profile_${u.id}`) || 'null');
+      const plays   = tracks.reduce((s, t) => s + (t.plays || 0), 0);
+      const name    = profile?.artistName || u.name;
+      const slug    = profile?.slug || slugify(name);
+      const genre   = profile?.genre || '';
+      return { artistName: name, genre, plays, trackCount: tracks.length, slug };
+    }).filter(Boolean).sort((a, b) => b.plays - a.plays);
+  }
 
-  const useDemo = !artistData.length;
-  if (useDemo) artistData = DEMO_RANKING;
+  if (!artistData.length) {
+    el.innerHTML = `
+      <div class="watt-empty-state">
+        <div class="watt-empty-icon">🎵</div>
+        <p class="watt-empty-title">Le classement est vide pour l'instant</p>
+        <p class="watt-empty-sub">Sois le premier artiste à rejoindre WATT et à publier tes sons.</p>
+      </div>`;
+    return;
+  }
 
-  const demoNote = useDemo
-    ? `<div class="watt-pub-demo-note">Exemple · Inscris-toi pour apparaître dans le classement</div>`
-    : '';
+  // Normaliser les champs (API retourne artistName, localStorage retourne name)
+  const normalize = a => ({
+    name:  a.artistName || a.name || '?',
+    genre: a.genre || '',
+    plays: a.plays || 0,
+    trackCount: a.trackCount || 0,
+    slug:  a.slug || '',
+  });
 
-  // Labels podium
+  const data = artistData.map(normalize);
+  const top3 = data.slice(0, 3);
+  const rest = data.slice(3);
+
   const podiumLabel = ['', '🥇', '🥈', '🥉'];
-
-  // Top 3 — cartes podium visuelles
-  const top3 = artistData.slice(0, 3);
-  const rest  = artistData.slice(3);
 
   const podiumHtml = `<div class="wpr-podium">` + top3.map((a, i) => `
     <div class="wpr-card wpr-pos-${i + 1}"
@@ -981,7 +985,6 @@ function renderPublicRanking() {
     </div>
   `).join('') + `</div>`;
 
-  // Items 4+ — liste compacte
   const listHtml = rest.length ? `<div class="wpr-rest">` + rest.map((a, i) => `
     <div class="wpr-rest-item"
          onclick="window.location.href='/artiste/${a.slug}'"
@@ -996,70 +999,86 @@ function renderPublicRanking() {
     </div>
   `).join('') + `</div>` : '';
 
-  el.innerHTML = demoNote + podiumHtml + listHtml;
+  el.innerHTML = podiumHtml + listHtml;
 }
 
-function renderPublicTracks() {
+// ── Helpers avatar ────────────────────────────────────────────────────────────
+
+const _AVATAR_COLORS = [
+  ['#7B2FFF','#A06AFF'], ['#FF6B35','#FF9E70'], ['#00C9A7','#4EFFD6'],
+  ['#FF3A8C','#FF7AB8'], ['#2563EB','#5B91F4'], ['#D97706','#FBB53A'],
+];
+function _avatarColor(name) {
+  let h = 0;
+  for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xFFFF;
+  return _AVATAR_COLORS[h % _AVATAR_COLORS.length];
+}
+function _initials(name) {
+  const parts = (name || '?').trim().split(/\s+/);
+  return parts.length >= 2
+    ? (parts[0][0] + parts[1][0]).toUpperCase()
+    : (name || '?').slice(0, 2).toUpperCase();
+}
+
+// ── Derniers sons — chargés depuis l'API ──────────────────────────────────────
+
+async function renderPublicTracks() {
   const el = document.getElementById('wattPublicRecentList');
   if (!el) return;
 
-  // Agréger tous les sons de tous les users
-  const allUsers = getUsers();
-  let allTracks  = [];
-  allUsers.forEach(u => {
-    const uTracks  = getMyWattTracks(u.id);
-    const profile  = JSON.parse(safeStorage.getItem(`smyle_watt_profile_${u.id}`) || 'null');
-    const artist   = profile?.artistName || u.name;
-    const slug     = profile?.slug || slugify(artist);
-    uTracks.forEach(t => allTracks.push({ ...t, artistName: artist, slug }));
-  });
+  el.innerHTML = `<div class="watt-loading">Chargement des sons…</div>`;
 
-  allTracks.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
-  const recent = allTracks.slice(0, 4); // Max 4 — "Voir plus" sur la page WATT
-
-  const useDemo = !recent.length;
-  const tracks  = useDemo ? DEMO_TRACKS_PUBLIC : recent;
-
-  const demoNote = useDemo
-    ? `<div class="watt-pub-demo-note">Exemple · Publie tes sons pour apparaître ici</div>`
-    : '';
-
-  // Palette avatar : couleur basée sur le nom
-  const AVATAR_COLORS = [
-    ['#7B2FFF','#A06AFF'], ['#FF6B35','#FF9E70'], ['#00C9A7','#4EFFD6'],
-    ['#FF3A8C','#FF7AB8'], ['#2563EB','#5B91F4'], ['#D97706','#FBB53A'],
-  ];
-  function avatarColor(name) {
-    let h = 0;
-    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xFFFF;
-    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  let tracks = [];
+  try {
+    const res  = await fetch('/api/tracks/recent');
+    const json = await res.json();
+    tracks = (json.tracks || []).slice(0, 4);
+  } catch (_) {
+    // Fallback localStorage
+    const allUsers = getUsers();
+    let all = [];
+    allUsers.forEach(u => {
+      const uTracks = getMyWattTracks(u.id);
+      const profile = JSON.parse(safeStorage.getItem(`smyle_watt_profile_${u.id}`) || 'null');
+      const artist  = profile?.artistName || u.name;
+      const slug    = profile?.slug || slugify(artist);
+      uTracks.forEach(t => all.push({ ...t, artistName: artist, artistSlug: slug }));
+    });
+    all.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+    tracks = all.slice(0, 4);
   }
-  function initials(name) {
-    const parts = name.trim().split(/\s+/);
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.slice(0, 2).toUpperCase();
+
+  if (!tracks.length) {
+    el.innerHTML = `
+      <div class="watt-empty-state">
+        <div class="watt-empty-icon">🎧</div>
+        <p class="watt-empty-title">Aucun son publié pour l'instant</p>
+        <p class="watt-empty-sub">Les prochains sons d'artistes WATT apparaîtront ici.</p>
+      </div>`;
+    return;
   }
 
   const voirPlusBtn = `<a href="/watt" class="wpt-voir-plus">Voir plus →</a>`;
 
-  el.innerHTML = demoNote + `<div class="wpt-grid">` + tracks.map(t => {
-    const d       = new Date(t.uploadedAt);
-    const dateStr = d.toLocaleDateString('fr', { day: 'numeric', month: 'short' });
-    const [c1, c2] = avatarColor(t.artistName);
-    const ini      = initials(t.artistName);
+  el.innerHTML = `<div class="wpt-grid">` + tracks.map(t => {
+    const artistName = t.artistName || '?';
+    const slug       = t.artistSlug || t.slug || '';
+    const d          = new Date(t.uploadedAt || Date.now());
+    const dateStr    = d.toLocaleDateString('fr', { day: 'numeric', month: 'short' });
+    const [c1, c2]   = _avatarColor(artistName);
+    const ini        = _initials(artistName);
     return `
       <div class="wpt-card"
-           onclick="window.location.href='/artiste/${t.slug}'"
+           onclick="window.location.href='/artiste/${slug}'"
            role="button" tabindex="0"
-           onkeydown="if(event.key==='Enter')window.location.href='/artiste/${t.slug}'">
+           onkeydown="if(event.key==='Enter')window.location.href='/artiste/${slug}'">
         <div class="wpt-card-top">
           <div class="wpt-avatar" style="background:linear-gradient(135deg,${c1},${c2})">${ini}</div>
           <div class="wpt-date-badge">${dateStr}</div>
         </div>
-        <div class="wpt-track-name">${t.name}</div>
-        <div class="wpt-artist-name">${t.artistName}</div>
-        <div class="wpt-genre-tag">${t.genre}</div>
+        <div class="wpt-track-name">${t.name || 'Sans titre'}</div>
+        <div class="wpt-artist-name">${artistName}</div>
+        <div class="wpt-genre-tag">${t.genre || ''}</div>
         <div class="wpt-card-footer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="10" height="10" style="opacity:.4"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
           <span>Voir le profil</span>
