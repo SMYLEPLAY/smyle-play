@@ -205,83 +205,9 @@ function submitSignup() {
   else document.getElementById('authMsg').textContent = result.msg;
 }
 
-// ── 7. TRACK PANEL ────────────────────────────────────────────────────────────
-
-function openPlaylist(key, cardEl) {
-  const panel = document.getElementById('trackPanel');
-  const list  = document.getElementById('track-list');
-
-  // Déjà ouvert sur la même playlist → fermer
-  if (openedPanelKey === key && panel.classList.contains('open')) {
-    closePanel();
-    return;
-  }
-
-  if (!PLAYLISTS[key]) { showToast('Chargement en cours…'); return; }
-
-  // Animation d'entrée sur la carte
-  if (cardEl) {
-    cardEl.classList.remove('entering');
-    void cardEl.offsetWidth; // reflow
-    cardEl.classList.add('entering');
-    setTimeout(() => cardEl.classList.remove('entering'), 1400);
-  }
-
-  openedPanelKey      = key;   // panel UI seulement — currentPlaylist reste inchangé
-  const pl            = PLAYLISTS[key];
-  panel.dataset.theme = pl.theme;
-
-  document.getElementById('panel-title').textContent = pl.label;
-  document.getElementById('panel-sub').textContent   =
-    `${pl.tracks.length} titre${pl.tracks.length > 1 ? 's' : ''}`;
-
-  // Durée totale
-  const totalDur = pl.total_duration || pl.tracks.reduce((s, t) => s + (t.duration || 0), 0);
-  const durEl = document.getElementById('panel-total-dur');
-  if (durEl) durEl.textContent = totalDur > 0 ? `Durée totale · ${fmtTimeLong(totalDur)}` : '';
-
-  list.innerHTML = pl.tracks.length
-    ? pl.tracks.map((t, i) => `
-        <div class="track-item${currentPlaylist === key && currentTrackIdx === i ? ' active' : ''}"
-             id="ti-${t.id}" onclick="loadTrack('${key}', ${i})">
-          <span class="track-num">${String(i + 1).padStart(2, '0')}</span>
-          <div class="track-info">
-            <div class="track-name">${t.name}</div>
-          </div>
-          <div class="track-playing-icon"><span></span><span></span><span></span></div>
-          ${t.duration ? `<span class="track-dur">${fmtTime(t.duration)}</span>` : ''}
-          <span class="track-plays" id="plays-${t.id}">${fmtPlays(getPlayCount(t.id))} ▶</span>
-          <button class="add-to-mix-btn" title="Ajouter à My Mix"
-                  onclick="addToMix(event,'${key}',${i})">＋</button>
-        </div>
-      `).join('')
-    : `<div style="padding:32px 28px;font-size:11px;letter-spacing:.25em;color:rgba(136,0,255,.25);text-transform:uppercase">Aucun fichier audio trouvé</div>`;
-
-  panel.classList.add('open');
-  document.getElementById('overlay').classList.add('show');
-}
-
-// Lance le premier titre d'une playlist SANS ouvrir le panel
-function quickPlay(e, key) {
-  e.stopPropagation();
-  if (!PLAYLISTS[key]) { showToast('Chargement en cours…'); return; }
-  const tracks = PLAYLISTS[key].tracks;
-  if (!tracks.length) { showToast('Aucun fichier audio trouvé'); return; }
-  loadTrack(key, 0);
-}
-
-function closePanel() {
-  document.getElementById('trackPanel').classList.remove('open');
-  document.getElementById('overlay').classList.remove('show');
-  openedPanelKey = null;
-  // NE PAS nullifier currentPlaylist : la lecture en cours doit continuer
-  // et s'enchaîner correctement même panel fermé
-}
-
-function closeAll() {
-  closePanel();
-  closeMixPanel();
-}
+// ── 7. TRACK PANEL ───────────────────────────────────────────────────────────
+// → `openPlaylist()`, `quickPlay()`, `closePanel()`, `closeAll()`
+//   moved to ui/panels/playlist.js
 
 // ── 8. AUDIO PLAYER ──────────────────────────────────────────────────────────
 // → `showPlayerUI()`, `loadTrack()`, `togglePlay()`, `updatePlayBtn()`,
@@ -388,98 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // → `fmtTime()` and `fmtTimeLong()` moved to ui/core/dom.js
 
-// ── 10. MY MIX ────────────────────────────────────────────────────────────────
-
-function toggleMixPanel() {
-  const panel = document.getElementById('mixPanel');
-  const isOpen = panel.classList.contains('open');
-  if (isOpen) {
-    closeMixPanel();
-  } else {
-    closePanel();
-    panel.classList.add('open');
-    document.getElementById('overlay').classList.add('show');
-  }
-}
-
-function closeMixPanel() {
-  document.getElementById('mixPanel').classList.remove('open');
-  document.getElementById('overlay').classList.remove('show');
-}
-
-function addToMix(e, playlistKey, trackIdx) {
-  e.stopPropagation();
-  const track = PLAYLISTS[playlistKey].tracks[trackIdx];
-  if (myMixTracks.find(m => m.id === track.id)) {
-    showToast('Déjà dans My Mix !');
-    return;
-  }
-  myMixTracks.push({ playlistKey, trackIdx, id: track.id });
-  renderMixPanel();
-  showToast(`« ${track.name} » ajouté à My Mix`);
-
-  // Marquer visuellement le bouton
-  const btn = document.querySelector(`#ti-${track.id} .add-to-mix-btn`);
-  if (btn) document.getElementById(`ti-${track.id}`)?.classList.add('in-mix');
-}
-
-function renderMixPanel() {
-  const list  = document.getElementById('mix-list');
-  const sub   = document.getElementById('mix-sub');
-  const count = document.getElementById('mix-count');
-  const n     = myMixTracks.length;
-
-  // Badge sur le bouton
-  if (count) {
-    count.textContent = n;
-    count.classList.toggle('visible', n > 0);
-  }
-  if (sub) sub.textContent = `${n} titre${n > 1 ? 's' : ''}`;
-
-  if (!list) return;
-
-  list.innerHTML = n
-    ? myMixTracks.map((m, i) => {
-        const pl    = PLAYLISTS[m.playlistKey];
-        const track = pl.tracks[m.trackIdx];
-        return `
-          <div class="mix-track-item${mixPlaying && mixIdx === i ? ' active' : ''}"
-               data-theme="${pl.theme}"
-               draggable="true"
-               ondragstart="mixDragStart(event,${i})"
-               ondragover="mixDragOver(event,${i})"
-               ondrop="mixDrop(event,${i})"
-               ondragend="mixDragEnd()"
-               onclick="playMixFromIdx(${i})">
-            <span class="mix-drag-handle" title="Déplacer">⠿</span>
-            <span class="mix-track-num">${String(i + 1).padStart(2, '0')}</span>
-            <div class="mix-track-info">
-              <div class="mix-track-name">${track.name}</div>
-              <div class="mix-track-pl">${pl.label}</div>
-            </div>
-            <button class="mix-remove-btn" onclick="removeFromMix(event,${i})">✕</button>
-          </div>
-        `;
-      }).join('')
-    : `<div class="mix-empty">Ajoute des morceaux<br>depuis n'importe quelle playlist</div>`;
-}
-
-function removeFromMix(e, idx) {
-  e.stopPropagation();
-  const removed = myMixTracks.splice(idx, 1)[0];
-  // Ôter la classe in-mix du track item si le panel est ouvert
-  document.getElementById(`ti-${removed.id}`)?.classList.remove('in-mix');
-  renderMixPanel();
-}
-
-function clearMix() {
-  myMixTracks.forEach(m => document.getElementById(`ti-${m.id}`)?.classList.remove('in-mix'));
-  myMixTracks = [];
-  mixPlaying  = false;
-  mixIdx      = 0;
-  renderMixPanel();
-}
-
+// ── 10. MY MIX ───────────────────────────────────────────────────────────────
+// → `toggleMixPanel()`, `closeMixPanel()`, `addToMix()`, `renderMixPanel()`,
+//   `removeFromMix()`, `clearMix()` moved to ui/panels/mix.js
 // → `playMixFromIdx()`, `loadMixTrack()`, `nextMixTrack()`, `prevMixTrack()`
 //   moved to ui/player/audio.js
 
@@ -510,48 +347,8 @@ function confirmSaveMix() {
 }
 
 // ── 12. MIX DRAG-AND-DROP ────────────────────────────────────────────────────
-
-function mixDragStart(e, i) {
-  dragSrcIdx = i;
-  e.dataTransfer.effectAllowed = 'move';
-  // Léger délai pour que le navigateur capture bien le fantôme
-  setTimeout(() => {
-    const items = document.querySelectorAll('.mix-track-item');
-    if (items[i]) items[i].classList.add('dragging');
-  }, 0);
-}
-
-function mixDragOver(e, i) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  if (dragSrcIdx === null || dragSrcIdx === i) return;
-  document.querySelectorAll('.mix-track-item').forEach(el => el.classList.remove('drag-over'));
-  const items = document.querySelectorAll('.mix-track-item');
-  if (items[i]) items[i].classList.add('drag-over');
-}
-
-function mixDrop(e, targetIdx) {
-  e.preventDefault();
-  if (dragSrcIdx === null || dragSrcIdx === targetIdx) { mixDragEnd(); return; }
-  const moved = myMixTracks.splice(dragSrcIdx, 1)[0];
-  myMixTracks.splice(targetIdx, 0, moved);
-  // Recaler l'index de lecture si le mix est en cours
-  if (mixPlaying) {
-    if      (mixIdx === dragSrcIdx)                          mixIdx = targetIdx;
-    else if (dragSrcIdx < mixIdx && targetIdx >= mixIdx)     mixIdx--;
-    else if (dragSrcIdx > mixIdx && targetIdx <= mixIdx)     mixIdx++;
-  }
-  dragSrcIdx = null;
-  renderMixPanel();
-}
-
-function mixDragEnd() {
-  dragSrcIdx = null;
-  document.querySelectorAll('.mix-track-item').forEach(el => {
-    el.classList.remove('dragging');
-    el.classList.remove('drag-over');
-  });
-}
+// → `mixDragStart()`, `mixDragOver()`, `mixDrop()`, `mixDragEnd()`
+//   moved to ui/panels/mix.js
 
 // ── 13. LOOP ─────────────────────────────────────────────────────────────────
 // → `toggleLoop()` moved to ui/player/audio.js
@@ -628,30 +425,7 @@ function submitPremiumInterest() {
 }
 
 // ── 14b. ADD CURRENT TRACK TO MIX (bouton + dans le player) ──────────────────
-
-function addCurrentToMix() {
-  if (!currentPlaylist || currentTrackIdx < 0) {
-    showToast('Lance un morceau d\'abord !');
-    return;
-  }
-  const track = PLAYLISTS[currentPlaylist]?.tracks[currentTrackIdx];
-  if (!track) return;
-
-  if (myMixTracks.find(m => m.id === track.id)) {
-    showToast('Déjà dans My Mix !');
-    return;
-  }
-  myMixTracks.push({ playlistKey: currentPlaylist, trackIdx: currentTrackIdx, id: track.id });
-  renderMixPanel();
-  showToast(`« ${track.name} » ajouté à My Mix`);
-
-  // Feedback visuel sur le bouton +
-  const btn = document.getElementById('btn-add-mix');
-  if (btn) {
-    btn.classList.add('added');
-    setTimeout(() => btn.classList.remove('added'), 1200);
-  }
-}
+// → `addCurrentToMix()` moved to ui/panels/mix.js
 
 // ── 14c. COMMUNITY HUB — chargé depuis l'API ─────────────────────────────────
 
