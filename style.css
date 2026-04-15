@@ -969,6 +969,9 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
   border-bottom: 1px solid rgba(255, 215, 0, 0.04);
 }
 .hub-recent-row:last-child { border-bottom: none; }
+.hub-recent-row.hub-recent-playable { cursor: pointer; transition: background .15s, padding-left .15s; }
+.hub-recent-row.hub-recent-playable:hover { background: rgba(255, 215, 0, 0.04); padding-left: 6px; }
+.hub-play-icon { font-size: 8px; color: rgba(255, 215, 0, 0.5); margin-left: 4px; vertical-align: middle; }
 .hub-recent-cover {
   width: 32px;
   height: 32px;

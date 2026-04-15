@@ -590,7 +590,8 @@ async function uploadTrack() {
   setProgress(35, 'Envoi vers Cloudflare R2...');
 
   const user = getCurrentUser();
-  let uploaded = false;
+  let uploaded  = false;
+  let streamUrl = null;   // URL R2 publique pour la lecture dans le player principal
 
   try {
     const fd = new FormData();
@@ -598,15 +599,19 @@ async function uploadTrack() {
     fd.append('name',   name);
     fd.append('userId', user ? String(user.id) : 'guest');
 
-    const res = await fetch('/api/watt/upload', { method: 'POST', body: fd });
-    if (res.ok) { uploaded = true; setProgress(80, 'Finalisation...'); }
-  } catch (_) { /* mode sans backend */ }
+    const res  = await fetch('/api/watt/upload', { method: 'POST', body: fd });
+    if (res.ok) {
+      const data = await res.json();
+      uploaded  = true;
+      streamUrl = data.url || null;   // URL R2 si disponible
+      setProgress(80, 'Finalisation...');
+    }
+  } catch (_) { /* mode sans backend — lecture locale uniquement */ }
 
   await wait(400);
   setProgress(95, 'Sauvegarde...');
   await wait(300);
 
-  // Sauvegarde locale dans tous les cas
   const tracks = getMyTracks();
   const newTrack = {
     id:           `wt-${Date.now()}`,
@@ -621,6 +626,7 @@ async function uploadTrack() {
     date:         new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
     uploadedAt:   Date.now(),
     cloud:        uploaded,
+    streamUrl,    // URL R2 pour streaming depuis l'accueil (null si pas de R2)
   };
   tracks.unshift(newTrack);
   saveMyTracks(tracks);

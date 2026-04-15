@@ -39,7 +39,7 @@ async function fetchPlaylists() {
     }
   }
 
-  // Mettre à jour les compteurs sur les cartes
+  // Mettre à jour les compteurs sur les cartes officielles
   Object.keys(PLAYLISTS).forEach(key => {
     const el = document.getElementById(`count-${key}`);
     if (el) {
@@ -47,6 +47,72 @@ async function fetchPlaylists() {
       el.textContent = `${n} titre${n > 1 ? 's' : ''}`;
     }
   });
+
+  // Sprint D — Injecter les sons communautaires WATT dans le player
+  injectCommunityPlaylist();
+}
+
+// ── 2b. INJECTION PLAYLIST COMMUNAUTAIRE (Sprint D) ──────────────────────────
+
+function injectCommunityPlaylist() {
+  const wattTracks = JSON.parse(localStorage.getItem('smyle_watt_tracks') || '[]');
+  const profile    = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+  if (!wattTracks.length) return;
+
+  const artistName = profile?.artistName || 'Artiste WATT';
+
+  // Convertir les tracks WATT au format PLAYLISTS compatible avec le player
+  const converted = wattTracks.map(t => ({
+    id:       t.id,
+    file:     t.file || '',
+    name:     t.name || 'Sans titre',
+    duration: 0,
+    url:      t.streamUrl || null,   // URL R2 pour streaming (null = pas streamable depuis l'accueil)
+    genre:    t.genre || '',
+    artist:   artistName,
+    coverDataUrl: t.coverDataUrl || null,
+    watt:     true,                  // flag pour distinguer les tracks communautaires
+  }));
+
+  // N'ajouter que les tracks avec une URL streamable
+  const streamable = converted.filter(t => t.url);
+
+  if (streamable.length) {
+    PLAYLISTS['watt-community'] = {
+      label:          'WATT Community',
+      folder:         'WATT',
+      theme:          'watt-community',
+      tracks:         streamable,
+      total_duration: 0,
+    };
+  }
+}
+
+// Jouer un son communautaire depuis le hub (identifié par son id)
+function playWattTrack(trackId) {
+  // Chercher d'abord dans la playlist watt-community injectée
+  const wattPl = PLAYLISTS['watt-community'];
+  if (wattPl) {
+    const idx = wattPl.tracks.findIndex(t => t.id === trackId);
+    if (idx >= 0) { loadTrack('watt-community', idx); return; }
+  }
+
+  // Fallback : chercher dans localStorage et lire directement si URL disponible
+  const wattTracks = JSON.parse(localStorage.getItem('smyle_watt_tracks') || '[]');
+  const t = wattTracks.find(t => t.id === trackId);
+  if (t && t.streamUrl) {
+    // Injection à la volée pour ce track
+    if (!PLAYLISTS['watt-community']) {
+      PLAYLISTS['watt-community'] = { label: 'WATT Community', folder: 'WATT', theme: 'watt-community', tracks: [], total_duration: 0 };
+    }
+    const profile    = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+    const artistName = profile?.artistName || 'Artiste WATT';
+    const converted  = { id: t.id, file: t.file || '', name: t.name, duration: 0, url: t.streamUrl, genre: t.genre || '', artist: artistName, coverDataUrl: t.coverDataUrl || null, watt: true };
+    PLAYLISTS['watt-community'].tracks.push(converted);
+    loadTrack('watt-community', PLAYLISTS['watt-community'].tracks.length - 1);
+  } else {
+    showToast('Ce son n\'est pas encore disponible en streaming.');
+  }
 }
 
 // ── 3. ENCODE FILE PATH ──────────────────────────────────────────────────────
@@ -858,11 +924,13 @@ function _renderHubRecentTracks() {
     const coverHTML = t.coverDataUrl
       ? `<img src="${t.coverDataUrl}" alt=""/>`
       : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="14" height="14"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+    const playable = !!t.streamUrl;
     return `
-    <div class="hub-recent-row">
+    <div class="hub-recent-row${playable ? ' hub-recent-playable' : ''}"
+         ${playable ? `onclick="playWattTrack('${t.id}')" title="Écouter dans le player"` : ''}>
       <div class="hub-recent-cover">${coverHTML}</div>
       <div class="hub-recent-info">
-        <div class="hub-recent-name">${_esc(t.name)}</div>
+        <div class="hub-recent-name">${_esc(t.name)}${playable ? ' <span class="hub-play-icon">▶</span>' : ''}</div>
         <div class="hub-recent-artist">${_esc(artistName)} · ${_esc(t.genre || 'IA')}</div>
       </div>
       <div class="hub-recent-date">${t.date || ''}</div>
