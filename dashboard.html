@@ -168,7 +168,39 @@
       <span class="dash-section-sub">WAV · MP3 · FLAC · AAC · M4A · max 100 MB</span>
     </div>
 
-    <div class="dash-upload-layout">
+    <!-- Compteur freemium -->
+    <div class="dash-free-counter" id="dashFreeCounter">
+      <div class="dash-free-counter-top">
+        <span class="dash-free-counter-lbl">Playlist gratuite</span>
+        <span class="dash-free-counter-val" id="dashFreeCounterVal">0 / 6 sons</span>
+      </div>
+      <div class="dash-free-bar-track">
+        <div class="dash-free-bar-fill" id="dashFreeBarFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Teaser premium (visible uniquement quand limite atteinte) -->
+    <div class="dash-premium-teaser" id="dashPremiumTeaser" style="display:none">
+      <div class="dpt-bolt">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div class="dpt-title">Ta playlist gratuite est complète</div>
+      <div class="dpt-sub">Tu as publié tes 6 sons offerts pendant la bêta.</div>
+      <div class="dpt-coming">
+        <span class="dpt-coming-badge">Bientôt</span>
+        PLUG WATT · 0,99&nbsp;€ / mois
+      </div>
+      <ul class="dpt-features">
+        <li>⬆ Uploads illimités</li>
+        <li>📂 Plusieurs playlists artiste</li>
+        <li>📊 Analytics détaillées</li>
+        <li>⭐ Badge premium + visibilité renforcée</li>
+        <li>🏆 Placement prioritaire dans le classement</li>
+      </ul>
+      <div class="dpt-note">Disponible en septembre 2025 — 0,99&nbsp;€/mois · sans engagement</div>
+    </div>
+
+    <div class="dash-upload-layout" id="dashUploadLayout">
 
       <!-- Zone drag & drop -->
       <div class="dash-dropzone" id="dashDropzone"
@@ -201,7 +233,7 @@
             <input class="dash-input" id="dashTrackName" placeholder="Ex : Neon Dreams, Cosmic Drift..." />
 
             <label class="dash-label">Genre</label>
-            <input class="dash-input" id="dashGenre" placeholder="Ambient IA · Lofi · Electro · Dark..." />
+            <input class="dash-input" id="dashGenre" placeholder="Ambient · Lofi · Electro · Dark · Trap..." />
 
             <label class="dash-label">Tags (séparés par des virgules)</label>
             <input class="dash-input" id="dashTags" placeholder="électro, ia, suno, chill..." />
@@ -251,7 +283,7 @@
         </div>
       </div>
 
-    </div>
+    </div><!-- /dash-upload-layout -->
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
@@ -289,7 +321,7 @@
         </div>
         <div>
           <label class="dash-label">Genre musical</label>
-          <input class="dash-input" id="peGenre" placeholder="Ambient IA, Lofi IA, Dark Electro..." />
+          <input class="dash-input" id="peGenre" placeholder="Ambient, Lofi, Dark Electro, Trap, Cinematic..." />
         </div>
         <div class="dash-edit-full">
           <label class="dash-label">Bio</label>

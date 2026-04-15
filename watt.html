@@ -71,7 +71,7 @@
       </svg>
     </div>
     <h2 class="watt-gate-title">Connexion requise</h2>
-    <p class="watt-gate-desc">Connecte-toi pour accéder à l'espace PLUG WATT<br>et rejoindre le réseau créatif IA.</p>
+    <p class="watt-gate-desc">Connecte-toi pour accéder à l'espace PLUG WATT<br>et rejoindre le réseau créatif.</p>
     <div class="watt-gate-actions">
       <button class="watt-btn-primary" onclick="openWattAuth('login')">Se connecter</button>
       <button class="watt-btn-ghost" onclick="openWattAuth('signup')">Créer un compte</button>
@@ -86,14 +86,14 @@
       </svg>
     </div>
     <h2 class="watt-gate-title">Rejoins le réseau PLUG WATT</h2>
-    <p class="watt-gate-desc">Publie ta musique IA, crée ton profil artiste<br>et connecte-toi à la communauté des créateurs.</p>
+    <p class="watt-gate-desc">Publie ta musique, crée ton profil artiste<br>et connecte-toi à la communauté des créateurs.</p>
 
     <div class="watt-sub-features">
-      <div class="watt-sub-feat"><span class="wsf-icon">⬆</span><span>Upload de tes sons IA (WAV · MP3 · FLAC)</span></div>
+      <div class="watt-sub-feat"><span class="wsf-icon">⬆</span><span>Upload tes sons (WAV · MP3 · FLAC · AAC)</span></div>
       <div class="watt-sub-feat"><span class="wsf-icon">👤</span><span>Profil artiste personnalisé</span></div>
       <div class="watt-sub-feat"><span class="wsf-icon">📊</span><span>Statistiques d'écoutes en temps réel</span></div>
       <div class="watt-sub-feat"><span class="wsf-icon">🏆</span><span>Présence dans le classement WATT mondial</span></div>
-      <div class="watt-sub-feat"><span class="wsf-icon">🌐</span><span>Connexion au réseau créatif IA</span></div>
+      <div class="watt-sub-feat"><span class="wsf-icon">🌐</span><span>Connexion au réseau créatif</span></div>
     </div>
 
     <div class="watt-sub-cta-block">
@@ -169,7 +169,7 @@
           <!-- Édition -->
           <div id="profileEdit" style="display:none">
             <input class="watt-input" id="editArtistName"   placeholder="Nom d'artiste *" />
-            <input class="watt-input" id="editGenre"        placeholder="Genre musical (ex : Ambient IA, Lofi IA...)" />
+            <input class="watt-input" id="editGenre"        placeholder="Genre (Ambient, Lofi, Electro, Trap, Cinematic...)" />
             <textarea class="watt-textarea" id="editBio"    placeholder="Ta bio artiste..." rows="3"></textarea>
             <input class="watt-input" id="editSoundcloud"   placeholder="SoundCloud URL (optionnel)" />
             <input class="watt-input" id="editInstagram"    placeholder="Instagram @handle (optionnel)" />
@@ -189,7 +189,40 @@
         </div>
         <div class="watt-panel-body">
 
-          <!-- Zone drag & drop -->
+          <!-- Compteur freemium -->
+          <div class="watt-free-counter" id="wattFreeCounter">
+            <div class="watt-free-counter-top">
+              <span class="watt-free-counter-lbl">Playlist gratuite</span>
+              <span class="watt-free-counter-val" id="freeCounterVal">0 / 6 sons</span>
+            </div>
+            <div class="watt-free-bar-track">
+              <div class="watt-free-bar-fill" id="freeBarFill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Teaser premium (visible uniquement quand limite atteinte) -->
+          <div class="watt-premium-teaser" id="wattPremiumTeaser" style="display:none">
+            <div class="wpt-bolt">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div class="wpt-title">Ta playlist gratuite est complète</div>
+            <div class="wpt-sub">Tu as publié tes 6 sons offerts.</div>
+            <div class="wpt-coming">
+              <span class="wpt-coming-badge">Bientôt</span>
+              PLUG WATT · 0,99&nbsp;€ / mois
+            </div>
+            <ul class="wpt-features">
+              <li>⬆ Uploads illimités</li>
+              <li>📂 Plusieurs playlists</li>
+              <li>📊 Analytics avancées</li>
+              <li>⭐ Badge premium + visibilité renforcée</li>
+              <li>🏆 Placement prioritaire dans le classement</li>
+            </ul>
+            <div class="wpt-note">Disponible en septembre 2025 — sans engagement</div>
+          </div>
+
+          <!-- Zone drag & drop (masquée si limite atteinte) -->
+          <div id="wattUploadZone">
           <div class="watt-dropzone" id="wattDropzone"
                ondragover="handleDragOver(event)"
                ondragleave="handleDragLeave(event)"
@@ -238,6 +271,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             Stockage : Cloudflare R2 · <code>WATT/{userId}/{filename}</code>
           </div>
+          </div><!-- /wattUploadZone -->
         </div>
       </div>
 

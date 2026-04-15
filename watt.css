@@ -1106,3 +1106,125 @@
   .watt-btn-primary, .watt-btn-ghost { font-size: 9px; letter-spacing: .12em; }
   .watt-footer { padding: 12px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FREEMIUM — Compteur 6 sons + teaser PLUG WATT premium
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Compteur barre de progression ───────────────────────────────────────── */
+.watt-free-counter {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  background: rgba(255,215,0,.04);
+  border: 1px solid rgba(255,215,0,.1);
+  border-radius: 4px;
+}
+.watt-free-counter-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.watt-free-counter-lbl {
+  font-size: 9px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(255,215,0,.4);
+}
+.watt-free-counter-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,215,0,.7);
+  letter-spacing: .04em;
+  transition: color .3s;
+}
+.watt-free-bar-track {
+  height: 3px;
+  background: rgba(255,215,0,.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.watt-free-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255,215,0,.7), rgba(255,215,0,.35));
+  border-radius: 2px;
+  transition: width .5s ease, background .5s ease;
+}
+
+/* ── Teaser premium (affiché quand limite atteinte) ──────────────────────── */
+.watt-premium-teaser {
+  padding: 20px 18px;
+  background: linear-gradient(135deg, rgba(255,215,0,.06) 0%, rgba(255,215,0,.02) 100%);
+  border: 1px solid rgba(255,215,0,.2);
+  border-radius: 6px;
+  text-align: center;
+}
+.wpt-bolt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px; height: 38px;
+  background: rgba(255,215,0,.1);
+  border: 1px solid rgba(255,215,0,.25);
+  border-radius: 50%;
+  color: #FFD700;
+  margin-bottom: 12px;
+}
+.wpt-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #FFD700;
+  margin-bottom: 4px;
+}
+.wpt-sub {
+  font-size: 10px;
+  color: rgba(255,215,0,.55);
+  margin-bottom: 14px;
+}
+.wpt-coming {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,215,0,.8);
+  letter-spacing: .06em;
+  margin-bottom: 16px;
+  padding: 6px 14px;
+  background: rgba(255,215,0,.06);
+  border: 1px solid rgba(255,215,0,.18);
+  border-radius: 20px;
+}
+.wpt-coming-badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  background: #FFD700;
+  color: #0a080e;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.wpt-features {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  text-align: left;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wpt-features li {
+  font-size: 10px;
+  color: rgba(255,215,0,.55);
+  letter-spacing: .03em;
+}
+.wpt-note {
+  font-size: 9px;
+  color: rgba(255,215,0,.3);
+  letter-spacing: .08em;
+  border-top: 1px solid rgba(255,215,0,.08);
+  padding-top: 10px;
+  margin-top: 4px;
+}

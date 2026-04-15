@@ -7,6 +7,9 @@
 
 // ── 0. HELPERS GLOBAUX ────────────────────────────────────────────────────────
 
+// Limite freemium — version gratuite bêta
+const FREE_LIMIT = 6;
+
 function slugify(name) {
   return (name || '')
     .toLowerCase()
@@ -530,13 +533,51 @@ function renderArtistCard() {
   renderMyTracks();
 }
 
+// ── Gestion état section upload (compteur + teaser premium) ─────────────────
+function renderUploadState() {
+  const tracks  = getMyTracks();
+  const count   = tracks.length;
+  const limited = count >= FREE_LIMIT;
+
+  // Compteur freemium
+  const counterVal = document.getElementById('dashFreeCounterVal');
+  const barFill    = document.getElementById('dashFreeBarFill');
+  if (counterVal) {
+    counterVal.textContent = limited
+      ? 'Playlist complète ✓'
+      : `${count} / ${FREE_LIMIT} sons utilisés`;
+    counterVal.style.color = limited ? '#FFD700' : '';
+  }
+  if (barFill) {
+    const pct = Math.min((count / FREE_LIMIT) * 100, 100);
+    barFill.style.width = pct + '%';
+    barFill.style.background = limited
+      ? 'linear-gradient(90deg, #FFD700, #FFEC6B)'
+      : 'linear-gradient(90deg, rgba(255,215,0,.7), rgba(255,215,0,.35))';
+  }
+
+  // Zone upload vs teaser
+  const uploadLayout = document.getElementById('dashUploadLayout');
+  const teaser       = document.getElementById('dashPremiumTeaser');
+  if (uploadLayout) uploadLayout.style.display = limited ? 'none' : '';
+  if (teaser)       teaser.style.display       = limited ? '' : 'none';
+}
+
 function renderMyTracks() {
   const tracks  = getMyTracks();
   const profile = getWattProfile();
   const listEl  = document.getElementById('myTracksList');
   const countEl = document.getElementById('myTracksCount');
 
-  if (countEl) countEl.textContent = `${tracks.length} son${tracks.length > 1 ? 's' : ''}`;
+  // Compteur "X / 6 sons" dans l'en-tête "Mes Sons"
+  if (countEl) {
+    const limited = tracks.length >= FREE_LIMIT;
+    countEl.textContent = `${tracks.length}\u202f/\u202f${FREE_LIMIT} son${tracks.length !== 1 ? 's' : ''}`;
+    countEl.style.color = limited ? '#FFD700' : '';
+  }
+
+  // Mise à jour du compteur upload
+  renderUploadState();
 
   if (!listEl) return;
   if (tracks.length === 0) {
@@ -570,6 +611,7 @@ function deleteTrack(id) {
   const tracks = getMyTracks().filter(t => t.id !== id);
   saveMyTracks(tracks);
   renderArtistCard();
+  renderMyTracks();   // met à jour compteur + état upload
   renderStats();
   renderRanking();
   dashToast('Son supprimé.');
@@ -694,6 +736,15 @@ async function uploadTrack() {
   const name = document.getElementById('dashTrackName').value.trim();
   if (!name) { dashToast('⚠ Le titre est obligatoire.'); return; }
   if (!_pendingFile) { dashToast('⚠ Aucun fichier sélectionné.'); return; }
+
+  // ── Vérification limite freemium ─────────────────────────────────────────
+  const _existing = getMyTracks();
+  if (_existing.length >= FREE_LIMIT) {
+    dashToast('Ta playlist gratuite est complète (6 / 6). PLUG WATT illimité arrive bientôt !');
+    renderUploadState();
+    cancelUpload();
+    return;
+  }
 
   const genre = document.getElementById('dashGenre').value.trim();
   const tags  = document.getElementById('dashTags').value.trim();
@@ -1089,6 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderProfileView();
   renderStats();
   renderRanking();
+  renderMyTracks();   // initialise compteur freemium + état zone upload
 
   // Section nav
   initSectionNav();

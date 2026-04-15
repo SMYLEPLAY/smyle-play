@@ -5,6 +5,9 @@
 
 // ── BÊTA GRATUITE — pas de code ni de paiement requis ────────────────────────
 
+// ── Limite freemium ───────────────────────────────────────────────────────────
+const FREE_LIMIT = 6;   // Nombre maximum de sons en version gratuite
+
 // ── 1. CANVAS ELECTRIC WEB (fond de page) ────────────────────────────────────
 
 class ElectricWebBg {
@@ -578,6 +581,16 @@ async function uploadTrack() {
   if (!trackName) { wattToast('Donne un titre à ton morceau.'); return; }
   if (!selectedFile) { wattToast('Aucun fichier sélectionné.'); return; }
 
+  // ── Vérification limite freemium ─────────────────────────────────────────
+  const _user = getCurrentUser();
+  const _uid  = _user ? _user.id : 'guest';
+  const _existing = getMyWattTracks(_uid);
+  if (_existing.length >= FREE_LIMIT) {
+    wattToast('Ta playlist gratuite est complète (6 / 6). PLUG WATT illimité arrive bientôt !');
+    renderUploadState();
+    return;
+  }
+
   const user    = getCurrentUser();
   const profile = getArtistProfile();
   const genre   = document.getElementById('uploadGenreTag').value.trim();
@@ -682,6 +695,38 @@ function saveMyWattTracks(userId, tracks) {
   localStorage.setItem(`smyle_watt_tracks_${userId}`, JSON.stringify(tracks));
 }
 
+// ── Gestion état zone upload (affiche ou masque selon limite) ────────────────
+function renderUploadState() {
+  const user   = getCurrentUser();
+  const userId = user ? user.id : 'guest';
+  const tracks = getMyWattTracks(userId);
+  const count  = tracks.length;
+  const limited = count >= FREE_LIMIT;
+
+  // Compteur visuel
+  const counterVal = document.getElementById('freeCounterVal');
+  const barFill    = document.getElementById('freeBarFill');
+  if (counterVal) {
+    counterVal.textContent = limited
+      ? 'Ta playlist est complète ✓'
+      : `${count} / ${FREE_LIMIT} sons utilisés`;
+    counterVal.style.color = limited ? '#FFD700' : '';
+  }
+  if (barFill) {
+    const pct = Math.min((count / FREE_LIMIT) * 100, 100);
+    barFill.style.width = pct + '%';
+    barFill.style.background = limited
+      ? 'linear-gradient(90deg, #FFD700, #FFEC6B)'
+      : 'linear-gradient(90deg, rgba(255,215,0,.7), rgba(255,215,0,.4))';
+  }
+
+  // Zone upload vs teaser premium
+  const uploadZone = document.getElementById('wattUploadZone');
+  const teaser     = document.getElementById('wattPremiumTeaser');
+  if (uploadZone) uploadZone.style.display = limited ? 'none' : '';
+  if (teaser)     teaser.style.display     = limited ? '' : 'none';
+}
+
 function renderMyTracks() {
   const user    = getCurrentUser();
   const userId  = user ? user.id : 'guest';
@@ -689,7 +734,15 @@ function renderMyTracks() {
   const listEl  = document.getElementById('myTracksList');
   const countEl = document.getElementById('myTracksCount');
 
-  if (countEl) countEl.textContent = tracks.length + ' son' + (tracks.length > 1 ? 's' : '');
+  // Compteur dans l'en-tête du panel "Mes Sons"
+  if (countEl) {
+    const limited = tracks.length >= FREE_LIMIT;
+    countEl.textContent = tracks.length + ' / ' + FREE_LIMIT + ' son' + (tracks.length > 1 ? 's' : '');
+    countEl.style.color = limited ? '#FFD700' : '';
+  }
+
+  // Mise à jour du compteur freemium
+  renderUploadState();
 
   if (!tracks.length) {
     listEl.innerHTML = `
@@ -697,7 +750,7 @@ function renderMyTracks() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="36" height="36" style="opacity:.25">
           <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
         </svg>
-        <p>Aucun son publié pour l'instant.<br>Upload ton premier morceau pour apparaître sur WATT.</p>
+        <p>Aucun son publié pour l'instant.<br>Upload ton premier morceau pour créer ta playlist artiste.</p>
       </div>`;
     return;
   }
