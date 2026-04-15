@@ -933,9 +933,7 @@ const DEMO_TRACKS_PUBLIC = [
   { name: 'Nebula Drift',      artistName: 'LunaAI',    genre: 'Ambient',      slug: 'lunaai',    uploadedAt: Date.now() - 86400000 * 3  },
   { name: 'Lo-Fi Awakening',   artistName: 'ZephyrIA',  genre: 'Lofi',         slug: 'zephyria',  uploadedAt: Date.now() - 86400000 * 5  },
   { name: 'Solar Overture',    artistName: 'Aurora',    genre: 'Cinematic',    slug: 'aurora',    uploadedAt: Date.now() - 86400000 * 7  },
-  { name: 'Bass Reactor',      artistName: 'EchoBot',   genre: 'Trap',         slug: 'echobot',   uploadedAt: Date.now() - 86400000 * 9  },
-  { name: 'Pulse of the Deep', artistName: 'NebulaX',   genre: 'Deep House',   slug: 'nebulax',   uploadedAt: Date.now() - 86400000 * 11 },
-];
+]; // Max 4 — "Voir plus" renvoie vers /watt
 
 function renderPublicRanking() {
   const el = document.getElementById('wattPublicRankingList');
@@ -1017,7 +1015,7 @@ function renderPublicTracks() {
   });
 
   allTracks.sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
-  const recent = allTracks.slice(0, 6);
+  const recent = allTracks.slice(0, 4); // Max 4 — "Voir plus" sur la page WATT
 
   const useDemo = !recent.length;
   const tracks  = useDemo ? DEMO_TRACKS_PUBLIC : recent;
@@ -1043,6 +1041,8 @@ function renderPublicTracks() {
       : name.slice(0, 2).toUpperCase();
   }
 
+  const voirPlusBtn = `<a href="/watt" class="wpt-voir-plus">Voir plus →</a>`;
+
   el.innerHTML = demoNote + `<div class="wpt-grid">` + tracks.map(t => {
     const d       = new Date(t.uploadedAt);
     const dateStr = d.toLocaleDateString('fr', { day: 'numeric', month: 'short' });
@@ -1066,7 +1066,7 @@ function renderPublicTracks() {
         </div>
       </div>
     `;
-  }).join('') + `</div>`;
+  }).join('') + `</div>` + voirPlusBtn;
 }
 
 // ── 12. CANVAS RÉSEAU (panel visual) ─────────────────────────────────────────

@@ -1256,9 +1256,9 @@
 .watt-public-section {
   position: relative;
   z-index: 10;
-  max-width: 780px;
-  margin: 0 auto 32px;
-  padding: 0 24px;
+  max-width: 720px;
+  margin: 0 auto 52px;
+  padding: 0 28px;
 }
 
 /* ── En-tête de section ──────────────────────────────────────────────────── */
@@ -1337,64 +1337,44 @@
 .wpr-podium {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 10px 0 18px;
+  gap: 12px;
+  margin: 12px 0 24px;
 }
 
 /* Carte podium de base */
 .wpr-card {
-  position: relative;
-  border-radius: 10px;
-  padding: 18px 14px 16px;
+  border-radius: 12px;
+  padding: 22px 16px 18px;
   cursor: pointer;
-  transition: transform .18s ease, box-shadow .18s ease;
-  border: 1px solid rgba(255, 215, 0, 0.10);
-  background: rgba(255, 215, 0, 0.03);
+  transition: transform .2s ease;
+  border: 1px solid rgba(255, 215, 0, 0.07);
+  background: rgba(255, 215, 0, 0.025);
   display: flex;
   flex-direction: column;
   gap: 4px;
   -webkit-tap-highlight-color: transparent;
-  overflow: hidden;
 }
-.wpr-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  opacity: 0;
-  transition: opacity .18s ease;
-}
-.wpr-card:hover { transform: translateY(-3px); }
-.wpr-card:hover::before { opacity: 1; }
+.wpr-card:hover  { transform: translateY(-2px); }
 .wpr-card:active { transform: translateY(0); }
 
 /* #1 — Or */
 .wpr-pos-1 {
-  border-color: rgba(255, 215, 0, 0.35);
-  background: rgba(255, 215, 0, 0.06);
-  box-shadow: 0 0 0 1px rgba(255,215,0,.08), 0 4px 24px rgba(255,215,0,.06);
+  border-color: rgba(255, 215, 0, 0.18);
+  background: rgba(255, 215, 0, 0.035);
 }
-.wpr-pos-1:hover {
-  box-shadow: 0 0 0 1px rgba(255,215,0,.25), 0 8px 32px rgba(255,215,0,.12);
-}
-.wpr-pos-1::before { background: radial-gradient(circle at 50% 0, rgba(255,215,0,.08), transparent 70%); }
-.wpr-pos-1 .wpr-card-rank { color: #FFD700; text-shadow: 0 0 12px rgba(255,215,0,.6); }
+.wpr-pos-1 .wpr-card-rank { color: #FFD700; }
 
 /* #2 — Argent */
 .wpr-pos-2 {
-  border-color: rgba(200, 200, 200, 0.22);
-  background: rgba(200, 200, 200, 0.03);
+  border-color: rgba(200, 200, 200, 0.12);
 }
-.wpr-pos-2:hover { box-shadow: 0 4px 20px rgba(200,200,200,.08); }
-.wpr-pos-2 .wpr-card-rank { color: #C8C8C8; }
+.wpr-pos-2 .wpr-card-rank { color: #C0C0C0; }
 
 /* #3 — Bronze */
 .wpr-pos-3 {
-  border-color: rgba(205, 127, 50, 0.22);
-  background: rgba(205, 127, 50, 0.03);
+  border-color: rgba(205, 127, 50, 0.12);
 }
-.wpr-pos-3:hover { box-shadow: 0 4px 20px rgba(205,127,50,.08); }
-.wpr-pos-3 .wpr-card-rank { color: #CD7F32; }
+.wpr-pos-3 .wpr-card-rank { color: #C87B30; }
 
 /* Médaille */
 .wpr-card-medal {
@@ -1506,18 +1486,18 @@
 .wpt-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-top: 8px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 /* Carte son */
 .wpt-card {
-  background: rgba(255, 215, 0, 0.03);
-  border: 1px solid rgba(255, 215, 0, 0.09);
-  border-radius: 10px;
-  padding: 16px 14px 14px;
+  background: rgba(255, 215, 0, 0.02);
+  border: 1px solid rgba(255, 215, 0, 0.07);
+  border-radius: 12px;
+  padding: 20px 16px 16px;
   cursor: pointer;
-  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  transition: transform .2s ease, border-color .2s ease;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -1525,8 +1505,7 @@
 }
 .wpt-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 215, 0, 0.20);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 215, 0, 0.15);
 }
 .wpt-card:active { transform: translateY(0); }
 
@@ -1616,6 +1595,27 @@
 }
 .wpt-card:hover .wpt-card-footer { color: rgba(255, 215, 0, 0.50); }
 
+/* ── Bouton Voir plus ────────────────────────────────────────────────────── */
+.wpt-voir-plus {
+  display: block;
+  text-align: center;
+  margin-top: 18px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.38);
+  text-decoration: none;
+  padding: 10px 0;
+  border: 1px solid rgba(255, 215, 0, 0.10);
+  border-radius: 5px;
+  transition: color .15s, border-color .15s;
+}
+.wpt-voir-plus:hover {
+  color: rgba(255, 215, 0, 0.70);
+  border-color: rgba(255, 215, 0, 0.22);
+}
+
 /* ── Gate note bas ───────────────────────────────────────────────────────── */
 .watt-gate-note {
   font-size: 9px;
@@ -1628,7 +1628,8 @@
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .watt-public-section {
-    padding: 0 16px;
+    padding: 0 18px;
+    margin-bottom: 40px;
   }
   .watt-pub-hdr {
     flex-direction: column;
@@ -1636,23 +1637,17 @@
     gap: 4px;
   }
   .watt-hero-tags { gap: 5px; }
-
-  /* Podium 3 colonnes → gardé même sur mobile (cartes plus compactes) */
-  .wpr-card {
-    padding: 14px 10px 12px;
-  }
-  .wpr-card-rank { font-size: 26px; }
-  .wpr-card-name { font-size: 11px; }
-
-  /* Grille sons : 1 colonne sur mobile */
-  .wpt-grid {
-    grid-template-columns: 1fr;
-  }
+  .wpr-card       { padding: 16px 12px 14px; }
+  .wpr-card-rank  { font-size: 26px; }
+  .wpr-card-name  { font-size: 11px; }
+  /* Sons : 1 colonne sur mobile */
+  .wpt-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 390px) {
-  .wpr-podium { gap: 7px; }
-  .wpr-card { padding: 12px 8px 10px; }
-  .wpr-card-rank { font-size: 22px; }
-  .wpr-card-medal { font-size: 13px; }
+  .watt-public-section { padding: 0 14px; }
+  .wpr-podium     { gap: 8px; }
+  .wpr-card       { padding: 14px 10px 12px; }
+  .wpr-card-rank  { font-size: 22px; }
+  .wpr-card-medal { font-size: 14px; }
   .wpr-card-plays { display: none; }
 }

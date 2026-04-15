@@ -267,79 +267,34 @@
 <!-- ═══════════════════════════════════════════════════════════ COMMUNITY HUB -->
 <section class="community-hub" id="community-hub">
 
-  <!-- Header du hub -->
-  <div class="hub-header">
-    <div class="hub-header-left">
-      <div class="hub-logo">
-        <svg viewBox="0 0 24 24" fill="currentColor" class="hub-bolt"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        <span class="hub-logo-text">WATT</span>
-      </div>
-      <div class="hub-tagline">World Artist Ties Talent · Communauté musicale</div>
-    </div>
-    <a href="/watt" class="hub-join-btn">Rejoindre le réseau →</a>
+  <!-- En-tête minimal -->
+  <div class="hub-head">
+    <svg viewBox="0 0 24 24" fill="#FFD700" width="12" height="12" style="flex-shrink:0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    <span class="hub-head-watt">WATT</span>
+    <span class="hub-head-tagline">Réseau Artistes</span>
   </div>
 
-  <!-- Stats live -->
-  <div class="hub-stats-row">
-    <div class="hub-stat">
-      <div class="hub-stat-val" id="hub-nb-artists">0</div>
-      <div class="hub-stat-lbl">Artistes</div>
-    </div>
-    <div class="hub-stat">
-      <div class="hub-stat-val" id="hub-nb-tracks">0</div>
-      <div class="hub-stat-lbl">Sons publiés</div>
-    </div>
-    <div class="hub-stat">
-      <div class="hub-stat-val" id="hub-nb-plays">0</div>
-      <div class="hub-stat-lbl">Écoutes</div>
-    </div>
-    <div class="hub-stat hub-stat-live">
-      <div class="hub-stat-val">
-        <span class="hub-live-dot"></span>Live
-      </div>
-      <div class="hub-stat-lbl">Réseau actif</div>
-    </div>
+  <!-- Bloc 1 — Statistiques en une ligne -->
+  <div class="hub-stats-line">
+    <span id="hub-nb-artists">0</span>&nbsp;artistes
+    <span class="hsl-sep">·</span>
+    <span id="hub-nb-tracks">0</span>&nbsp;sons
+    <span class="hsl-sep">·</span>
+    <span id="hub-nb-plays">0</span>&nbsp;écoutes
+    <span class="hsl-sep">·</span>
+    <span class="hsl-live"><span class="hub-live-dot"></span>Live</span>
   </div>
 
-  <!-- Body : classement + derniers sons -->
-  <div class="hub-body">
-
-    <!-- Classement WATT -->
-    <div class="hub-panel">
-      <div class="hub-panel-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="18 20V10"/><polyline points="12 20V4"/><polyline points="6 20v-6"/></svg>
-        Classement WATT
-      </div>
-      <div class="hub-ranking-list" id="hub-ranking-list">
-        <!-- rempli par renderCommunityHub() -->
-      </div>
-      <a href="/watt" class="hub-see-all">Voir le classement complet →</a>
-    </div>
-
-    <!-- Derniers sons publiés -->
-    <div class="hub-panel">
-      <div class="hub-panel-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-        Derniers Sons Publiés
-      </div>
-      <div class="hub-recent-list" id="hub-recent-list">
-        <!-- rempli par renderCommunityHub() -->
-      </div>
-    </div>
-
+  <!-- Bloc 2 — Top 3 artistes -->
+  <div class="hub-top3" id="hub-top3">
+    <!-- rempli par renderCommunityHub() -->
   </div>
 
-  <!-- CTA bas de section -->
-  <div class="hub-cta">
-    <div class="hub-cta-inner">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:#FFD700;flex-shrink:0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      <div>
-        <div class="hub-cta-text">Tu crées de la musique ?</div>
-        <div class="hub-cta-sub">Publie tes sons, crée ton profil artiste et rejoins le réseau WATT.</div>
-      </div>
-      <a href="/watt" class="hub-cta-btn">Devenir Artiste — Gratuit</a>
-    </div>
-  </div>
+  <!-- Bloc 3 — CTA unique -->
+  <a href="/watt" class="hub-cta-solo">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Rejoindre WATT
+  </a>
 
 </section>
 

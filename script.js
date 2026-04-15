@@ -882,8 +882,7 @@ function addCurrentToMix() {
 
 function renderCommunityHub() {
   _renderHubStats();
-  _renderHubRanking();
-  _renderHubRecentTracks();
+  _renderHubTop3();
 }
 
 function _getWattCommunityData() {
@@ -918,79 +917,41 @@ function _renderHubStats() {
   setVal('hub-nb-plays',   totalPlays     || 0);
 }
 
-function _renderHubRanking() {
-  const el = document.getElementById('hub-ranking-list');
+function _renderHubTop3() {
+  const el = document.getElementById('hub-top3');
   if (!el) return;
   const { artists } = _getWattCommunityData();
 
-  if (!artists.length) {
-    el.innerHTML = `<div class="hub-rank-empty">
-      Aucun artiste inscrit pour l'instant<br>
-      <span style="font-size:8px;opacity:.6">Sois le premier à rejoindre WATT</span>
-    </div>`;
-    return;
-  }
+  // Démo si aucun artiste réel
+  const DEMO = [
+    { artistName: 'NightWave', plays: 1842, slug: 'nightwave' },
+    { artistName: 'LunaAI',    plays:  934, slug: 'lunaai'    },
+    { artistName: 'ZephyrIA',  plays:  611, slug: 'zephyria'  },
+  ];
+  const src = artists.length
+    ? [...artists].sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, 3)
+    : DEMO;
 
-  const sorted = [...artists].sort((a, b) => {
-    if (b.plays !== a.plays) return b.plays - a.plays;
-    return (b.followers || 0) - (a.followers || 0);
-  }).slice(0, 5);
+  const medals = ['🥇', '🥈', '🥉'];
 
-  el.innerHTML = sorted.map((a, i) => {
-    const initials   = (a.artistName || '?')[0].toUpperCase();
-    const medals     = ['🥇','🥈','🥉'];
-    const rankLabel  = i < 3 ? medals[i] : `#${i + 1}`;
-    // Lien vers la page artiste publique si le slug est disponible
-    const artistSlug = a.slug || _slugify(a.artistName);
-    const profileUrl = artistSlug ? `/artiste/${artistSlug}` : '/watt';
-    return `
-    <div class="hub-rank-row" onclick="window.location.href='${profileUrl}'" title="Voir le profil artiste">
-      <div class="hub-rank-num">${rankLabel}</div>
-      <div class="hub-rank-avatar">${initials}</div>
-      <div class="hub-rank-info">
-        <div class="hub-rank-name">${_esc(a.artistName)}${a.isMe ? ' <span style="color:rgba(255,215,0,.4);font-size:8px">· Toi</span>' : ''}</div>
-        <div class="hub-rank-genre">${_esc(a.genre || 'Artiste IA')}</div>
-      </div>
-      <div class="hub-rank-plays">${a.plays || 0} ▶</div>
+  el.innerHTML = src.map((a, i) => {
+    const slug = a.slug || _slugify(a.artistName);
+    const url  = slug ? `/artiste/${slug}` : '/watt';
+    const playsStr = _fmtHub(a.plays || 0);
+    return `<div class="hub-t3-row" onclick="window.location.href='${url}'"
+                 role="button" tabindex="0"
+                 onkeydown="if(event.key==='Enter')window.location.href='${url}'">
+      <span class="hub-t3-medal">${medals[i]}</span>
+      <span class="hub-t3-name">${_esc(a.artistName)}${a.isMe ? '<span class="hub-t3-me"> · Toi</span>' : ''}</span>
+      <span class="hub-t3-plays">${playsStr}&thinsp;▶</span>
     </div>`;
   }).join('');
 }
 
-function _renderHubRecentTracks() {
-  const el = document.getElementById('hub-recent-list');
-  if (!el) return;
-  const { tracks } = _getWattCommunityData();
-  const profile = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
-  const artistName = profile ? (profile.artistName || 'Artiste WATT') : 'Artiste WATT';
-
-  if (!tracks.length) {
-    el.innerHTML = `<div class="hub-recent-empty">
-      Aucun son publié pour l'instant<br>
-      <span style="font-size:8px;opacity:.6">Upload tes créations IA depuis le dashboard</span>
-    </div>`;
-    return;
-  }
-
-  const recent = [...tracks]
-    .sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0))
-    .slice(0, 5);
-
-  el.innerHTML = recent.map(t => {
-    const coverHTML = t.coverDataUrl
-      ? `<img src="${t.coverDataUrl}" alt=""/>`
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="14" height="14"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
-    const playable = !!t.streamUrl;
-    return `
-    <div class="hub-recent-row${playable ? ' hub-recent-playable' : ''}"
-         ${playable ? `onclick="playWattTrack('${t.id}')" title="Écouter dans le player"` : ''}>
-      <div class="hub-recent-cover">${coverHTML}</div>
-      <div class="hub-recent-info">
-        <div class="hub-recent-name">${_esc(t.name)}${playable ? ' <span class="hub-play-icon">▶</span>' : ''}</div>
-        <div class="hub-recent-artist">${_esc(artistName)} · ${_esc(t.genre || 'IA')}</div>
-      </div>
-      <div class="hub-recent-date">${t.date || ''}</div>
-    </div>`;
-  }).join('');
+function _fmtHub(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K';
+  return String(n);
 }
 
 function _esc(s) {
