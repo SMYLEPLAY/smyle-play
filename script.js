@@ -4,20 +4,10 @@
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 1. STATE ─────────────────────────────────────────────────────────────────
-
-let PLAYLISTS       = {};
-let currentPlaylist = null;   // playlist EN COURS DE LECTURE (ne jamais nullifier côté UI)
-let openedPanelKey  = null;   // playlist dont le panel est ouvert (séparé du playback)
-let currentTrackIdx = -1;
-let currentTheme    = null;
-let audio           = new Audio();
-let isPlaying       = false;
-let myMixTracks     = [];
-let mixPlaying      = false;
-let mixIdx          = 0;
-let progressDragging = false;
-let loopMode         = false;
-let dragSrcIdx       = null;
+// State variables moved to ui/core/state.js (loaded before this file via index.html).
+// Shared lexical-scope vars: PLAYLISTS, currentPlaylist, openedPanelKey,
+// currentTrackIdx, currentTheme, audio, isPlaying, myMixTracks, mixPlaying,
+// mixIdx, progressDragging, loopMode, dragSrcIdx, _msUpdateCounter.
 
 // ── 2. CHARGEMENT DYNAMIQUE DES PLAYLISTS ────────────────────────────────────
 
@@ -429,7 +419,7 @@ function prevTrack() {
 // ── 9. PROGRESS BAR (div-based) ──────────────────────────────────────────────
 
 // Compteur de timeupdate pour limiter les updates Media Session (coûteux)
-let _msUpdateCounter = 0;
+// → `_msUpdateCounter` is declared in ui/core/state.js
 audio.addEventListener('timeupdate', () => {
   if (progressDragging || !audio.duration) return;
   const pct = (audio.currentTime / audio.duration) * 100;
