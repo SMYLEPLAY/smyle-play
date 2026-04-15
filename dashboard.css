@@ -1192,3 +1192,140 @@ html { scroll-behavior: smooth; }
   .dash-upload-actions, .dash-edit-actions { flex-wrap: wrap; }
   .dash-btn-primary, .dash-btn-ghost { width: 100%; justify-content: center; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SPRINT MOBILE — Dashboard WATT
+   Breakpoints : 860px (étendu) · 640px · 560px (étendu) · 400px
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 860px : Tablette / paysage ─────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .dash-topbar { padding: 0 16px; }
+  .dash-topbar-badge { display: none; }
+  .dash-main { padding: 24px 16px 60px; }
+
+  /* Artist card */
+  .dash-artist-card { grid-template-columns: auto 1fr; gap: 16px; }
+  .dash-kpi-row { grid-column: 1 / -1; }
+
+  /* Stats */
+  .dash-stats-cards { grid-template-columns: repeat(2, 1fr); }
+
+  /* Upload */
+  .dash-upload-fields { grid-template-columns: 1fr; }
+  .dash-cover-col { flex-direction: row; align-items: flex-start; gap: 12px; }
+  .dash-cover-drop { width: 120px; height: 120px; flex-shrink: 0; }
+
+  /* Profile */
+  .dash-edit-grid { grid-template-columns: 1fr; }
+
+  /* Chart : scroll horizontal si trop étroit */
+  .dash-chart-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dash-chart { min-width: 300px; }
+}
+
+/* ── 640px : Portrait standard ──────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Section nav : pilules cachées, remplacées par padding simple */
+  .dash-section-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0 12px; }
+  .dash-snav-inner { gap: 4px; }
+  .dash-snav-pill { font-size: 9px; padding: 5px 12px; letter-spacing: .1em; white-space: nowrap; }
+
+  /* Artist card KPIs */
+  .dash-kpi { min-width: 0; }
+  .dash-kpi-val { font-size: 20px; }
+  .dash-kpi-lbl { font-size: 8px; }
+
+  /* Tracks list */
+  .dash-track-row { padding: 8px 0; gap: 8px; }
+  .dash-track-cover { width: 32px; height: 32px; flex-shrink: 0; }
+  .dash-track-name { font-size: 11px; }
+
+  /* Chart tabs */
+  .dash-chart-tabs { gap: 4px; flex-wrap: wrap; }
+  .dash-chart-tab { padding: 5px 12px; font-size: 9px; }
+  .dash-stat-card { padding: 14px 12px; }
+  .dash-stat-val { font-size: 24px; }
+  .dash-stat-lbl { font-size: 8px; }
+
+  /* Upload */
+  .dash-upload-zone { padding: 24px 16px; min-height: 100px; }
+  .dash-upload-actions { flex-wrap: wrap; gap: 8px; }
+  .dash-btn-primary, .dash-btn-ghost { flex: 1; min-width: 120px; justify-content: center; }
+
+  /* Tags input */
+  .dash-tags-row { flex-wrap: wrap; }
+
+  /* Profile view */
+  .pv-socials { flex-wrap: wrap; gap: 6px; }
+  .pv-social-link { font-size: 9px; padding: 4px 10px; }
+
+  /* Profile edit */
+  .dash-edit-actions { flex-wrap: wrap; gap: 8px; }
+
+  /* Ranking */
+  .dash-my-rank-card { flex-wrap: wrap; gap: 10px; }
+  .dash-rank-me-score { margin-left: 0; width: 100%; }
+  .dash-rank-row { gap: 8px; padding: 8px 0; }
+  .dash-rank-name { font-size: 11px; }
+
+  /* Network canvas */
+  #dashNetworkCanvas { height: 260px; }
+}
+
+/* ── 560px : Téléphones (existant étendu) ───────────────────────────────── */
+@media (max-width: 560px) {
+  .dash-topbar-logo span { display: none; }
+  .dash-topbar-brand { font-size: .75rem; letter-spacing: .12em; }
+  .dash-topbar { padding: 0 12px; }
+  .dash-section-nav { display: none; } /* Trop étroit → caché, navigation par scroll */
+  .dash-main { margin-top: var(--d-topbar-h); padding: 18px 12px 80px; }
+
+  /* Artist card full-width */
+  .dash-artist-card { display: block; }
+  .dash-artist-avatar-wrap { margin-bottom: 14px; }
+  .dash-kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .dash-kpi { border: 1px solid rgba(255,215,0,.08); border-radius: 4px; padding: 10px; text-align: center; }
+  .dash-kpi-val { font-size: 18px; }
+
+  /* Stats 2 cols */
+  .dash-stats-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Inputs iOS : font-size 16px pour éviter le zoom automatique */
+  .dash-input, .dash-textarea, .dash-select { font-size: 16px !important; }
+
+  /* Upload */
+  .dash-upload-actions, .dash-edit-actions { flex-wrap: wrap; }
+  .dash-btn-primary, .dash-btn-ghost { width: 100%; justify-content: center; min-height: 44px; }
+  .dash-cover-drop { width: 100px; height: 100px; }
+}
+
+/* ── 400px : Petits téléphones / iPhone SE ──────────────────────────────── */
+@media (max-width: 400px) {
+  .dash-topbar-brand { font-size: .7rem; }
+  .dash-main { padding: 14px 10px 80px; }
+
+  /* Stats : 1 colonne sur très petit écran */
+  .dash-stats-cards { grid-template-columns: 1fr; }
+
+  /* Avatar réduit */
+  .dash-artist-avatar { width: 68px; height: 68px; font-size: 26px; }
+
+  /* Sections titles */
+  .dash-section-title { font-size: 1rem; letter-spacing: .15em; }
+  .dash-section-sub { font-size: 9px; }
+
+  /* Touch targets */
+  .dash-btn-primary, .dash-btn-ghost { min-height: 44px; }
+  .dash-snav-pill { min-height: 36px; }
+
+  /* Upload zone plus compacte */
+  .dash-upload-zone { min-height: 100px; font-size: 12px; }
+
+  /* Network canvas */
+  #dashNetworkCanvas { height: 220px; }
+
+  /* Ranking row compact */
+  .dash-rank-row { padding: 6px 0; }
+  .dash-rank-avatar { width: 26px; height: 26px; font-size: 10px; }
+}

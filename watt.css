@@ -996,3 +996,113 @@
   .watt-gate-actions { flex-direction: column; width: 100%; }
   .watt-btn-primary, .watt-btn-ghost { width: 100%; justify-content: center; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SPRINT MOBILE — Page PLUG WATT
+   Breakpoints : 900px (étendu) · 640px · 500px (étendu) · 390px
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 900px : Tablette ───────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .watt-nav { padding: 12px 20px; flex-wrap: wrap; gap: 8px; }
+  .watt-nav-links { gap: 16px; }
+  .watt-hero { padding: 48px 20px 40px; }
+  .watt-main { padding: 0 20px 40px; }
+  .watt-panels-grid { grid-template-columns: 1fr; gap: 16px; }
+  .watt-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .watt-footer { padding: 16px 20px; flex-wrap: wrap; gap: 10px; }
+  .watt-footer-links { flex-wrap: wrap; gap: 10px; }
+}
+
+/* ── 640px : Téléphone portrait ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Nav */
+  .watt-nav { padding: 10px 16px; }
+  .watt-nav-links { display: none; } /* Menu links cachés sur mobile */
+  .watt-nav-cta { font-size: 9px; padding: 7px 14px; letter-spacing: .12em; }
+
+  /* Hero */
+  .watt-hero { padding: 36px 16px 32px; text-align: center; }
+  .watt-hero-title {
+    font-size: clamp(30px, 10vw, 56px);
+    letter-spacing: .22em;
+    line-height: 1.1;
+  }
+  .watt-hero-sub { font-size: 11px; letter-spacing: .14em; max-width: 100%; }
+  .watt-hero-tagline { font-size: 9px; letter-spacing: .2em; }
+  .watt-hero-beta-badge { font-size: 9px; padding: 6px 14px; }
+
+  /* Gate box */
+  .watt-gate-section { padding: 0 16px 40px; }
+  .watt-gate-box { padding: 24px 18px; }
+  .watt-gate-title { font-size: 15px; letter-spacing: .15em; }
+  .watt-gate-sub { font-size: 10px; }
+
+  /* Inputs : font-size 16px pour éviter zoom iOS */
+  .watt-input, .watt-select, .watt-textarea { font-size: 16px !important; }
+
+  /* Gate actions : colonne */
+  .watt-gate-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+  .watt-btn-primary,
+  .watt-btn-ghost {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px; /* touch target minimum iOS/Android */
+    font-size: 10px;
+    letter-spacing: .15em;
+  }
+
+  /* Stats */
+  .watt-stats-row { gap: 0; }
+  .watt-stat { padding: 14px 10px; }
+  .watt-stat-val { font-size: 22px; }
+  .watt-stat-lbl { font-size: 8px; letter-spacing: .12em; }
+
+  /* Panels content */
+  .watt-main { padding: 0 16px 40px; }
+  .watt-panel { padding: 18px 16px; }
+  .watt-panel-title { font-size: 11px; letter-spacing: .2em; }
+
+  /* Features list */
+  .watt-features-list { gap: 10px; }
+  .watt-feature { padding: 12px 14px; gap: 12px; }
+  .watt-feature-icon { font-size: 20px; }
+  .watt-feature-name { font-size: 10px; }
+
+  /* Roadmap */
+  .watt-roadmap-list { gap: 10px; }
+  .watt-roadmap-item { padding: 12px 14px; gap: 12px; }
+
+  /* Footer */
+  .watt-footer { flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px; }
+  .watt-footer-links { flex-wrap: wrap; gap: 8px; }
+  .watt-footer-link { font-size: 9px; }
+}
+
+/* ── 500px : Existant étendu ────────────────────────────────────────────── */
+@media (max-width: 500px) {
+  .watt-stats-row { grid-template-columns: 1fr 1fr; }
+  .watt-hero-title { font-size: clamp(28px, 9vw, 44px); letter-spacing: .2em; }
+  .watt-gate-actions { flex-direction: column; width: 100%; }
+  .watt-btn-primary, .watt-btn-ghost { width: 100%; justify-content: center; }
+}
+
+/* ── 390px : iPhone 14/15 Pro, Pixel 8 ─────────────────────────────────── */
+@media (max-width: 390px) {
+  .watt-nav { padding: 10px 12px; }
+  .watt-hero { padding: 28px 12px 24px; }
+  .watt-hero-title { font-size: 28px; letter-spacing: .18em; }
+  .watt-hero-sub { font-size: 10px; letter-spacing: .12em; }
+  .watt-stat-val { font-size: 18px; }
+  .watt-stat-lbl { font-size: 8px; letter-spacing: .1em; }
+  .watt-main { padding: 0 12px 40px; }
+  .watt-gate-box { padding: 18px 14px; }
+  .watt-gate-title { font-size: 13px; letter-spacing: .12em; }
+  .watt-gate-section { padding: 0 12px 36px; }
+  .watt-btn-primary, .watt-btn-ghost { font-size: 9px; letter-spacing: .12em; }
+  .watt-footer { padding: 12px; }
+}

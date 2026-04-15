@@ -1079,3 +1079,190 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
   .hub-panel { padding: 16px 20px; }
   .hub-cta { padding: 16px 20px; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SPRINT MOBILE — Responsive iPhone / Android / Safari Mobile / Chrome Mobile
+   Breakpoints : 860px · 640px · 480px · 390px
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Base : éviter tout débordement horizontal ──────────────────────────── */
+html { overflow-x: hidden; }
+body { overflow-x: hidden; }
+img, video, svg { max-width: 100%; }
+
+/* ── 860px : Tablette / grands téléphones paysage ──────────────────────── */
+@media (max-width: 860px) {
+  header { padding: 14px 20px; gap: 8px; }
+  .hero { padding: 36px 20px 24px; }
+  .playlists-grid { padding: 0 20px; gap: 16px; margin-bottom: 32px; }
+  .hitmix-section { padding: 0 20px; margin-bottom: 40px; }
+  .hitmix-card { padding: 28px 24px; gap: 28px; }
+  .selection-officielle-header { padding: 0 20px; }
+  .community-hub { margin: 28px 20px 0; }
+  .watt-section { margin: 0 20px 40px; }
+}
+
+/* ── 640px : Téléphone paysage / portrait standard ──────────────────────── */
+@media (max-width: 640px) {
+
+  /* ── Header ── */
+  header { padding: 12px 14px; gap: 6px; }
+  .logo-text { font-size: 13px; letter-spacing: .2em; }
+  .support-btn { display: none; }
+  .mix-toggle-btn { padding: 6px 10px; font-size: 9px; letter-spacing: .12em; }
+
+  /* ── Hero ── */
+  .hero { padding: 28px 16px 20px; }
+  .hero-sub { font-size: 9px; letter-spacing: .18em; }
+
+  /* ── Grille playlists : 2 colonnes ── */
+  .playlists-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 16px;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .playlist-card { aspect-ratio: 2 / 3; }
+  .card-content { padding: 16px 14px; }
+  .card-neon { font-size: clamp(14px, 4.5vw, 22px); }
+  .card-subtitle { font-size: 9px; margin-bottom: 12px; }
+  .card-quick-play { width: 44px; height: 44px; } /* touch target min 44px */
+
+  /* ── HIT MIX ── */
+  .hitmix-section { padding: 0 16px; margin-bottom: 28px; }
+  .hitmix-card { padding: 20px 16px; gap: 14px; min-height: auto; }
+  .hitmix-title { font-size: clamp(22px, 7.5vw, 40px); }
+  .hitmix-sub { font-size: 9px; letter-spacing: .18em; }
+  .hitmix-play { display: none; }
+  .hitmix-card .card-quick-play {
+    opacity: .65;
+    transform: scale(.9);
+  }
+
+  /* ── Player mobile simplifié ── */
+  :root { --player-h: 72px; }
+  body { padding-bottom: 72px; }
+  #player { height: 72px; padding: 0 12px; gap: 8px; }
+  .player-controls { gap: 10px; }
+  .player-track-name { font-size: 12px; }
+  .player-playlist-name { display: none; }
+  .player-time { display: none; }
+  .player-mode-tag { display: none; }
+  #btn-loop { display: none; }
+  .ctrl-btn.ctrl-add-mix { display: none; }
+  .player-progress { min-width: 0; flex: 1; }
+  .progress-bar { height: 30px; } /* zone tactile agrandie */
+  .ctrl-btn svg { width: 16px; height: 16px; }
+  .ctrl-btn.play-pause svg { width: 22px; height: 22px; }
+
+  /* ── Panneaux latéraux : pleine largeur ── */
+  .track-panel,
+  .mix-panel { width: 100vw; max-width: 100vw; }
+  .panel-header { padding: 20px 16px 14px; }
+  .track-item { padding: 10px 16px; }
+  .mix-panel-header { padding: 20px 16px 14px; }
+  .mix-track-item { padding: 9px 16px; }
+
+  /* ── Auth modal ── */
+  .modal-box { padding: 24px 16px; }
+
+  /* ── Community hub ── */
+  .selection-officielle-header { padding: 0 16px; }
+  .community-hub { margin: 24px 16px 0; }
+  .hub-header { padding: 14px 16px; gap: 10px; }
+  .hub-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .hub-stat { padding: 12px 8px; }
+  .hub-stat-val { font-size: 18px; }
+  .hub-stat-lbl { font-size: 8px; letter-spacing: .1em; }
+  .hub-panel { padding: 14px 16px; }
+  .hub-cta { padding: 14px 16px; }
+  .hub-cta-inner { padding: 14px 16px; }
+
+  /* ── WATT section legacy ── */
+  .watt-section { margin: 0 16px 32px; }
+  .watt-header { padding: 18px 20px; }
+  .watt-ranking,
+  .watt-info { padding: 18px 20px; }
+}
+
+/* ── 480px : Portrait standard / petits Android ─────────────────────────── */
+@media (max-width: 480px) {
+
+  /* Grille 1 colonne */
+  .playlists-grid { grid-template-columns: 1fr; }
+  .playlist-card { aspect-ratio: 16 / 9; min-height: 160px; }
+  .card-content { padding: 16px; }
+
+  /* Header auth : hide name */
+  .user-name { display: none; }
+
+  /* Hub stats toujours 2×2 */
+  .hub-stat-val { font-size: 16px; }
+
+  /* Modales full-width */
+  .modal-box { width: 94vw; padding: 20px 14px; }
+  .premium-features-grid { grid-template-columns: 1fr; gap: 8px; }
+
+  /* Progress bar tactile */
+  .progress-bar { height: 34px; }
+
+  /* Contact/feedback textarea */
+  .contact-textarea { min-height: 90px; }
+}
+
+/* ── 390px : iPhone 14/15 Pro, Pixel 8 ─────────────────────────────────── */
+@media (max-width: 390px) {
+  header { padding: 10px 12px; }
+  .logo-text { font-size: 12px; letter-spacing: .15em; }
+  .mix-toggle-btn { padding: 5px 8px; font-size: 8px; }
+
+  .hero { padding: 22px 12px 16px; }
+
+  .playlists-grid { padding: 0 12px; gap: 10px; }
+  .hitmix-section { padding: 0 12px; }
+  .hitmix-card { padding: 16px 12px; }
+
+  .community-hub { margin: 20px 12px 0; }
+  .hub-header { flex-wrap: wrap; gap: 8px; }
+  .hub-logo-text { font-size: 13px; letter-spacing: .2em; }
+  .hub-tagline { display: none; }
+  .hub-join-btn { font-size: 8px; padding: 6px 10px; }
+
+  /* Player encore plus compact */
+  #player { padding: 0 10px; gap: 6px; }
+  .player-controls { gap: 8px; }
+  .player-track-name { font-size: 11px; }
+}
+
+/* ── iOS Safari : safe area + touch optimisations ───────────────────────── */
+
+/* Safe area pour notch iPhone (iOS 11+) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  :root { --player-h: calc(80px + env(safe-area-inset-bottom)); }
+  body { padding-bottom: var(--player-h); }
+  #player {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: var(--player-h);
+  }
+  @media (max-width: 640px) {
+    :root { --player-h: calc(72px + env(safe-area-inset-bottom)); }
+  }
+}
+
+/* Touch-action sur les zones cliquables — évite délais 300ms iOS */
+.progress-bar,
+.playlist-card,
+.card-quick-play,
+.ctrl-btn,
+.track-item,
+.hub-rank-row,
+.hub-recent-row { touch-action: manipulation; }
+
+/* Pas de callout sur tap long (sélection texte) */
+.ctrl-btn,
+.card-quick-play,
+.hub-cta-btn { -webkit-tap-highlight-color: transparent; }
+
+/* Scroll smooth pour panneaux latéraux (iOS) */
+.track-list,
+.mix-track-list { -webkit-overflow-scrolling: touch; }
