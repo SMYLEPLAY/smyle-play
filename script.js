@@ -116,94 +116,12 @@ function playWattTrack(trackId) {
 // ── 5. AUTH ──────────────────────────────────────────────────────────────────
 // → `getUsers()`, `saveUsers()`, `getCurrentUser()`, `setCurrentUser()`,
 //    `clearCurrentUser()` moved to ui/core/storage.js
-
-function doSignup(email, password, name) {
-  const users = getUsers();
-  if (users.find(u => u.email === email)) return { ok: false, msg: 'Email déjà utilisé.' };
-  const user = { id: Date.now(), email, password, name, playlists: [] };
-  users.push(user);
-  saveUsers(users);
-  setCurrentUser(user);
-  return { ok: true };
-}
-
-function doLogin(email, password) {
-  const users = getUsers();
-  const user  = users.find(u => u.email === email && u.password === password);
-  if (!user) return { ok: false, msg: 'Email ou mot de passe incorrect.' };
-  setCurrentUser(user);
-  return { ok: true };
-}
-
-function doLogout() {
-  clearCurrentUser();
-  renderAuthArea();
-}
-
+// → `doSignup()`, `doLogin()`, `doLogout()` moved to ui/modals/auth.js
 // → `saveUserPlaylist()` moved to ui/core/storage.js
 
-// ── 6. AUTH UI ────────────────────────────────────────────────────────────────
-
-function renderAuthArea() {
-  const user = getCurrentUser();
-  const area = document.getElementById('authArea');
-  if (!area) return;
-
-  if (user) {
-    const initials = user.name.slice(0, 2).toUpperCase();
-    area.innerHTML = `
-      <div class="user-badge" onclick="openAuthModal('login')">
-        <div class="user-avatar">${initials}</div>
-        <span class="user-name">${user.name}</span>
-      </div>
-      <button class="auth-btn" onclick="doLogout()" style="margin-left:10px">Déco</button>
-    `;
-  } else {
-    area.innerHTML = `
-      <button class="auth-btn" onclick="openAuthModal('login')">Connexion</button>
-      <button class="auth-btn" onclick="openAuthModal('signup')" style="margin-left:6px">S'inscrire</button>
-    `;
-  }
-}
-
-function openAuthModal(tab) {
-  document.getElementById('authModal').classList.add('open');
-  switchAuthTab(tab);
-}
-
-function closeAuthModal() {
-  document.getElementById('authModal').classList.remove('open');
-  document.getElementById('authMsg').textContent = '';
-}
-
-function switchAuthTab(tab) {
-  document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
-  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
-  document.getElementById('form-login').style.display  = tab === 'login'  ? '' : 'none';
-  document.getElementById('form-signup').style.display = tab === 'signup' ? '' : 'none';
-  document.getElementById('authMsg').textContent = '';
-}
-
-function submitLogin() {
-  const email    = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const result   = doLogin(email, password);
-  if (result.ok) { closeAuthModal(); renderAuthArea(); }
-  else document.getElementById('authMsg').textContent = result.msg;
-}
-
-function submitSignup() {
-  const name     = document.getElementById('signup-name').value.trim();
-  const email    = document.getElementById('signup-email').value.trim();
-  const password = document.getElementById('signup-password').value;
-  if (!name || !email || !password) {
-    document.getElementById('authMsg').textContent = 'Tous les champs sont requis.';
-    return;
-  }
-  const result = doSignup(email, password, name);
-  if (result.ok) { closeAuthModal(); renderAuthArea(); }
-  else document.getElementById('authMsg').textContent = result.msg;
-}
+// ── 6. AUTH UI ───────────────────────────────────────────────────────────────
+// → `renderAuthArea()`, `openAuthModal()`, `closeAuthModal()`,
+//   `switchAuthTab()`, `submitLogin()`, `submitSignup()` moved to ui/modals/auth.js
 
 // ── 7. TRACK PANEL ───────────────────────────────────────────────────────────
 // → `openPlaylist()`, `quickPlay()`, `closePanel()`, `closeAll()`
@@ -320,31 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // → `playMixFromIdx()`, `loadMixTrack()`, `nextMixTrack()`, `prevMixTrack()`
 //   moved to ui/player/audio.js
 
-// ── 11. SAVE MIX MODAL ────────────────────────────────────────────────────────
-
-function openSaveMix() {
-  if (!getCurrentUser()) { openAuthModal('login'); return; }
-  if (!myMixTracks.length) { showToast('Aucun morceau dans My Mix.'); return; }
-  document.getElementById('saveMixModal').classList.add('open');
-  document.getElementById('mix-save-name').value = '';
-  document.getElementById('saveMixMsg').textContent = '';
-}
-
-function closeSaveMix() {
-  document.getElementById('saveMixModal').classList.remove('open');
-}
-
-function confirmSaveMix() {
-  const name = document.getElementById('mix-save-name').value.trim();
-  if (!name) { document.getElementById('saveMixMsg').textContent = 'Entre un nom.'; return; }
-  const ok = saveUserPlaylist(name, myMixTracks.map(m => ({ ...m })));
-  if (ok) {
-    showToast(`Playlist « ${name} » sauvegardée !`);
-    closeSaveMix();
-  } else {
-    document.getElementById('saveMixMsg').textContent = 'Erreur lors de la sauvegarde.';
-  }
-}
+// ── 11. SAVE MIX MODAL ───────────────────────────────────────────────────────
+// → `openSaveMix()`, `closeSaveMix()`, `confirmSaveMix()` moved to
+//   ui/modals/save-mix.js
 
 // ── 12. MIX DRAG-AND-DROP ────────────────────────────────────────────────────
 // → `mixDragStart()`, `mixDragOver()`, `mixDrop()`, `mixDragEnd()`
@@ -354,75 +250,12 @@ function confirmSaveMix() {
 // → `toggleLoop()` moved to ui/player/audio.js
 
 // ── 14. CONTACT MODAL ────────────────────────────────────────────────────────
-
-function openContactModal() {
-  document.getElementById('contactModal').classList.add('open');
-  document.getElementById('contact-success').textContent = '';
-  document.getElementById('contact-form').reset();
-}
-
-function closeContactModal() {
-  document.getElementById('contactModal').classList.remove('open');
-}
-
-function submitContact() {
-  const name    = document.getElementById('contact-name').value.trim();
-  const email   = document.getElementById('contact-email').value.trim();
-  const type    = document.getElementById('contact-type').value;
-  const msg     = document.getElementById('contact-msg').value.trim();
-
-  if (!msg) {
-    document.getElementById('contact-success').style.color = '#ff5555';
-    document.getElementById('contact-success').textContent = 'Merci d\'écrire un message.';
-    return;
-  }
-
-  // Sauvegarder dans localStorage (log local)
-  const feedbacks = JSON.parse(localStorage.getItem('smyle_feedback') || '[]');
-  feedbacks.push({ name, email, type, msg, date: new Date().toISOString() });
-  localStorage.setItem('smyle_feedback', JSON.stringify(feedbacks));
-
-  // Ouvrir le client mail de l'utilisateur en fallback
-  const subject = encodeURIComponent(`[SMYLE PLAY] ${type} — ${name || 'Anonyme'}`);
-  const body    = encodeURIComponent(`Catégorie : ${type}\nNom : ${name || '—'}\nEmail : ${email || '—'}\n\n${msg}`);
-  const mailto  = `mailto:smyletheplan@gmail.com?subject=${subject}&body=${body}`;
-  window.location.href = mailto;
-
-  document.getElementById('contact-success').style.color = '#44cc88';
-  document.getElementById('contact-success').textContent = 'Message enregistré — merci pour ton retour !';
-  setTimeout(closeContactModal, 2200);
-}
+// → `openContactModal()`, `closeContactModal()`, `submitContact()` moved to
+//   ui/modals/contact.js
 
 // ── 14a. PREMIUM MODAL ───────────────────────────────────────────────────────
-
-function openPremiumModal() {
-  document.getElementById('premiumModal').classList.add('open');
-  document.getElementById('premiumMsg').textContent = '';
-}
-
-function closePremiumModal() {
-  document.getElementById('premiumModal').classList.remove('open');
-}
-
-function submitPremiumInterest() {
-  const user = getCurrentUser();
-  // Sauvegarder l'intérêt en localStorage
-  const interests = JSON.parse(localStorage.getItem('smyle_premium_interests') || '[]');
-  const email = user ? user.email : 'anonyme';
-  if (!interests.includes(email)) {
-    interests.push(email);
-    localStorage.setItem('smyle_premium_interests', JSON.stringify(interests));
-  }
-  const msg = document.getElementById('premiumMsg');
-  msg.style.color = '#ffd700';
-  msg.textContent = '✓ Noté ! Tu seras averti(e) à l\'ouverture de l\'espace artiste.';
-  // Ouvrir client mail pour notifier l'équipe
-  if (user) {
-    const subject = encodeURIComponent('[SMYLE PLAY] Intérêt Premium Artiste');
-    const body = encodeURIComponent(`Utilisateur intéressé : ${user.name} <${user.email}>`);
-    setTimeout(() => { window.location.href = `mailto:smyletheplan@gmail.com?subject=${subject}&body=${body}`; }, 1200);
-  }
-}
+// → `openPremiumModal()`, `closePremiumModal()`, `submitPremiumInterest()`
+//   moved to ui/modals/premium.js
 
 // ── 14b. ADD CURRENT TRACK TO MIX (bouton + dans le player) ──────────────────
 // → `addCurrentToMix()` moved to ui/panels/mix.js
