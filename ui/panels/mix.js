@@ -14,7 +14,7 @@
      ui/panels/playlist.js — closePanel (from toggleMixPanel)
      ui/player/audio.js    — playMixFromIdx (inline onclick in render)
 
-   Must load after state/dom/storage/audio/playlist and before script.js.
+   Must load after state/dom/storage/audio/playlist.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 10. MY MIX ──────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────────────────────────────────
    SMYLE PLAY — ui/core/state.js
    Mutable state partagé entre tous les modules UI.
-   Doit être chargé AVANT script.js et tout autre module UI dans index.html.
+   Doit être chargé AVANT tout autre module UI dans index.html.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 1. STATE ─────────────────────────────────────────────────────────────────
@@ -21,5 +21,5 @@ let loopMode         = false;
 let dragSrcIdx       = null;
 
 // Compteur de timeupdate pour limiter les updates Media Session (coûteux)
-// (consommé par le listener audio.addEventListener('timeupdate', …) dans script.js)
+// (consommé par le listener audio.addEventListener('timeupdate', …) dans ui/app.js)
 let _msUpdateCounter = 0;

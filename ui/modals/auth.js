@@ -6,7 +6,7 @@
      ui/core/storage.js — getUsers, saveUsers, getCurrentUser,
                           setCurrentUser, clearCurrentUser
 
-   Must load after storage.js and before script.js.
+   Must load after storage.js.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 5. AUTH ─────────────────────────────────────────────────────────────────

@@ -14,7 +14,7 @@
      ui/player/audio.js — loadTrack
      ui/panels/mix.js   — closeMixPanel (via closeAll), addToMix (inline onclick)
 
-   Must load after state/dom/storage/audio and before script.js.
+   Must load after state/dom/storage/audio.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 7. TRACK PANEL ──────────────────────────────────────────────────────────

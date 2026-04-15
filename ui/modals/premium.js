@@ -5,7 +5,7 @@
    Calls helpers from:
      ui/core/storage.js — getCurrentUser
 
-   Must load after storage.js and before script.js.
+   Must load after storage.js.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 14a. PREMIUM MODAL ──────────────────────────────────────────────────────

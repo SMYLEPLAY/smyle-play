@@ -12,10 +12,10 @@
    Calls helpers from:
      ui/core/dom.js     — encodeFilePath, fmtPlays, showToast
      ui/core/storage.js — incrementPlay, getPlayCount
-   Calls still in script.js (forward ref, resolved at call time):
-     renderMixPanel (Phase 4 will move this)
+   Cross-module calls (resolved at call time via shared global scope):
+     ui/panels/mix.js   — renderMixPanel (called from loadMixTrack)
 
-   Must load after ui/core/state.js, dom.js, storage.js and before script.js.
+   Must load after ui/core/state.js, dom.js, storage.js.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 8. AUDIO PLAYER ──────────────────────────────────────────────────────────

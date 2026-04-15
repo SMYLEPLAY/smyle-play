@@ -10,7 +10,7 @@
    Cross-module calls (resolved at call time):
      ui/modals/auth.js  — openAuthModal (prompt login if anonymous)
 
-   Must load after state/dom/storage/auth and before script.js.
+   Must load after state/dom/storage/auth.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 11. SAVE MIX MODAL ──────────────────────────────────────────────────────

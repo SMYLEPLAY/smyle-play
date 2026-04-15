@@ -20,7 +20,7 @@
    one unit. Do NOT split them across files or refactor the closure out.
    ── ─────────────────────────────────────────────────────────────────────
 
-   Must load after state/dom/storage/audio and before script.js.
+   Must load after state/dom/storage/audio.
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── 2. CHARGEMENT DYNAMIQUE DES PLAYLISTS ───────────────────────────────────
