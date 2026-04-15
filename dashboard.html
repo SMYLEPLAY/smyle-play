@@ -18,6 +18,7 @@
 <!-- ═══════ TOPBAR ════════════════════════════════════════════════════════════ -->
 <header class="dash-topbar">
   <a href="/" class="dash-topbar-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" style="flex-shrink:0;opacity:.6"><polyline points="15 18 9 12 15 6"/></svg>
     <svg width="20" height="27" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg" style="transform:rotate(-11deg)">
       <g transform="translate(30,42)">
         <circle cx="24" cy="0" r="2.4" fill="#0c0018"/><circle cx="0" cy="24" r="2.4" fill="#0c0018"/>
@@ -57,25 +58,17 @@
   <div class="dash-section-nav-inner">
     <a class="dash-snav-pill active" href="#sec-artist" data-sec="sec-artist">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      Artiste
+      Identité
     </a>
     <a class="dash-snav-pill" href="#sec-upload" data-sec="sec-upload">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      Upload
-    </a>
-    <a class="dash-snav-pill" href="#sec-profile" data-sec="sec-profile">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Profil
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      Ma Musique
     </a>
     <a class="dash-snav-pill" href="#sec-stats" data-sec="sec-stats">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Stats
     </a>
     <a class="dash-snav-pill" href="#sec-ranking" data-sec="sec-ranking">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="18 20V10"/><polyline points="12 20V4"/><polyline points="6 20v-6"/></svg>
-      Classement
-    </a>
-    <a class="dash-snav-pill" href="#sec-network" data-sec="sec-network">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
       Réseau
     </a>
@@ -86,14 +79,12 @@
 <main class="dash-main" id="dashMain">
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       SECTION 1 — CARTE ARTISTE
+       BLOC 1 — IDENTITÉ ARTISTE
        ────────────────────────────────────────────────────────────────────────── -->
   <section class="dash-section" id="sec-artist">
     <div class="dash-section-hdr">
-      <h2 class="dash-section-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        Ma Carte Artiste
-      </h2>
+      <div class="dash-section-num">01</div>
+      <h2 class="dash-section-title">Identité Artiste</h2>
     </div>
 
     <div class="dash-artist-card">
@@ -139,33 +130,16 @@
       </div>
     </div>
 
-    <!-- Mes sons publiés -->
-    <div class="dash-tracks-panel">
-      <div class="dash-tracks-hdr">
-        <span class="dash-tracks-hdr-title">Mes Sons Publiés</span>
-        <span class="dash-tracks-count" id="myTracksCount">0 sons</span>
-      </div>
-      <div id="myTracksList" class="dash-tracks-list">
-        <div class="dash-empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="40" height="40" style="opacity:.2">
-            <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-          </svg>
-          <p>Aucun son publié.<br>Rends-toi dans la section Upload.</p>
-        </div>
-      </div>
-    </div>
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       SECTION 2 — UPLOAD
+       BLOC 2 — MA MUSIQUE (upload + mes sons)
        ────────────────────────────────────────────────────────────────────────── -->
   <section class="dash-section" id="sec-upload">
     <div class="dash-section-hdr">
-      <h2 class="dash-section-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Uploader un Son
-      </h2>
-      <span class="dash-section-sub">WAV · MP3 · FLAC · AAC · M4A · max 100 MB</span>
+      <div class="dash-section-num">02</div>
+      <h2 class="dash-section-title">Ma Musique</h2>
+      <span class="dash-section-sub">WAV · MP3 · FLAC · AAC · M4A · max 100&nbsp;MB</span>
     </div>
 
     <!-- Compteur freemium -->
@@ -284,10 +258,26 @@
       </div>
 
     </div><!-- /dash-upload-layout -->
+
+    <!-- Mes Sons Publiés (intégré dans Ma Musique) -->
+    <div class="dash-tracks-panel">
+      <div class="dash-tracks-hdr">
+        <span class="dash-tracks-hdr-title">Mes Sons Publiés</span>
+        <span class="dash-tracks-count" id="myTracksCount">0 / 6 sons</span>
+      </div>
+      <div id="myTracksList" class="dash-tracks-list">
+        <div class="dash-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="40" height="40" style="opacity:.2">
+            <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+          </svg>
+          <p>Aucun son encore.<br>Glisse ton premier fichier ci-dessus.</p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       SECTION 3 — PROFIL ARTISTE
+       PROFIL ARTISTE (édition — ancre invisible, inclus dans Identité nav)
        ────────────────────────────────────────────────────────────────────────── -->
   <section class="dash-section" id="sec-profile">
     <div class="dash-section-hdr">
@@ -348,14 +338,12 @@
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       SECTION 4 — STATISTIQUES
+       BLOC 3 — STATISTIQUES
        ────────────────────────────────────────────────────────────────────────── -->
   <section class="dash-section" id="sec-stats">
     <div class="dash-section-hdr">
-      <h2 class="dash-section-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Statistiques d'Écoutes
-      </h2>
+      <div class="dash-section-num">03</div>
+      <h2 class="dash-section-title">Statistiques</h2>
     </div>
 
     <!-- Onglets période -->
@@ -440,14 +428,12 @@
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       SECTION 5 — CLASSEMENT WATT
+       BLOC 4 — RÉSEAU & CLASSEMENT WATT
        ────────────────────────────────────────────────────────────────────────── -->
   <section class="dash-section" id="sec-ranking">
     <div class="dash-section-hdr">
-      <h2 class="dash-section-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="18 20V10"/><polyline points="12 20V4"/><polyline points="6 20v-6"/></svg>
-        Classement WATT
-      </h2>
+      <div class="dash-section-num">04</div>
+      <h2 class="dash-section-title">Réseau &amp; Classement</h2>
       <span class="dash-section-sub">Trié par écoutes · puis par abonnés</span>
     </div>
 
@@ -462,29 +448,19 @@
     <div class="dash-ranking-list" id="dashRankingList">
       <!-- rempli par JS -->
     </div>
-  </section>
 
-  <!-- ──────────────────────────────────────────────────────────────────────────
-       SECTION 6 — RÉSEAU CRÉATIF
-       ────────────────────────────────────────────────────────────────────────── -->
-  <section class="dash-section" id="sec-network">
-    <div class="dash-section-hdr">
-      <h2 class="dash-section-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-        Réseau Créatif WATT
-      </h2>
-      <span class="dash-section-sub">Connexions entre artistes · sons · playlists</span>
-    </div>
-
-    <div class="dash-network-wrap">
-      <canvas id="dashNetworkCanvas" class="dash-network-canvas"></canvas>
-      <div class="dash-network-legend">
-        <span class="dnl-dot dnl-artist"></span> Artiste
-        <span class="dnl-dot dnl-track"></span> Morceau
-        <span class="dnl-dot dnl-playlist"></span> Playlist
-        <span class="dnl-dot dnl-watt"></span> Toi
+    <!-- Réseau créatif — canvas (intégré dans Bloc 4) -->
+    <div class="dash-network-block">
+      <div class="dash-network-title">Réseau Créatif WATT</div>
+      <div class="dash-network-sub">Clique sur un artiste pour accéder à son profil</div>
+      <div class="dash-network-wrap" id="sec-network">
+        <canvas id="dashNetworkCanvas" class="dash-network-canvas"></canvas>
+        <div class="dash-network-legend">
+          <span class="dnl-dot dnl-artist"></span> Artiste
+          <span class="dnl-dot dnl-track"></span> Morceau
+          <span class="dnl-dot dnl-watt"></span> Toi
+        </div>
       </div>
-      <div class="dash-network-tip">Survole les nœuds pour explorer</div>
     </div>
   </section>
 

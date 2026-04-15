@@ -10,6 +10,28 @@
 // Limite freemium — version gratuite bêta
 const FREE_LIMIT = 6;
 
+// ── Wrapper sécurisé localStorage (Safari Private Mode / quota 0 octet) ──────
+const safeStorage = {
+  getItem(key) {
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+  },
+  setItem(key, val) {
+    try { localStorage.setItem(key, val); return true; }
+    catch(e) { return false; }
+  },
+  removeItem(key) {
+    try { localStorage.removeItem(key); } catch(e) {}
+  },
+  isAvailable() {
+    try {
+      const k = '__smyle_test__';
+      localStorage.setItem(k, '1');
+      localStorage.removeItem(k);
+      return true;
+    } catch(e) { return false; }
+  },
+};
+
 function slugify(name) {
   return (name || '')
     .toLowerCase()
@@ -181,9 +203,9 @@ class DashNetwork {
     const cx = W / 2, cy = H / 2;
 
     // ── Données réelles depuis localStorage ─────────────────────────────
-    const profile   = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
-    const myTracks  = JSON.parse(localStorage.getItem('smyle_watt_tracks')   || '[]');
-    const community = JSON.parse(localStorage.getItem('smyle_watt_community') || '[]');
+    const profile   = JSON.parse(safeStorage.getItem('smyle_watt_profile') || 'null');
+    const myTracks  = JSON.parse(safeStorage.getItem('smyle_watt_tracks')   || '[]');
+    const community = JSON.parse(safeStorage.getItem('smyle_watt_community') || '[]');
 
     // ── Nœud central "moi" ───────────────────────────────────────────────
     const meName = (profile && profile.artistName) ? profile.artistName : 'Toi';
@@ -386,32 +408,32 @@ class DashNetwork {
 
 // ── 3. LOCALSTORAGE HELPERS ───────────────────────────────────────────────────
 
-function getUsers()       { return JSON.parse(localStorage.getItem('smyle_users')         || '[]'); }
-function saveUsers(u)     { localStorage.setItem('smyle_users', JSON.stringify(u)); }
-function getCurrentUser() { return JSON.parse(localStorage.getItem('smyle_current_user')  || 'null'); }
-function setCurrentUser(u){ localStorage.setItem('smyle_current_user', JSON.stringify(u)); }
-function clearCurrentUser(){ localStorage.removeItem('smyle_current_user'); }
+function getUsers()       { return JSON.parse(safeStorage.getItem('smyle_users')         || '[]'); }
+function saveUsers(u)     { safeStorage.setItem('smyle_users', JSON.stringify(u)); }
+function getCurrentUser() { return JSON.parse(safeStorage.getItem('smyle_current_user')  || 'null'); }
+function setCurrentUser(u){ return safeStorage.setItem('smyle_current_user', JSON.stringify(u)); }
+function clearCurrentUser(){ safeStorage.removeItem('smyle_current_user'); }
 // Bêta gratuite — accès libre (le paiement sera ajouté ultérieurement)
 function isPlugWattActive(){ return true; }
 
 function getWattProfile() {
-  return JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+  return JSON.parse(safeStorage.getItem('smyle_watt_profile') || 'null');
 }
 function saveWattProfile(p) {
-  localStorage.setItem('smyle_watt_profile', JSON.stringify(p));
+  safeStorage.setItem('smyle_watt_profile', JSON.stringify(p));
 }
 
 function getMyTracks() {
-  return JSON.parse(localStorage.getItem('smyle_watt_tracks') || '[]');
+  return JSON.parse(safeStorage.getItem('smyle_watt_tracks') || '[]');
 }
 function saveMyTracks(t) {
-  localStorage.setItem('smyle_watt_tracks', JSON.stringify(t));
+  safeStorage.setItem('smyle_watt_tracks', JSON.stringify(t));
 }
 
 function getAllArtists() {
   // Agrège tous les profils artistes stockés (simulation réseau)
   const me = getWattProfile();
-  const data = JSON.parse(localStorage.getItem('smyle_watt_community') || '[]');
+  const data = JSON.parse(safeStorage.getItem('smyle_watt_community') || '[]');
   const list = [];
   if (me) list.push({ ...me, me: true });
   data.forEach(a => list.push(a));
@@ -494,7 +516,7 @@ function renderArtistCard() {
   const avatarImg   = document.getElementById('artistAvatarImg');
   if (avatarInits) avatarInits.textContent = initials;
 
-  const savedImg = localStorage.getItem('smyle_watt_avatar');
+  const savedImg = safeStorage.getItem('smyle_watt_avatar');
   if (savedImg && avatarImg) {
     avatarImg.src = savedImg;
     avatarImg.style.display = 'block';
@@ -629,7 +651,7 @@ function handleAvatarUpload(event) {
   const reader = new FileReader();
   reader.onload = e => {
     const dataUrl = e.target.result;
-    localStorage.setItem('smyle_watt_avatar', dataUrl);
+    safeStorage.setItem('smyle_watt_avatar', dataUrl);
     const img    = document.getElementById('artistAvatarImg');
     const inits  = document.getElementById('artistAvatarInitials');
     if (img)   { img.src = dataUrl; img.style.display = 'block'; }
@@ -878,7 +900,7 @@ function saveProfile() {
 function renderProfileView() {
   const p = getWattProfile();
   const initials = p ? (p.artistName || '?')[0].toUpperCase() : '?';
-  const savedImg = localStorage.getItem('smyle_watt_avatar');
+  const savedImg = safeStorage.getItem('smyle_watt_avatar');
 
   const pvAv = document.getElementById('pvAvatar');
   if (pvAv) {

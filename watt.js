@@ -336,11 +336,36 @@ class WattNetwork {
 
 // ── 3. AUTH (réutilise localStorage de index.html) ────────────────────────────
 
-function getUsers()       { return JSON.parse(localStorage.getItem('smyle_users') || '[]'); }
-function saveUsers(u)     { localStorage.setItem('smyle_users', JSON.stringify(u)); }
-function getCurrentUser() { return JSON.parse(localStorage.getItem('smyle_current_user') || 'null'); }
-function setCurrentUser(u){ localStorage.setItem('smyle_current_user', JSON.stringify(u)); }
-function clearCurrentUser(){ localStorage.removeItem('smyle_current_user'); }
+// ── Wrapper sécurisé localStorage (Safari Private Mode / quota 0) ────────────
+// En navigation privée iOS, localStorage.setItem lance QuotaExceededError silencieusement.
+// Ce wrapper intercepte l'erreur et affiche un message utile à l'utilisateur.
+const safeStorage = {
+  getItem(key) {
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+  },
+  setItem(key, val) {
+    try { localStorage.setItem(key, val); return true; }
+    catch(e) { return false; }
+  },
+  removeItem(key) {
+    try { localStorage.removeItem(key); } catch(e) {}
+  },
+  // Vérifie si le stockage est disponible (écrit + lit un octet de test)
+  isAvailable() {
+    try {
+      const k = '__smyle_test__';
+      localStorage.setItem(k, '1');
+      localStorage.removeItem(k);
+      return true;
+    } catch(e) { return false; }
+  },
+};
+
+function getUsers()       { return JSON.parse(safeStorage.getItem('smyle_users') || '[]'); }
+function saveUsers(u)     { safeStorage.setItem('smyle_users', JSON.stringify(u)); }
+function getCurrentUser() { return JSON.parse(safeStorage.getItem('smyle_current_user') || 'null'); }
+function setCurrentUser(u){ return safeStorage.setItem('smyle_current_user', JSON.stringify(u)); }
+function clearCurrentUser(){ safeStorage.removeItem('smyle_current_user'); }
 
 // ── 4. ÉTAT DE L'UI ───────────────────────────────────────────────────────────
 // Bêta gratuite : connecté → gate-subscribe (CTA dashboard), sinon → gate-login
@@ -396,41 +421,62 @@ function switchWattTab(tab) {
   document.getElementById('wAuthMsg').textContent = '';
 }
 
+function _authMsg(txt) {
+  const el = document.getElementById('wAuthMsg');
+  if (el) el.textContent = txt;
+}
+
 function wattLogin() {
+  // Vérification stockage disponible (Safari Private Mode)
+  if (!safeStorage.isAvailable()) {
+    _authMsg('Stockage indisponible. Quitte la navigation privée et réessaie.');
+    return;
+  }
   const email = document.getElementById('wlogin-email').value.trim();
   const pass  = document.getElementById('wlogin-password').value;
+  if (!email || !pass) { _authMsg('Remplis tous les champs.'); return; }
+
   const users = getUsers();
   const user  = users.find(u => u.email === email && u.password === pass);
   if (!user) {
-    document.getElementById('wAuthMsg').textContent = 'Email ou mot de passe incorrect.';
+    _authMsg('Email ou mot de passe incorrect.');
     return;
   }
-  setCurrentUser(user);
+  if (!setCurrentUser(user)) {
+    _authMsg('Impossible de sauvegarder la session. Essaie en mode normal.');
+    return;
+  }
   closeWattAuthModal();
-  wattToast('Connexion réussie — bienvenue ' + user.name + ' !');
-  setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+  // Redirect immédiat — pas de setTimeout pour éviter problèmes mobile
+  window.location.replace('/dashboard');
 }
 
 function wattSignup() {
+  // Vérification stockage disponible (Safari Private Mode)
+  if (!safeStorage.isAvailable()) {
+    _authMsg('Stockage indisponible. Quitte la navigation privée et réessaie.');
+    return;
+  }
   const name  = document.getElementById('wsignup-name').value.trim();
   const email = document.getElementById('wsignup-email').value.trim();
   const pass  = document.getElementById('wsignup-password').value;
-  if (!name || !email || !pass) {
-    document.getElementById('wAuthMsg').textContent = 'Tous les champs sont requis.';
-    return;
-  }
+  if (!name || !email || !pass) { _authMsg('Tous les champs sont requis.'); return; }
+  if (pass.length < 6)          { _authMsg('Mot de passe trop court (min 6 caractères).'); return; }
+
   const users = getUsers();
   if (users.find(u => u.email === email)) {
-    document.getElementById('wAuthMsg').textContent = 'Email déjà utilisé.';
+    _authMsg('Email déjà utilisé — connecte-toi.');
     return;
   }
   const user = { id: Date.now(), email, password: pass, name, playlists: [] };
   users.push(user);
   saveUsers(users);
-  setCurrentUser(user);
+  if (!setCurrentUser(user)) {
+    _authMsg('Impossible de sauvegarder la session. Essaie en mode normal.');
+    return;
+  }
   closeWattAuthModal();
-  wattToast('Compte créé — bienvenue ' + name + ' !');
-  setTimeout(() => { window.location.href = '/dashboard'; }, 800);
+  window.location.replace('/dashboard');
 }
 
 function wattLogout() {

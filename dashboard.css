@@ -1495,3 +1495,134 @@ html { scroll-behavior: smooth; }
   .dpt-title { font-size: 13px; }
   .dpt-features { max-width: 100%; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SPRINT G — Hiérarchie visuelle 4 blocs + back button + dashboard premium
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Numéros de blocs ────────────────────────────────────────────────────── */
+.dash-section-hdr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,215,0,.08);
+}
+.dash-section-num {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .2em;
+  color: rgba(255,215,0,.22);
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
+}
+.dash-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: rgba(255,255,255,.92);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  margin: 0;
+}
+.dash-section-sub {
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: rgba(255,215,0,.3);
+  text-transform: uppercase;
+  margin-left: auto;
+}
+
+/* ── Sections plus aérées ────────────────────────────────────────────────── */
+.dash-section {
+  margin-bottom: 56px;
+}
+@media (max-width: 640px) {
+  .dash-section { margin-bottom: 40px; }
+  .dash-section-title { font-size: 15px; }
+  .dash-section-sub { display: none; }
+}
+
+/* ── Carte artiste plus premium ──────────────────────────────────────────── */
+.dash-artist-card {
+  padding: 28px;
+  gap: 24px;
+}
+@media (max-width: 640px) {
+  .dash-artist-card { padding: 20px 16px; gap: 18px; }
+}
+
+/* ── Bloc réseau intégré dans Classement ─────────────────────────────────── */
+.dash-network-block {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255,215,0,.07);
+}
+.dash-network-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,215,0,.45);
+  margin-bottom: 4px;
+}
+.dash-network-sub {
+  font-size: 10px;
+  color: rgba(255,215,0,.25);
+  margin-bottom: 16px;
+  letter-spacing: .04em;
+}
+
+/* ── Panel "Mes Sons" dans Ma Musique ────────────────────────────────────── */
+.dash-tracks-panel {
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255,215,0,.07);
+}
+.dash-tracks-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.dash-tracks-hdr-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.6);
+}
+.dash-tracks-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,215,0,.55);
+  letter-spacing: .06em;
+  background: rgba(255,215,0,.06);
+  border: 1px solid rgba(255,215,0,.15);
+  border-radius: 10px;
+  padding: 3px 10px;
+  transition: color .3s;
+}
+
+/* ── Back arrow dans topbar ──────────────────────────────────────────────── */
+.dash-topbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-topbar-logo svg { opacity: .5; transition: opacity .2s; }
+.dash-topbar-logo:hover svg { opacity: 1; }
+
+/* ── Section profil: fond discret ────────────────────────────────────────── */
+#sec-profile {
+  background: rgba(255,215,0,.015);
+  border: 1px solid rgba(255,215,0,.06);
+  border-radius: 8px;
+  padding: 24px;
+}
+@media (max-width: 640px) {
+  #sec-profile { padding: 16px; }
+}
