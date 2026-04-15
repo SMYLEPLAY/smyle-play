@@ -105,8 +105,18 @@
 <!-- ═══════════════════════════════════════════════════════════ HERO -->
 <section class="hero">
   <h1 class="hero-title">SMYLE PLAY</h1>
-  <p class="hero-sub">Playlists IA · WATT</p>
+  <p class="hero-sub">Musique IA · Artistes · Réseau créatif</p>
 </section>
+
+<!-- ═══════════════════════════════════════════════════════════ SÉLECTION OFFICIELLE -->
+<div class="selection-officielle-header">
+  <div class="soh-line"></div>
+  <div class="soh-label">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10" style="color:rgba(136,0,255,.5)"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Sélection Officielle
+  </div>
+  <div class="soh-line"></div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════ CARDS GRID (3 playlists) -->
 <div class="playlists-grid">
@@ -250,53 +260,84 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ WATT SECTION -->
-<div class="watt-section">
-  <div class="watt-header">
-    <div class="watt-logo">
-      <svg class="watt-bolt" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      <span class="watt-title">WATT</span>
+<!-- ═══════════════════════════════════════════════════════════ COMMUNITY HUB -->
+<section class="community-hub" id="community-hub">
+
+  <!-- Header du hub -->
+  <div class="hub-header">
+    <div class="hub-header-left">
+      <div class="hub-logo">
+        <svg viewBox="0 0 24 24" fill="currentColor" class="hub-bolt"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span class="hub-logo-text">WATT</span>
+      </div>
+      <div class="hub-tagline">World Artist Ties Talent · Communauté musicale IA</div>
     </div>
-    <div class="watt-desc">
-      <span class="watt-acronym">World Artist Ties Talent</span>
-      <span class="watt-badge">Premium Community</span>
-    </div>
-    <button class="watt-join-btn" onclick="openAuthModal('signup')">Rejoindre WATT</button>
+    <a href="/watt" class="hub-join-btn">Rejoindre le réseau →</a>
   </div>
 
-  <div class="watt-body">
-    <!-- Colonne gauche : classement artistes -->
-    <div class="watt-ranking">
-      <div class="watt-ranking-title">🏆 Classement Artistes</div>
-      <div class="watt-ranking-list" id="watt-ranking-list">
-        <!-- Rempli dynamiquement par script.js -->
-        <div class="watt-artist-row watt-placeholder">
-          <span class="watt-rank">01</span>
-          <div class="watt-artist-info">
-            <div class="watt-artist-name">— Bientôt disponible —</div>
-            <div class="watt-artist-stats">Rejoins WATT pour apparaître ici</div>
-          </div>
-          <div class="watt-artist-plays">— ▶</div>
-        </div>
+  <!-- Stats live -->
+  <div class="hub-stats-row">
+    <div class="hub-stat">
+      <div class="hub-stat-val" id="hub-nb-artists">0</div>
+      <div class="hub-stat-lbl">Artistes</div>
+    </div>
+    <div class="hub-stat">
+      <div class="hub-stat-val" id="hub-nb-tracks">0</div>
+      <div class="hub-stat-lbl">Sons publiés</div>
+    </div>
+    <div class="hub-stat">
+      <div class="hub-stat-val" id="hub-nb-plays">0</div>
+      <div class="hub-stat-lbl">Écoutes</div>
+    </div>
+    <div class="hub-stat hub-stat-live">
+      <div class="hub-stat-val">
+        <span class="hub-live-dot"></span>Live
+      </div>
+      <div class="hub-stat-lbl">Réseau actif</div>
+    </div>
+  </div>
+
+  <!-- Body : classement + derniers sons -->
+  <div class="hub-body">
+
+    <!-- Classement WATT -->
+    <div class="hub-panel">
+      <div class="hub-panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="18 20V10"/><polyline points="12 20V4"/><polyline points="6 20v-6"/></svg>
+        Classement WATT
+      </div>
+      <div class="hub-ranking-list" id="hub-ranking-list">
+        <!-- rempli par renderCommunityHub() -->
+      </div>
+      <a href="/watt" class="hub-see-all">Voir le classement complet →</a>
+    </div>
+
+    <!-- Derniers sons publiés -->
+    <div class="hub-panel">
+      <div class="hub-panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        Derniers Sons Publiés
+      </div>
+      <div class="hub-recent-list" id="hub-recent-list">
+        <!-- rempli par renderCommunityHub() -->
       </div>
     </div>
 
-    <!-- Colonne droite : infos premium -->
-    <div class="watt-info">
-      <div class="watt-info-title">Espace Artiste Premium</div>
-      <ul class="watt-features">
-        <li><span class="watt-check">✦</span> Upload de tes sons IA</li>
-        <li><span class="watt-check">✦</span> Profil artiste personnalisé</li>
-        <li><span class="watt-check">✦</span> Statistiques d'écoutes</li>
-        <li><span class="watt-check">✦</span> Présence dans le classement WATT</li>
-        <li><span class="watt-check">✦</span> Playlists personnelles sauvegardées</li>
-      </ul>
-      <button class="watt-premium-btn" onclick="openAuthModal('signup')">
-        Accès Artiste Premium →
-      </button>
+  </div>
+
+  <!-- CTA bas de section -->
+  <div class="hub-cta">
+    <div class="hub-cta-inner">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="color:#FFD700;flex-shrink:0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <div>
+        <div class="hub-cta-text">Tu crées de la musique avec l'IA ?</div>
+        <div class="hub-cta-sub">Publie tes sons, crée ton profil artiste et rejoins le réseau WATT.</div>
+      </div>
+      <a href="/watt" class="hub-cta-btn">Devenir Artiste — Gratuit</a>
     </div>
   </div>
-</div>
+
+</section>
 
 <!-- ═══════════════════════════════════════════════════════════ OVERLAY -->
 <div class="overlay" id="overlay" onclick="closeAll()"></div>
@@ -421,22 +462,22 @@
     <button class="modal-close" onclick="closePremiumModal()">✕</button>
     <div class="premium-modal-header">
       <svg viewBox="0 0 24 24" fill="#ffd700" width="22" height="22"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      <span class="premium-modal-title">Espace Artiste Premium</span>
+      <span class="premium-modal-title">Espace Artiste WATT</span>
     </div>
-    <p class="premium-modal-sub">Accède à tous les outils pour partager ta musique IA sur SMYLE PLAY.</p>
+    <p class="premium-modal-sub">Publie ta musique IA, crée ton profil artiste et rejoins le réseau WATT — gratuit pendant la bêta.</p>
 
     <div class="premium-features-grid">
       <div class="premium-feat">
         <span class="premium-feat-icon">🎵</span>
         <div>
-          <div class="premium-feat-name">Upload Sonore</div>
+          <div class="premium-feat-name">Upload de sons IA</div>
           <div class="premium-feat-desc">Dépose tes créations IA directement sur la plateforme</div>
         </div>
       </div>
       <div class="premium-feat">
         <span class="premium-feat-icon">⚡</span>
         <div>
-          <div class="premium-feat-name">WATT Community</div>
+          <div class="premium-feat-name">Réseau WATT</div>
           <div class="premium-feat-desc">Apparais dans le classement mondial des artistes IA</div>
         </div>
       </div>
@@ -451,16 +492,16 @@
         <span class="premium-feat-icon">🎛️</span>
         <div>
           <div class="premium-feat-name">Profil Artiste</div>
-          <div class="premium-feat-desc">Page dédiée avec bio, liens, style musical</div>
+          <div class="premium-feat-desc">Page publique avec bio, liens, style musical</div>
         </div>
       </div>
     </div>
 
     <div class="premium-cta-block">
-      <div class="premium-price">Bientôt disponible</div>
-      <button class="watt-premium-btn" onclick="submitPremiumInterest()">
-        Je suis intéressé(e) — me notifier
-      </button>
+      <div class="premium-price" style="font-size:11px;letter-spacing:.2em;color:rgba(255,215,0,.5)">Bêta gratuite · Accès libre</div>
+      <a href="/watt" class="watt-premium-btn" style="text-decoration:none;display:inline-block">
+        ⚡ Rejoindre WATT — Gratuit
+      </a>
       <p class="premium-modal-msg" id="premiumMsg"></p>
     </div>
   </div>

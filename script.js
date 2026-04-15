@@ -760,46 +760,118 @@ function addCurrentToMix() {
   }
 }
 
-// ── 14c. WATT RANKING ─────────────────────────────────────────────────────────
+// ── 14c. COMMUNITY HUB — Hub communautaire WATT ──────────────────────────────
 
-function renderWattRanking() {
-  const container = document.getElementById('watt-ranking-list');
-  if (!container) return;
+function renderCommunityHub() {
+  _renderHubStats();
+  _renderHubRanking();
+  _renderHubRecentTracks();
+}
 
-  // Agréger les écoutes par playlist (simulation classement artiste)
-  // Dans la version premium, chaque artiste aura ses propres tracks
-  // Ici on affiche les playlists comme "artistes" avec leur total d'écoutes
-  const wattArtists = JSON.parse(localStorage.getItem('smyle_watt_artists') || '[]');
+function _getWattCommunityData() {
+  // Agréger toutes les données artistes disponibles en localStorage
+  const tracks  = JSON.parse(localStorage.getItem('smyle_watt_tracks')  || '[]');
+  const profile = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+  const extra   = JSON.parse(localStorage.getItem('smyle_watt_community') || '[]'); // artistes tiers (futur)
 
-  if (!wattArtists.length) {
-    container.innerHTML = `
-      <div class="watt-artist-row watt-placeholder">
-        <span class="watt-rank">—</span>
-        <div class="watt-artist-info">
-          <div class="watt-artist-name">Aucun artiste inscrit pour l'instant</div>
-          <div class="watt-artist-stats">Sois le premier à rejoindre WATT</div>
-        </div>
-        <div class="watt-artist-plays">— ▶</div>
-      </div>`;
+  // Construire la liste d'artistes
+  const artists = [...extra];
+  if (profile && profile.artistName) {
+    const totalPlays = tracks.reduce((s, t) => s + (t.plays || 0), 0);
+    artists.push({
+      artistName: profile.artistName,
+      genre:      profile.genre || '',
+      plays:      totalPlays,
+      followers:  profile.followers || 0,
+      tracks:     tracks.length,
+      isMe:       true,
+    });
+  }
+  return { tracks, artists };
+}
+
+function _renderHubStats() {
+  const { tracks, artists } = _getWattCommunityData();
+  const totalPlays = tracks.reduce((s, t) => s + (t.plays || 0), 0);
+
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setVal('hub-nb-artists', artists.length || 0);
+  setVal('hub-nb-tracks',  tracks.length  || 0);
+  setVal('hub-nb-plays',   totalPlays     || 0);
+}
+
+function _renderHubRanking() {
+  const el = document.getElementById('hub-ranking-list');
+  if (!el) return;
+  const { artists } = _getWattCommunityData();
+
+  if (!artists.length) {
+    el.innerHTML = `<div class="hub-rank-empty">
+      Aucun artiste inscrit pour l'instant<br>
+      <span style="font-size:8px;opacity:.6">Sois le premier à rejoindre WATT</span>
+    </div>`;
     return;
   }
 
-  // Tri : 1. par écoutes totales, 2. par abonnés
-  const sorted = [...wattArtists].sort((a, b) => {
-    if (b.totalPlays !== a.totalPlays) return b.totalPlays - a.totalPlays;
+  const sorted = [...artists].sort((a, b) => {
+    if (b.plays !== a.plays) return b.plays - a.plays;
     return (b.followers || 0) - (a.followers || 0);
-  });
+  }).slice(0, 5);
 
-  container.innerHTML = sorted.map((artist, i) => `
-    <div class="watt-artist-row">
-      <span class="watt-rank">${String(i + 1).padStart(2, '0')}</span>
-      <div class="watt-artist-info">
-        <div class="watt-artist-name">${artist.name}</div>
-        <div class="watt-artist-stats">${artist.followers || 0} abonnés · ${artist.trackCount || 0} sons</div>
+  el.innerHTML = sorted.map((a, i) => {
+    const initials  = (a.artistName || '?')[0].toUpperCase();
+    const medals    = ['🥇','🥈','🥉'];
+    const rankLabel = i < 3 ? medals[i] : `#${i + 1}`;
+    return `
+    <div class="hub-rank-row" onclick="window.location.href='/watt'" title="Voir le profil">
+      <div class="hub-rank-num">${rankLabel}</div>
+      <div class="hub-rank-avatar">${initials}</div>
+      <div class="hub-rank-info">
+        <div class="hub-rank-name">${_esc(a.artistName)}${a.isMe ? ' <span style="color:rgba(255,215,0,.4);font-size:8px">· Toi</span>' : ''}</div>
+        <div class="hub-rank-genre">${_esc(a.genre || 'Artiste IA')}</div>
       </div>
-      <div class="watt-artist-plays">${fmtPlays(artist.totalPlays || 0)} ▶</div>
-    </div>
-  `).join('');
+      <div class="hub-rank-plays">${a.plays || 0} ▶</div>
+    </div>`;
+  }).join('');
+}
+
+function _renderHubRecentTracks() {
+  const el = document.getElementById('hub-recent-list');
+  if (!el) return;
+  const { tracks } = _getWattCommunityData();
+  const profile = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+  const artistName = profile ? (profile.artistName || 'Artiste WATT') : 'Artiste WATT';
+
+  if (!tracks.length) {
+    el.innerHTML = `<div class="hub-recent-empty">
+      Aucun son publié pour l'instant<br>
+      <span style="font-size:8px;opacity:.6">Upload tes créations IA depuis le dashboard</span>
+    </div>`;
+    return;
+  }
+
+  const recent = [...tracks]
+    .sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0))
+    .slice(0, 5);
+
+  el.innerHTML = recent.map(t => {
+    const coverHTML = t.coverDataUrl
+      ? `<img src="${t.coverDataUrl}" alt=""/>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="14" height="14"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+    return `
+    <div class="hub-recent-row">
+      <div class="hub-recent-cover">${coverHTML}</div>
+      <div class="hub-recent-info">
+        <div class="hub-recent-name">${_esc(t.name)}</div>
+        <div class="hub-recent-artist">${_esc(artistName)} · ${_esc(t.genre || 'IA')}</div>
+      </div>
+      <div class="hub-recent-date">${t.date || ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function _esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── 15. TOAST ─────────────────────────────────────────────────────────────────
@@ -839,7 +911,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAuthArea();
   renderMixPanel();
   updatePlayBtn();
-  renderWattRanking();
+  renderCommunityHub();
 
   // 3. Volume initial
   audio.volume = 0.8;
