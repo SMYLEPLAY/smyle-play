@@ -885,11 +885,14 @@ function _renderHubRanking() {
   }).slice(0, 5);
 
   el.innerHTML = sorted.map((a, i) => {
-    const initials  = (a.artistName || '?')[0].toUpperCase();
-    const medals    = ['🥇','🥈','🥉'];
-    const rankLabel = i < 3 ? medals[i] : `#${i + 1}`;
+    const initials   = (a.artistName || '?')[0].toUpperCase();
+    const medals     = ['🥇','🥈','🥉'];
+    const rankLabel  = i < 3 ? medals[i] : `#${i + 1}`;
+    // Lien vers la page artiste publique si le slug est disponible
+    const artistSlug = a.slug || _slugify(a.artistName);
+    const profileUrl = artistSlug ? `/artiste/${artistSlug}` : '/watt';
     return `
-    <div class="hub-rank-row" onclick="window.location.href='/watt'" title="Voir le profil">
+    <div class="hub-rank-row" onclick="window.location.href='${profileUrl}'" title="Voir le profil artiste">
       <div class="hub-rank-num">${rankLabel}</div>
       <div class="hub-rank-avatar">${initials}</div>
       <div class="hub-rank-info">
@@ -940,6 +943,17 @@ function _renderHubRecentTracks() {
 
 function _esc(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function _slugify(name) {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 // ── 15. TOAST ─────────────────────────────────────────────────────────────────

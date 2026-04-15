@@ -82,6 +82,10 @@ def create_app(config_class=None):
     def dashboard_page():
         return send_from_directory(BASE_DIR, 'dashboard.html')
 
+    @app.route('/artiste/<slug>')
+    def artiste_page(slug):
+        return send_from_directory(BASE_DIR, 'artiste.html')
+
     # ── API Playlists / Tracks ────────────────────────────────────────────
 
     @app.route('/api/tracks')

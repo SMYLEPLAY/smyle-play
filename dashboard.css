@@ -1329,3 +1329,38 @@ html { scroll-behavior: smooth; }
   .dash-rank-row { padding: 6px 0; }
   .dash-rank-avatar { width: 26px; height: 26px; font-size: 10px; }
 }
+
+/* ── LIEN PROFIL PUBLIC ──────────────────────────────────────────────────── */
+.dash-public-link {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,215,0,.07);
+}
+.dash-public-link-label {
+  font-size: 8px; letter-spacing: .25em; text-transform: uppercase;
+  color: rgba(255,215,0,.35); margin-bottom: 7px;
+}
+.dash-public-link-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.dash-public-link-url {
+  flex: 1; font-size: 11px; letter-spacing: .03em;
+  color: rgba(255,215,0,.6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 7px 10px;
+  background: rgba(255,215,0,.04);
+  border: 1px solid rgba(255,215,0,.1);
+  border-radius: 2px;
+  transition: color .2s, border-color .2s;
+}
+.dash-public-link-url:hover { color: var(--d-gold); border-color: rgba(255,215,0,.28); }
+.dash-public-link-copy {
+  width: 32px; height: 32px; flex-shrink: 0;
+  background: rgba(255,215,0,.07);
+  border: 1px solid rgba(255,215,0,.18);
+  color: rgba(255,215,0,.55);
+  border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.dash-public-link-copy:hover { background: rgba(255,215,0,.16); color: var(--d-gold); }

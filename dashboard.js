@@ -5,6 +5,19 @@
 
 'use strict';
 
+// ── 0. HELPERS GLOBAUX ────────────────────────────────────────────────────────
+
+function slugify(name) {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 // ── 1. CANVAS FOND ÉLECTRIQUE ─────────────────────────────────────────────────
 
 class DashBgCanvas {
@@ -673,8 +686,10 @@ function saveProfile() {
   const artistName = document.getElementById('peArtistName').value.trim();
   if (!artistName) { dashToast('⚠ Le nom d\'artiste est obligatoire.'); return; }
 
+  const slug = slugify(artistName);
   const profile = {
     artistName,
+    slug,
     genre:      document.getElementById('peGenre').value.trim(),
     bio:        document.getElementById('peBio').value.trim(),
     soundcloud: document.getElementById('peSoundcloud').value.trim(),
@@ -718,6 +733,27 @@ function renderProfileView() {
     if (p.soundcloud) pvLinks.innerHTML += `<a class="dash-social-link" href="${p.soundcloud}" target="_blank">SoundCloud</a>`;
     if (p.instagram)  pvLinks.innerHTML += `<a class="dash-social-link" href="https://instagram.com/${p.instagram.replace('@','')}" target="_blank">${p.instagram}</a>`;
     if (p.youtube)    pvLinks.innerHTML += `<a class="dash-social-link" href="${p.youtube}" target="_blank">YouTube</a>`;
+  }
+
+  // Lien profil public
+  const pvPublicLink = document.getElementById('pvPublicLink');
+  if (pvPublicLink && p && p.artistName) {
+    const slug = p.slug || slugify(p.artistName);
+    const url  = `/artiste/${slug}`;
+    pvPublicLink.innerHTML = `
+      <div class="dash-public-link-label">Ton profil public</div>
+      <div class="dash-public-link-row">
+        <a class="dash-public-link-url" href="${url}" target="_blank">${window.location.origin}${url}</a>
+        <button class="dash-public-link-copy" onclick="copyPublicProfileLink('${url}')" title="Copier le lien">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>`;
+    pvPublicLink.style.display = 'block';
+  } else if (pvPublicLink) {
+    pvPublicLink.style.display = 'none';
   }
 }
 
@@ -863,6 +899,23 @@ function initSectionNav() {
 function dashLogout() {
   clearCurrentUser();
   window.location.href = '/';
+}
+
+// ── 12b. COPIE LIEN PROFIL PUBLIC ─────────────────────────────────────────────
+
+function copyPublicProfileLink(urlPath) {
+  const full = window.location.origin + urlPath;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(full).then(() => dashToast('✓ Lien copié !')).catch(() => _fbCopy(full));
+  } else { _fbCopy(full); }
+}
+function _fbCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); dashToast('✓ Lien copié !'); } catch(e) {}
+  document.body.removeChild(ta);
 }
 
 // ── 13. TOAST ─────────────────────────────────────────────────────────────────
