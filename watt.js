@@ -963,20 +963,42 @@ function renderPublicRanking() {
     ? `<div class="watt-pub-demo-note">Exemple · Inscris-toi pour apparaître dans le classement</div>`
     : '';
 
-  el.innerHTML = demoNote + artistData.map((a, i) => `
-    <div class="watt-pub-rank-item rank-pos-${i < 3 ? i + 1 : 'other'}"
+  // Labels podium
+  const podiumLabel = ['', '🥇', '🥈', '🥉'];
+
+  // Top 3 — cartes podium visuelles
+  const top3 = artistData.slice(0, 3);
+  const rest  = artistData.slice(3);
+
+  const podiumHtml = `<div class="wpr-podium">` + top3.map((a, i) => `
+    <div class="wpr-card wpr-pos-${i + 1}"
          onclick="window.location.href='/artiste/${a.slug}'"
          role="button" tabindex="0"
          onkeydown="if(event.key==='Enter')window.location.href='/artiste/${a.slug}'">
-      <span class="watt-pub-rank-num">${String(i + 1).padStart(2, '0')}</span>
-      <div class="watt-pub-rank-info">
-        <div class="watt-pub-rank-name">${a.name}</div>
-        <div class="watt-pub-rank-meta">${a.genre}${a.trackCount ? ' · ' + a.trackCount + ' son' + (a.trackCount > 1 ? 's' : '') : ''}</div>
-      </div>
-      <div class="watt-pub-rank-plays">${fmtPlaysW(a.plays)}<span class="watt-pub-plays-unit"> ▶</span></div>
-      <span class="watt-pub-arrow">→</span>
+      <div class="wpr-card-medal">${podiumLabel[i + 1]}</div>
+      <div class="wpr-card-rank">${String(i + 1).padStart(2, '0')}</div>
+      <div class="wpr-card-name">${a.name}</div>
+      <div class="wpr-card-genre">${a.genre}</div>
+      <div class="wpr-card-plays">${fmtPlaysW(a.plays)} <span class="wpr-card-plays-ico">▶</span></div>
     </div>
-  `).join('');
+  `).join('') + `</div>`;
+
+  // Items 4+ — liste compacte
+  const listHtml = rest.length ? `<div class="wpr-rest">` + rest.map((a, i) => `
+    <div class="wpr-rest-item"
+         onclick="window.location.href='/artiste/${a.slug}'"
+         role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter')window.location.href='/artiste/${a.slug}'">
+      <span class="wpr-rest-num">${String(i + 4).padStart(2, '0')}</span>
+      <div class="wpr-rest-info">
+        <span class="wpr-rest-name">${a.name}</span>
+        <span class="wpr-rest-genre">${a.genre}</span>
+      </div>
+      <span class="wpr-rest-plays">${fmtPlaysW(a.plays)} ▶</span>
+    </div>
+  `).join('') + `</div>` : '';
+
+  el.innerHTML = demoNote + podiumHtml + listHtml;
 }
 
 function renderPublicTracks() {
@@ -1004,28 +1026,47 @@ function renderPublicTracks() {
     ? `<div class="watt-pub-demo-note">Exemple · Publie tes sons pour apparaître ici</div>`
     : '';
 
-  el.innerHTML = demoNote + tracks.map(t => {
-    const d = new Date(t.uploadedAt);
+  // Palette avatar : couleur basée sur le nom
+  const AVATAR_COLORS = [
+    ['#7B2FFF','#A06AFF'], ['#FF6B35','#FF9E70'], ['#00C9A7','#4EFFD6'],
+    ['#FF3A8C','#FF7AB8'], ['#2563EB','#5B91F4'], ['#D97706','#FBB53A'],
+  ];
+  function avatarColor(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xFFFF;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  }
+  function initials(name) {
+    const parts = name.trim().split(/\s+/);
+    return parts.length >= 2
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
+      : name.slice(0, 2).toUpperCase();
+  }
+
+  el.innerHTML = demoNote + `<div class="wpt-grid">` + tracks.map(t => {
+    const d       = new Date(t.uploadedAt);
     const dateStr = d.toLocaleDateString('fr', { day: 'numeric', month: 'short' });
+    const [c1, c2] = avatarColor(t.artistName);
+    const ini      = initials(t.artistName);
     return `
-      <div class="watt-pub-track-item"
+      <div class="wpt-card"
            onclick="window.location.href='/artiste/${t.slug}'"
            role="button" tabindex="0"
            onkeydown="if(event.key==='Enter')window.location.href='/artiste/${t.slug}'">
-        <div class="watt-pub-track-icon">
-          <svg viewBox="0 0 24 24" fill="rgba(255,215,0,.25)" stroke="rgba(255,215,0,.55)" stroke-width="1.5" width="13" height="13">
-            <polygon points="5 3 19 12 5 21 5 3"/>
-          </svg>
+        <div class="wpt-card-top">
+          <div class="wpt-avatar" style="background:linear-gradient(135deg,${c1},${c2})">${ini}</div>
+          <div class="wpt-date-badge">${dateStr}</div>
         </div>
-        <div class="watt-pub-track-info">
-          <div class="watt-pub-track-name">${t.name}</div>
-          <div class="watt-pub-track-meta">${t.artistName} · <span class="watt-pub-genre">${t.genre}</span></div>
+        <div class="wpt-track-name">${t.name}</div>
+        <div class="wpt-artist-name">${t.artistName}</div>
+        <div class="wpt-genre-tag">${t.genre}</div>
+        <div class="wpt-card-footer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="10" height="10" style="opacity:.4"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+          <span>Voir le profil</span>
         </div>
-        <div class="watt-pub-track-date">${dateStr}</div>
-        <span class="watt-pub-arrow">→</span>
       </div>
     `;
-  }).join('');
+  }).join('') + `</div>`;
 }
 
 // ── 12. CANVAS RÉSEAU (panel visual) ─────────────────────────────────────────

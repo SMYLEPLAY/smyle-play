@@ -1329,141 +1329,292 @@
   margin-bottom: 6px;
 }
 
-/* ── Ligne classement ────────────────────────────────────────────────────── */
-.watt-pub-rank-item {
+/* ══════════════════════════════════════════════════════════════════════════
+   CLASSEMENT — Podium Top 3 + liste secondaire
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Grille podium : 3 cartes côte à côte */
+.wpr-podium {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 10px 0 18px;
+}
+
+/* Carte podium de base */
+.wpr-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 18px 14px 16px;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+  border: 1px solid rgba(255, 215, 0, 0.10);
+  background: rgba(255, 215, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+.wpr-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+.wpr-card:hover { transform: translateY(-3px); }
+.wpr-card:hover::before { opacity: 1; }
+.wpr-card:active { transform: translateY(0); }
+
+/* #1 — Or */
+.wpr-pos-1 {
+  border-color: rgba(255, 215, 0, 0.35);
+  background: rgba(255, 215, 0, 0.06);
+  box-shadow: 0 0 0 1px rgba(255,215,0,.08), 0 4px 24px rgba(255,215,0,.06);
+}
+.wpr-pos-1:hover {
+  box-shadow: 0 0 0 1px rgba(255,215,0,.25), 0 8px 32px rgba(255,215,0,.12);
+}
+.wpr-pos-1::before { background: radial-gradient(circle at 50% 0, rgba(255,215,0,.08), transparent 70%); }
+.wpr-pos-1 .wpr-card-rank { color: #FFD700; text-shadow: 0 0 12px rgba(255,215,0,.6); }
+
+/* #2 — Argent */
+.wpr-pos-2 {
+  border-color: rgba(200, 200, 200, 0.22);
+  background: rgba(200, 200, 200, 0.03);
+}
+.wpr-pos-2:hover { box-shadow: 0 4px 20px rgba(200,200,200,.08); }
+.wpr-pos-2 .wpr-card-rank { color: #C8C8C8; }
+
+/* #3 — Bronze */
+.wpr-pos-3 {
+  border-color: rgba(205, 127, 50, 0.22);
+  background: rgba(205, 127, 50, 0.03);
+}
+.wpr-pos-3:hover { box-shadow: 0 4px 20px rgba(205,127,50,.08); }
+.wpr-pos-3 .wpr-card-rank { color: #CD7F32; }
+
+/* Médaille */
+.wpr-card-medal {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+/* Grand numéro */
+.wpr-card-rank {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+  line-height: 1;
+  color: rgba(255, 215, 0, 0.35);
+}
+
+/* Nom artiste */
+.wpr-card-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 245, 200, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 6px;
+}
+
+/* Genre */
+.wpr-card-genre {
+  font-size: 9px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.38);
+}
+
+/* Écoutes */
+.wpr-card-plays {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 215, 0, 0.65);
+  margin-top: 8px;
+}
+.wpr-card-plays-ico {
+  font-size: 9px;
+  opacity: .65;
+}
+
+/* ── Liste secondaire (rang 4+) ─────────────────────────────────────────── */
+.wpr-rest {
+  border-top: 1px solid rgba(255, 215, 0, 0.06);
+  padding-top: 4px;
+}
+.wpr-rest-item {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 13px 14px;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.05);
-  transition: background .15s ease, border-color .15s ease;
-  border-radius: 4px;
+  padding: 11px 8px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: background .12s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.watt-pub-rank-item:hover {
-  background: rgba(255, 215, 0, 0.04);
-  border-bottom-color: rgba(255, 215, 0, 0.12);
-}
-.watt-pub-rank-item:active {
-  background: rgba(255, 215, 0, 0.07);
-}
-.watt-pub-rank-item:last-child {
-  border-bottom: none;
-}
+.wpr-rest-item:hover { background: rgba(255, 215, 0, 0.04); }
+.wpr-rest-item:active { background: rgba(255, 215, 0, 0.08); }
 
-/* Podium colours */
-.rank-pos-1 .watt-pub-rank-num { color: #FFD700; text-shadow: 0 0 8px rgba(255,215,0,.5); }
-.rank-pos-2 .watt-pub-rank-num { color: #C8C8C8; }
-.rank-pos-3 .watt-pub-rank-num { color: #CD7F32; }
-
-.watt-pub-rank-num {
-  font-size: 11px;
+.wpr-rest-num {
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: .06em;
-  color: rgba(255, 215, 0, 0.30);
-  min-width: 26px;
-  flex-shrink: 0;
-}
-.watt-pub-rank-info {
-  flex: 1;
-  min-width: 0;
-}
-.watt-pub-rank-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255, 245, 200, 0.88);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.watt-pub-rank-meta {
-  font-size: 9px;
-  letter-spacing: .06em;
-  color: rgba(255, 215, 0, 0.38);
-  margin-top: 2px;
-}
-.watt-pub-rank-plays {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 215, 0, 0.60);
-  flex-shrink: 0;
-}
-.watt-pub-plays-unit {
-  font-size: 9px;
-  color: rgba(255, 215, 0, 0.35);
-}
-.watt-pub-arrow {
-  font-size: 12px;
   color: rgba(255, 215, 0, 0.22);
+  min-width: 22px;
   flex-shrink: 0;
-  transition: color .15s, transform .15s;
 }
-.watt-pub-rank-item:hover .watt-pub-arrow,
-.watt-pub-track-item:hover .watt-pub-arrow {
-  color: rgba(255, 215, 0, 0.55);
-  transform: translateX(3px);
-}
-
-/* ── Ligne son récent ────────────────────────────────────────────────────── */
-.watt-pub-track-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.05);
-  transition: background .15s ease;
-  border-radius: 4px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.watt-pub-track-item:hover {
-  background: rgba(255, 215, 0, 0.04);
-}
-.watt-pub-track-item:active {
-  background: rgba(255, 215, 0, 0.07);
-}
-.watt-pub-track-item:last-child {
-  border-bottom: none;
-}
-.watt-pub-track-icon {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 215, 0, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 215, 0, 0.04);
-}
-.watt-pub-track-info {
+.wpr-rest-info {
   flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   min-width: 0;
+  overflow: hidden;
 }
-.watt-pub-track-name {
+.wpr-rest-name {
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255, 245, 200, 0.85);
+  color: rgba(255, 245, 200, 0.78);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.watt-pub-track-meta {
-  font-size: 9px;
-  letter-spacing: .05em;
-  color: rgba(255, 215, 0, 0.38);
-  margin-top: 2px;
-}
-.watt-pub-genre {
-  color: rgba(255, 215, 0, 0.25);
-}
-.watt-pub-track-date {
+.wpr-rest-genre {
   font-size: 9px;
   letter-spacing: .06em;
   color: rgba(255, 215, 0, 0.28);
+  white-space: nowrap;
   flex-shrink: 0;
 }
+.wpr-rest-plays {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 215, 0, 0.40);
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DERNIERS SONS — Grille de cartes avec avatar
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.wpt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Carte son */
+.wpt-card {
+  background: rgba(255, 215, 0, 0.03);
+  border: 1px solid rgba(255, 215, 0, 0.09);
+  border-radius: 10px;
+  padding: 16px 14px 14px;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  -webkit-tap-highlight-color: transparent;
+}
+.wpt-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 215, 0, 0.20);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+.wpt-card:active { transform: translateY(0); }
+
+/* Header : avatar + date */
+.wpt-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+/* Avatar rond avec initiales */
+.wpt-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .02em;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* Badge date */
+.wpt-date-badge {
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.30);
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.10);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+/* Titre du son */
+.wpt-track-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 245, 200, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+/* Nom d'artiste */
+.wpt-artist-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 215, 0, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tag genre */
+.wpt-genre-tag {
+  display: inline-block;
+  font-size: 8px;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.40);
+  border: 1px solid rgba(255, 215, 0, 0.14);
+  border-radius: 3px;
+  padding: 2px 7px;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* Footer carte "Voir le profil" */
+.wpt-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, 0.25);
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 215, 0, 0.05);
+  padding-top: 8px;
+  transition: color .15s;
+}
+.wpt-card:hover .wpt-card-footer { color: rgba(255, 215, 0, 0.50); }
 
 /* ── Gate note bas ───────────────────────────────────────────────────────── */
 .watt-gate-note {
@@ -1484,20 +1635,24 @@
     align-items: flex-start;
     gap: 4px;
   }
-  .watt-pub-rank-item,
-  .watt-pub-track-item {
-    padding: 12px 8px;
+  .watt-hero-tags { gap: 5px; }
+
+  /* Podium 3 colonnes → gardé même sur mobile (cartes plus compactes) */
+  .wpr-card {
+    padding: 14px 10px 12px;
   }
-  .watt-pub-rank-name,
-  .watt-pub-track-name {
-    font-size: 12px;
-  }
-  .watt-hero-tags {
-    gap: 5px;
+  .wpr-card-rank { font-size: 26px; }
+  .wpr-card-name { font-size: 11px; }
+
+  /* Grille sons : 1 colonne sur mobile */
+  .wpt-grid {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 390px) {
-  .watt-pub-rank-plays {
-    display: none;
-  }
+  .wpr-podium { gap: 7px; }
+  .wpr-card { padding: 12px 8px 10px; }
+  .wpr-card-rank { font-size: 22px; }
+  .wpr-card-medal { font-size: 13px; }
+  .wpr-card-plays { display: none; }
 }

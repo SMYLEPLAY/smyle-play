@@ -348,11 +348,30 @@ function loadTrack(playlistKey, idx) {
   const primaryUrl = track.url || encodeFilePath(pl.folder, track.file);
   audio._trackRef  = track;          // garde une référence pour le retry
   audio._retried   = false;
+
+  // NE PAS appeler audio.load() — sur iOS Safari, load() brise la permission
+  // de lecture automatique. Changer audio.src suffit ; play() déclenche le
+  // chargement. Sans load() l'auto-avance fonctionne dans les événements 'ended'.
   audio.src = primaryUrl;
   console.log('[SMYLE] Loading:', primaryUrl);
-  audio.load();
   audio.play().catch(e => console.warn('[SMYLE] play():', e.message));
   isPlaying = true;
+
+  // ── Media Session API (lock screen / écouteurs iOS + Android) ──────────────
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title:  track.name  || 'Titre inconnu',
+      artist: pl.label    || 'SMYLE PLAY',
+      album:  'SMYLE PLAY',
+    });
+    navigator.mediaSession.setActionHandler('play',          () => { audio.play().catch(() => {}); isPlaying = true;  updatePlayBtn(); });
+    navigator.mediaSession.setActionHandler('pause',         () => { audio.pause(); isPlaying = false; updatePlayBtn(); });
+    navigator.mediaSession.setActionHandler('nexttrack',     () => nextTrack());
+    navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+    navigator.mediaSession.setActionHandler('seekto', details => {
+      if (audio.duration && details.seekTime != null) audio.currentTime = details.seekTime;
+    });
+  }
 
   // Thème du player
   document.getElementById('player').dataset.theme          = pl.theme;
@@ -409,11 +428,24 @@ function prevTrack() {
 
 // ── 9. PROGRESS BAR (div-based) ──────────────────────────────────────────────
 
+// Compteur de timeupdate pour limiter les updates Media Session (coûteux)
+let _msUpdateCounter = 0;
 audio.addEventListener('timeupdate', () => {
   if (progressDragging || !audio.duration) return;
   const pct = (audio.currentTime / audio.duration) * 100;
   document.getElementById('progressFill').style.width = pct + '%';
   updateTimeDisplay();
+
+  // Media Session position state — 1 update / 5 événements (évite trop de CPU)
+  if ('mediaSession' in navigator && ++_msUpdateCounter % 5 === 0) {
+    try {
+      navigator.mediaSession.setPositionState({
+        duration:     audio.duration,
+        position:     audio.currentTime,
+        playbackRate: audio.playbackRate || 1,
+      });
+    } catch(e) { /* setPositionState pas supporté sur tous les navigateurs */ }
+  }
 });
 
 audio.addEventListener('ended', () => {
@@ -436,7 +468,6 @@ audio.addEventListener('error', () => {
       console.warn('[SMYLE] Retry with alt URL:', altUrl);
       audio._retried = true;
       audio.src = altUrl;
-      audio.load();
       audio.play().catch(() => {});
       return;
     }
@@ -460,8 +491,16 @@ function buildAltUrl(url) {
   return null;
 }
 
-audio.addEventListener('play',  () => { isPlaying = true;  updatePlayBtn(); });
-audio.addEventListener('pause', () => { isPlaying = false; updatePlayBtn(); });
+audio.addEventListener('play',  () => {
+  isPlaying = true;
+  updatePlayBtn();
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+});
+audio.addEventListener('pause', () => {
+  isPlaying = false;
+  updatePlayBtn();
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+});
 
 // Clic sur la barre de progression pour se déplacer
 document.addEventListener('DOMContentLoaded', () => {
@@ -620,14 +659,27 @@ function loadMixTrack() {
   const track = pl.tracks[m.trackIdx];
 
   currentTheme = pl.theme;
+  // Pas de audio.load() — voir commentaire dans loadTrack()
   audio.src    = track.url || encodeFilePath(pl.folder, track.file);
-  audio.load();
   audio.play().catch(() => {});
   isPlaying = true;
 
   document.getElementById('player').dataset.theme          = pl.theme;
   document.getElementById('player-track-name').textContent = track.name;
   document.getElementById('player-playlist-name').textContent = 'MY MIX';
+
+  // Media Session pour MY MIX
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title:  track.name || 'Titre inconnu',
+      artist: 'MY MIX',
+      album:  'SMYLE PLAY',
+    });
+    navigator.mediaSession.setActionHandler('nexttrack',     () => nextMixTrack());
+    navigator.mediaSession.setActionHandler('previoustrack', () => prevMixTrack());
+    navigator.mediaSession.setActionHandler('play',          () => { audio.play().catch(() => {}); isPlaying = true;  updatePlayBtn(); });
+    navigator.mediaSession.setActionHandler('pause',         () => { audio.pause(); isPlaying = false; updatePlayBtn(); });
+  }
 
   showPlayerUI();
 
