@@ -93,4 +93,5 @@ function closePanel() {
 function closeAll() {
   closePanel();
   closeMixPanel();
+  if (typeof closeAgentPanel === 'function') closeAgentPanel();
 }

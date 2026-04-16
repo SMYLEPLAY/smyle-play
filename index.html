@@ -87,6 +87,12 @@
   <!-- Zone auth (remplie dynamiquement par renderAuthArea) -->
   <div id="authArea"></div>
 
+  <!-- Bouton WATT Control Center -->
+  <button class="agent-toggle-btn" onclick="toggleAgentPanel()" title="WATT Control Center">
+    <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    CONTROL
+  </button>
+
   <!-- Bouton Artiste Premium → page PLUG WATT -->
   <a href="/watt" class="premium-header-btn" title="Espace Artiste Premium PLUG WATT">
     <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -328,6 +334,24 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════ AGENT PANEL (droite, WATT Control Center) -->
+<div class="agent-panel" id="agentPanel">
+  <div class="agent-panel-header">
+    <button class="agent-panel-close" onclick="closeAgentPanel()" title="Fermer">✕</button>
+    <div class="agent-panel-title">
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      WATT CONTROL CENTER
+    </div>
+    <button class="agent-refresh-btn" onclick="agentRefresh()" title="Rafraîchir">↻</button>
+  </div>
+  <nav class="agent-tabs">
+    <button class="agent-tab-btn active" data-tab="cockpit"    onclick="agentTab('cockpit')">Cockpit</button>
+    <button class="agent-tab-btn"        data-tab="monitoring" onclick="agentTab('monitoring')">Monitoring</button>
+    <button class="agent-tab-btn"        data-tab="inbox"      onclick="agentTab('inbox')">Inbox</button>
+  </nav>
+  <div class="agent-body" id="agent-body"></div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════ PLAYER (barre du bas) -->
 <div id="player">
   <!-- État vide (avant toute lecture) -->
@@ -509,6 +533,7 @@
 <script src="ui/modals/premium.js"></script>
 <script src="ui/modals/save-mix.js"></script>
 <script src="ui/hub/community.js"></script>
+<script src="ui/panels/agent.js"></script>
 <script src="ui/app.js"></script>
 </body>
 </html>
