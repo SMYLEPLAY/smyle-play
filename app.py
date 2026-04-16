@@ -529,13 +529,18 @@ def create_app(config_class=None):
         from agents.orchestrator import process_track as agent_process
 
         data = request.get_json(silent=True) or {}
-        track_name = (data.get('name') or '').strip()
+
+        # Accepter 'name' ou 'title' (tolérance curl / front)
+        track_name = (data.get('name') or data.get('title') or '').strip()
 
         if not track_name:
-            return jsonify({'error': 'Le champ "name" est requis'}), 400
+            return jsonify({'error': 'Le champ "name" (ou "title") est requis'}), 400
+
+        # Normaliser : toujours passer 'name' à l'orchestrateur
+        payload = {**data, 'name': track_name}
 
         try:
-            result = agent_process(data)
+            result = agent_process(payload)
             return jsonify({'ok': True, 'result': result})
         except Exception as e:
             logger.error(f'[WATT Agent] /api/agents/process-track error: {e}')
