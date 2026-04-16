@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>SMYLE PLAY</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="watt-panel.css" />
 </head>
 <body>
 
@@ -87,10 +88,10 @@
   <!-- Zone auth (remplie dynamiquement par renderAuthArea) -->
   <div id="authArea"></div>
 
-  <!-- Bouton WATT Control Center -->
-  <button class="agent-toggle-btn" onclick="toggleAgentPanel()" title="WATT Control Center">
+  <!-- Bouton WATT (DNA + CONNECT) -->
+  <button class="watt-toggle-btn" onclick="toggleWattPanel()" title="WATT · DNA & CONNECT">
     <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    CONTROL
+    WATT
   </button>
 
   <!-- Bouton Artiste Premium → page PLUG WATT -->
@@ -334,23 +335,20 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════ AGENT PANEL (droite, WATT Control Center) -->
-<div class="agent-panel" id="agentPanel">
-  <div class="agent-panel-header">
-    <button class="agent-panel-close" onclick="closeAgentPanel()" title="Fermer">✕</button>
-    <div class="agent-panel-title">
+<!-- ═══════════════════════════════════════════ WATT PANEL (DNA + CONNECT) -->
+<div class="watt-panel" id="wattPanel">
+  <div class="watt-panel-header">
+    <button class="watt-panel-close" onclick="closeWattPanel()" title="Fermer">✕</button>
+    <div class="watt-panel-title">
       <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      WATT CONTROL CENTER
+      WATT
     </div>
-    <button class="agent-refresh-btn" onclick="agentRefresh()" title="Rafraîchir">↻</button>
   </div>
-  <nav class="agent-tabs">
-    <button class="agent-tab-btn active" data-tab="cockpit"    onclick="agentTab('cockpit')">Cockpit</button>
-    <button class="agent-tab-btn"        data-tab="monitoring" onclick="agentTab('monitoring')">Monitoring</button>
-    <button class="agent-tab-btn"        data-tab="inbox"      onclick="agentTab('inbox')">Inbox</button>
-    <button class="agent-tab-btn"        data-tab="dna"        onclick="agentTab('dna')">⚡ DNA</button>
+  <nav class="watt-panel-tabs">
+    <button class="watt-tab-btn active" data-tab="dna"     onclick="wattTab('dna')">⚡ DNA</button>
+    <button class="watt-tab-btn"        data-tab="connect" onclick="wattTab('connect')">CONNECT</button>
   </nav>
-  <div class="agent-body" id="agent-body"></div>
+  <div class="watt-panel-body" id="watt-body"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════ PLAYER (barre du bas) -->
@@ -516,7 +514,7 @@
 <!-- ═══════════════════════════════════════════════════════════ FOOTER -->
 <footer style="padding:32px 48px 96px;text-align:center">
   <p style="font-size:10px;letter-spacing:.3em;color:rgba(136,0,255,.2);text-transform:uppercase">
-    © 2025 SMYLE PLAY · Playlists · WATT
+    © 2025 SMYLE PLAY · Playlists · WATT · DNA · CONNECT
     · <span onclick="openContactModal()" style="cursor:pointer;color:rgba(136,0,255,.35)">Contact</span>
     · <a href="https://suno.ai" target="_blank" style="color:rgba(136,0,255,.18);text-decoration:none;font-size:9px">sons générés via Suno</a>
   </p>
@@ -535,6 +533,7 @@
 <script src="ui/modals/save-mix.js"></script>
 <script src="ui/hub/community.js"></script>
 <script src="ui/panels/agent.js"></script>
+<script src="ui/panels/watt-panel.js"></script>
 <script src="ui/app.js"></script>
 </body>
 </html>
