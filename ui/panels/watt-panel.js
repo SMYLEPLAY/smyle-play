@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────────────────────────────────
    SMYLE PLAY — ui/panels/watt-panel.js
-   WATT Panel — DNA (recommandation musicale) + CONNECT (réseau créatif)
+   WATT Panel — DNA + CONNECT + ARTIST (hub central)
 
    Remplace l'ancien Control Center (ui/panels/agent.js).
    Lit le state partagé de ui/core/state.js : PLAYLISTS, loadTrack, openPlaylist.
@@ -20,6 +20,7 @@ const WATT = {
     hitmix:  { hex: '#AA00FF', rgb: '170,0,255',    label: 'Hit Mix',       key: 'hit-mix' },
   },
   connect: { hex: '#FF1744', rgb: '255,23,68' },
+  artist:  { hex: '#FFD700', rgb: '255,215,0' },
   violet:  '#8800ff',
 };
 
@@ -128,10 +129,16 @@ function _wattRenderTab(tabKey) {
   const body = document.getElementById('watt-body');
   if (!body) return;
 
+  // Stop all animations when switching tabs
+  if (_watt.dnaAnim) { cancelAnimationFrame(_watt.dnaAnim); _watt.dnaAnim = null; }
+  if (_watt.connectAnim) { cancelAnimationFrame(_watt.connectAnim); _watt.connectAnim = null; }
+
   if (tabKey === 'dna') {
     _renderDNATab(body);
   } else if (tabKey === 'connect') {
     _renderConnectTab(body);
+  } else if (tabKey === 'artist') {
+    _renderArtistTab(body);
   }
 }
 
@@ -140,9 +147,6 @@ function _wattRenderTab(tabKey) {
 // ══════════════════════════════════════════════════════════════════════════
 
 function _renderDNATab(container) {
-  // Stop connect anim
-  if (_watt.connectAnim) { cancelAnimationFrame(_watt.connectAnim); _watt.connectAnim = null; }
-
   const emotionChips = Object.keys(EMOTION_MAP).map(e =>
     `<button class="dna-emotion-chip" onclick="_dnaQuickEmotion('${e}')">${e}</button>`
   ).join('');
@@ -544,9 +548,6 @@ function _dnaCopyPrompt() {
 // ══════════════════════════════════════════════════════════════════════════
 
 function _renderConnectTab(container) {
-  // Stop DNA anim
-  if (_watt.dnaAnim) { cancelAnimationFrame(_watt.dnaAnim); _watt.dnaAnim = null; }
-
   const categories = ['Beatmakers', 'Voix', 'Musiciens', 'Vidéastes', 'Visuels', 'Ingénieurs son', 'Topliners', 'Compositeurs'];
   const catChips = categories.map(c =>
     `<span class="connect-cat-chip">${c}</span>`
@@ -706,6 +707,172 @@ function _animConnect(w, h) {
   ctx.fill();
 
   _watt.connectAnim = requestAnimationFrame(() => _animConnect(w, h));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ARTIST TAB — Espace artiste · PLUG WATT
+// ══════════════════════════════════════════════════════════════════════════
+
+// SVG inline : prise électrique néon
+const _PLUG_SVG = `<svg class="artist-plug-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="plugGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="plugGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE44D" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFD700" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+  <!-- Corps de la prise -->
+  <rect x="28" y="32" width="44" height="38" rx="6" fill="none" stroke="url(#plugGrad)" stroke-width="2.5" filter="url(#plugGlow)"/>
+  <!-- Deux broches -->
+  <rect x="38" y="14" width="6" height="22" rx="3" fill="#FFD700" opacity="0.8" filter="url(#plugGlow)"/>
+  <rect x="56" y="14" width="6" height="22" rx="3" fill="#FFD700" opacity="0.8" filter="url(#plugGlow)"/>
+  <!-- Câble (en bas) -->
+  <path d="M50 70 Q50 82 50 90" stroke="#FFD700" stroke-width="2.5" fill="none" opacity="0.5" stroke-linecap="round"/>
+  <!-- Cercle intérieur (terre) -->
+  <circle cx="50" cy="51" r="5" fill="none" stroke="#FFD700" stroke-width="1.5" opacity="0.4"/>
+  <!-- Arcs d'énergie -->
+  <path d="M22 45 Q18 51 22 57" stroke="#FFE44D" stroke-width="1.2" fill="none" opacity="0.3" stroke-linecap="round"/>
+  <path d="M16 42 Q10 51 16 60" stroke="#FFE44D" stroke-width="1" fill="none" opacity="0.2" stroke-linecap="round"/>
+  <path d="M78 45 Q82 51 78 57" stroke="#FFE44D" stroke-width="1.2" fill="none" opacity="0.3" stroke-linecap="round"/>
+  <path d="M84 42 Q90 51 84 60" stroke="#FFE44D" stroke-width="1" fill="none" opacity="0.2" stroke-linecap="round"/>
+</svg>`;
+
+function _renderArtistTab(container) {
+  // Check if user seems logged in (look for user badge in header)
+  const userBadge = document.querySelector('.user-badge');
+  const isLoggedIn = !!userBadge;
+
+  // Try to get artist stats from WATT
+  const statsHTML = `
+    <div class="artist-stats">
+      <div class="artist-stat-card">
+        <div class="artist-stat-val" id="artist-tracks">—</div>
+        <div class="artist-stat-lbl">Sons</div>
+      </div>
+      <div class="artist-stat-card">
+        <div class="artist-stat-val" id="artist-plays">—</div>
+        <div class="artist-stat-lbl">Écoutes</div>
+      </div>
+      <div class="artist-stat-card">
+        <div class="artist-stat-val" id="artist-rank">—</div>
+        <div class="artist-stat-lbl">Rang</div>
+      </div>
+    </div>
+  `;
+
+  // Menu items for the artist section
+  const menuItems = [
+    {
+      icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+      name: 'Dashboard',
+      desc: 'Gère tes sons, stats et profil',
+      action: 'window.location.href="/dashboard"',
+    },
+    {
+      icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+      name: 'Upload',
+      desc: 'Publie un nouveau son',
+      action: 'window.location.href="/dashboard#upload"',
+    },
+    {
+      icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      name: 'Profil',
+      desc: 'Modifie ta bio, liens et style',
+      action: 'window.location.href="/dashboard#profile"',
+    },
+    {
+      icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+      name: 'Mes Sons',
+      desc: 'Écouter et gérer ta discographie',
+      action: 'window.location.href="/dashboard#tracks"',
+    },
+    {
+      icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+      name: 'Statistiques',
+      desc: 'Écoutes, abonnés, évolution',
+      action: 'window.location.href="/dashboard#stats"',
+    },
+  ];
+
+  const menuHTML = menuItems.map(m => `
+    <div class="artist-menu-item" onclick="${m.action}">
+      <div class="artist-menu-icon">${m.icon}</div>
+      <div class="artist-menu-info">
+        <div class="artist-menu-name">${m.name}</div>
+        <div class="artist-menu-desc">${m.desc}</div>
+      </div>
+      <span class="artist-menu-arrow">›</span>
+    </div>
+  `).join('');
+
+  if (isLoggedIn) {
+    // Connected state
+    container.innerHTML = `
+      <div class="artist-plug-hero">
+        ${_PLUG_SVG}
+        <div class="artist-plug-title">PLUG WATT</div>
+        <div class="artist-plug-sub">Espace Artiste</div>
+      </div>
+      ${statsHTML}
+      <div class="artist-menu">${menuHTML}</div>
+    `;
+    // Fetch stats
+    _fetchArtistStats();
+  } else {
+    // Not connected — auth gate
+    const features = [
+      { icon: '🎵', text: 'Upload tes créations sur la plateforme' },
+      { icon: '⚡', text: 'Apparais dans le classement mondial WATT' },
+      { icon: '📊', text: 'Suis tes écoutes et ton audience' },
+      { icon: '🎛️', text: 'Crée ton profil artiste public' },
+      { icon: '🤝', text: 'Reçois des demandes de collaboration' },
+    ];
+
+    const featHTML = features.map(f => `
+      <div class="artist-gate-feat">
+        <span class="artist-gate-feat-icon">${f.icon}</span>
+        <span class="artist-gate-feat-text">${f.text}</span>
+      </div>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="artist-plug-hero">
+        ${_PLUG_SVG}
+        <div class="artist-plug-title">PLUG WATT</div>
+        <div class="artist-plug-sub">World Artist Ties Talent</div>
+      </div>
+      <div class="artist-gate">
+        <div class="artist-gate-title">Branche-toi sur WATT</div>
+        <div class="artist-gate-desc">
+          Publie ta musique, crée ton profil artiste<br>
+          et rejoins le réseau mondial WATT.
+        </div>
+        <div class="artist-gate-features">${featHTML}</div>
+        <div class="artist-cta">
+          <a href="/watt" class="artist-cta-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Rejoindre WATT
+          </a>
+          <span class="artist-cta-note">Bêta gratuite · 6 sons offerts</span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function _fetchArtistStats() {
+  fetch('/api/watt/me/stats').then(r => {
+    if (!r.ok) throw new Error('not auth');
+    return r.json();
+  }).then(d => {
+    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    el('artist-tracks', d.tracks || 0);
+    el('artist-plays', d.plays || 0);
+    el('artist-rank', d.rank ? `#${d.rank}` : '—');
+  }).catch(() => {
+    // Silently fail — stats will show "—"
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════

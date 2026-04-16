@@ -1,27 +1,29 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WATT PANEL — DNA + CONNECT
-   Intégré à SMYLE PLAY · Palette violet/néon du site
+   WATT PANEL — DNA + CONNECT + ARTIST
+   Hub central SMYLE PLAY · Dominante jaune néon
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Variables WATT (alignées sur le site) ───────────────────────────────── */
+/* ── Variables WATT ──────────────────────────────────────────────────────── */
 :root {
   --w-sunset:  #FF9500;
   --w-jungle:  #00E676;
   --w-night:   #2266FF;
   --w-hitmix:  #AA00FF;
   --w-connect: #FF1744;
+  --w-artist:  #FFD700;
   --w-violet:  #8800ff;
   --w-electric:#0055ff;
+  --w-gold:    #FFD700;
   --w-bg:      #050508;
   --w-panel:   rgba(5,5,8,.96);
 }
 
-/* ── Bouton WATT dans le header ──────────────────────────────────────────── */
+/* ── Bouton WATT dans le header — jaune néon ─────────────────────────────── */
 .watt-toggle-btn {
   position: relative;
   background: none;
-  border: 1px solid rgba(136,0,255,.22);
-  color: rgba(170,100,255,.6);
+  border: 1px solid rgba(255,215,0,.2);
+  color: rgba(255,215,0,.55);
   font-size: 10px;
   letter-spacing: .22em;
   text-transform: uppercase;
@@ -36,11 +38,11 @@
   flex-shrink: 0;
 }
 .watt-toggle-btn:hover {
-  border-color: rgba(136,0,255,.55);
-  color: #cc88ff;
-  box-shadow: 0 0 14px rgba(136,0,255,.15);
+  border-color: rgba(255,215,0,.55);
+  color: #FFD700;
+  box-shadow: 0 0 14px rgba(255,215,0,.12);
 }
-.watt-toggle-btn svg { opacity: .7; flex-shrink: 0; }
+.watt-toggle-btn svg { opacity: .8; flex-shrink: 0; color: #FFD700; }
 .watt-toggle-btn:hover svg { opacity: 1; }
 
 /* ── Panel shell ─────────────────────────────────────────────────────────── */
@@ -51,7 +53,7 @@
   width: min(420px, 100vw);
   height: 100vh;
   background: var(--w-panel);
-  border-left: 1px solid rgba(136,0,255,.12);
+  border-left: 1px solid rgba(255,215,0,.08);
   z-index: 110;
   transition: right .4s cubic-bezier(.4,0,.2,1);
   display: flex;
@@ -62,7 +64,7 @@
 }
 .watt-panel.open { right: 0; }
 
-/* ── Panel header ────────────────────────────────────────────────────────── */
+/* ── Panel header — jaune néon (hub) ─────────────────────────────────────── */
 .watt-panel-header {
   padding: 20px 20px 0;
   display: flex;
@@ -72,53 +74,66 @@
 .watt-panel-close {
   background: none;
   border: none;
-  color: rgba(200,160,255,.4);
+  color: rgba(255,215,0,.35);
   font-size: 16px;
   cursor: pointer;
   padding: 4px 8px;
   transition: color .2s;
   font-family: inherit;
 }
-.watt-panel-close:hover { color: #cc88ff; }
+.watt-panel-close:hover { color: #FFD700; }
 
 .watt-panel-title {
   flex: 1;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .3em;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .35em;
   text-transform: uppercase;
-  color: rgba(136,0,255,.6);
+  color: #FFD700;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  text-shadow: 0 0 8px rgba(255,215,0,.25);
 }
-.watt-panel-title svg { color: var(--w-violet); }
 
-/* ── Tab navigation ──────────────────────────────────────────────────────── */
+/* ── Tab navigation avec icônes ──────────────────────────────────────────── */
 .watt-panel-tabs {
   display: flex;
   gap: 0;
-  padding: 14px 20px 0;
-  border-bottom: 1px solid rgba(136,0,255,.08);
+  padding: 14px 12px 0;
+  border-bottom: 1px solid rgba(255,215,0,.06);
 }
 .watt-tab-btn {
   flex: 1;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  color: rgba(200,160,255,.35);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .2em;
+  color: rgba(255,245,200,.25);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .15em;
   text-transform: uppercase;
-  padding: 10px 8px 12px;
+  padding: 10px 6px 12px;
   cursor: pointer;
   font-family: inherit;
   transition: all .25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 .watt-tab-btn:hover {
-  color: rgba(200,160,255,.6);
+  color: rgba(255,245,200,.5);
 }
+.watt-tab-icon {
+  flex-shrink: 0;
+  opacity: .6;
+  transition: opacity .25s;
+}
+.watt-tab-btn:hover .watt-tab-icon { opacity: .8; }
+.watt-tab-btn.active .watt-tab-icon { opacity: 1; }
+
+/* Tab active states — chaque cellule a sa couleur */
 .watt-tab-btn.active[data-tab="dna"] {
   color: var(--w-violet);
   border-bottom-color: var(--w-violet);
@@ -126,6 +141,10 @@
 .watt-tab-btn.active[data-tab="connect"] {
   color: var(--w-connect);
   border-bottom-color: var(--w-connect);
+}
+.watt-tab-btn.active[data-tab="artist"] {
+  color: var(--w-artist);
+  border-bottom-color: var(--w-artist);
 }
 
 /* ── Panel body ──────────────────────────────────────────────────────────── */
@@ -137,13 +156,12 @@
 }
 .watt-panel-body::-webkit-scrollbar { width: 3px; }
 .watt-panel-body::-webkit-scrollbar-track { background: transparent; }
-.watt-panel-body::-webkit-scrollbar-thumb { background: rgba(136,0,255,.15); border-radius: 99px; }
+.watt-panel-body::-webkit-scrollbar-thumb { background: rgba(255,215,0,.12); border-radius: 99px; }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   DNA TAB
+   DNA TAB — Couleurs playlists
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ── DNA Canvas (mini toile en haut) ─────────────────────────────────────── */
 .dna-canvas-wrap {
   position: relative;
   width: 100%;
@@ -154,60 +172,34 @@
   background: rgba(5,5,12,.6);
   border: 1px solid rgba(136,0,255,.08);
 }
-#dna-mini-canvas {
-  width: 100%;
-  height: 100%;
-}
+#dna-mini-canvas { width: 100%; height: 100%; }
 
-/* ── Dice button (overlay sur le canvas) ─────────────────────────────────── */
-.dna-dice-wrap {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  z-index: 5;
-}
+/* Dice button */
+.dna-dice-wrap { position: absolute; bottom: 12px; right: 12px; z-index: 5; }
 .dna-dice-btn {
-  width: 48px;
-  height: 48px;
+  width: 48px; height: 48px;
   background: rgba(5,5,8,.8);
   border: 1px solid rgba(136,0,255,.25);
   border-radius: 8px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   transition: all .3s;
   box-shadow: 0 0 15px rgba(136,0,255,.1);
 }
-.dna-dice-btn:hover {
-  border-color: rgba(136,0,255,.55);
-  box-shadow: 0 0 25px rgba(136,0,255,.2);
-  transform: scale(1.05);
-}
-.dna-dice-btn:active {
-  transform: scale(.95) rotate(15deg);
-}
-#dna-dice-svg {
-  width: 36px;
-  height: 36px;
-}
+.dna-dice-btn:hover { border-color: rgba(136,0,255,.55); box-shadow: 0 0 25px rgba(136,0,255,.2); transform: scale(1.05); }
+.dna-dice-btn:active { transform: scale(.95) rotate(15deg); }
+#dna-dice-svg { width: 36px; height: 36px; }
 
-/* ── Emotion input ───────────────────────────────────────────────────────── */
-.dna-form {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
+/* Emotion input */
+.dna-form { display: flex; gap: 8px; margin-bottom: 16px; }
 .dna-input {
   flex: 1;
   background: rgba(136,0,255,.04);
   border: 1px solid rgba(136,0,255,.15);
   border-radius: 4px;
   color: rgba(230,210,255,.85);
-  font-family: inherit;
-  font-size: 12px;
-  padding: 10px 12px;
-  outline: none;
+  font-family: inherit; font-size: 12px;
+  padding: 10px 12px; outline: none;
   transition: border-color .2s;
 }
 .dna-input::placeholder { color: rgba(136,0,255,.3); }
@@ -217,36 +209,22 @@
   border: 1px solid rgba(136,0,255,.3);
   border-radius: 4px;
   color: var(--w-violet);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  padding: 10px 14px;
-  cursor: pointer;
-  transition: all .2s;
-  white-space: nowrap;
+  font-family: inherit; font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 10px 14px; cursor: pointer;
+  transition: all .2s; white-space: nowrap;
 }
 .dna-submit:hover { background: rgba(136,0,255,.2); border-color: rgba(136,0,255,.55); }
 
-/* ── DNA quick emotions ──────────────────────────────────────────────────── */
-.dna-quick-emotions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 18px;
-}
+/* Quick emotions */
+.dna-quick-emotions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
 .dna-emotion-chip {
-  font-size: 10px;
-  letter-spacing: .08em;
-  padding: 5px 12px;
-  border-radius: 99px;
+  font-size: 10px; letter-spacing: .08em;
+  padding: 5px 12px; border-radius: 99px;
   border: 1px solid rgba(136,0,255,.15);
   color: rgba(200,160,255,.45);
-  cursor: pointer;
-  background: none;
-  font-family: inherit;
-  transition: all .2s;
+  cursor: pointer; background: none;
+  font-family: inherit; transition: all .2s;
 }
 .dna-emotion-chip:hover {
   border-color: rgba(136,0,255,.4);
@@ -254,184 +232,85 @@
   background: rgba(136,0,255,.06);
 }
 
-/* ── DNA Result card ─────────────────────────────────────────────────────── */
+/* Result card */
 .dna-result {
   border: 1px solid rgba(136,0,255,.12);
-  border-radius: 6px;
-  padding: 16px;
+  border-radius: 6px; padding: 16px;
   margin-bottom: 14px;
   animation: dnaFadeIn .4s ease-out;
 }
 @keyframes dnaFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 
 .dna-result-badge {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: .15em;
-  text-transform: uppercase;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 14px;
-  border-radius: 99px;
-  border: 1px solid;
-  margin-bottom: 12px;
+  font-size: 13px; font-weight: 900;
+  letter-spacing: .15em; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 14px; border-radius: 99px;
+  border: 1px solid; margin-bottom: 12px;
 }
 .dna-result-badge.sunset  { color: var(--w-sunset);  border-color: rgba(255,149,0,.35); text-shadow: 0 0 12px rgba(255,149,0,.3); }
 .dna-result-badge.jungle  { color: var(--w-jungle);  border-color: rgba(0,230,118,.35); text-shadow: 0 0 12px rgba(0,230,118,.3); }
 .dna-result-badge.night   { color: var(--w-night);   border-color: rgba(34,102,255,.35); text-shadow: 0 0 12px rgba(34,102,255,.3); }
 .dna-result-badge.hitmix  { color: var(--w-hitmix);  border-color: rgba(170,0,255,.35); text-shadow: 0 0 12px rgba(170,0,255,.3); }
 
-.dna-result-mood {
-  font-size: 11px;
-  color: rgba(200,180,255,.5);
-  font-style: italic;
-  line-height: 1.6;
-  margin-bottom: 14px;
-}
+.dna-result-mood { font-size: 11px; color: rgba(200,180,255,.5); font-style: italic; line-height: 1.6; margin-bottom: 14px; }
 
 /* Score bars */
 .dna-scores { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.dna-score-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 9px;
-}
-.dna-score-label {
-  width: 90px;
-  flex-shrink: 0;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: rgba(200,180,255,.35);
-}
+.dna-score-row { display: flex; align-items: center; gap: 8px; font-size: 9px; }
+.dna-score-label { width: 90px; flex-shrink: 0; letter-spacing: .08em; text-transform: uppercase; color: rgba(200,180,255,.35); }
 .dna-score-row.winner .dna-score-label { font-weight: 700; }
-.dna-score-bar-wrap {
-  flex: 1;
-  height: 3px;
-  background: rgba(255,255,255,.05);
-  border-radius: 99px;
-  overflow: hidden;
-}
-.dna-score-bar {
-  height: 100%;
-  border-radius: 99px;
-  transition: width .6s cubic-bezier(.4,0,.2,1);
-}
+.dna-score-bar-wrap { flex: 1; height: 3px; background: rgba(255,255,255,.05); border-radius: 99px; overflow: hidden; }
+.dna-score-bar { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
 .dna-score-bar.sunset  { background: var(--w-sunset); }
 .dna-score-bar.jungle  { background: var(--w-jungle); }
 .dna-score-bar.night   { background: var(--w-night); }
 .dna-score-bar.hitmix  { background: var(--w-hitmix); }
-
-.dna-score-pct {
-  width: 30px;
-  text-align: right;
-  color: rgba(200,180,255,.4);
-  flex-shrink: 0;
-}
+.dna-score-pct { width: 30px; text-align: right; color: rgba(200,180,255,.4); flex-shrink: 0; }
 .dna-score-row.winner .dna-score-pct { color: rgba(230,210,255,.8); }
 
-/* ── DNA Track recommendations ───────────────────────────────────────────── */
+/* Track recommendations */
 .dna-tracks-title {
-  font-size: 9px;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: rgba(136,0,255,.4);
-  margin: 16px 0 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: rgba(136,0,255,.4); margin: 16px 0 10px;
+  display: flex; align-items: center; gap: 6px;
 }
 .dna-track-list { display: flex; flex-direction: column; gap: 4px; }
 .dna-track-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 5px;
-  background: rgba(136,0,255,.03);
-  border: 1px solid rgba(136,0,255,.06);
-  cursor: pointer;
-  transition: all .2s;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px; border-radius: 5px;
+  background: rgba(136,0,255,.03); border: 1px solid rgba(136,0,255,.06);
+  cursor: pointer; transition: all .2s;
 }
-.dna-track-row:hover {
-  background: rgba(136,0,255,.08);
-  border-color: rgba(136,0,255,.18);
-}
-.dna-track-row.playing {
-  background: rgba(136,0,255,.1);
-  border-color: rgba(136,0,255,.3);
-}
+.dna-track-row:hover { background: rgba(136,0,255,.08); border-color: rgba(136,0,255,.18); }
+.dna-track-row.playing { background: rgba(136,0,255,.1); border-color: rgba(136,0,255,.3); }
 .dna-track-play-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 10px;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 10px;
 }
 .dna-track-play-icon.sunset  { background: rgba(255,149,0,.12); color: var(--w-sunset); }
 .dna-track-play-icon.jungle  { background: rgba(0,230,118,.12); color: var(--w-jungle); }
 .dna-track-play-icon.night   { background: rgba(34,102,255,.12); color: var(--w-night); }
 .dna-track-play-icon.hitmix  { background: rgba(170,0,255,.12); color: var(--w-hitmix); }
-
 .dna-track-info { flex: 1; min-width: 0; }
-.dna-track-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(230,220,255,.85);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dna-track-meta {
-  font-size: 10px;
-  color: rgba(180,160,220,.4);
-  margin-top: 2px;
-}
-.dna-track-dur {
-  font-size: 10px;
-  color: rgba(200,180,255,.3);
-  flex-shrink: 0;
-}
+.dna-track-name { font-size: 12px; font-weight: 600; color: rgba(230,220,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dna-track-meta { font-size: 10px; color: rgba(180,160,220,.4); margin-top: 2px; }
+.dna-track-dur { font-size: 10px; color: rgba(200,180,255,.3); flex-shrink: 0; }
 
-/* ── DNA Suno prompt ─────────────────────────────────────────────────────── */
+/* Suno prompt */
 .dna-suno-box {
-  background: rgba(136,0,255,.03);
-  border: 1px solid rgba(136,0,255,.1);
-  border-radius: 5px;
-  padding: 12px;
-  margin-top: 14px;
-  position: relative;
+  background: rgba(136,0,255,.03); border: 1px solid rgba(136,0,255,.1);
+  border-radius: 5px; padding: 12px; margin-top: 14px; position: relative;
 }
-.dna-suno-label {
-  font-size: 9px;
-  letter-spacing: .15em;
-  text-transform: uppercase;
-  color: rgba(136,0,255,.35);
-  margin-bottom: 6px;
-}
-.dna-suno-prompt {
-  font-size: 11px;
-  color: rgba(200,180,255,.55);
-  line-height: 1.7;
-  padding-right: 60px;
-}
+.dna-suno-label { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: rgba(136,0,255,.35); margin-bottom: 6px; }
+.dna-suno-prompt { font-size: 11px; color: rgba(200,180,255,.55); line-height: 1.7; padding-right: 60px; }
 .dna-suno-copy {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(136,0,255,.1);
-  border: 1px solid rgba(136,0,255,.25);
-  border-radius: 3px;
-  color: rgba(170,100,255,.6);
-  font-size: 9px;
-  padding: 4px 8px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all .2s;
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(136,0,255,.1); border: 1px solid rgba(136,0,255,.25);
+  border-radius: 3px; color: rgba(170,100,255,.6);
+  font-size: 9px; padding: 4px 8px;
+  cursor: pointer; font-family: inherit; transition: all .2s;
 }
 .dna-suno-copy:hover { background: rgba(136,0,255,.2); color: #cc88ff; }
 
@@ -439,80 +318,190 @@
    CONNECT TAB — Rouge néon premium
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ── Connect canvas ──────────────────────────────────────────────────────── */
 .connect-canvas-wrap {
-  position: relative;
-  width: 100%;
-  height: 200px;
-  margin-bottom: 16px;
-  border-radius: 6px;
-  overflow: hidden;
-  background: rgba(12,2,4,.6);
-  border: 1px solid rgba(255,23,68,.08);
+  position: relative; width: 100%; height: 200px;
+  margin-bottom: 16px; border-radius: 6px; overflow: hidden;
+  background: rgba(12,2,4,.6); border: 1px solid rgba(255,23,68,.08);
 }
-#connect-mini-canvas {
-  width: 100%;
-  height: 100%;
+#connect-mini-canvas { width: 100%; height: 100%; }
+
+.connect-empty { text-align: center; padding: 20px 12px; }
+.connect-empty-title { font-size: 12px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: rgba(255,23,68,.55); margin-bottom: 8px; }
+.connect-empty-sub { font-size: 11px; color: rgba(255,120,120,.3); line-height: 1.7; margin-bottom: 18px; }
+
+.connect-categories { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 20px; }
+.connect-cat-chip {
+  font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 99px;
+  border: 1px solid rgba(255,23,68,.15); color: rgba(255,100,100,.35);
+  background: none; font-family: inherit; cursor: default; transition: all .3s;
+}
+.connect-cat-chip:hover { border-color: rgba(255,23,68,.35); color: rgba(255,100,100,.6); }
+
+.connect-cta { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.connect-cta-btn {
+  background: rgba(255,23,68,.1); border: 1px solid rgba(255,23,68,.3);
+  border-radius: 4px; color: var(--w-connect);
+  font-family: inherit; font-size: 11px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase;
+  padding: 12px 24px; cursor: pointer; transition: all .25s;
+  display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+}
+.connect-cta-btn:hover { background: rgba(255,23,68,.18); border-color: rgba(255,23,68,.55); box-shadow: 0 0 20px rgba(255,23,68,.15); }
+.connect-cta-note { font-size: 9px; letter-spacing: .15em; color: rgba(255,100,100,.2); text-transform: uppercase; }
+
+.connect-stats { display: flex; gap: 8px; margin-bottom: 16px; }
+.connect-stat-card {
+  flex: 1; background: rgba(255,23,68,.03);
+  border: 1px solid rgba(255,23,68,.08); border-radius: 4px;
+  padding: 12px 8px; text-align: center;
+}
+.connect-stat-val { font-size: 18px; font-weight: 900; color: var(--w-connect); line-height: 1; }
+.connect-stat-lbl { font-size: 8px; letter-spacing: .15em; text-transform: uppercase; color: rgba(255,100,100,.3); margin-top: 5px; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ARTIST TAB — Prise électrique · PLUG WATT · jaune/blanc/électrique
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Plug icon hero */
+.artist-plug-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 20px;
+}
+.artist-plug-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 14px;
+  filter: drop-shadow(0 0 12px rgba(255,215,0,.25));
+  animation: plugPulse 3s ease-in-out infinite;
+}
+@keyframes plugPulse {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(255,215,0,.25)); }
+  50%      { filter: drop-shadow(0 0 20px rgba(255,215,0,.45)); }
+}
+.artist-plug-title {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--w-artist);
+  text-shadow: 0 0 10px rgba(255,215,0,.2);
+  margin-bottom: 4px;
+}
+.artist-plug-sub {
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: rgba(255,245,200,.3);
+  text-transform: uppercase;
 }
 
-/* ── Connect empty state ─────────────────────────────────────────────────── */
-.connect-empty {
-  text-align: center;
-  padding: 20px 12px;
-}
-.connect-empty-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .15em;
-  text-transform: uppercase;
-  color: rgba(255,23,68,.55);
-  margin-bottom: 8px;
-}
-.connect-empty-sub {
-  font-size: 11px;
-  color: rgba(255,120,120,.3);
-  line-height: 1.7;
+/* Artist stats */
+.artist-stats {
+  display: flex;
+  gap: 8px;
   margin-bottom: 18px;
 }
+.artist-stat-card {
+  flex: 1;
+  background: rgba(255,215,0,.03);
+  border: 1px solid rgba(255,215,0,.08);
+  border-radius: 4px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.artist-stat-val {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--w-artist);
+  line-height: 1;
+}
+.artist-stat-lbl {
+  font-size: 8px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: rgba(255,215,0,.3);
+  margin-top: 5px;
+}
 
-/* ── Connect category chips ──────────────────────────────────────────────── */
-.connect-categories {
+/* Artist menu items */
+.artist-menu {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
-  justify-content: center;
   margin-bottom: 20px;
 }
-.connect-cat-chip {
-  font-size: 9px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  padding: 5px 12px;
-  border-radius: 99px;
-  border: 1px solid rgba(255,23,68,.15);
-  color: rgba(255,100,100,.35);
-  background: none;
-  font-family: inherit;
-  cursor: default;
-  transition: all .3s;
+.artist-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 5px;
+  background: rgba(255,215,0,.02);
+  border: 1px solid rgba(255,215,0,.06);
+  cursor: pointer;
+  transition: all .25s;
+  text-decoration: none;
+  color: inherit;
 }
-.connect-cat-chip:hover {
-  border-color: rgba(255,23,68,.35);
-  color: rgba(255,100,100,.6);
+.artist-menu-item:hover {
+  background: rgba(255,215,0,.06);
+  border-color: rgba(255,215,0,.15);
+  box-shadow: 0 0 12px rgba(255,215,0,.05);
 }
+.artist-menu-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  background: rgba(255,215,0,.06);
+  border: 1px solid rgba(255,215,0,.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--w-artist);
+  transition: all .25s;
+}
+.artist-menu-item:hover .artist-menu-icon {
+  background: rgba(255,215,0,.12);
+  border-color: rgba(255,215,0,.25);
+}
+.artist-menu-info { flex: 1; min-width: 0; }
+.artist-menu-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,245,200,.8);
+  letter-spacing: .05em;
+}
+.artist-menu-desc {
+  font-size: 10px;
+  color: rgba(255,215,0,.3);
+  margin-top: 3px;
+  letter-spacing: .04em;
+}
+.artist-menu-arrow {
+  color: rgba(255,215,0,.2);
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: color .25s;
+}
+.artist-menu-item:hover .artist-menu-arrow { color: rgba(255,215,0,.5); }
 
-/* ── Connect CTA ─────────────────────────────────────────────────────────── */
-.connect-cta {
+/* Artist CTA */
+.artist-cta {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255,215,0,.06);
 }
-.connect-cta-btn {
-  background: rgba(255,23,68,.1);
-  border: 1px solid rgba(255,23,68,.3);
+.artist-cta-btn {
+  background: rgba(255,215,0,.1);
+  border: 1px solid rgba(255,215,0,.3);
   border-radius: 4px;
-  color: var(--w-connect);
+  color: var(--w-artist);
   font-family: inherit;
   font-size: 11px;
   font-weight: 700;
@@ -526,44 +515,63 @@
   gap: 8px;
   text-decoration: none;
 }
-.connect-cta-btn:hover {
-  background: rgba(255,23,68,.18);
-  border-color: rgba(255,23,68,.55);
-  box-shadow: 0 0 20px rgba(255,23,68,.15);
+.artist-cta-btn:hover {
+  background: rgba(255,215,0,.18);
+  border-color: rgba(255,215,0,.55);
+  box-shadow: 0 0 20px rgba(255,215,0,.12);
 }
-.connect-cta-note {
+.artist-cta-note {
   font-size: 9px;
   letter-spacing: .15em;
-  color: rgba(255,100,100,.2);
+  color: rgba(255,215,0,.2);
   text-transform: uppercase;
 }
 
-/* ── Connect stats preview ───────────────────────────────────────────────── */
-.connect-stats {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.connect-stat-card {
-  flex: 1;
-  background: rgba(255,23,68,.03);
-  border: 1px solid rgba(255,23,68,.08);
-  border-radius: 4px;
-  padding: 12px 8px;
+/* Artist auth gate (non connecté) */
+.artist-gate {
   text-align: center;
+  padding: 20px 12px;
 }
-.connect-stat-val {
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--w-connect);
-  line-height: 1;
-}
-.connect-stat-lbl {
-  font-size: 8px;
-  letter-spacing: .15em;
+.artist-gate-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: rgba(255,100,100,.3);
-  margin-top: 5px;
+  color: rgba(255,215,0,.55);
+  margin-bottom: 10px;
+}
+.artist-gate-desc {
+  font-size: 11px;
+  color: rgba(255,245,200,.3);
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+.artist-gate-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.artist-gate-feat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: rgba(255,215,0,.02);
+  border: 1px solid rgba(255,215,0,.05);
+}
+.artist-gate-feat-icon {
+  color: var(--w-artist);
+  font-size: 14px;
+  flex-shrink: 0;
+  opacity: .6;
+}
+.artist-gate-feat-text {
+  font-size: 11px;
+  color: rgba(255,245,200,.45);
+  line-height: 1.4;
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -574,9 +582,12 @@
   .dna-canvas-wrap, .connect-canvas-wrap { height: 160px; }
   .dna-form { flex-direction: column; }
   .dna-submit { width: 100%; }
+  .watt-tab-btn { font-size: 8px; letter-spacing: .1em; padding: 10px 4px 12px; }
+  .watt-tab-icon { width: 10px; height: 10px; }
 }
 @media (max-width: 480px) {
   .watt-toggle-btn { padding: 6px 10px; font-size: 9px; letter-spacing: .12em; }
   .dna-canvas-wrap, .connect-canvas-wrap { height: 130px; }
   .watt-panel-body { padding: 12px 14px 20px; }
+  .artist-plug-icon { width: 60px; height: 60px; }
 }
