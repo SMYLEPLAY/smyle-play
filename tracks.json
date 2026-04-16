@@ -2,6 +2,7 @@
   "sunset-lover": {
     "label": "SUNSET LOVER",
     "folder": "SUNSET LOVER",
+    "r2_folder": "SUNSET LOVER",
     "theme": "sunset-lover",
     "tracks": [
       {
@@ -159,14 +160,21 @@
         "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/SUNSET%20LOVER/sw-001%20%E2%80%94%20memories%20Drift.wav"
       }
     ],
-    "total_duration": 5436.1,
-    "r2_folder": "SUNSET LOVER"
+    "total_duration": 5436.1
   },
   "jungle-osmose": {
     "label": "JUNGLE OSMOSE",
     "folder": " JUNGLE OSMOSE",
+    "r2_folder": "JUNGLE OSMOSE",
     "theme": "jungle-osmose",
     "tracks": [
+      {
+        "id": "jo-sw001bluelightdriftcopie",
+        "file": "sw-001 — Blue Light Drift copie.wav",
+        "name": "Blue Light Drift Copie",
+        "duration": 209.0,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20Blue%20Light%20Drift%20copie.wav"
+      },
       {
         "id": "jo-sw001bluelightdriftwav",
         "file": "sw-001 — Blue Light Drift.wav",
@@ -360,12 +368,11 @@
         "url_alt": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/%20JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20Rain%20in%20paradise%20Drift.wav"
       },
       {
-        "id": "jo-sw001unforgetabledriftwa",
-        "file": "sw-001 — UNFORGETABLE Drift.wav",
-        "name": "Unforgetable",
+        "id": "jo-sw001unforgettabledriftw",
+        "file": "sw-001 — UNFORGETTABLE Drift.wav",
+        "name": "Unforgettable",
         "duration": 102.2,
-        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20UNFORGETABLE%20Drift.wav",
-        "url_alt": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/%20JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20UNFORGETABLE%20Drift.wav"
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20UNFORGETTABLE%20Drift.wav"
       },
       {
         "id": "jo-sw001wakeupdriftwav",
@@ -400,12 +407,12 @@
         "url_alt": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/%20JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20nuit%20kora%20Drift.wav"
       }
     ],
-    "total_duration": 5035.8,
-    "r2_folder": "JUNGLE OSMOSE"
+    "total_duration": 5244.8
   },
   "night-city": {
     "label": "NIGHT CITY",
     "folder": "NIGHT CITY",
+    "r2_folder": "NIGHT CITY",
     "theme": "night-city",
     "tracks": [
       {
@@ -549,12 +556,12 @@
         "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/NIGHT%20CITY/sw-001%20%E2%80%94%20ZERO%20PRETEXTE%20Drift.wav"
       }
     ],
-    "total_duration": 3496.0,
-    "r2_folder": "NIGHT CITY"
+    "total_duration": 3496.0
   },
   "hit-mix": {
     "label": "HIT MIX",
     "folder": "HIT MIX",
+    "r2_folder": "HIT MIX",
     "theme": "hit-mix",
     "tracks": [
       {
@@ -586,6 +593,13 @@
         "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/NOCHE.wav"
       },
       {
+        "id": "hm-sucesswav",
+        "file": "Sucess.wav",
+        "name": "Sucess",
+        "duration": 213.6,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/Sucess.wav"
+      },
+      {
         "id": "hm-toomuchicewav",
         "file": "Too much ice.wav",
         "name": "Too Much Ice",
@@ -612,9 +626,15 @@
         "name": "My Love",
         "duration": 147.2,
         "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/my%20love.wav"
+      },
+      {
+        "id": "hm-tristewav",
+        "file": "triste.wav",
+        "name": "Triste",
+        "duration": 177.7,
+        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/HIT%20MIX/triste.wav"
       }
     ],
-    "total_duration": 1316.5,
-    "r2_folder": "HIT MIX"
+    "total_duration": 1707.8
   }
 }

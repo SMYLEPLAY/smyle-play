@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SMYLE PLAY — LaunchAgent macOS : Suno Router
+  ─────────────────────────────────────────────
+  Surveille ~/Downloads et route automatiquement les nouveaux WAV/MP3
+  Suno vers la bonne playlist, via breadcrumb ou DNA classifier.
+
+  Une fois le fichier déplacé dans SUNSET LOVER/ / NIGHT CITY/ / JUNGLE OSMOSE/
+  / HIT MIX/, le LaunchAgent principal (com.smyleplay.watcher) prend le relais
+  pour uploader sur R2, regen tracks.json, push GitHub, et Railway redéploie.
+
+  Installation :
+    ./setup_watcher.sh choisit d'installer ce plist, ou manuellement :
+      cp com.smyleplay.suno-router.plist ~/Library/LaunchAgents/
+      launchctl load ~/Library/LaunchAgents/com.smyleplay.suno-router.plist
+
+  Désinstallation :
+    launchctl unload ~/Library/LaunchAgents/com.smyleplay.suno-router.plist
+    rm ~/Library/LaunchAgents/com.smyleplay.suno-router.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.smyleplay.suno-router</string>
+
+  <!-- Commande : cd projet + lance suno_router.py -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>cd "$HOME/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT" &amp;&amp; /usr/bin/python3 suno_router.py &gt;&gt; .watcher-logs/suno_router.launchd.log 2&gt;&amp;1</string>
+  </array>
+
+  <!-- Déclenchement à chaque modification dans ~/Downloads -->
+  <key>WatchPaths</key>
+  <array>
+    <string>/Users/tommio/Downloads</string>
+  </array>
+
+  <!-- Throttle : attend au moins 15s entre deux runs (laisse Suno finir d'écrire) -->
+  <key>ThrottleInterval</key>
+  <integer>15</integer>
+
+  <!-- Ne pas relancer en boucle si le script échoue -->
+  <key>KeepAlive</key>
+  <false/>
+
+  <!-- PATH pour que python3 trouve git, etc. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- Logs macOS (séparés du log humain que suno_router.py gère lui-même) -->
+  <key>StandardOutPath</key>
+  <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT /.watcher-logs/suno-router.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT /.watcher-logs/suno-router.err.log</string>
+
+  <!-- Ne pas lancer au chargement du plist -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

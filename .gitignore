@@ -6,6 +6,19 @@
 *.ogg
 *.m4a
 
+# ── Ableton Session Data (jamais versionné) ──────────────────────────────
+*.asd
+
+# ── Dossier Claude local (config + worktrees) ────────────────────────────
+.claude/
+
+# ── Playlist HIT MIX (exclue, locale uniquement) ─────────────────────────
+HIT MIX/
+
+# ── Dossier de triage Suno Router (fichiers en attente de classement) ────
+A_CLASSER/*
+!A_CLASSER/.gitkeep
+
 # ── macOS ──────────────────────────────────────────────────────────────────
 .DS_Store
 ._*
@@ -30,6 +43,7 @@ FICHIER/
 # ── Logs ──────────────────────────────────────────────────────────────────
 *.log
 logs/
+.watcher-logs/
 
 # ── Éditeurs ──────────────────────────────────────────────────────────────
 .vscode/

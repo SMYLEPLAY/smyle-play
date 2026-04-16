@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SMYLE PLAY — macOS LaunchAgent pour détection instantanée
+  ─────────────────────────────────────────────────────────
+  Déclenche ./deploy.sh dès qu'un fichier est déposé/modifié dans
+  l'un des 4 dossiers de playlist. Complément au cron 15min qui sert
+  de filet de sécurité.
+
+  Installation : ./setup_watcher.sh choisit d'installer ce plist
+  dans ~/Library/LaunchAgents/ puis le charge via `launchctl load`.
+
+  Désinstallation :
+    launchctl unload ~/Library/LaunchAgents/com.smyleplay.watcher.plist
+    rm ~/Library/LaunchAgents/com.smyleplay.watcher.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.smyleplay.watcher</string>
+
+  <!-- Commande à lancer : deploy.sh dans le dossier du projet -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>cd "$HOME/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT" &amp;&amp; ./deploy.sh</string>
+  </array>
+
+  <!-- Dossiers surveillés — déclenchement instantané sur modification -->
+  <key>WatchPaths</key>
+  <array>
+    <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT /SUNSET LOVER</string>
+    <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT / JUNGLE OSMOSE</string>
+    <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT /NIGHT CITY</string>
+    <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT /HIT MIX</string>
+  </array>
+
+  <!-- Throttle : n'exécute pas plus d'une fois toutes les 10 secondes -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <!-- Ne pas relancer en boucle si deploy.sh échoue -->
+  <key>KeepAlive</key>
+  <false/>
+
+  <!-- Charge les variables d'environnement (PATH pour python3, git, etc.) -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- Logs pour debug -->
+  <key>StandardOutPath</key>
+  <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT /.watcher-logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/tommio/Documents/Claude/IA SUNO PLAYLIST DEVELOPPEMENT /.watcher-logs/launchd.err.log</string>
+
+  <!-- Au premier chargement, ne pas exécuter tout de suite -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

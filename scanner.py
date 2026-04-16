@@ -3,6 +3,7 @@ SMYLE PLAY — Scanner de playlists
 Scanne les dossiers locaux (dev) ou le bucket R2 (production).
 Aucune dépendance externe en mode local (stdlib uniquement).
 """
+from __future__ import annotations
 
 import os
 import re
