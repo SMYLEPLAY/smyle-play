@@ -1474,3 +1474,204 @@ img, video, svg { max-width: 100%; }
   .agent-stat-val { font-size: 16px; }
 }
 .hub-t3-empty-link:hover { color: rgba(200,180,255,.9); }
+
+/* ── AGENT PANEL — Onglet DNA Classifier ─────────────────────────────────── */
+
+/* Formulaire d'entrée */
+.agent-dna-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.agent-dna-input {
+  background: rgba(255,200,0,.04);
+  border: 1px solid rgba(255,200,0,.15);
+  border-radius: 4px;
+  color: rgba(255,240,180,.85);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color .2s;
+}
+.agent-dna-input::placeholder { color: rgba(255,200,0,.25); }
+.agent-dna-input:focus { border-color: rgba(255,200,0,.5); }
+.agent-dna-btn {
+  background: rgba(255,200,0,.1);
+  border: 1px solid rgba(255,200,0,.3);
+  border-radius: 4px;
+  color: #ffd700;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  padding: 11px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.agent-dna-btn:hover:not(:disabled) { background: rgba(255,200,0,.18); border-color: rgba(255,200,0,.6); }
+.agent-dna-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Carte résultat ADN */
+.agent-dna-card {
+  border: 1px solid rgba(255,200,0,.15);
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 4px;
+}
+.agent-dna-badge {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 99px;
+  margin-bottom: 10px;
+}
+.agent-dna-playlist {
+  font-size: 11px;
+  color: rgba(255,240,180,.5);
+  margin-bottom: 4px;
+}
+.agent-dna-playlist strong { font-weight: 700; }
+.agent-dna-mood {
+  font-size: 11px;
+  color: rgba(255,220,100,.4);
+  font-style: italic;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+/* Jauge de confiance */
+.agent-dna-confidence { margin-bottom: 12px; }
+.agent-dna-conf-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: rgba(255,200,0,.35);
+  margin-bottom: 5px;
+}
+.agent-dna-conf-label span { color: rgba(255,200,0,.7); font-weight: 700; }
+.agent-dna-conf-bar {
+  height: 4px;
+  background: rgba(255,255,255,.06);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.agent-dna-conf-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .6s cubic-bezier(.4,0,.2,1);
+}
+
+/* Score bars par ADN */
+.agent-dna-scores { display: flex; flex-direction: column; gap: 5px; }
+.agent-dna-score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+}
+.agent-dna-score-label {
+  width: 100px;
+  flex-shrink: 0;
+  color: rgba(255,220,100,.35);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.agent-dna-score-row.winner .agent-dna-score-label { color: rgba(255,220,100,.75); font-weight: 700; }
+.agent-dna-score-bar-wrap {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,.05);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.agent-dna-score-bar {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .5s ease;
+}
+.agent-dna-score-pct {
+  width: 28px;
+  text-align: right;
+  color: rgba(255,200,0,.4);
+  flex-shrink: 0;
+}
+.agent-dna-score-row.winner .agent-dna-score-pct { color: rgba(255,200,0,.85); }
+
+/* Prompt Suno */
+.agent-suno-box {
+  background: rgba(255,200,0,.03);
+  border: 1px solid rgba(255,200,0,.1);
+  border-radius: 5px;
+  padding: 12px;
+  position: relative;
+}
+.agent-suno-prompt {
+  font-size: 11px;
+  color: rgba(255,240,200,.6);
+  line-height: 1.7;
+  padding-right: 70px;
+}
+.agent-suno-copy {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255,200,0,.1);
+  border: 1px solid rgba(255,200,0,.25);
+  border-radius: 3px;
+  color: rgba(255,200,0,.7);
+  font-size: 9px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.agent-suno-copy:hover { background: rgba(255,200,0,.2); color: #ffd700; }
+
+/* Tags de style */
+.agent-suno-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.agent-suno-tag {
+  font-size: 9px;
+  letter-spacing: .1em;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid rgba(255,200,0,.2);
+  color: rgba(255,200,0,.5);
+  cursor: pointer;
+  transition: all .2s;
+}
+.agent-suno-tag:hover { border-color: rgba(255,200,0,.5); color: #ffd700; }
+.agent-suno-tag.copied { border-color: rgba(80,220,120,.5); color: rgba(80,220,120,.8); }
+
+/* Méta ligne */
+.agent-dna-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 9px;
+  color: rgba(255,200,0,.3);
+  margin: 10px 0 4px;
+  letter-spacing: .08em;
+}
+.agent-dna-method {
+  font-size: 9px;
+  color: rgba(255,200,0,.18);
+  letter-spacing: .08em;
+  margin-top: 4px;
+}

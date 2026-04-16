@@ -504,6 +504,71 @@ def create_app(config_class=None):
             logger.info(f'[WATT] Mode sans R2 — clé simulée : {key}')
             return jsonify({'ok': True, 'url': None, 'key': key, 'mock': True})
 
+    # ── API WATT Agents — Pipeline ADN ────────────────────────────────────
+
+    @app.route('/api/agents/process-track', methods=['POST'])
+    def agents_process_track():
+        """
+        Lance la chaîne autonome WATT sur un morceau.
+
+        Body JSON :
+            {
+                "name":  str,           # titre du morceau (requis)
+                "genre": str,           # genre déclaré (optionnel)
+                "tags":  str | list,    # tags libres (optionnel)
+                "bpm":   float,         # BPM (optionnel)
+                "id":    int            # ID DB (optionnel, pour logging)
+            }
+
+        Retourne :
+            {
+                "ok": true,
+                "result": { dna, confidence, scores, playlist_*, suno_prompt, ... }
+            }
+        """
+        from agents.orchestrator import process_track as agent_process
+
+        data = request.get_json(silent=True) or {}
+        track_name = (data.get('name') or '').strip()
+
+        if not track_name:
+            return jsonify({'error': 'Le champ "name" est requis'}), 400
+
+        try:
+            result = agent_process(data)
+            return jsonify({'ok': True, 'result': result})
+        except Exception as e:
+            logger.error(f'[WATT Agent] /api/agents/process-track error: {e}')
+            return jsonify({'error': str(e)}), 500
+
+    # ── API WATT Agents — Traitement automatique au upload ────────────────
+
+    @app.route('/api/agents/process-track/<int:track_id>', methods=['POST'])
+    def agents_process_track_by_id(track_id: int):
+        """
+        Lance le pipeline ADN sur un track existant en base (par ID).
+        Pratique pour ré-analyser un son déjà uploadé.
+        """
+        from agents.orchestrator import process_track as agent_process
+
+        if not db_enabled:
+            return jsonify({'error': 'Base de données non disponible'}), 503
+
+        track = Track.query.get(track_id)
+        if not track:
+            return jsonify({'error': 'Morceau introuvable'}), 404
+
+        try:
+            result = agent_process({
+                'id':    track.id,
+                'name':  track.name,
+                'genre': track.genre or '',
+            })
+            return jsonify({'ok': True, 'result': result})
+        except Exception as e:
+            logger.error(f'[WATT Agent] process-track/{track_id} error: {e}')
+            return jsonify({'error': str(e)}), 500
+
     # ── Healthcheck ────────────────────────────────────────────────────────
 
     @app.route('/health')
