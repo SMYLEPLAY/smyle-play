@@ -41,18 +41,20 @@ def create_app(config_class=None):
     # ── Base de données ────────────────────────────────────────────────────
     db_enabled = bool(app.config.get('DATABASE_URL'))
     if db_enabled:
-        from models import db
+        from models import db, ensure_schema
         db.init_app(app)
         with app.app_context():
             db.create_all()
             logger.info('PostgreSQL connecté — tables créées si absentes')
+        ensure_schema(app)   # additive migrations (credits, prompts, etc.)
     else:
         # Mode dev SQLite (fallback pratique pour travailler en local)
-        from models import db
+        from models import db, ensure_schema
         db.init_app(app)
         with app.app_context():
             db.create_all()
             logger.info('SQLite local activé — pas de DATABASE_URL')
+        ensure_schema(app)
         db_enabled = True   # SQLite est utilisable
 
     # ── Client R2 (optionnel) ──────────────────────────────────────────────
@@ -156,6 +158,59 @@ def create_app(config_class=None):
         from models import User
         user = User.query.get(session['user_id'])
         return jsonify({'user': user.to_dict() if user else None})
+
+    # ── API Credits (Phase 1) ─────────────────────────────────────────────
+
+    @app.route('/api/credits', methods=['GET'])
+    def get_credits():
+        """Retourne le solde de crédits de l'utilisateur connecté."""
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+        from models import User
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'Utilisateur introuvable'}), 404
+        return jsonify({'credits': int(user.credits or 0)})
+
+    @app.route('/api/credits/grant', methods=['POST'])
+    def grant_credits():
+        """
+        Crédite un utilisateur (opération admin / test).
+
+        Protégé par le header X-Admin-Token qui doit matcher ADMIN_TOKEN
+        dans la config. Si ADMIN_TOKEN n'est pas défini → endpoint désactivé.
+
+        Body JSON :
+            { "email": "user@example.com", "amount": 100 }
+        """
+        expected = app.config.get('ADMIN_TOKEN', '')
+        if not expected:
+            return jsonify({'error': 'Endpoint désactivé (ADMIN_TOKEN non configuré)'}), 503
+
+        token = request.headers.get('X-Admin-Token', '')
+        if token != expected:
+            return jsonify({'error': 'Non autorisé'}), 403
+
+        from models import db, User
+        data = request.get_json() or {}
+        email  = (data.get('email') or '').strip()
+        try:
+            amount = int(data.get('amount', 0))
+        except (TypeError, ValueError):
+            return jsonify({'error': "Le champ 'amount' doit être un entier"}), 400
+
+        if not email or amount <= 0:
+            return jsonify({'error': 'email et amount > 0 requis'}), 400
+
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'error': 'Utilisateur introuvable'}), 404
+
+        user.credits = int(user.credits or 0) + amount
+        db.session.commit()
+        logger.info(f'[CREDITS] +{amount} à {email} → solde {user.credits}')
+        return jsonify({'ok': True, 'credits': user.credits})
 
     # ── API WATT — Profil artiste (GET = mon profil, POST = sauvegarder) ──
 

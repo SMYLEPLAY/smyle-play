@@ -51,6 +51,11 @@ class Config:
     # ── CORS (Railway/Render autorisent les requêtes depuis le front) ──────
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*')
 
+    # ── Admin (bonus crédits, opérations internes) ─────────────────────────
+    # Token secret pour les endpoints /api/credits/grant et futurs /admin/*.
+    # Vide en dev = endpoint inactif. À définir en prod via Railway Variables.
+    ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', '')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

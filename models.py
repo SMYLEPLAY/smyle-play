@@ -36,6 +36,7 @@ class User(db.Model):
     name          = db.Column(db.String(100), nullable=False)
     email         = db.Column(db.String(200), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
+    credits       = db.Column(db.Integer, default=0, nullable=False)   # Phase 1 — solde crédits
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -56,6 +57,7 @@ class User(db.Model):
             'id':         self.id,
             'name':       self.name,
             'email':      self.email,
+            'credits':    int(self.credits or 0),
             'created_at': self.created_at.isoformat(),
         }
 
@@ -265,3 +267,37 @@ class Feedback(db.Model):
 
     def __repr__(self):
         return f'<Feedback {self.type} from {self.email}>'
+
+
+# ── Schema ensure (migrations légères sans Alembic) ───────────────────────────
+
+def ensure_schema(app) -> None:
+    """
+    Ajoute les colonnes manquantes aux tables existantes sans casser la DB.
+
+    Flask-SQLAlchemy `db.create_all()` crée les tables absentes mais n'altère
+    jamais les tables existantes. Ici on fait du "additive migration" à chaque
+    démarrage : pour chaque colonne nouvelle ajoutée par une phase, on vérifie
+    sa présence et on l'ajoute via ALTER TABLE si elle manque.
+
+    Fonctionne sur PostgreSQL (Railway) et SQLite (dev local).
+    Idempotent : peut être appelé à chaque boot sans effet secondaire.
+    """
+    from sqlalchemy import inspect, text
+    import logging
+    log = logging.getLogger(__name__)
+
+    with app.app_context():
+        insp = inspect(db.engine)
+        existing_tables = set(insp.get_table_names())
+
+        # Phase 1 — users.credits (solde de crédits utilisateur)
+        if 'users' in existing_tables:
+            cols = {c['name'] for c in insp.get_columns('users')}
+            if 'credits' not in cols:
+                with db.engine.connect() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE users ADD COLUMN credits INTEGER NOT NULL DEFAULT 0"
+                    ))
+                    conn.commit()
+                log.info('[ensure_schema] users.credits ajoutée')
