@@ -41,10 +41,11 @@ class User(db.Model):
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relations
-    play_counts = db.relationship('PlayCount', backref='user', lazy='dynamic', cascade='all, delete-orphan')
-    saved_mixes = db.relationship('SavedMix',  backref='user', lazy='dynamic', cascade='all, delete-orphan')
-    feedbacks   = db.relationship('Feedback',  backref='user', lazy='dynamic', cascade='all, delete-orphan')
-    artist      = db.relationship('Artist',    backref='user', uselist=False,  cascade='all, delete-orphan')
+    play_counts       = db.relationship('PlayCount',        backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    saved_mixes       = db.relationship('SavedMix',         backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    feedbacks         = db.relationship('Feedback',         backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    artist            = db.relationship('Artist',           backref='user', uselist=False,  cascade='all, delete-orphan')
+    unlocked_prompts  = db.relationship('UnlockedPrompt',   backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     def set_password(self, password: str):
         self.password_hash = generate_password_hash(password)
@@ -323,6 +324,44 @@ class Prompt(db.Model):
 
     def __repr__(self):
         return f'<Prompt #{self.id} {self.title[:30]!r}>'
+
+
+# ── UnlockedPrompt (Phase 3) ──────────────────────────────────────────────────
+
+class UnlockedPrompt(db.Model):
+    """
+    Indique qu'un utilisateur a débloqué un prompt (a dépensé des crédits
+    pour accéder au texte complet).
+
+    - UNIQUE(user_id, prompt_id) : on ne peut pas débloquer 2 fois le même
+    - price_paid : prix au moment du unlock (archivé pour historique)
+    - Le propriétaire du prompt ne paie pas pour son propre prompt — il n'y
+      a jamais d'UnlockedPrompt créé dans ce cas.
+    """
+    __tablename__ = 'unlocked_prompts'
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'prompt_id', name='uq_unlocked_user_prompt'),
+    )
+
+    id          = db.Column(db.Integer,  primary_key=True)
+    user_id     = db.Column(db.Integer,  db.ForeignKey('users.id',   ondelete='CASCADE'), nullable=False, index=True)
+    prompt_id   = db.Column(db.Integer,  db.ForeignKey('prompts.id', ondelete='CASCADE'), nullable=False, index=True)
+    price_paid  = db.Column(db.Integer,  nullable=False)   # crédits dépensés au moment de l'unlock
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # Relations
+    prompt = db.relationship('Prompt', backref='unlocks')
+
+    def to_dict(self) -> dict:
+        return {
+            'id':         self.id,
+            'promptId':   self.prompt_id,
+            'pricePaid':  int(self.price_paid or 0),
+            'created_at': self.created_at.isoformat(),
+        }
+
+    def __repr__(self):
+        return f'<UnlockedPrompt u={self.user_id} p={self.prompt_id}>'
 
 
 # ── Schema ensure (migrations légères sans Alembic) ───────────────────────────

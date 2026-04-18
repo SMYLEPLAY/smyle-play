@@ -350,27 +350,141 @@ def create_app(config_class=None):
     def public_prompt_detail(prompt_id):
         """
         Détail d'un prompt.
-        prompt_text en clair UNIQUEMENT si l'utilisateur est propriétaire.
-        Phase 3 ajoutera : révélé aussi si l'user a débloqué le prompt (UnlockedPrompt).
+        prompt_text en clair si :
+          - l'utilisateur est propriétaire (artiste qui l'a créé), OU
+          - l'utilisateur l'a débloqué via /unlock (Phase 3).
         """
-        from models import Prompt, Artist
+        from models import Prompt, Artist, UnlockedPrompt
 
         prompt = Prompt.query.get(prompt_id)
         if not prompt or not prompt.is_published:
             return jsonify({'error': 'Prompt introuvable'}), 404
 
-        # Le propriétaire voit son prompt en clair
-        is_owner = False
-        user_id = session.get('user_id')
+        is_owner   = False
+        has_unlock = False
+        user_id    = session.get('user_id')
         if user_id:
             artist = Artist.query.filter_by(user_id=user_id).first()
             if artist and artist.id == prompt.artist_id:
                 is_owner = True
+            if not is_owner:
+                has_unlock = UnlockedPrompt.query.filter_by(
+                    user_id=user_id, prompt_id=prompt.id
+                ).first() is not None
 
-        d = prompt.to_dict(include_full_text=is_owner)
+        reveal = is_owner or has_unlock
+        d = prompt.to_dict(include_full_text=reveal)
         d['artistName'] = prompt.artist.artist_name
         d['artistSlug'] = prompt.artist.slug
+        d['isOwner']    = is_owner
+        d['hasUnlock']  = has_unlock
         return jsonify({'prompt': d})
+
+    # ── API Prompts — Unlock (Phase 3) ────────────────────────────────────
+
+    @app.route('/api/prompts/<int:prompt_id>/unlock', methods=['POST'])
+    def unlock_prompt(prompt_id):
+        """
+        Débloque un prompt pour l'utilisateur connecté.
+        Débite le solde de Smyles (credits) et crée un UnlockedPrompt.
+
+        Règles :
+        - Auth requise (401 sinon)
+        - Impossible de se débloquer son propre prompt (400)
+        - Impossible de débloquer 2x le même prompt (409)
+        - Solde insuffisant → 402 Payment Required
+        - Prompt non publié → 404
+        """
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import db, User, Artist, Prompt, UnlockedPrompt
+
+        prompt = Prompt.query.get(prompt_id)
+        if not prompt or not prompt.is_published:
+            return jsonify({'error': 'Prompt introuvable'}), 404
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'Utilisateur introuvable'}), 404
+
+        # L'artiste ne paie pas pour son propre prompt
+        my_artist = Artist.query.filter_by(user_id=user_id).first()
+        if my_artist and my_artist.id == prompt.artist_id:
+            return jsonify({'error': "C'est ton propre prompt — pas besoin de le débloquer"}), 400
+
+        # Déjà débloqué ?
+        existing = UnlockedPrompt.query.filter_by(
+            user_id=user_id, prompt_id=prompt.id
+        ).first()
+        if existing:
+            return jsonify({
+                'error': 'Prompt déjà débloqué',
+                'unlock': existing.to_dict(),
+            }), 409
+
+        price = int(prompt.price_credits or 0)
+        solde = int(user.credits or 0)
+        if solde < price:
+            return jsonify({
+                'error': 'Solde insuffisant',
+                'required': price,
+                'balance':  solde,
+            }), 402
+
+        # Transaction : débit + création unlock + incrément plays
+        user.credits = solde - price
+        unlock = UnlockedPrompt(
+            user_id    = user_id,
+            prompt_id  = prompt.id,
+            price_paid = price,
+        )
+        prompt.plays = (prompt.plays or 0) + 1
+        db.session.add(unlock)
+        db.session.commit()
+
+        logger.info(f'[UNLOCK] u={user_id} p={prompt.id} prix={price}c solde={user.credits}c')
+
+        d = prompt.to_dict(include_full_text=True)
+        d['artistName'] = prompt.artist.artist_name
+        d['artistSlug'] = prompt.artist.slug
+        return jsonify({
+            'ok':      True,
+            'prompt':  d,
+            'unlock':  unlock.to_dict(),
+            'balance': user.credits,
+        }), 201
+
+    # ── API Library — mes unlocks (Phase 3) ───────────────────────────────
+
+    @app.route('/api/me/library/prompts', methods=['GET'])
+    def my_library_prompts():
+        """Liste les prompts que l'utilisateur a débloqués (avec texte complet)."""
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import UnlockedPrompt, Prompt, Artist
+
+        rows = (UnlockedPrompt.query
+                .filter_by(user_id=user_id)
+                .order_by(UnlockedPrompt.created_at.desc())
+                .all())
+
+        prompts = []
+        for u in rows:
+            p = u.prompt
+            if not p:
+                continue
+            d = p.to_dict(include_full_text=True)
+            d['artistName']   = p.artist.artist_name
+            d['artistSlug']   = p.artist.slug
+            d['unlockedAt']   = u.created_at.isoformat()
+            d['pricePaid']    = int(u.price_paid or 0)
+            prompts.append(d)
+
+        return jsonify({'prompts': prompts})
 
     # ── API WATT — Profil artiste (GET = mon profil, POST = sauvegarder) ──
 

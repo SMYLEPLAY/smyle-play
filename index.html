@@ -88,6 +88,9 @@
   <!-- Zone auth (remplie dynamiquement par renderAuthArea) -->
   <div id="authArea"></div>
 
+  <!-- Solde Smyle (widget auto-injecté par smyle-balance.js) -->
+  <div id="smyle-balance"></div>
+
   <!-- Bouton WATT (DNA · CONNECT · ARTIST) -->
   <button class="watt-toggle-btn" onclick="toggleWattPanel()" title="WATT · DNA · CONNECT · ARTIST">
     <svg viewBox="0 0 24 24" width="11" height="11" fill="#FFD700"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -531,6 +534,7 @@
 </footer>
 
 <!-- ui modules — load order matters: state must load before any consumer -->
+<script src="ui/core/api.js"></script>
 <script src="ui/core/state.js"></script>
 <script src="ui/core/dom.js"></script>
 <script src="ui/core/storage.js"></script>
@@ -545,5 +549,6 @@
 <script src="ui/panels/agent.js"></script>
 <script src="ui/panels/watt-panel.js"></script>
 <script src="ui/app.js"></script>
+<script src="/ui/smyle-balance.js" defer></script>
 </body>
 </html>
