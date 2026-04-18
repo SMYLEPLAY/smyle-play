@@ -91,6 +91,9 @@ class Artist(db.Model):
     tracks           = db.relationship('Track',  backref='artist', lazy='dynamic',
                                        cascade='all, delete-orphan',
                                        order_by='Track.uploaded_at.desc()')
+    prompts          = db.relationship('Prompt', backref='artist', lazy='dynamic',
+                                       cascade='all, delete-orphan',
+                                       order_by='Prompt.created_at.desc()')
     collabs_sent     = db.relationship('Collab', foreign_keys='Collab.sender_id',
                                        backref='sender',   lazy='dynamic',
                                        cascade='all, delete-orphan')
@@ -267,6 +270,59 @@ class Feedback(db.Model):
 
     def __repr__(self):
         return f'<Feedback {self.type} from {self.email}>'
+
+
+# ── Prompt (Phase 2) ──────────────────────────────────────────────────────────
+
+class Prompt(db.Model):
+    """
+    Prompt Suno vendable par un artiste sur la marketplace.
+
+    Règles métier :
+    - title : min 5 caractères
+    - prompt_text : min 50 caractères (recette Suno complète, gated)
+    - price_credits : min 3 crédits
+    - 1 artiste peut publier N prompts
+    - pack_eligible : ok pour futurs packs aléatoires (Phase 10)
+    - is_published : artiste peut retirer de la vente sans supprimer
+    """
+    __tablename__ = 'prompts'
+
+    id             = db.Column(db.Integer, primary_key=True)
+    artist_id      = db.Column(db.Integer, db.ForeignKey('artists.id', ondelete='CASCADE'),
+                               nullable=False, index=True)
+    title          = db.Column(db.String(200), nullable=False)
+    teaser         = db.Column(db.String(300), default='')   # court résumé public
+    prompt_text    = db.Column(db.Text,        nullable=False)   # recette complète (gated)
+    price_credits  = db.Column(db.Integer,     default=3, nullable=False)
+    pack_eligible  = db.Column(db.Boolean,     default=True, nullable=False)
+    is_published   = db.Column(db.Boolean,     default=True, nullable=False, index=True)
+    plays          = db.Column(db.Integer,     default=0)
+    created_at     = db.Column(db.DateTime,    default=datetime.utcnow, index=True)
+    updated_at     = db.Column(db.DateTime,    default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self, *, include_full_text: bool = False) -> dict:
+        data = {
+            'id':            self.id,
+            'artistId':      self.artist_id,
+            'title':         self.title,
+            'teaser':        self.teaser,
+            'priceCredits':  int(self.price_credits or 0),
+            'packEligible':  bool(self.pack_eligible),
+            'isPublished':   bool(self.is_published),
+            'plays':         int(self.plays or 0),
+            'created_at':    self.created_at.isoformat(),
+        }
+        if include_full_text:
+            data['promptText'] = self.prompt_text
+            data['locked']     = False
+        else:
+            data['promptText'] = None
+            data['locked']     = True
+        return data
+
+    def __repr__(self):
+        return f'<Prompt #{self.id} {self.title[:30]!r}>'
 
 
 # ── Schema ensure (migrations légères sans Alembic) ───────────────────────────

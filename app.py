@@ -212,6 +212,166 @@ def create_app(config_class=None):
         logger.info(f'[CREDITS] +{amount} à {email} → solde {user.credits}')
         return jsonify({'ok': True, 'credits': user.credits})
 
+    # ── API Prompts — CRUD artiste (Phase 2) ──────────────────────────────
+
+    @app.route('/api/watt/prompts', methods=['GET', 'POST'])
+    def watt_prompts():
+        """GET : mes prompts. POST : créer un nouveau prompt."""
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import db, Artist, Prompt
+
+        artist = Artist.query.filter_by(user_id=user_id).first()
+
+        if request.method == 'POST':
+            if not artist:
+                return jsonify({'error': 'Profil artiste requis avant de publier un prompt'}), 400
+
+            data = request.get_json() or {}
+            title       = (data.get('title') or '').strip()
+            teaser      = (data.get('teaser') or '').strip()[:300]
+            prompt_text = (data.get('promptText') or '').strip()
+
+            try:
+                price = int(data.get('priceCredits', 3))
+            except (TypeError, ValueError):
+                return jsonify({'error': 'priceCredits doit être un entier'}), 400
+
+            # Validations métier
+            if len(title) < 5:
+                return jsonify({'error': 'Titre trop court (min 5 caractères)'}), 400
+            if len(prompt_text) < 50:
+                return jsonify({'error': 'Prompt trop court (min 50 caractères)'}), 400
+            if price < 3:
+                return jsonify({'error': 'Prix minimum : 3 crédits'}), 400
+
+            prompt = Prompt(
+                artist_id     = artist.id,
+                title         = title[:200],
+                teaser        = teaser,
+                prompt_text   = prompt_text,
+                price_credits = price,
+                pack_eligible = bool(data.get('packEligible', True)),
+                is_published  = bool(data.get('isPublished', True)),
+            )
+            db.session.add(prompt)
+            db.session.commit()
+            logger.info(f'[PROMPT] Créé : {prompt.title} (artiste={artist.slug}, {price}c)')
+            return jsonify({'ok': True, 'prompt': prompt.to_dict(include_full_text=True)}), 201
+
+        # GET — mes prompts (propriétaire → texte en clair)
+        if not artist:
+            return jsonify({'prompts': []})
+        prompts = artist.prompts.all()
+        return jsonify({
+            'prompts': [p.to_dict(include_full_text=True) for p in prompts]
+        })
+
+    @app.route('/api/watt/prompts/<int:prompt_id>', methods=['PATCH', 'DELETE'])
+    def watt_prompt_detail(prompt_id):
+        """PATCH : modifier. DELETE : supprimer. Propriétaire uniquement."""
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Non authentifié'}), 401
+
+        from models import db, Artist, Prompt
+
+        artist = Artist.query.filter_by(user_id=user_id).first()
+        if not artist:
+            return jsonify({'error': 'Artiste introuvable'}), 404
+
+        prompt = Prompt.query.filter_by(id=prompt_id, artist_id=artist.id).first()
+        if not prompt:
+            return jsonify({'error': 'Prompt introuvable'}), 404
+
+        if request.method == 'DELETE':
+            db.session.delete(prompt)
+            db.session.commit()
+            logger.info(f'[PROMPT] Supprimé #{prompt_id} (artiste={artist.slug})')
+            return jsonify({'ok': True})
+
+        # PATCH
+        data = request.get_json() or {}
+        if 'title' in data:
+            t = (data.get('title') or '').strip()
+            if len(t) < 5:
+                return jsonify({'error': 'Titre trop court (min 5)'}), 400
+            prompt.title = t[:200]
+        if 'teaser' in data:
+            prompt.teaser = (data.get('teaser') or '').strip()[:300]
+        if 'promptText' in data:
+            t = (data.get('promptText') or '').strip()
+            if len(t) < 50:
+                return jsonify({'error': 'Prompt trop court (min 50)'}), 400
+            prompt.prompt_text = t
+        if 'priceCredits' in data:
+            try:
+                p = int(data['priceCredits'])
+            except (TypeError, ValueError):
+                return jsonify({'error': 'priceCredits doit être un entier'}), 400
+            if p < 3:
+                return jsonify({'error': 'Prix minimum : 3 crédits'}), 400
+            prompt.price_credits = p
+        if 'packEligible' in data:
+            prompt.pack_eligible = bool(data['packEligible'])
+        if 'isPublished' in data:
+            prompt.is_published = bool(data['isPublished'])
+
+        db.session.commit()
+        return jsonify({'ok': True, 'prompt': prompt.to_dict(include_full_text=True)})
+
+    # ── API Prompts — Catalogue public (Phase 2) ──────────────────────────
+
+    @app.route('/api/prompts', methods=['GET'])
+    def public_prompts():
+        """Catalogue public des prompts publiés (prompt_text gated)."""
+        from models import Prompt, Artist
+        from sqlalchemy import desc
+
+        rows = (Prompt.query
+                .join(Artist)
+                .filter(Prompt.is_published == True)
+                .order_by(desc(Prompt.created_at))
+                .limit(50)
+                .all())
+
+        result = []
+        for p in rows:
+            d = p.to_dict(include_full_text=False)
+            d['artistName'] = p.artist.artist_name
+            d['artistSlug'] = p.artist.slug
+            result.append(d)
+
+        return jsonify({'prompts': result})
+
+    @app.route('/api/prompts/<int:prompt_id>', methods=['GET'])
+    def public_prompt_detail(prompt_id):
+        """
+        Détail d'un prompt.
+        prompt_text en clair UNIQUEMENT si l'utilisateur est propriétaire.
+        Phase 3 ajoutera : révélé aussi si l'user a débloqué le prompt (UnlockedPrompt).
+        """
+        from models import Prompt, Artist
+
+        prompt = Prompt.query.get(prompt_id)
+        if not prompt or not prompt.is_published:
+            return jsonify({'error': 'Prompt introuvable'}), 404
+
+        # Le propriétaire voit son prompt en clair
+        is_owner = False
+        user_id = session.get('user_id')
+        if user_id:
+            artist = Artist.query.filter_by(user_id=user_id).first()
+            if artist and artist.id == prompt.artist_id:
+                is_owner = True
+
+        d = prompt.to_dict(include_full_text=is_owner)
+        d['artistName'] = prompt.artist.artist_name
+        d['artistSlug'] = prompt.artist.slug
+        return jsonify({'prompt': d})
+
     # ── API WATT — Profil artiste (GET = mon profil, POST = sauvegarder) ──
 
     @app.route('/api/watt/profile', methods=['GET', 'POST'])
