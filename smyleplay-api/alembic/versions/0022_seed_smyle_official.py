@@ -82,11 +82,12 @@ def upgrade() -> None:
     )
 
     # ── 2. Seed idempotent du compte Smyle ────────────────────────────────
-    # Mot de passe : bcrypt d'un token aléatoire 64 bytes. Personne ne le
-    # connaît → compte non login-able, c'est volontaire.
-    random_password = secrets.token_urlsafe(64)
+    # Mot de passe : bcrypt d'un token aléatoire. bcrypt a une limite dure
+    # de 72 octets ; token_urlsafe(48) produit ~64 chars ASCII, bien sous
+    # la limite. Personne ne connaît ce token → compte non login-able.
+    random_password = secrets.token_urlsafe(48)
     password_hash = bcrypt.hashpw(
-        random_password.encode("utf-8"),
+        random_password.encode("utf-8")[:72],
         bcrypt.gensalt(),
     ).decode("utf-8")
 
