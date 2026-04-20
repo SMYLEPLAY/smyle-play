@@ -27,7 +27,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0011_extend_tracks"
-down_revision = "0010_strict_unlock_check"
+down_revision = "0010b_create_tracks_table"
 branch_labels = None
 depends_on = None
 
