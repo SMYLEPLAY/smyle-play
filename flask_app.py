@@ -39,14 +39,17 @@ def create_app(config_class=None):
     app.config.from_object(config_class or get_config())
 
     # ── Base de données ────────────────────────────────────────────────────
+    # En prod (Postgres) : Alembic gère le schéma (migrations chaînées via
+    # `alembic upgrade head` en preDeployCommand). On ne touche PAS au schéma
+    # côté Flask — les modèles Flask legacy ont des types (INTEGER id) qui
+    # rentrent en conflit avec le schéma FastAPI (UUID id). `db.create_all()`
+    # en prod ferait crasher le boot avec DatatypeMismatch sur FK user_id.
+    # En dev (SQLite) : pas d'Alembic, donc on garde create_all + ensure_schema.
     db_enabled = bool(app.config.get('DATABASE_URL'))
     if db_enabled:
-        from models import db, ensure_schema
+        from models import db
         db.init_app(app)
-        with app.app_context():
-            db.create_all()
-            logger.info('PostgreSQL connecté — tables créées si absentes')
-        ensure_schema(app)   # additive migrations (credits, prompts, etc.)
+        logger.info('PostgreSQL connecté — schéma géré par Alembic (FastAPI)')
     else:
         # Mode dev SQLite (fallback pratique pour travailler en local)
         from models import db, ensure_schema
