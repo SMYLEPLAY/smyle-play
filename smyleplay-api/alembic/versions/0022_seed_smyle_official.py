@@ -36,6 +36,7 @@ Contexte produit — Phase 2 refonte marketplace :
       rollback propre.
 """
 import secrets
+import uuid
 
 import bcrypt
 import sqlalchemy as sa
@@ -107,19 +108,25 @@ def upgrade() -> None:
     # ON CONFLICT (email) DO NOTHING pour que le rejouage soit safe.
     # On passe par une instruction SQL brute car alembic.op.bulk_insert ne
     # supporte pas ON CONFLICT, et on veut garder l'idempotence stricte.
+    # id généré côté Python car la colonne users.id est UUID NOT NULL sans
+    # DEFAULT côté DB (le modèle SQLAlchemy gère le default via default=uuid.uuid4,
+    # mais ici on INSERT en SQL brut donc on doit fournir la valeur).
+    smyle_id = uuid.uuid4()
+
     op.execute(
         sa.text(
             """
             INSERT INTO users (
-                email, password_hash, artist_name, bio, genre, city,
+                id, email, password_hash, artist_name, bio, genre, city,
                 brand_color, profile_public, is_official
             ) VALUES (
-                :email, :password_hash, :artist_name, :bio, :genre, :city,
+                :id, :email, :password_hash, :artist_name, :bio, :genre, :city,
                 :brand_color, TRUE, TRUE
             )
             ON CONFLICT (email) DO NOTHING
             """
         ).bindparams(
+            id=smyle_id,
             email=SMYLE_EMAIL,
             password_hash=password_hash,
             artist_name=SMYLE_ARTIST_NAME,
