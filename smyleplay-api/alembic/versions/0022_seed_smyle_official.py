@@ -43,7 +43,7 @@ from alembic import op
 
 
 revision = "0022_seed_smyle_official"
-down_revision = "0021_add_playlists"
+down_revision = "0021b_complete_users_table"
 branch_labels = None
 depends_on = None
 
