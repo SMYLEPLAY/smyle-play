@@ -1,0 +1,647 @@
+/* =============================================================
+   marketplace.css — Phase 2 refonte accueil WATT
+   -------------------------------------------------------------
+   Styles spécifiques à la transformation de l'accueil en marketplace :
+     1. Hero unifié avec 2 barres de recherche (DNA + CONNECT)
+     2. Vitrine du compte officiel Smyle (avatar + checkmark + packs)
+     3. Sections "Classement Sons" / "Classement Artistes"
+     4. Grilles "Tous les sons" / "Tous les artistes"
+
+   Les 4 packs historiques (Jungle Osmose, Night City, Hit Mix, Sunset
+   Lover) conservent leurs styles dans style.css — on ne les duplique
+   pas ici, on ajuste seulement leur wrapper (.smyle-vitrine les contient).
+
+   Palette : héritage violet WATT (#7C3AED fallback, override via
+   --smyle-brand sur .smyle-vitrine quand l'API renvoie une couleur).
+   ============================================================= */
+
+
+/* ══════════════════════════════════════════════ HERO MARKETPLACE ═ */
+
+.mp-hero {
+  max-width: 1080px;
+  margin: 48px auto 32px;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.mp-hero-title {
+  font-size: clamp(48px, 7vw, 88px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  margin: 0 0 12px;
+  background: linear-gradient(180deg, #fff 0%, #c8a3ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 0.95;
+}
+
+.mp-hero-sub {
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 32px;
+  font-weight: 500;
+}
+
+/* Bloc des 2 barres de recherche côte à côte (puis verticales en mobile) */
+.mp-search-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+@media (max-width: 720px) {
+  .mp-search-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mp-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: text;
+}
+
+.mp-search-bar:focus-within {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mp-search-bar-dna:focus-within {
+  border-color: rgba(124, 58, 237, 0.55);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.mp-search-bar-connect:focus-within {
+  border-color: rgba(255, 215, 0, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.12);
+}
+
+.mp-search-icon {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.mp-search-bar-dna .mp-search-icon {
+  color: rgba(200, 163, 255, 0.9);
+}
+
+.mp-search-bar-connect .mp-search-icon {
+  color: rgba(255, 215, 0, 0.85);
+}
+
+.mp-search-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.mp-search-bar-dna .mp-search-tag {
+  color: rgba(200, 163, 255, 0.95);
+  background: rgba(124, 58, 237, 0.18);
+}
+
+.mp-search-bar-connect .mp-search-tag {
+  color: rgba(255, 220, 100, 0.95);
+  background: rgba(255, 215, 0, 0.12);
+}
+
+.mp-search-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 14px;
+  color: #fff;
+  font-family: inherit;
+}
+
+.mp-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Pill de match DNA / CONNECT ─────────────────────────────────────
+   Injecté dynamiquement par ui/hub/marketplace.js quand l'analyseur
+   détecte un univers (DNA) ou une catégorie (CONNECT). Discret par
+   design : pas de canvas, pas d'animation lourde — juste un chip coloré
+   qui confirme ce que le moteur a compris. */
+.mp-search-match {
+  --match-color: #7C3AED;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--match-color);
+  background: color-mix(in srgb, var(--match-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--match-color) 45%, transparent);
+  flex-shrink: 0;
+  white-space: nowrap;
+  animation: mp-match-in 180ms ease-out;
+}
+
+.mp-search-bar.has-match {
+  border-color: color-mix(in srgb, currentColor 30%, rgba(255,255,255,.10));
+}
+
+@keyframes mp-match-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ══════════════════════════════════════════════ VITRINE SMYLE ═══ */
+
+.smyle-vitrine {
+  max-width: 1080px;
+  margin: 24px auto;
+  padding: 24px;
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(124, 58, 237, 0.08) 0%,
+    rgba(124, 58, 237, 0.02) 100%
+  );
+  border: 1px solid rgba(124, 58, 237, 0.16);
+  position: relative;
+}
+
+/* Tête : avatar + nom + checkmark + bio + stats + CTA profil */
+.smyle-vitrine-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 0 8px 20px;
+}
+
+@media (max-width: 720px) {
+  .smyle-vitrine-head {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "avatar identity"
+      "cta    cta";
+    gap: 16px;
+  }
+  .smyle-vitrine-avatar   { grid-area: avatar; }
+  .smyle-vitrine-identity { grid-area: identity; }
+  .smyle-vitrine-cta      { grid-area: cta; justify-self: stretch; text-align: center; }
+}
+
+.smyle-vitrine-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--smyle-brand, #7C3AED);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.35);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.smyle-vitrine-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.smyle-vitrine-identity {
+  min-width: 0;
+}
+
+.smyle-vitrine-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.smyle-vitrine-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+/* Checkmark officiel — utilise la couleur de marque du compte.
+   Dessine un badge en étoile (12 branches) avec un ✓ au centre. */
+.smyle-vitrine-checkmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--smyle-brand, #7C3AED);
+  filter: drop-shadow(0 2px 6px rgba(124, 58, 237, 0.5));
+  cursor: help;
+}
+
+.smyle-vitrine-bio {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0 0 8px;
+  max-width: 540px;
+}
+
+.smyle-vitrine-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  flex-wrap: wrap;
+}
+
+.smyle-vitrine-stat b {
+  color: #fff;
+  font-weight: 700;
+}
+
+.smyle-vitrine-stat-sep {
+  opacity: 0.4;
+}
+
+.smyle-vitrine-cta {
+  align-self: center;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--smyle-brand, #7C3AED);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+}
+
+.smyle-vitrine-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4);
+}
+
+/* Bandeau "Packs officiels Smyle" — variante du soh-header qui se
+   fond mieux dans la vitrine (pas de margin top/bottom excessif). */
+.smyle-vitrine-packs-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 8px 14px;
+}
+
+.smyle-vitrine-packs-label .soh-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.smyle-vitrine-packs-label .soh-label {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+
+/* ══════════════════════════════════════════════ SECTIONS MARKETPLACE ═ */
+
+.mp-section {
+  max-width: 1080px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+
+.mp-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.mp-section-kicker {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(200, 163, 255, 0.75);
+  font-weight: 700;
+  padding: 3px 9px;
+  background: rgba(124, 58, 237, 0.14);
+  border-radius: 6px;
+}
+
+.mp-section-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0;
+}
+
+.mp-section-sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: auto;
+}
+
+
+/* ══════════════════════════════════════════════ CLASSEMENTS (rankings) ═ */
+
+.mp-ranking {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mp-ranking-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.mp-ranking-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mp-ranking-rank {
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.25);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-ranking-row:nth-child(1) .mp-ranking-rank { color: #FFD700; }
+.mp-ranking-row:nth-child(2) .mp-ranking-rank { color: #C0C0C0; }
+.mp-ranking-row:nth-child(3) .mp-ranking-rank { color: #CD7F32; }
+
+.mp-ranking-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mp-ranking-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-ranking-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mp-ranking-sub-sep {
+  opacity: 0.4;
+}
+
+.mp-ranking-meta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mp-ranking-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+  list-style: none;
+}
+
+
+/* ══════════════════════════════════════════════ GRILLES (catalogues) ═ */
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.mp-grid-empty {
+  grid-column: 1 / -1;
+  padding: 48px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+/* --- Carte son (catalogue) ----------------------------------- */
+
+.mp-son-card {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s, border-color 0.2s, background 0.2s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mp-son-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.4);
+  background: rgba(124, 58, 237, 0.05);
+}
+
+.mp-son-card-cover {
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--son-color, #7C3AED), #1a0030);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.mp-son-card-play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.mp-son-card:hover .mp-son-card-play {
+  opacity: 1;
+}
+
+.mp-son-card-play svg {
+  width: 16px;
+  height: 16px;
+  fill: #fff;
+}
+
+.mp-son-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-son-card-artist {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mp-son-card-artist-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mp-son-card-meta {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.05em;
+}
+
+/* --- Carte artiste (catalogue) ------------------------------- */
+
+.mp-artist-card {
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s, border-color 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mp-artist-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+.mp-artist-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--artist-color, #7C3AED);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.mp-artist-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mp-artist-card-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mp-artist-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mp-artist-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Checkmark officiel inline (dans les listes) — réutilisable */
+.mp-checkmark-official {
+  display: inline-flex;
+  align-items: center;
+  color: var(--artist-color, #7C3AED);
+  flex-shrink: 0;
+}
+
+.mp-checkmark-official svg {
+  filter: drop-shadow(0 1px 3px rgba(124, 58, 237, 0.5));
+}
+
+.mp-artist-card-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mp-artist-card-sub-sep {
+  opacity: 0.4;
+}

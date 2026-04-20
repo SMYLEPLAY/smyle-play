@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#070608" />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <title>Ma bibliothèque · WATT</title>
+  <link rel="stylesheet" href="library.css" />
+  <!-- Phase 4 refonte architecture : topbar partagée (ui/topbar/topbar.js).
+       Remplace l'ex-header .lib-topbar spécifique à cette page. -->
+  <link rel="stylesheet" href="topbar.css" />
+</head>
+<body class="lib-page">
+
+<!-- ═══════════════════════════════════════════════════════ TOPBAR PARTAGÉE -->
+<!-- Le composant se rend ici via ui/topbar/topbar.js. Le balance widget
+     (smyle-balance.js) vient s'injecter dans le #smyle-balance que la
+     topbar crée elle-même. -->
+<div id="smyle-topbar"></div>
+
+<!-- ═══════════════════════════════════════════════════════ LOGIN REQUIRED -->
+<div class="lib-locked" id="lib-locked" style="display:none">
+  <div class="lib-locked-inner">
+    <div class="lib-locked-icon">🔒</div>
+    <h2>Connecte-toi pour accéder à ta bibliothèque</h2>
+    <p>Toutes les recettes IA et ADN que tu as débloqués apparaissent ici.</p>
+    <!-- Phase 3 : login se fait via la modale d'auth sur /. Plus de page
+         /watt dédiée — on redirige vers l'accueil où le bouton "Se connecter"
+         du header ouvre la modale. -->
+    <a href="/" class="lib-locked-btn">→ Se connecter</a>
+    <p class="lib-locked-note">Toutes les recettes IA et ADN que tu as débloqués apparaissent ici.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ LIBRARY -->
+<main class="lib-main" id="lib-main" style="display:none">
+
+  <!-- Hero -->
+  <section class="lib-hero">
+    <div class="lib-hero-badge">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      Ma collection
+    </div>
+    <h1 class="lib-hero-title">Ma bibliothèque</h1>
+    <p class="lib-hero-sub">Tes recettes IA et ADN débloqués. Copie, réutilise, re-génère.</p>
+  </section>
+
+  <!-- Tabs -->
+  <div class="lib-tabs">
+    <button class="lib-tab active" data-tab="prompts" onclick="switchTab('prompts')">
+      <!-- Fiole de potion magique -->
+      <svg class="lib-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+        <path d="M9 3h6"/>
+        <path d="M10 3v6.5L5.4 17.3A2 2 0 0 0 7.1 20.5h9.8a2 2 0 0 0 1.7-3.2L14 9.5V3"/>
+        <path d="M7.5 14h9"/>
+        <circle cx="10" cy="17" r="0.6" fill="currentColor"/>
+        <circle cx="13" cy="18" r="0.5" fill="currentColor"/>
+        <circle cx="11.5" cy="15.5" r="0.4" fill="currentColor"/>
+      </svg>
+      Recettes IA <span class="lib-tab-count" id="lib-count-prompts">—</span>
+    </button>
+    <button class="lib-tab" data-tab="adns" onclick="switchTab('adns')">
+      <!-- Hélice ADN -->
+      <svg class="lib-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+        <path d="M7 3c0 4 10 6 10 10M7 11c0 4 10 6 10 10M7 21c0-4 10-6 10-10"/>
+        <path d="M8 5h8M8 8h8M8 13h8M8 16h8M8 19h8" stroke-width="1.1" opacity="0.55"/>
+      </svg>
+      ADN <span class="lib-tab-count" id="lib-count-adns">—</span>
+    </button>
+  </div>
+
+  <!-- Prompts tab -->
+  <section class="lib-tab-panel active" id="lib-panel-prompts">
+    <div class="lib-list" id="lib-prompts-list">
+      <div class="lib-loading">Chargement de tes recettes…</div>
+    </div>
+  </section>
+
+  <!-- ADNs tab -->
+  <section class="lib-tab-panel" id="lib-panel-adns">
+    <div class="lib-list" id="lib-adns-list">
+      <div class="lib-loading">Chargement de tes ADN…</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Toast -->
+<div class="lib-toast" id="lib-toast"></div>
+
+<script src="ui/core/api.js"></script>
+<script src="ui/core/events.js"></script>
+<script src="ui/core/toast.js"></script>
+<!-- Phase 4 refonte : topbar partagée. Chargée après events.js pour que le
+     bus SmyleEvents soit dispo quand le composant s'abonne aux events. -->
+<script src="ui/topbar/topbar.js" defer></script>
+<script src="library.js"></script>
+<script src="/ui/smyle-balance.js" defer></script>
+<script src="/ui/modals/search.js" defer></script>
+<script src="/ui/session-guard.js" defer></script>
+</body>
+</html>

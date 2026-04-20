@@ -14,17 +14,302 @@
   --ap-text:    rgba(232, 228, 240, .9);
   --ap-dim:     rgba(255, 255, 255, .25);
   --ap-topbar:  54px;
+
+  /* ── Chantier 1.2 — Couleur de marque artiste ─────────────────────────────
+     Surchargées dynamiquement par artiste.js depuis artist.brandColor.
+     Fallback = or SMYLE PLAY, cohérent avec l'UI historique.
+     --brand     : couleur hex (#RRGGBB)
+     --brand-rgb : triplet r,g,b pour composer des rgba() dans les bordures
+                   et halos sans recalculer côté CSS.
+     ───────────────────────────────────────────────────────────────────── */
+  --brand:      #FFD700;
+  --brand-rgb:  255, 215, 0;
+
+  /* ── Chantier "Profil artiste type" (migration 0017) ──────────────────────
+     --bg = fond de page, surchargé dynamiquement par artiste.js depuis
+     artist.profileBgColor. Null côté DB = pas de perso → on retombe sur
+     le noir WATT par défaut (#070608). */
+  --bg: #070608;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { overflow-x: hidden; }
+
+/* ─── États de chargement / erreur (V1) ──────────────────────────────────
+   Centrés dans la page, sous la topbar. Spinner simple pour loading,
+   panneau sobre pour l'erreur. Pas de styles exubérants : on veut juste
+   que l'user voie immédiatement que quelque chose se passe (ou qu'un
+   problème existe) au lieu d'un écran blanc. */
+.ap-loading,
+.ap-error {
+  max-width: 480px;
+  margin: 64px auto;
+  padding: 32px 24px;
+  text-align: center;
+  color: rgba(232, 228, 240, .85);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.ap-loading p {
+  margin-top: 14px;
+  color: rgba(200, 196, 216, .72);
+  font-size: 14px;
+}
+
+.ap-loading-spinner {
+  width: 34px; height: 34px;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 2.5px solid rgba(var(--brand-rgb, 136, 0, 255), .22);
+  border-top-color: var(--brand, #8800FF);
+  animation: apSpin 0.85s linear infinite;
+}
+
+@keyframes apSpin { to { transform: rotate(360deg); } }
+
+.ap-error h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: rgba(232, 228, 240, .95);
+}
+
+.ap-error p {
+  color: rgba(200, 196, 216, .72);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+
+.ap-error .ap-nf-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: rgba(var(--brand-rgb, 136, 0, 255), .12);
+  border: 1px solid rgba(var(--brand-rgb, 136, 0, 255), .28);
+  color: rgba(232, 228, 240, .9);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .15s ease;
+}
+
+.ap-error .ap-nf-btn:hover {
+  background: rgba(var(--brand-rgb, 136, 0, 255), .22);
+}
+
+/* ═══ Chantier "Profil artiste type" — CTA "profil vierge" ════════════════
+   Bandeau affiché uniquement à l'owner tant que son profil n'est pas
+   publié / pas rempli. Le visiteur lambda reçoit un 404 côté API et ne
+   voit jamais ce bloc. Style : carte large en haut du main, teintée
+   --brand, lisse mais avec un halo néon pour rester D.A WATT. */
+.ap-empty-cta {
+  max-width: 980px;
+  margin: 28px auto 0;
+  padding: 0 24px;
+  position: relative;
+  z-index: 2;
+}
+.ap-empty-cta-inner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px;
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(var(--brand-rgb), .14) 0%,
+      rgba(var(--brand-rgb), .06) 55%,
+      rgba(10, 8, 18, .78) 100%
+    );
+  border: 1px solid rgba(var(--brand-rgb), .32);
+  box-shadow:
+    0 0 0 1px rgba(var(--brand-rgb), .08),
+    0 10px 32px rgba(0, 0, 0, .45),
+    0 0 28px rgba(var(--brand-rgb), .18);
+  backdrop-filter: blur(6px);
+}
+.ap-empty-cta-icon {
+  flex-shrink: 0;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--brand, #FFD700);
+  background: rgba(var(--brand-rgb), .12);
+  border: 1px solid rgba(var(--brand-rgb), .32);
+  box-shadow: inset 0 0 10px rgba(var(--brand-rgb), .22);
+}
+.ap-empty-cta-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+.ap-empty-cta-text strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(245, 242, 252, .96);
+  letter-spacing: .01em;
+}
+.ap-empty-cta-text span {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: rgba(200, 196, 216, .75);
+}
+.ap-empty-cta-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #0a0012;
+  background: linear-gradient(
+    135deg,
+    var(--brand, #FFD700) 0%,
+    rgba(var(--brand-rgb), .78) 100%
+  );
+  border: 1px solid rgba(var(--brand-rgb), .65);
+  box-shadow:
+    0 2px 14px rgba(var(--brand-rgb), .35),
+    0 0 24px rgba(var(--brand-rgb), .18);
+  text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease;
+  white-space: nowrap;
+}
+.ap-empty-cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 22px rgba(var(--brand-rgb), .5),
+    0 0 36px rgba(var(--brand-rgb), .28);
+}
+.ap-empty-cta-btn span { font-size: 14px; }
+
+@media (max-width: 720px) {
+  .ap-empty-cta { margin-top: 18px; padding: 0 14px; }
+  .ap-empty-cta-inner {
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .ap-empty-cta-btn { width: 100%; justify-content: center; }
+}
+
 body {
-  background: var(--ap-bg);
+  /* Halo ambient basé sur --brand-rgb pour teinter subtilement le haut de
+     la page aux couleurs de l'artiste. Reste très discret (6-10% alpha)
+     pour ne pas rendre le fond agressif, mais assez visible pour qu'on
+     sente l'univers couleur en arrivant. Fallback = or SMYLE si pas de
+     brand définie (cf. :root --brand-rgb).
+     --bg (chantier 0017) = fond personnalisable par l'artiste ; par défaut
+     noir WATT #070608. Les halos restent au-dessus pour garder l'ambiance. */
+  background:
+    radial-gradient(
+      ellipse 110% 55% at 50% 0%,
+      rgba(var(--brand-rgb), 0.10) 0%,
+      rgba(var(--brand-rgb), 0.045) 35%,
+      transparent 75%
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 50% 100%,
+      rgba(var(--brand-rgb), 0.05) 0%,
+      transparent 70%
+    ),
+    var(--bg, var(--ap-bg));
+  background-attachment: fixed;
   color: var(--ap-text);
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
 }
+
+/* ═══ Texture néon WATT (D.A cohérente avec la home) ═══════════════════════
+   3 couches superposées en position fixed pour survoler tout le contenu
+   sans en affecter le flow :
+     1. Grille cyber fine (lignes verticales + horizontales) teintée --brand.
+     2. Scanline horizontale qui descend lentement (effet CRT subtil).
+     3. Points scintillants type étoiles (cf. .card-night de la home).
+   Tout ça à très faible opacité (4-8%) pour rester ambient, pas agressif.
+   pointer-events:none garantit qu'aucun clic n'est intercepté. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    /* Grille verticale */
+    linear-gradient(to right,
+      rgba(var(--brand-rgb), .06) 1px,
+      transparent 1px),
+    /* Grille horizontale */
+    linear-gradient(to bottom,
+      rgba(var(--brand-rgb), .06) 1px,
+      transparent 1px),
+    /* Points scintillants — pattern pseudo-aléatoire */
+    radial-gradient(1px 1px at 12% 18%, rgba(var(--brand-rgb), .55) 0%, transparent 100%),
+    radial-gradient(1px 1px at 37% 42%, rgba(var(--brand-rgb), .35) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 63% 74%, rgba(var(--brand-rgb), .48) 0%, transparent 100%),
+    radial-gradient(1px 1px at 82% 28%, rgba(var(--brand-rgb), .38) 0%, transparent 100%),
+    radial-gradient(1px 1px at 54% 88%, rgba(var(--brand-rgb), .42) 0%, transparent 100%),
+    radial-gradient(1px 1px at 22% 66%, rgba(var(--brand-rgb), .32) 0%, transparent 100%);
+  background-size:
+    64px 64px,
+    64px 64px,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%;
+  animation: apGridPulse 8s ease-in-out infinite;
+  mix-blend-mode: screen;
+  opacity: .8;
+}
+
+/* Scanline CRT : barre lumineuse qui traverse l'écran lentement. Teintée
+   --brand pour rester dans l'univers couleur choisi par l'artiste. */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0; right: 0;
+  top: -20%;
+  height: 30%;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(var(--brand-rgb), .04) 40%,
+    rgba(var(--brand-rgb), .08) 50%,
+    rgba(var(--brand-rgb), .04) 60%,
+    transparent 100%
+  );
+  animation: apScanline 9s linear infinite;
+}
+
+@keyframes apGridPulse {
+  0%, 100% { opacity: .7; }
+  50%      { opacity: 1; }
+}
+@keyframes apScanline {
+  0%   { transform: translateY(-30vh); }
+  100% { transform: translateY(130vh); }
+}
+
+/* On passe tout le contenu au-dessus des couches fixed de texture. */
+.ap-topbar,
+.ap-loading,
+.ap-error,
+.ap-profile { position: relative; z-index: 1; }
 button { font-family: inherit; cursor: pointer; }
 a { text-decoration: none; color: inherit; }
 img { max-width: 100%; display: block; }
@@ -116,12 +401,44 @@ img { max-width: 100%; display: block; }
   padding: 56px 48px 48px;
   overflow: hidden;
 }
+/* Quand une cover photo est présente, on pousse le hero vers le bas pour
+   laisser la bannière respirer — l'avatar chevauche alors la fin de la cover. */
+.ap-hero.ap-has-cover { padding-top: 180px; }
+
+/* Cover photo — bannière large en tête. Masquée par défaut, révélée par JS
+   (ap-has-cover + --ap-cover-url) quand l'artiste a renseigné coverPhotoUrl. */
+.ap-hero-cover {
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 260px;
+  background-image: var(--ap-cover-url, none);
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s ease;
+}
+.ap-hero-cover::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 65%;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(7, 6, 8, .55) 55%,
+    var(--ap-bg) 100%);
+}
+.ap-hero.ap-has-cover .ap-hero-cover { opacity: 1; }
 
 .ap-hero-bg {
   position: absolute; inset: 0; pointer-events: none;
+  /* Chantier 1.2 — le halo du hero reprend la couleur de marque de l'artiste.
+     On dose volontairement les opacités (.08 / .035) pour rester lisible sur
+     n'importe quelle teinte choisie (rouge, vert, violet, etc.). */
   background:
-    radial-gradient(ellipse 55% 90% at 18% 50%, rgba(255,215,0,.055) 0%, transparent 70%),
-    linear-gradient(to bottom, rgba(255,215,0,.025) 0%, transparent 80%);
+    radial-gradient(ellipse 58% 95% at 18% 50%,
+      rgba(var(--brand-rgb), .085) 0%,
+      transparent 70%),
+    linear-gradient(to bottom,
+      rgba(var(--brand-rgb), .035) 0%,
+      transparent 80%);
 }
 .ap-hero-bg::after {
   content: '';
@@ -140,17 +457,31 @@ img { max-width: 100%; display: block; }
 
 .ap-avatar {
   width: 104px; height: 104px; border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255,215,0,.22), rgba(255,149,0,.13));
-  border: 2px solid rgba(255, 215, 0, .32);
+  /* Chantier 1.2 — gradient d'avatar basé sur la couleur de marque. L'initiale
+     reste visible grâce au contraste texte blanc + ombre portée. Si l'artiste
+     n'a pas encore choisi de couleur, --brand fallback = or SMYLE PLAY. */
+  background:
+    linear-gradient(135deg,
+      var(--brand) 0%,
+      rgba(var(--brand-rgb), .55) 60%,
+      rgba(var(--brand-rgb), .25) 100%);
+  border: 2px solid rgba(var(--brand-rgb), .48);
   box-shadow:
-    0 0 0 6px rgba(255,215,0,.04),
-    0 0 30px rgba(255,215,0,.14);
+    0 0 0 6px rgba(var(--brand-rgb), .06),
+    0 0 34px rgba(var(--brand-rgb), .22);
   display: flex; align-items: center; justify-content: center;
-  font-size: 40px; font-weight: 900; color: var(--ap-gold);
+  font-size: 40px; font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .35);
   overflow: hidden;
-  transition: box-shadow .35s;
+  transition: box-shadow .35s, transform .35s;
 }
-.ap-avatar:hover { box-shadow: 0 0 0 6px rgba(255,215,0,.06), 0 0 42px rgba(255,215,0,.22); }
+.ap-avatar:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 6px rgba(var(--brand-rgb), .09),
+    0 0 48px rgba(var(--brand-rgb), .32);
+}
 .ap-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
 .ap-watt-badge-wrap { margin-top: 10px; }
@@ -170,66 +501,430 @@ img { max-width: 100%; display: block; }
 .ap-artist-name {
   font-size: clamp(28px, 5vw, 52px);
   font-weight: 900; letter-spacing: .06em;
-  color: rgba(232, 228, 240, .95);
-  text-shadow: 0 0 50px rgba(255, 215, 0, .07);
+  /* Dégradé blanc → couleur de marque, pour que le nom "attrape" le regard
+     sans écraser la lecture du reste du hero. */
+  background: linear-gradient(
+    90deg,
+    rgba(245, 242, 252, .98) 0%,
+    rgba(245, 242, 252, .98) 45%,
+    var(--brand) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  /* Flicker néon teinté --brand (D.A WATT, même logique que .logo-text /
+     .hitmix-title sur la home). Le halo lumineux autour du nom respire par
+     saccades pour rester dans l'univers "enseigne néon" de SMYLE PLAY.
+     Le dégradé texte reste intact, on ne touche qu'au text-shadow via drop
+     filter pour qu'il fonctionne avec background-clip:text. */
+  filter:
+    drop-shadow(0 0 6px  rgba(var(--brand-rgb), .55))
+    drop-shadow(0 0 18px rgba(var(--brand-rgb), .28))
+    drop-shadow(0 0 42px rgba(var(--brand-rgb), .14));
+  animation: apNeonName 4.2s infinite;
   line-height: 1.1; margin-bottom: 12px;
   word-break: break-word;
 }
 
+/* Flicker néon : 2 micro-coupures par cycle (à 18-20% et 51-53%) pour
+   imiter l'effet d'enseigne qui saccade — exactement le timing utilisé
+   sur .logo-text de la home (keyframes neon-v). On garde les valeurs
+   proches pour que la sensation visuelle soit identique. */
+@keyframes apNeonName {
+  0%, 17%, 19%, 21%, 50%, 52%, 100% {
+    filter:
+      drop-shadow(0 0 6px  rgba(var(--brand-rgb), .55))
+      drop-shadow(0 0 18px rgba(var(--brand-rgb), .28))
+      drop-shadow(0 0 42px rgba(var(--brand-rgb), .14));
+    opacity: 1;
+  }
+  18%, 51% {
+    filter: none;
+    opacity: .75;
+  }
+  20% {
+    filter: drop-shadow(0 0 3px rgba(var(--brand-rgb), .35));
+    opacity: .9;
+  }
+}
+
+/* ═══ Chantier "Profil artiste type" (#43) — Stats publiques ═════════════
+   4 tuiles : écoutes, sons, abonnés, rang. Grille responsive, chaque
+   tuile a son petit halo néon teinté --brand qui respire au hover.
+   La valeur est la star : grande typo, teintée brand, glow subtil.
+   Le label reste discret en caps-letter-spacing WATT. */
+.ap-stats {
+  max-width: 980px;
+  margin: 32px auto 24px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+.ap-stat {
+  padding: 18px 12px;
+  border-radius: 12px;
+  text-align: center;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(var(--brand-rgb), .06) 0%,
+      rgba(10, 8, 16, .55) 100%
+    );
+  border: 1px solid rgba(var(--brand-rgb), .18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .03),
+    0 4px 14px rgba(0, 0, 0, .3);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.ap-stat:hover {
+  border-color: rgba(var(--brand-rgb), .42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .05),
+    0 6px 22px rgba(0, 0, 0, .38),
+    0 0 22px rgba(var(--brand-rgb), .18);
+  transform: translateY(-1px);
+}
+.ap-stat-value {
+  font-size: clamp(22px, 3.4vw, 32px);
+  font-weight: 900;
+  letter-spacing: -.01em;
+  color: var(--brand, #FFD700);
+  text-shadow:
+    0 0 8px  rgba(var(--brand-rgb), .35),
+    0 0 22px rgba(var(--brand-rgb), .14);
+  line-height: 1.05;
+}
+.ap-stat-label {
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(200, 196, 216, .55);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+@media (max-width: 720px) {
+  .ap-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 0 14px;
+    margin: 22px auto 18px;
+  }
+  .ap-stat { padding: 14px 8px; }
+}
+
+/* Ligne méta : genre + ville + date d'arrivée. Flex row, chips alignées. */
+.ap-hero-meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-bottom: 18px;
+}
+.ap-hero-meta:empty { display: none; }
+
+/* Le genre-tag reste "à la marque" (couleur artiste), c'est le chip principal. */
 .ap-genre-tag {
-  display: inline-block;
+  display: inline-flex; align-items: center;
   font-size: 9px; font-weight: 700;
   letter-spacing: .3em; text-transform: uppercase;
-  color: rgba(255, 215, 0, .55);
-  border: 1px solid rgba(255, 215, 0, .18);
+  color: rgba(var(--brand-rgb), .72);
+  border: 1px solid rgba(var(--brand-rgb), .28);
+  background: rgba(var(--brand-rgb), .05);
   border-radius: 2px; padding: 4px 12px;
-  margin-bottom: 16px;
+}
+
+/* Chips secondaires : même gabarit, plus neutres, avec petite icône. */
+.ap-meta-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; letter-spacing: .1em;
+  color: rgba(200, 196, 216, .55);
+  border: 1px solid rgba(255, 255, 255, .07);
+  background: rgba(255, 255, 255, .02);
+  border-radius: 2px; padding: 4px 10px;
+}
+.ap-meta-chip:empty { display: none; }
+.ap-meta-chip svg { flex-shrink: 0; opacity: .7; }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Casquettes / rôles déclarés — chips dans le hero + popover multi-select
+
+   Design : une rangée de petites chips au-dessus des meta genre/ville.
+   Chaque chip = une casquette. Couleur d'accent = brand de l'utilisateur.
+   Un bouton "+ Casquettes" (owner-editing uniquement) ouvre un popover
+   avec 12 checkboxes. La chip "Sans casquette" n'apparaît que pour
+   l'owner qui n'a encore rien coché.
+   ────────────────────────────────────────────────────────────────── */
+.ap-roles {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
+}
+.ap-roles:empty { display: none; }
+
+.ap-role-chip {
+  display: inline-flex; align-items: center;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .25em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 2px;
+  color: rgba(var(--brand-rgb), .85);
+  border: 1px solid rgba(var(--brand-rgb), .32);
+  background: rgba(var(--brand-rgb), .06);
+}
+.ap-role-chip-ghost {
+  color: rgba(180, 175, 200, .55);
+  border-color: rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .02);
+  font-style: italic; letter-spacing: .15em;
+}
+
+/* Bouton d'édition des rôles (mode owner-editing uniquement) */
+.ap-roles-edit-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: .12em;
+  padding: 4px 10px; border-radius: 2px;
+  color: rgba(var(--brand-rgb), .85);
+  border: 1px dashed rgba(var(--brand-rgb), .45);
+  background: transparent; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.ap-roles-edit-btn:hover {
+  background: rgba(var(--brand-rgb), .08);
+  border-style: solid;
+}
+
+/* Popover multi-select */
+.ap-roles-picker {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .55);
+  backdrop-filter: blur(8px);
+  padding: 20px;
+}
+.ap-roles-picker-inner {
+  width: min(520px, 100%);
+  max-height: 80vh; overflow-y: auto;
+  background: #0f0d14;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 4px;
+  padding: 22px 22px 16px;
+  color: rgba(240, 236, 255, .92);
+}
+.ap-roles-picker-title {
+  font-size: 14px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase;
+  margin: 0 0 4px;
+  color: rgba(var(--brand-rgb), .92);
+}
+.ap-roles-picker-hint {
+  font-size: 11px; line-height: 1.5;
+  color: rgba(200, 196, 216, .55);
+  margin: 0 0 16px;
+}
+.ap-roles-picker-list {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-bottom: 18px;
+}
+.ap-role-option {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.ap-role-option:hover {
+  background: rgba(255, 255, 255, .03);
+}
+.ap-role-option input[type="checkbox"] {
+  margin-top: 3px;
+  width: 14px; height: 14px;
+  accent-color: rgb(var(--brand-rgb));
+  flex-shrink: 0; cursor: pointer;
+}
+.ap-role-option-main {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+}
+.ap-role-option-label {
+  font-size: 12px; font-weight: 600;
+  color: rgba(240, 236, 255, .92);
+  letter-spacing: .05em;
+}
+.ap-role-option-desc {
+  font-size: 10px;
+  color: rgba(200, 196, 216, .55);
+  line-height: 1.4;
+}
+.ap-roles-picker-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+.ap-roles-picker-btn {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase;
+  padding: 8px 16px; border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .12s, border-color .12s;
+}
+.ap-roles-picker-btn-cancel {
+  background: transparent;
+  color: rgba(200, 196, 216, .65);
+  border-color: rgba(255, 255, 255, .08);
+}
+.ap-roles-picker-btn-cancel:hover {
+  background: rgba(255, 255, 255, .04);
+  color: rgba(240, 236, 255, .9);
+}
+.ap-roles-picker-btn-save {
+  background: rgb(var(--brand-rgb));
+  color: #fff;
+  border-color: rgb(var(--brand-rgb));
+}
+.ap-roles-picker-btn-save:hover {
+  filter: brightness(1.1);
 }
 
 .ap-bio {
   font-size: 13px; line-height: 1.85;
-  color: rgba(200, 196, 216, .6); letter-spacing: .03em;
-  max-width: 560px; margin-bottom: 22px;
+  color: rgba(200, 196, 216, .72); letter-spacing: .03em;
+  max-width: 580px; margin-bottom: 22px;
+}
+.ap-bio:empty { display: none; }
+
+/* Influences / inspirations — bloc facultatif avec label discret. */
+.ap-influences {
+  max-width: 580px;
+  margin-bottom: 22px;
+  padding-left: 14px;
+  border-left: 2px solid rgba(var(--brand-rgb), .32);
+}
+.ap-influences-label {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .3em; text-transform: uppercase;
+  color: rgba(var(--brand-rgb), .55);
+  margin-bottom: 6px;
+}
+.ap-influences-text {
+  font-size: 12.5px; line-height: 1.75;
+  color: rgba(200, 196, 216, .55); letter-spacing: .02em;
+  font-style: italic;
 }
 
-.ap-socials { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Liens sociaux — ronds, icônes seules. S'adaptent à la couleur de marque
+   au hover pour renforcer l'identité de l'artiste. */
+.ap-socials { display: flex; flex-wrap: wrap; gap: 9px; }
 .ap-social-link {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
-  color: rgba(255, 215, 0, .5);
-  border: 1px solid rgba(255, 215, 0, .14);
-  border-radius: 2px; padding: 6px 14px;
-  transition: all .2s;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  color: rgba(200, 196, 216, .55);
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .02);
+  transition: color .2s, border-color .2s, background .2s, transform .2s;
   -webkit-tap-highlight-color: transparent;
 }
-.ap-social-link:hover { color: var(--ap-gold); border-color: rgba(255,215,0,.38); }
+.ap-social-link:hover {
+  color: var(--brand);
+  border-color: rgba(var(--brand-rgb), .55);
+  background: rgba(var(--brand-rgb), .08);
+  transform: translateY(-1px);
+}
+.ap-social-link svg { display: block; }
+
+
+/* ── CHANTIER 1 — Bouton Follow / Unfollow ──────────────────────────────── */
+.ap-follow-wrap {
+  margin-top: 18px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+
+.ap-follow-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px;
+  border-radius: 3px;
+  font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700;
+  cursor: pointer;
+  transition: all .18s;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.ap-follow-btn[disabled] { opacity: .55; cursor: wait; }
+
+/* État "Suivre" — couleur de marque artiste */
+.ap-follow-btn.ap-follow-follow {
+  background: linear-gradient(135deg,
+    var(--brand) 0%,
+    rgba(var(--brand-rgb), .78) 100%);
+  color: #0a0812;
+  border: 1px solid rgba(var(--brand-rgb), .65);
+  box-shadow: 0 2px 18px rgba(var(--brand-rgb), .22);
+}
+.ap-follow-btn.ap-follow-follow:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* État "Abonné" — outline discret + hover "Se désabonner" en rouge */
+.ap-follow-btn.ap-follow-following {
+  background: rgba(var(--brand-rgb), .08);
+  color: rgba(var(--brand-rgb), .95);
+  border: 1px solid rgba(var(--brand-rgb), .45);
+}
+.ap-follow-btn.ap-follow-following .ap-follow-lbl-hover { display: none; }
+.ap-follow-btn.ap-follow-following:hover {
+  background: rgba(255, 80, 80, .08);
+  color: rgba(255, 140, 140, .95);
+  border-color: rgba(255, 100, 100, .45);
+}
+.ap-follow-btn.ap-follow-following:hover .ap-follow-lbl-default { display: none; }
+.ap-follow-btn.ap-follow-following:hover .ap-follow-lbl-hover { display: inline; }
+.ap-follow-btn.ap-follow-following:hover svg { display: none; }
+
+/* Prompt non-connecté */
+.ap-follow-btn.ap-follow-login {
+  background: transparent;
+  color: rgba(255,255,255,.6);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.ap-follow-btn.ap-follow-login:hover { color: #fff; border-color: rgba(255,255,255,.35); }
+
+/* C'est mon propre profil */
+.ap-follow-self {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  background: rgba(0, 220, 120, .08);
+  border: 1px solid rgba(0, 220, 120, .28);
+  color: #6be8a8;
+  border-radius: 3px;
+  font-size: 10px; letter-spacing: .15em; text-transform: uppercase; font-weight: 600;
+  text-decoration: none;
+  transition: all .18s;
+}
+.ap-follow-self:hover { background: rgba(0, 220, 120, .14); color: #8cf0bd; }
 
 
 /* ── STATS BAR ───────────────────────────────────────────────────────────── */
 
 .ap-stats-bar {
   display: flex; align-items: stretch;
-  border-top: 1px solid var(--ap-border2);
-  border-bottom: 1px solid var(--ap-border2);
-  background: rgba(255, 215, 0, .018);
+  border-top: 1px solid rgba(var(--brand-rgb), .08);
+  border-bottom: 1px solid rgba(var(--brand-rgb), .08);
+  background: rgba(var(--brand-rgb), .025);
 }
 .ap-stat {
   flex: 1; text-align: center;
   padding: 18px 16px;
-  border-right: 1px solid var(--ap-border2);
+  border-right: 1px solid rgba(var(--brand-rgb), .08);
 }
 .ap-stat:last-child { border-right: none; }
 .ap-stat-val {
   display: block;
   font-size: 30px; font-weight: 900;
-  color: var(--ap-gold);
-  text-shadow: 0 0 16px rgba(255, 215, 0, .28);
+  color: var(--brand);
+  text-shadow: 0 0 16px rgba(var(--brand-rgb), .32);
   line-height: 1.1; margin-bottom: 4px;
 }
 .ap-stat-lbl {
   display: block;
   font-size: 8px; letter-spacing: .24em; text-transform: uppercase;
-  color: rgba(255, 215, 0, .32);
+  color: rgba(var(--brand-rgb), .45);
 }
 
 
@@ -264,40 +959,44 @@ img { max-width: 100%; display: block; }
 
 .ap-tracks-list { display: flex; flex-direction: column; gap: 3px; }
 
+/* ─── Les track rows adoptent la brand color de l'artiste (--brand-rgb)
+   plutôt que le gold hardcodé. Permet à chaque artiste d'avoir un
+   catalogue teinté à sa couleur. Fallback = gold SMYLE via --brand-rgb
+   (défini en :root). ──────────────────────────────────────────────────── */
 .ap-track-row {
   display: flex; align-items: center; gap: 14px;
   padding: 10px 14px;
-  border: 1px solid rgba(255, 215, 0, .04);
+  border: 1px solid rgba(var(--brand-rgb), .04);
   border-radius: 3px;
-  background: rgba(255, 215, 0, .018);
+  background: rgba(var(--brand-rgb), .018);
   transition: background .15s, border-color .15s, padding-left .15s;
   cursor: default;
 }
 .ap-track-row.clickable { cursor: pointer; }
 .ap-track-row.clickable:hover {
-  background: rgba(255, 215, 0, .048);
-  border-color: rgba(255, 215, 0, .1);
+  background: rgba(var(--brand-rgb), .048);
+  border-color: rgba(var(--brand-rgb), .1);
   padding-left: 18px;
 }
 .ap-track-row.playing {
-  background: rgba(255, 215, 0, .07);
-  border-color: rgba(255, 215, 0, .22);
+  background: rgba(var(--brand-rgb), .07);
+  border-color: rgba(var(--brand-rgb), .22);
 }
 
 .ap-track-num {
   font-size: 10px; font-weight: 700;
-  color: rgba(255, 215, 0, .28);
+  color: rgba(var(--brand-rgb), .28);
   min-width: 18px; text-align: center; flex-shrink: 0;
 }
-.ap-track-row.playing .ap-track-num { color: var(--ap-gold); }
+.ap-track-row.playing .ap-track-num { color: var(--brand); }
 
 .ap-track-cover {
   width: 42px; height: 42px; border-radius: 3px;
-  background: rgba(255, 215, 0, .07);
-  border: 1px solid rgba(255, 215, 0, .1);
+  background: rgba(var(--brand-rgb), .07);
+  border: 1px solid rgba(var(--brand-rgb), .1);
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  color: rgba(255, 215, 0, .22);
+  color: rgba(var(--brand-rgb), .22);
   overflow: hidden;
 }
 .ap-track-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -309,35 +1008,35 @@ img { max-width: 100%; display: block; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color .15s; letter-spacing: .02em;
 }
-.ap-track-row.playing .ap-track-name { color: var(--ap-gold); }
+.ap-track-row.playing .ap-track-name { color: var(--brand); }
 
 .ap-track-meta { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
 .ap-track-genre {
   font-size: 9px; letter-spacing: .15em; text-transform: uppercase;
-  color: rgba(255, 215, 0, .3);
+  color: rgba(var(--brand-rgb), .3);
 }
 .ap-track-date { font-size: 9px; color: rgba(255, 255, 255, .18); }
 
 .ap-track-right {
   flex-shrink: 0; display: flex; align-items: center; gap: 10px;
 }
-.ap-track-plays { font-size: 10px; color: rgba(255,215,0,.32); font-weight: 600; }
+.ap-track-plays { font-size: 10px; color: rgba(var(--brand-rgb), .32); font-weight: 600; }
 
 .ap-track-play-btn {
   width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(255, 215, 0, .09);
-  border: 1px solid rgba(255, 215, 0, .2);
-  color: rgba(255, 215, 0, .65);
+  background: rgba(var(--brand-rgb), .09);
+  border: 1px solid rgba(var(--brand-rgb), .2);
+  color: rgba(var(--brand-rgb), .65);
   display: flex; align-items: center; justify-content: center;
   transition: all .2s; flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.ap-track-play-btn:hover { background: rgba(255,215,0,.2); color: var(--ap-gold); }
+.ap-track-play-btn:hover { background: rgba(var(--brand-rgb), .2); color: var(--brand); }
 .ap-track-row.playing .ap-track-play-btn {
-  background: rgba(255,215,0,.18);
-  border-color: rgba(255,215,0,.55);
-  color: var(--ap-gold);
+  background: rgba(var(--brand-rgb), .18);
+  border-color: rgba(var(--brand-rgb), .55);
+  color: var(--brand);
 }
 .ap-track-no-stream {
   font-size: 9px; color: rgba(255,255,255,.18);
@@ -787,3 +1486,1631 @@ img { max-width: 100%; display: block; }
 }
 .ap-collab-send:hover    { background: rgba(255,215,0,.2); }
 .ap-collab-send:disabled { opacity: .5; cursor: not-allowed; }
+
+
+/* ── MARKETPLACE — ADN + prompts IA débloquables ─────────────────────────── */
+
+.ap-marketplace-section {
+  --ap-brand: #FFD700;      /* override dynamique depuis JS avec la brand color */
+  margin-top: 28px;
+}
+
+/* Carte ADN */
+.ap-adn-card {
+  position: relative;
+  padding: 18px 18px 16px;
+  margin-top: 14px;
+  margin-bottom: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .03), rgba(255, 255, 255, .01)),
+    rgba(18, 16, 24, .9);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-left: 3px solid var(--ap-brand);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.ap-adn-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(
+    120% 70% at 0% 0%,
+    color-mix(in srgb, var(--ap-brand) 14%, transparent) 0%,
+    transparent 55%
+  );
+  pointer-events: none;
+}
+.ap-adn-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 8px;
+  position: relative;
+}
+.ap-adn-badge {
+  font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--ap-brand);
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--ap-brand) 42%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--ap-brand) 8%, transparent);
+  font-weight: 700;
+}
+.ap-adn-price {
+  font-size: 12px; font-weight: 800;
+  color: var(--ap-gold);
+  letter-spacing: .04em;
+}
+.ap-adn-title {
+  font-size: 15px; font-weight: 800;
+  color: #fff;
+  margin-bottom: 6px;
+  position: relative;
+}
+.ap-adn-desc {
+  font-size: 12px; line-height: 1.55;
+  color: rgba(232, 228, 240, .72);
+  margin-bottom: 12px;
+  position: relative;
+}
+.ap-adn-perk {
+  font-size: 10.5px; letter-spacing: .02em;
+  color: rgba(255, 215, 0, .85);
+  padding: 8px 11px;
+  background: rgba(255, 215, 0, .05);
+  border: 1px solid rgba(255, 215, 0, .14);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.ap-adn-perk strong { color: var(--ap-gold); }
+
+/* Bouton unlock */
+.ap-unlock-btn {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .04em;
+  color: #0a0812;
+  background: linear-gradient(180deg, var(--ap-gold) 0%, var(--ap-gold-2) 100%);
+  border: 1px solid rgba(255, 215, 0, .55);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: transform .14s, box-shadow .2s, filter .2s;
+  box-shadow: 0 2px 12px rgba(255, 215, 0, .18);
+}
+.ap-unlock-btn:hover   { transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 4px 18px rgba(255, 215, 0, .28); }
+.ap-unlock-btn:active  { transform: translateY(0); }
+.ap-unlock-btn:disabled,
+.ap-unlock-btn.owned {
+  background: rgba(0, 230, 118, .14);
+  color: #9AF0B9;
+  border-color: rgba(0, 230, 118, .3);
+  box-shadow: none;
+  cursor: default;
+}
+.ap-unlock-btn strong { font-weight: 900; }
+.ap-price-strike {
+  text-decoration: line-through;
+  opacity: .55;
+  margin-right: 6px;
+  font-weight: 600;
+}
+.ap-unlock-btn-adn { margin-top: 2px; }
+
+/* Grille de prompts */
+.ap-prompts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+.ap-prompt-card {
+  padding: 13px 13px 12px;
+  background: rgba(14, 12, 18, .86);
+  border: 1px solid var(--ap-border2);
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  gap: 8px;
+  transition: border-color .18s, transform .14s;
+}
+.ap-prompt-card:hover { border-color: var(--ap-border); transform: translateY(-1px); }
+
+.ap-prompt-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 8px;
+}
+.ap-prompt-title {
+  font-size: 12.5px; font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: .01em;
+  flex: 1;
+}
+.ap-prompt-lyrics-badge {
+  flex-shrink: 0;
+  font-size: 8.5px; letter-spacing: .15em; text-transform: uppercase;
+  color: rgba(170, 0, 255, .9);
+  padding: 3px 7px;
+  border: 1px solid rgba(170, 0, 255, .35);
+  border-radius: 12px;
+  background: rgba(170, 0, 255, .08);
+  font-weight: 700;
+}
+.ap-prompt-desc {
+  font-size: 10.5px; line-height: 1.5;
+  color: rgba(232, 228, 240, .55);
+  min-height: 30px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ap-prompt-card .ap-unlock-btn {
+  padding: 9px 12px;
+  font-size: 11px;
+  margin-top: auto;
+}
+
+/* Empty state marketplace */
+.ap-mkt-empty {
+  padding: 22px;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, .35);
+  border: 1px dashed rgba(255, 255, 255, .08);
+  border-radius: 10px;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .ap-prompts-grid { grid-template-columns: 1fr; }
+  .ap-adn-card { padding: 15px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHANTIER 1.2 — Section "Abonnés" (mini-cartes)
+   Remonte jusqu'à 6 abonnés récents (via followersSample de l'API).
+   Chaque carte clique vers /artiste/<slug> de l'abonné, en reprenant sa
+   propre brand_color pour l'avatar — effet "réseau créatif" visible.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ap-followers-section { margin-top: 32px; }
+
+.ap-followers-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.ap-follower-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px;
+  padding: 14px 10px 12px;
+  background: rgba(14, 12, 18, .86);
+  border: 1px solid rgba(var(--brand-rgb), .1);
+  border-radius: 10px;
+  text-align: center;
+  transition: transform .18s, border-color .18s, box-shadow .18s;
+  color: inherit; /* <a> désactive le underline dans le parent déjà */
+}
+.ap-follower-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--brand-rgb), .28);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .4);
+}
+
+.ap-follower-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  /* Chaque abonné prend SA propre couleur, fournie en inline style.
+     On garde un fallback doré pour les profils sans brandColor. */
+  background: var(--f-brand, var(--ap-gold));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  border: 1.5px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, .2);
+}
+
+.ap-follower-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(232, 228, 240, .86);
+  letter-spacing: .02em;
+  line-height: 1.25;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.ap-followers-more {
+  align-self: center;
+  font-size: 10px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(var(--brand-rgb), .6);
+  padding: 12px 14px;
+  border: 1px dashed rgba(var(--brand-rgb), .22);
+  border-radius: 10px;
+  background: rgba(var(--brand-rgb), .03);
+}
+
+.ap-followers-empty {
+  padding: 18px 14px;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, .32);
+  letter-spacing: .04em;
+  border: 1px dashed rgba(255, 255, 255, .06);
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  .ap-followers-row { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .ap-follower-avatar { width: 38px; height: 38px; font-size: 15px; }
+  .ap-follower-name { font-size: 10px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHANTIER "PROFIL ARTISTE TYPE" — Actualités + Événements
+   Deux sections parallèles, même gabarit visuel :
+   - .ap-posts-list  : feed de publications (texte + image + track partagée)
+   - .ap-events-list : liste de dates à venir
+   Chaque section a son empty state dédié (.ap-*-empty), affiché tant que la
+   liste est vide. Le JS masque l'empty state dès qu'un item est rendu.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ap-posts-section,
+.ap-events-section { margin-top: 36px; }
+
+.ap-posts-list,
+.ap-events-list {
+  display: flex; flex-direction: column; gap: 14px;
+  margin-top: 16px;
+}
+
+/* Carte de post — look "feed" avec bordure discrète et hover subtil */
+.ap-post-card {
+  padding: 18px 20px;
+  background: rgba(14, 12, 18, .86);
+  border: 1px solid rgba(var(--brand-rgb), .1);
+  border-radius: 12px;
+  transition: border-color .2s, transform .2s;
+}
+.ap-post-card:hover {
+  border-color: rgba(var(--brand-rgb), .22);
+  transform: translateY(-1px);
+}
+.ap-post-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+}
+.ap-post-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), rgba(var(--brand-rgb), .4));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ap-post-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ap-post-meta { display: flex; flex-direction: column; min-width: 0; }
+.ap-post-author {
+  font-size: 12px; font-weight: 700;
+  color: rgba(232, 228, 240, .88);
+  letter-spacing: .02em;
+}
+.ap-post-date {
+  font-size: 10px; color: rgba(255, 255, 255, .32);
+  letter-spacing: .08em; text-transform: uppercase;
+  margin-top: 2px;
+}
+.ap-post-body {
+  font-size: 13px; line-height: 1.7;
+  color: rgba(200, 196, 216, .82);
+  letter-spacing: .02em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ap-post-image {
+  margin-top: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 420px;
+}
+.ap-post-image img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Carte d'événement — layout type billetterie : date à gauche, détails à droite */
+.ap-event-card {
+  display: flex; gap: 16px; align-items: center;
+  padding: 14px 18px;
+  background: rgba(14, 12, 18, .86);
+  border: 1px solid rgba(var(--brand-rgb), .1);
+  border-radius: 12px;
+  transition: border-color .2s, transform .2s;
+}
+.ap-event-card:hover {
+  border-color: rgba(var(--brand-rgb), .28);
+  transform: translateY(-1px);
+}
+.ap-event-date {
+  flex-shrink: 0;
+  width: 58px; text-align: center;
+  padding: 8px 0;
+  border-radius: 8px;
+  background: rgba(var(--brand-rgb), .08);
+  border: 1px solid rgba(var(--brand-rgb), .22);
+}
+.ap-event-day {
+  font-size: 22px; font-weight: 900;
+  color: var(--brand);
+  line-height: 1;
+}
+.ap-event-month {
+  font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: rgba(var(--brand-rgb), .72);
+  margin-top: 3px;
+}
+.ap-event-info { flex: 1; min-width: 0; }
+.ap-event-title {
+  font-size: 13.5px; font-weight: 700;
+  color: rgba(232, 228, 240, .92);
+  letter-spacing: .02em;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.ap-event-loc {
+  font-size: 11px;
+  color: rgba(200, 196, 216, .5);
+  letter-spacing: .04em;
+  display: flex; align-items: center; gap: 5px;
+}
+.ap-event-loc svg { opacity: .6; flex-shrink: 0; }
+.ap-event-cta {
+  flex-shrink: 0;
+  font-size: 9px; letter-spacing: .2em; text-transform: uppercase; font-weight: 700;
+  color: rgba(var(--brand-rgb), .72);
+  border: 1px solid rgba(var(--brand-rgb), .28);
+  background: rgba(var(--brand-rgb), .05);
+  border-radius: 2px; padding: 7px 14px;
+  transition: all .2s;
+}
+.ap-event-cta:hover {
+  color: var(--brand);
+  border-color: rgba(var(--brand-rgb), .55);
+  background: rgba(var(--brand-rgb), .1);
+}
+
+/* Empty states — même gabarit pour actus + events. */
+.ap-posts-empty,
+.ap-events-empty {
+  display: flex; align-items: center; gap: 16px;
+  padding: 24px 22px;
+  background: rgba(14, 12, 18, .55);
+  border: 1px dashed rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  margin-top: 16px;
+}
+.ap-empty-icon {
+  flex-shrink: 0;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(var(--brand-rgb), .42);
+  background: rgba(var(--brand-rgb), .05);
+  border: 1px solid rgba(var(--brand-rgb), .14);
+}
+.ap-empty-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ap-empty-text strong {
+  font-size: 12.5px; font-weight: 700;
+  color: rgba(232, 228, 240, .72);
+  letter-spacing: .06em;
+}
+.ap-empty-text span {
+  font-size: 11.5px; line-height: 1.5;
+  color: rgba(200, 196, 216, .42);
+  letter-spacing: .02em;
+}
+
+@media (max-width: 640px) {
+  .ap-event-card { flex-wrap: wrap; gap: 12px; }
+  .ap-event-cta { width: 100%; text-align: center; }
+  .ap-posts-empty,
+  .ap-events-empty { flex-direction: column; text-align: center; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BANNIÈRE "PREVIEW" + PLACEHOLDERS
+   ───────────────────────────────────────────────────────────────────────────
+   Affichée uniquement quand l'utilisateur consulte sa propre page ET que
+   son profil n'est pas encore publié sur la vitrine WATT. Elle sert trois
+   objectifs :
+     1. Rassurer — personne d'autre ne voit cette page tant qu'elle n'est
+        pas publiée (pas besoin qu'elle soit "parfaite" pour exister).
+     2. Inciter — un CTA direct vers /dashboard pour compléter le profil.
+     3. Donner la logique de publication — on explique pourquoi la page
+        est privée et ce qu'il faut faire pour la rendre publique.
+
+   Les placeholders (.ap-placeholder) remplacent les champs vides dans
+   le hero et les sections : ils montrent à l'artiste quoi remplir sans
+   afficher de "vide" brut. Texte italique + gris doux.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ap-preview-banner {
+  position: sticky;
+  top: 56px;                      /* Juste sous la topbar partagée (.stb-root min-height 56px) */
+  z-index: 50;
+  margin: 0 auto;
+  padding: 10px 18px;
+  background: linear-gradient(135deg,
+    rgba(var(--brand-rgb, 136, 0, 255), .18) 0%,
+    rgba(var(--brand-rgb, 136, 0, 255), .08) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(var(--brand-rgb, 136, 0, 255), .28);
+  animation: apPreviewFadeIn .4s ease;
+}
+
+@keyframes apPreviewFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ap-preview-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ap-preview-icon {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(var(--brand-rgb, 136, 0, 255), .22);
+  color: var(--brand, #8800FF);
+}
+
+.ap-preview-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+}
+
+.ap-preview-text strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: rgba(235, 232, 245, .96);
+  letter-spacing: .01em;
+}
+
+.ap-preview-text span {
+  font-size: 12px;
+  color: rgba(200, 196, 216, .72);
+}
+
+.ap-preview-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--brand, #8800FF);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(var(--brand-rgb, 136, 0, 255), .35);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.ap-preview-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(var(--brand-rgb, 136, 0, 255), .48);
+}
+
+.ap-preview-cta svg { flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .ap-preview-banner { padding: 10px 14px; top: 48px; }
+  .ap-preview-inner  { flex-wrap: wrap; gap: 10px; }
+  .ap-preview-icon   { width: 28px; height: 28px; }
+  .ap-preview-text   { flex: 1 1 calc(100% - 44px); }
+  .ap-preview-cta    { width: 100%; justify-content: center; padding: 10px; }
+}
+
+/* ── Placeholders (champs vides affichés en italique gris) ─────────────── */
+
+.ap-placeholder {
+  color: rgba(200, 196, 216, .42) !important;
+  font-style: italic;
+  font-weight: 400 !important;
+  letter-spacing: 0;
+}
+
+/* Le nom d'artiste en placeholder garde sa taille originale mais passe
+   en italique grisé : donne un "wireframe" propre. */
+.ap-artist-name.ap-placeholder {
+  opacity: .7;
+}
+
+/* Chips meta (genre / ville / depuis) en placeholder : bordure fantôme. */
+.ap-meta-chip.ap-placeholder {
+  background: transparent;
+  border: 1px dashed rgba(var(--brand-rgb, 136, 0, 255), .28);
+  color: rgba(200, 196, 216, .42);
+  cursor: default;
+}
+
+.ap-meta-chip.ap-placeholder svg { opacity: .5; }
+
+/* Bloc bio en placeholder : fond atténué, pas de bordure dure. */
+.ap-bio.ap-placeholder {
+  color: rgba(200, 196, 216, .48);
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* Socials désactivés : même layout mais grisés + curseur "not-allowed". */
+.ap-social-link.ap-disabled {
+  pointer-events: none;
+  opacity: .35;
+  filter: grayscale(1);
+}
+
+/* Cover en mode "wireframe" : dégradé neutre brand-aware au lieu d'une image. */
+.ap-hero.ap-preview-cover .ap-hero-cover {
+  background: linear-gradient(135deg,
+    rgba(var(--brand-rgb, 136, 0, 255), .35) 0%,
+    rgba(20, 16, 32, .8) 100%);
+  display: block;
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODE SQUELETTE — profil non publié
+   ─────────────────────────────────────────────────────────────────────────
+   Quand le profil n'a pas été publié depuis le dashboard, la page affiche
+   uniquement l'architecture (hero + stats) avec placeholders floutés, et
+   une notice centrale qui pousse à finaliser la publication.
+   Classe `.ap-skeleton` appliquée sur <body> par artiste.js.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Notice centrale "Remplissez votre WATT BOARD" ────────────────────── */
+.ap-publish-notice {
+  max-width: 720px;
+  margin: 32px auto 24px;
+  padding: 0 18px;
+  animation: apPubNoticeIn .5s cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes apPubNoticeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ap-publish-notice-inner {
+  position: relative;
+  text-align: center;
+  padding: 34px 28px 30px;
+  background:
+    radial-gradient(ellipse at top,
+      rgba(var(--brand-rgb, 136, 0, 255), .22) 0%,
+      rgba(var(--brand-rgb, 136, 0, 255), .06) 55%,
+      transparent 100%),
+    linear-gradient(180deg,
+      rgba(14, 10, 24, .92) 0%,
+      rgba(10, 7, 20, .96) 100%);
+  border: 1px solid rgba(var(--brand-rgb, 136, 0, 255), .32);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 0 1px rgba(var(--brand-rgb, 136, 0, 255), .08),
+    0 18px 50px rgba(0, 0, 0, .55),
+    0 0 36px rgba(var(--brand-rgb, 136, 0, 255), .18) inset;
+  overflow: hidden;
+}
+
+.ap-publish-notice-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 23px,
+    rgba(var(--brand-rgb, 136, 0, 255), .04) 23px 24px
+  );
+  pointer-events: none;
+  opacity: .6;
+}
+
+.ap-publish-notice-icon {
+  width: 54px; height: 54px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(var(--brand-rgb, 136, 0, 255), .18);
+  border: 1px solid rgba(var(--brand-rgb, 136, 0, 255), .4);
+  color: var(--brand, #8800FF);
+  box-shadow: 0 0 24px rgba(var(--brand-rgb, 136, 0, 255), .35);
+  position: relative;
+  z-index: 1;
+}
+
+.ap-publish-notice-title {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 8px;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: #fff;
+}
+
+.ap-publish-notice-msg {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto 20px;
+  max-width: 480px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: rgba(230, 226, 248, .82);
+}
+
+.ap-publish-notice-msg strong {
+  color: var(--brand, #8800FF);
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+.ap-publish-notice-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  background: linear-gradient(135deg,
+    rgba(var(--brand-rgb, 136, 0, 255), .85) 0%,
+    rgba(var(--brand-rgb, 136, 0, 255), .65) 100%);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: .02em;
+  border: 1px solid rgba(var(--brand-rgb, 136, 0, 255), .6);
+  box-shadow:
+    0 6px 18px rgba(var(--brand-rgb, 136, 0, 255), .38),
+    0 0 14px rgba(var(--brand-rgb, 136, 0, 255), .25) inset;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.ap-publish-notice-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow:
+    0 10px 24px rgba(var(--brand-rgb, 136, 0, 255), .5),
+    0 0 18px rgba(var(--brand-rgb, 136, 0, 255), .35) inset;
+}
+
+.ap-publish-notice-btn span { font-size: 15px; }
+
+@media (max-width: 600px) {
+  .ap-publish-notice { margin: 22px auto 18px; padding: 0 12px; }
+  .ap-publish-notice-inner { padding: 26px 18px 24px; }
+  .ap-publish-notice-title { font-size: 17px; }
+  .ap-publish-notice-msg { font-size: 13.5px; }
+  .ap-publish-notice-btn { width: 100%; justify-content: center; padding: 12px; }
+}
+
+/* ── Architecture en mode squelette (body.ap-skeleton) ────────────────── */
+
+/* Avatar ghost : icône utilisateur neutre au lieu d'initiale ou image. */
+.ap-avatar.ap-avatar-ghost {
+  background:
+    radial-gradient(circle at 30% 25%,
+      rgba(var(--brand-rgb, 136, 0, 255), .28) 0%,
+      rgba(20, 16, 32, .95) 72%);
+  color: rgba(var(--brand-rgb, 136, 0, 255), .75);
+  border: 1px dashed rgba(var(--brand-rgb, 136, 0, 255), .4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* En mode squelette, on floute/atténue les infos pour montrer la structure
+   sans leaker de données. Les stats sont forcées visibles pour exhiber
+   l'architecture complète (même si trackCount=0). */
+body.ap-skeleton .ap-artist-name {
+  color: rgba(230, 226, 248, .45);
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+body.ap-skeleton .ap-bio {
+  color: rgba(200, 196, 216, .4);
+  font-style: italic;
+}
+
+body.ap-skeleton .ap-stats {
+  display: grid !important;
+  opacity: .55;
+  filter: saturate(.4);
+  pointer-events: none;
+}
+
+body.ap-skeleton .ap-stat-value {
+  color: rgba(var(--brand-rgb, 136, 0, 255), .55);
+  font-style: italic;
+}
+
+body.ap-skeleton .ap-stat-label {
+  color: rgba(200, 196, 216, .5);
+}
+
+/* Hero légèrement assourdi pour donner le ton "preview/wireframe". */
+body.ap-skeleton .ap-hero-bg {
+  opacity: .35;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODE OWNER — Page unifiée /artiste/<slug>
+   (création + édition + vue fan en un seul écran)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Barre sticky owner (sous la topbar) ─────────────────────────────────── */
+.ap-owner-bar {
+  position: sticky;
+  top: 56px;          /* sous la topbar */
+  z-index: 50;
+  padding: 10px 28px;
+  background: linear-gradient(180deg, rgba(14,12,18,.96), rgba(14,12,18,.82));
+  border-bottom: 1px solid rgba(136,0,255,.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.ap-owner-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.ap-owner-bar-status {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: 12px; letter-spacing: .02em;
+  color: rgba(230,226,248,.82);
+}
+.ap-owner-bar-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--brand, #8800FF);
+  box-shadow: 0 0 10px rgba(var(--brand-rgb, 136,0,255), .6);
+  animation: apOwnerPulse 2s ease-in-out infinite;
+}
+.ap-owner-bar.ap-owner-edit .ap-owner-bar-dot {
+  background: #ffd700;
+  box-shadow: 0 0 10px rgba(255,215,0,.55);
+}
+.ap-owner-bar.ap-owner-draft .ap-owner-bar-dot {
+  background: rgba(255,255,255,.25);
+  box-shadow: none;
+  animation: none;
+}
+@keyframes apOwnerPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+
+.ap-owner-bar-label { font-weight: 500; }
+
+.ap-owner-bar-actions {
+  display: inline-flex; gap: 8px; align-items: center;
+}
+.ap-owner-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 3px;
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.03);
+  color: rgba(230,226,248,.88);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ap-owner-btn:hover {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.22);
+  color: #fff;
+}
+.ap-owner-btn:active { transform: translateY(1px); }
+.ap-owner-btn.is-active {
+  background: rgba(255,215,0,.12);
+  border-color: rgba(255,215,0,.35);
+  color: #ffd700;
+}
+.ap-owner-btn-publish {
+  background: var(--brand, #8800FF);
+  border-color: transparent;
+  color: #fff;
+}
+.ap-owner-btn-publish:hover {
+  filter: brightness(1.1);
+  background: var(--brand, #8800FF);
+  color: #fff;
+}
+.ap-owner-btn-publish.is-disabled,
+.ap-owner-btn-publish[disabled] {
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.35);
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* Gérer la visibilité — lien discret vers PLUG WATT (source unique
+   de vérité pour profile_public). Ton neutre, pas d'accent couleur :
+   c'est une action de navigation, pas une action destructive. */
+.ap-owner-btn-manage {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.14);
+  color: rgba(255,255,255,.75);
+  text-decoration: none;
+}
+.ap-owner-btn-manage:hover {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.24);
+  color: #fff;
+}
+
+/* Gate banner : affiché quand trackCount=0 */
+.ap-owner-bar-gate {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  max-width: 1200px; margin: 10px auto 0;
+  padding: 9px 12px; border-radius: 3px;
+  background: rgba(255,215,0,.07);
+  border: 1px solid rgba(255,215,0,.22);
+  color: rgba(255,215,0,.82);
+  font-size: 12px;
+}
+.ap-owner-bar-gate svg { flex-shrink: 0; }
+.ap-owner-bar-gate-link {
+  margin-left: auto; color: #ffd700; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .08em; font-size: 10px;
+}
+.ap-owner-bar-gate-link:hover { text-decoration: underline; }
+
+
+/* ── Champs éditables (contenteditable + placeholder visuel) ─────────────── */
+.ap-editable {
+  position: relative;
+  transition: background .15s, outline-color .15s;
+  border-radius: 3px;
+  outline: 1px solid transparent;
+  outline-offset: 3px;
+}
+/* Placeholder visuel quand vide (mode owner) */
+.ap-editable.ap-editable-empty {
+  color: rgba(230,226,248,.35);
+  font-style: italic;
+}
+/* Hover / état éditable actif (owner en mode édition) */
+body.ap-owner-editing .ap-editable {
+  cursor: text;
+  outline-color: rgba(255,255,255,.08);
+  background: rgba(255,255,255,.015);
+}
+body.ap-owner-editing .ap-editable:hover {
+  outline-color: rgba(var(--brand-rgb, 136,0,255), .35);
+  background: rgba(var(--brand-rgb, 136,0,255), .04);
+}
+body.ap-owner-editing .ap-editable:focus {
+  outline-color: var(--brand, #8800FF);
+  background: rgba(var(--brand-rgb, 136,0,255), .08);
+}
+/* Ceinture : dès que le champ a le focus, le texte saisi s'affiche en
+   couleur normale (blanche) et non italique, même si la classe
+   .ap-editable-empty traînait encore (le JS la retire au focusin, mais
+   on prend les devants côté CSS pour éliminer le moindre flash). */
+body.ap-owner-editing .ap-editable:focus,
+body.ap-owner-editing .ap-editable.ap-editable-empty:focus {
+  color: #fff;
+  font-style: normal;
+}
+
+/* Cas spécial du h1 .ap-artist-name : en mode lecture il utilise
+   background-clip:text + -webkit-text-fill-color:transparent pour
+   peindre un dégradé sur le texte. Pendant la frappe en edit mode,
+   ça rendait la saisie invisible (le texte frais n'est peint par le
+   gradient qu'au prochain reflow — d'où l'effet "le nom apparaît
+   après Enter"). On désactive le clip pendant le focus pour que le
+   texte suive la frappe en couleur pleine.                        */
+body.ap-owner-editing .ap-artist-name:focus {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: #fff;
+  color: #fff;
+  /* Filter drop-shadow reste OK — on garde le halo néon discret mais
+     sans les valeurs agressives qui brouillaient la lecture pendant
+     la saisie. */
+  filter: drop-shadow(0 0 4px rgba(var(--brand-rgb), .35));
+  animation: none;
+}
+/* Indicateur "en cours de sauvegarde" */
+.ap-editable.ap-editable-saving {
+  opacity: .6;
+  outline-color: rgba(255,215,0,.3);
+}
+
+
+/* ── Chips "réseaux sociaux" (fan + owner) ───────────────────────────────── */
+.ap-social-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: 3px;
+  font-size: 11px; letter-spacing: .05em;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.02);
+  color: rgba(230,226,248,.85);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ap-social-chip:hover {
+  border-color: rgba(var(--brand-rgb, 136,0,255), .5);
+  background: rgba(var(--brand-rgb, 136,0,255), .08);
+  color: #fff;
+}
+.ap-social-emoji { font-size: 13px; line-height: 1; }
+.ap-social-label { font-weight: 500; }
+.ap-social-chip.ap-social-add {
+  border-style: dashed;
+  color: rgba(230,226,248,.55);
+}
+.ap-social-chip.ap-social-add:hover {
+  border-style: dashed;
+  color: var(--brand, #8800FF);
+}
+
+
+/* ── Boutons d'édition "média" sur l'avatar + cover ──────────────────────── */
+.ap-avatar-wrap { position: relative; }
+.ap-avatar-edit {
+  position: absolute; bottom: 4px; right: 4px;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--brand, #8800FF);
+  color: #fff;
+  border: 2px solid rgba(14,12,18,.9);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  transition: filter .15s, transform .1s;
+}
+.ap-avatar-edit:hover { filter: brightness(1.15); }
+.ap-avatar-edit:active { transform: scale(.95); }
+
+.ap-hero { position: relative; }
+.ap-hero-bg-edit {
+  position: absolute; top: 14px; right: 18px;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 12px; border-radius: 3px;
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  font-weight: 600;
+  background: rgba(14,12,18,.78);
+  color: rgba(230,226,248,.88);
+  border: 1px solid rgba(255,255,255,.16);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.ap-hero-bg-edit:hover {
+  background: rgba(14,12,18,.92);
+  border-color: rgba(var(--brand-rgb, 136,0,255), .5);
+  color: #fff;
+}
+
+/* Hero bg : on prépare le fallback quand une URL cover est définie */
+.ap-hero-bg.has-image {
+  background-size: cover;
+  background-position: center;
+  opacity: 1;
+}
+
+
+/* ── Pickers couleurs (bg + accent) ──────────────────────────────────────── */
+.ap-colors {
+  margin: 0 28px 24px;
+  max-width: 1200px;
+  padding: 18px;
+  border: 1px dashed rgba(var(--brand-rgb, 136,0,255), .35);
+  border-radius: 3px;
+  background: rgba(var(--brand-rgb, 136,0,255), .04);
+}
+.ap-colors-inner { max-width: 900px; margin: 0 auto; }
+.ap-colors-title {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(230,226,248,.85);
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.ap-colors-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+}
+.ap-color-field {
+  display: inline-flex; align-items: center; gap: 10px;
+  cursor: pointer;
+}
+.ap-color-sublabel {
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(230,226,248,.6);
+  min-width: 52px;
+}
+.ap-color-field input[type="color"] {
+  width: 40px; height: 40px; padding: 0; border: none;
+  background: none; cursor: pointer; border-radius: 3px;
+  -webkit-appearance: none; appearance: none;
+}
+.ap-color-field input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.ap-color-field input[type="color"]::-webkit-color-swatch {
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 3px;
+}
+.ap-color-hex {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px; letter-spacing: .04em;
+  color: rgba(230,226,248,.7);
+  min-width: 66px;
+}
+.ap-color-reset {
+  margin-left: auto;
+  padding: 7px 12px;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,.16);
+  background: transparent;
+  color: rgba(230,226,248,.75);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.ap-color-reset:hover {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.28);
+  color: #fff;
+}
+.ap-colors-hint {
+  margin-top: 12px;
+  font-size: 11px;
+  color: rgba(230,226,248,.45);
+}
+
+
+/* ── Modal URL (avatar / cover / socials) ────────────────────────────────── */
+.ap-modal {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.ap-modal-inner {
+  width: 100%; max-width: 440px;
+  background: rgba(20,18,26,.98);
+  border: 1px solid rgba(136,0,255,.3);
+  border-radius: 4px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.6);
+}
+.ap-modal-title {
+  margin: 0 0 6px;
+  font-size: 14px; letter-spacing: .06em; text-transform: uppercase;
+  color: #fff; font-weight: 600;
+}
+.ap-modal-hint {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: rgba(230,226,248,.55);
+  line-height: 1.5;
+}
+.ap-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+}
+.ap-modal-input:focus { border-color: var(--brand, #8800FF); }
+
+/* ── Upload image depuis les fichiers (section du modal) ─────────────── */
+.ap-modal-upload { margin-bottom: 14px; }
+.ap-modal-upload-btn {
+  width: 100%;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 11px 14px; border-radius: 3px;
+  font-size: 12px; letter-spacing: .05em; font-weight: 600;
+  border: 1px dashed rgba(var(--brand-rgb, 136,0,255), .5);
+  background: rgba(var(--brand-rgb, 136,0,255), .08);
+  color: var(--brand, #8800FF);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.ap-modal-upload-btn:hover {
+  background: rgba(var(--brand-rgb, 136,0,255), .15);
+  border-color: var(--brand, #8800FF);
+  color: #fff;
+}
+.ap-modal-upload-status {
+  min-height: 16px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(230,226,248,.6);
+}
+.ap-modal-upload-status.is-loading { color: rgba(255,215,0,.8); }
+.ap-modal-upload-status.is-ok      { color: #6ee39a; }
+.ap-modal-upload-status.is-error   { color: #ff6b7a; }
+.ap-modal-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 12px 0 6px;
+  color: rgba(230,226,248,.35);
+  font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+}
+.ap-modal-divider::before,
+.ap-modal-divider::after {
+  content: ''; flex: 1;
+  height: 1px; background: rgba(255,255,255,.08);
+}
+.ap-modal-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 16px;
+}
+.ap-modal-btn {
+  padding: 9px 16px; border-radius: 3px;
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.16);
+  background: transparent;
+  color: rgba(230,226,248,.85);
+  transition: background .15s, border-color .15s;
+}
+.ap-modal-btn:hover {
+  background: rgba(255,255,255,.05);
+  border-color: rgba(255,255,255,.28);
+  color: #fff;
+}
+.ap-modal-btn-save {
+  background: var(--brand, #8800FF);
+  border-color: transparent;
+  color: #fff;
+}
+.ap-modal-btn-save:hover {
+  background: var(--brand, #8800FF);
+  color: #fff;
+  filter: brightness(1.1);
+}
+
+
+/* ── Sections riches (Biographie / Influences / Mon univers) ────────────── */
+
+.ap-section {
+  max-width: 900px;
+  margin: 0 auto 36px;
+  padding: 0 28px;
+}
+.ap-section-title {
+  font-size: 11px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(var(--brand-rgb, 136,0,255), .85);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(var(--brand-rgb, 136,0,255), .22);
+}
+.ap-section-body {
+  font-size: 15px;
+  line-height: 1.7;
+  color: rgba(232, 228, 240, .88);
+  white-space: pre-wrap;     /* respecte les retours à la ligne saisis par l'artiste */
+  word-break: break-word;
+}
+/* Variante pour les textes longs éditables : un peu plus de padding pour
+   que l'outline focus respire, et min-height pour qu'un champ vide reste
+   cliquable confortablement en mode édition. */
+.ap-editable.ap-editable-long {
+  display: block;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 3px;
+}
+body.ap-owner-editing .ap-editable.ap-editable-long {
+  min-height: 72px;
+}
+
+/* Responsive sections */
+@media (max-width: 860px) {
+  .ap-section { padding: 0 24px; margin-bottom: 28px; }
+  .ap-section-body { font-size: 14px; }
+}
+@media (max-width: 640px) {
+  .ap-section { padding: 0 18px; }
+}
+
+
+/* ── Responsive barre owner ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ap-owner-bar { padding: 10px 16px; top: 56px; }
+  .ap-owner-bar-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .ap-owner-bar-actions { width: 100%; justify-content: flex-end; }
+  .ap-colors { margin: 0 16px 20px; padding: 14px; }
+  .ap-colors-row { gap: 14px; }
+  .ap-color-reset { margin-left: 0; width: 100%; text-align: center; }
+  .ap-hero-bg-edit {
+    top: 10px; right: 12px;
+    padding: 6px 10px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHANTIER "PROFIL ARTISTE VENDEUR" — sections marketplace conditionnelles
+   ═══════════════════════════════════════════════════════════════════════════
+
+   3 blocs ajoutés sous les socials, tous en display:none par défaut et
+   révélés par artiste.js si la donnée correspondante est présente :
+     • .ap-dna-card       — cellule "Débloquer l'ADN" (1 max par artiste)
+     • .ap-prompts        — liste des recettes Suno à débloquer (N prompts)
+     • .ap-tracks         — liste des sons publiés (avec <audio controls>)
+
+   Look & feel aligné sur .ap-section (padding 0 32px, max-width 920). Le
+   surlignage violet utilise --brand via rgba(var(--brand-rgb), α) pour
+   réagir à la couleur de marque personnalisée de l'artiste. */
+
+/* ── DNA card ────────────────────────────────────────────────────────────── */
+.ap-dna-card {
+  max-width: 920px;
+  margin: 32px auto 24px;
+  padding: 0 32px;
+}
+.ap-dna-card-inner {
+  position: relative;
+  padding: 22px 24px;
+  border-radius: 18px;
+  background: linear-gradient(
+    145deg,
+    rgba(var(--brand-rgb), .16) 0%,
+    rgba(var(--brand-rgb), .06) 65%,
+    rgba(255,255,255,.02) 100%
+  );
+  border: 1px solid rgba(var(--brand-rgb), .28);
+  box-shadow: 0 20px 60px -30px rgba(var(--brand-rgb), .55);
+  overflow: hidden;
+}
+.ap-dna-card-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 15% 10%,
+    rgba(var(--brand-rgb), .25) 0%,
+    transparent 45%
+  );
+  pointer-events: none;
+}
+.ap-dna-card-hdr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.ap-dna-card-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(var(--brand-rgb), .22);
+  color: #fff;
+  flex-shrink: 0;
+}
+.ap-dna-card-titles { flex: 1; min-width: 0; }
+.ap-dna-card-eyebrow {
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.55);
+  margin-bottom: 2px;
+}
+.ap-dna-card-title {
+  font-size: 20px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.ap-dna-card-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1;
+  text-align: right;
+}
+.ap-dna-card-price > span:first-child {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.ap-dna-price-unit {
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.5);
+  margin-top: 4px;
+}
+.ap-dna-card-teaser {
+  position: relative;
+  margin: 0 0 14px;
+  color: rgba(255,255,255,.78);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ap-dna-card-meta {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.ap-dna-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.85);
+  border: 1px solid rgba(255,255,255,.1);
+}
+.ap-dna-card-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.ap-dna-unlock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--brand-rgb), .5);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--brand-rgb), .85) 0%,
+    rgba(var(--brand-rgb), .55) 100%
+  );
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.ap-dna-unlock-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+.ap-dna-unlock-btn:disabled { opacity: .6; cursor: wait; }
+.ap-dna-perk-hint {
+  font-size: 12px;
+  color: rgba(255,255,255,.55);
+}
+
+/* ── Prompts (recettes Suno) ─────────────────────────────────────────────── */
+.ap-prompts {
+  max-width: 920px;
+  margin: 24px auto;
+  padding: 0 32px;
+}
+.ap-prompts-hdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ap-prompts-title {
+  font-size: 16px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.ap-prompts-count {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .04em;
+}
+.ap-prompts-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.ap-prompt-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color .12s ease, background .12s ease;
+}
+.ap-prompt-card:hover {
+  border-color: rgba(var(--brand-rgb), .35);
+  background: rgba(var(--brand-rgb), .05);
+}
+.ap-prompt-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ap-prompt-card-title {
+  font-size: 14px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+}
+.ap-prompt-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,215,0,.1);
+  color: #FFD700;
+  border: 1px solid rgba(255,215,0,.25);
+  white-space: nowrap;
+}
+.ap-prompt-card-desc {
+  font-size: 12.5px;
+  margin: 0;
+  color: rgba(255,255,255,.62);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ap-prompt-card-actions { margin-top: auto; }
+.ap-prompt-unlock-btn {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--brand-rgb), .45);
+  background: rgba(var(--brand-rgb), .15);
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.ap-prompt-unlock-btn:hover { background: rgba(var(--brand-rgb), .3); }
+.ap-prompt-unlock-btn:disabled { opacity: .6; cursor: wait; }
+.ap-prompt-owner-note {
+  font-size: 12px;
+  color: rgba(255,255,255,.45);
+  font-style: italic;
+}
+
+/* ── Tracks (sons publiés) ───────────────────────────────────────────────── */
+.ap-tracks {
+  max-width: 920px;
+  margin: 24px auto 48px;
+  padding: 0 32px;
+}
+.ap-tracks-hdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ap-tracks-title {
+  font-size: 16px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.ap-tracks-count {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .04em;
+}
+.ap-tracks-list { display: flex; flex-direction: column; gap: 10px; }
+.ap-track-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.ap-track-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ap-track-card-title {
+  font-size: 14px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ap-track-card-meta {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ap-track-audio {
+  width: 100%;
+  height: 36px;
+  outline: none;
+  border-radius: 6px;
+  /* harmonie visuelle minimale — le skin du navigateur reste natif */
+  filter: invert(1) hue-rotate(180deg) brightness(.85);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .ap-dna-card,
+  .ap-prompts,
+  .ap-tracks { padding: 0 18px; }
+  .ap-dna-card-hdr {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .ap-dna-card-price {
+    width: 100%;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+  .ap-dna-price-unit { margin-top: 0; }
+  .ap-prompts-list { grid-template-columns: 1fr; }
+}

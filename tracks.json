@@ -169,13 +169,6 @@
     "theme": "jungle-osmose",
     "tracks": [
       {
-        "id": "jo-sw001bluelightdriftcopie",
-        "file": "sw-001 — Blue Light Drift copie.wav",
-        "name": "Blue Light Drift Copie",
-        "duration": 209.0,
-        "url": "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev/JUNGLE%20OSMOSE/sw-001%20%E2%80%94%20Blue%20Light%20Drift%20copie.wav"
-      },
-      {
         "id": "jo-sw001bluelightdriftwav",
         "file": "sw-001 — Blue Light Drift.wav",
         "name": "Blue Light",

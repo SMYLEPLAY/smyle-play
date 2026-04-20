@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#070608" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Dashboard Artiste · PLUG WATT · SMYLE PLAY</title>
+  <title>Dashboard Artiste · WATT</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="dashboard.css" />
 </head>
@@ -30,47 +30,126 @@
         <circle cx="10"   cy="3"  r="2"   fill="#fff" opacity=".90"/>
       </g>
     </svg>
-    <span>SMYLE PLAY</span>
+    <span>WATT</span>
   </a>
 
   <div class="dash-topbar-center">
     <svg viewBox="0 0 24 24" fill="#FFD700" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    <span class="dash-topbar-brand">PLUG WATT</span>
-    <span class="dash-topbar-badge">Dashboard · Bêta</span>
+    <!-- Renommé de "PLUG WATT" vers "WATT BOARD" — PLUG WATT est désormais
+         le nom d'une PILL de ce tableau (section 03 : visibilité marketplace),
+         plus celui du tableau entier. Évite la double-désignation. -->
+    <span class="dash-topbar-brand">WATT BOARD</span>
+    <span class="dash-topbar-badge">Bêta</span>
   </div>
 
   <div class="dash-topbar-right">
-    <div class="dash-user-chip" id="dashUserChip">
-      <div class="dash-user-avatar" id="dashNavAvatar">?</div>
-      <span id="dashNavName">—</span>
+    <!-- Bulle Smyles (à gauche du chip profil) -->
+    <div id="smyle-balance"></div>
+
+    <!-- ═══ Bulle profil (dropdown) ═══════════════════════════════════════
+         Chantier "Bulle profil" — clic sur la bulle → popover avec :
+           • Avatar + nom + pseudo public
+           • État "profil vierge" (CTA vers #sec-profile) ou
+           • Liens "Voir mon profil public" + "Éditer mon profil"
+         Le bouton Déconnexion est déplacé dans le dropdown pour regrouper
+         toutes les actions profil au même endroit. ═════════════════════ -->
+    <div class="dash-user-wrap" id="dashUserWrap">
+      <button class="dash-user-chip" id="dashUserChip" type="button"
+              aria-haspopup="true" aria-expanded="false"
+              aria-controls="dashUserDrop">
+        <div class="dash-user-avatar" id="dashNavAvatar">?</div>
+        <span id="dashNavName">—</span>
+        <svg class="dash-user-caret" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" width="12" height="12"
+             aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      <div class="dash-user-drop" id="dashUserDrop" role="menu"
+           aria-labelledby="dashUserChip" hidden>
+        <div class="dash-user-drop-header">
+          <div class="dash-user-drop-avatar" id="dashDropAvatar">?</div>
+          <div class="dash-user-drop-ids">
+            <div class="dash-user-drop-name"  id="dashDropName">Artiste</div>
+            <div class="dash-user-drop-slug"  id="dashDropSlug">@—</div>
+          </div>
+        </div>
+
+        <!-- État "profil vierge" — owner n'a pas rempli le minimum. Le CTA
+             pointe vers /artiste/<slug> en mode owner (squelette éditable
+             in-place). Le href est renseigné par renderUserDropdown(). -->
+        <div class="dash-user-drop-empty" id="dashDropEmpty" hidden>
+          <div class="dash-user-drop-empty-title">Ton profil est encore vierge</div>
+          <div class="dash-user-drop-empty-msg">Clique pour remplir ton nom, ta bio, tes couleurs — tout se construit directement sur ta page publique.</div>
+          <a class="dash-user-drop-btn dash-user-drop-btn-primary"
+             href="#" id="dashDropCreate">
+            Construire mon profil
+            <span aria-hidden="true">→</span>
+          </a>
+        </div>
+
+        <!-- État "profil rempli" — un seul lien "Mon profil" qui mène à
+             /artiste/<slug>. C'est à la fois la vue publique et la zone
+             d'édition (mode owner activable par la barre en haut). -->
+        <div class="dash-user-drop-actions" id="dashDropActions" hidden>
+          <a class="dash-user-drop-btn" id="dashDropPublic" href="#"
+             role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" width="14" height="14" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/>
+            </svg>
+            Mon profil
+          </a>
+        </div>
+
+        <div class="dash-user-drop-sep" aria-hidden="true"></div>
+
+        <button class="dash-user-drop-btn dash-user-drop-btn-logout"
+                type="button" onclick="dashLogout()" role="menuitem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" width="14" height="14" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          Déconnexion
+        </button>
+      </div>
     </div>
-    <button class="dash-logout-btn" onclick="dashLogout()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
-      </svg>
-      Déconnexion
-    </button>
   </div>
 </header>
 
-<!-- ═══════ SECTION NAV STICKY ════════════════════════════════════════════════ -->
+<!-- ═══════ SECTION NAV STICKY ════════════════════════════════════════════════
+     Dashboard réduit à 2 grandes zones :
+       · Création  → tout ce que l'artiste PRODUIT (upload prompt + ADN +
+                     pochettes). Pointe sur #sec-upload (qui englobe #sec-dna).
+       · Analytique → tout ce qui MESURE (sons publiés + stats + classement
+                      + réseau). Pointe sur #sec-stats (qui englobe #sec-ranking).
+     Les IDs internes sec-upload / sec-dna / sec-stats / sec-ranking restent
+     en place pour ne rien casser côté JS (intersection observer, ancres,
+     ciblages directs depuis ailleurs). Seule la nav expose 2 pills. ═══════ -->
 <nav class="dash-section-nav" id="dashSectionNav">
   <div class="dash-section-nav-inner">
-    <a class="dash-snav-pill active" href="#sec-artist" data-sec="sec-artist">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    <!-- Identité = 1ère étape : l'artiste remplit sa vitrine (nom, bio,
+         avatar, couleurs, socials) avant de poster son premier son. -->
+    <a class="dash-snav-pill active" href="#sec-identity" data-sec="sec-identity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
       Identité
     </a>
     <a class="dash-snav-pill" href="#sec-upload" data-sec="sec-upload">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-      Ma Musique
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/></svg>
+      Création
     </a>
     <a class="dash-snav-pill" href="#sec-stats" data-sec="sec-stats">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      Stats
+      Analytique
     </a>
-    <a class="dash-snav-pill" href="#sec-ranking" data-sec="sec-ranking">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-      Réseau
+    <!-- Nouvelle pill 03 — visibilité sur la marketplace. Elle reprend
+         l'identité historique "PLUG WATT" (éclair) mais vit désormais comme
+         sous-section du WATT BOARD. -->
+    <a class="dash-snav-pill" href="#sec-plug" data-sec="sec-plug">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      PLUG WATT
     </a>
   </div>
 </nav>
@@ -79,67 +158,283 @@
 <main class="dash-main" id="dashMain">
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       BLOC 1 — IDENTITÉ ARTISTE
+       BLOC 1 — IDENTITÉ PUBLIQUE (Phase 5 — 2026-04-20)
+       ──────────────────────────────────────────────────────────────────────────
+       Retour de la section Identité dans le WATT BOARD après clarification de
+       l'archi marketplace :
+         • /u/<slug>   = BOUTIQUE complète (identité + catalogue + CTA d'achat).
+                         URL partageable à l'extérieur. 100% lecture seule.
+         • /dashboard  = ATELIER. Tout se remplit/édite ici, y compris l'identité.
+         • /           = MARKETPLACE agrégée (toutes les boutiques).
+       Cette section regroupe les champs qui façonnent la vitrine publique :
+       identité (nom, bio, genre, ville, casquettes), visuels (avatar, cover,
+       couleurs), présence sociale (Instagram, TikTok, YouTube, Spotify,
+       SoundCloud). Preview live à droite → on voit immédiatement ce que les
+       fans vont voir sur /u/<slug>.
        ────────────────────────────────────────────────────────────────────────── -->
-  <section class="dash-section" id="sec-artist">
+  <section class="dash-section" id="sec-identity">
     <div class="dash-section-hdr">
       <div class="dash-section-num">01</div>
-      <h2 class="dash-section-title">Identité Artiste</h2>
+      <h2 class="dash-section-title">Identité publique</h2>
+      <span class="dash-section-sub">Ta vitrine sur /u/&lt;pseudo&gt; · visible par les fans</span>
     </div>
 
-    <div class="dash-artist-card">
-      <!-- Avatar cliquable -->
-      <div class="dash-artist-avatar-wrap">
-        <div class="dash-artist-avatar" id="artistAvatar" onclick="triggerAvatarUpload()" title="Changer la photo">
-          <span id="artistAvatarInitials">?</span>
-          <img id="artistAvatarImg" src="" alt="" style="display:none"/>
+    <!-- Layout 2 colonnes (≥960px) : formulaire à gauche, preview sticky à droite -->
+    <div class="dash-identity-layout">
+
+      <!-- ═══ Formulaire ══════════════════════════════════════════════════ -->
+      <div class="dash-identity-form">
+
+        <!-- 1a · Cover + Avatar -->
+        <div class="dash-subhdr">
+          <span class="dash-subhdr-num">1a</span>
+          <span class="dash-subhdr-title">Visuels</span>
+          <span class="dash-subhdr-sub">cover · avatar · PNG/JPG/WEBP · max 5 MB</span>
         </div>
-        <div class="dash-avatar-badge">
-          <svg viewBox="0 0 24 24" fill="#FFD700" width="10" height="10"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          WATT
+
+        <div class="dash-identity-visuals">
+          <div class="dash-identity-cover">
+            <div class="dash-cover-preview" id="dashIdCoverPreview" aria-label="Photo de couverture"></div>
+            <button type="button" class="dash-btn-secondary dash-identity-visual-btn"
+                    onclick="dashIdentityPickCover()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                   stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              Changer la couverture
+            </button>
+            <input type="file" id="dashIdCoverFile" accept="image/png,image/jpeg,image/webp" hidden />
+          </div>
+          <div class="dash-identity-avatar-wrap">
+            <div class="dash-avatar-preview" id="dashIdAvatarPreview" aria-label="Avatar">?</div>
+            <button type="button" class="dash-btn-secondary dash-identity-visual-btn"
+                    onclick="dashIdentityPickAvatar()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                   stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>
+              </svg>
+              Changer l'avatar
+            </button>
+            <input type="file" id="dashIdAvatarFile" accept="image/png,image/jpeg,image/webp" hidden />
+          </div>
         </div>
-        <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)" />
+
+        <!-- 1b · Identité texte -->
+        <div class="dash-subhdr">
+          <span class="dash-subhdr-num">1b</span>
+          <span class="dash-subhdr-title">Qui tu es</span>
+          <span class="dash-subhdr-sub">nom · genre · ville · bio</span>
+        </div>
+
+        <div class="dash-identity-row">
+          <label class="dash-field">
+            <span class="dash-field-lbl">Nom d'artiste</span>
+            <input type="text" id="dashIdName" class="dash-field-input"
+                   placeholder="Ton nom public" maxlength="80" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="dash-identity-row dash-identity-row-2">
+          <label class="dash-field">
+            <span class="dash-field-lbl">Genre musical</span>
+            <input type="text" id="dashIdGenre" class="dash-field-input"
+                   placeholder="Hip-hop, RnB, Electro…" maxlength="60" />
+          </label>
+          <label class="dash-field">
+            <span class="dash-field-lbl">Ville</span>
+            <input type="text" id="dashIdCity" class="dash-field-input"
+                   placeholder="Paris, Berlin, Abidjan…" maxlength="60" />
+          </label>
+        </div>
+
+        <div class="dash-identity-row">
+          <label class="dash-field">
+            <span class="dash-field-lbl">Biographie</span>
+            <textarea id="dashIdBio" class="dash-field-textarea" rows="5"
+                      placeholder="Raconte ton parcours, ce qui t'a amené à faire de la musique, ce que tu cherches à transmettre."
+                      maxlength="2000"></textarea>
+            <span class="dash-field-count"><span id="dashIdBioCount">0</span> / 2000</span>
+          </label>
+        </div>
+
+        <!-- 1c · Casquettes -->
+        <div class="dash-subhdr">
+          <span class="dash-subhdr-num">1c</span>
+          <span class="dash-subhdr-title">Casquettes</span>
+          <span class="dash-subhdr-sub">ce que tu es sur la plateforme — choix multiples</span>
+        </div>
+
+        <fieldset class="dash-identity-roles">
+          <div class="dash-roles-grid" id="dashIdRolesGrid">
+            <!-- 12 checkboxes injectées par renderIdentityRolesGrid() -->
+          </div>
+        </fieldset>
+
+        <!-- 1d · Couleurs de ta boutique -->
+        <div class="dash-subhdr">
+          <span class="dash-subhdr-num">1d</span>
+          <span class="dash-subhdr-title">Couleurs</span>
+          <span class="dash-subhdr-sub">fond + accent — repeignent ta boutique /u/&lt;pseudo&gt;</span>
+        </div>
+
+        <div class="dash-identity-row dash-identity-row-2">
+          <label class="dash-field dash-field-color">
+            <span class="dash-field-lbl">Fond</span>
+            <div class="dash-color-wrap">
+              <input type="color" id="dashIdBgColor" value="#070608" />
+              <span class="dash-color-hex" id="dashIdBgColorHex">#070608</span>
+            </div>
+          </label>
+          <label class="dash-field dash-field-color">
+            <span class="dash-field-lbl">Accent</span>
+            <div class="dash-color-wrap">
+              <input type="color" id="dashIdBrandColor" value="#8800FF" />
+              <span class="dash-color-hex" id="dashIdBrandColorHex">#8800FF</span>
+            </div>
+          </label>
+        </div>
+
+        <!-- 1e · Réseaux sociaux -->
+        <div class="dash-subhdr">
+          <span class="dash-subhdr-num">1e</span>
+          <span class="dash-subhdr-title">Réseaux sociaux</span>
+          <span class="dash-subhdr-sub">affichés comme chips sur ta boutique — laisse vide pour masquer</span>
+        </div>
+
+        <div class="dash-socials-grid">
+          <label class="dash-social-row">
+            <span class="dash-social-ico" aria-hidden="true">IG</span>
+            <input type="url" id="dashIdSocialInstagram" class="dash-field-input"
+                   placeholder="https://instagram.com/tonhandle" maxlength="300" />
+          </label>
+          <label class="dash-social-row">
+            <span class="dash-social-ico" aria-hidden="true">TT</span>
+            <input type="url" id="dashIdSocialTiktok" class="dash-field-input"
+                   placeholder="https://tiktok.com/@tonhandle" maxlength="300" />
+          </label>
+          <label class="dash-social-row">
+            <span class="dash-social-ico" aria-hidden="true">YT</span>
+            <input type="url" id="dashIdSocialYoutube" class="dash-field-input"
+                   placeholder="https://youtube.com/@tonhandle" maxlength="300" />
+          </label>
+          <label class="dash-social-row">
+            <span class="dash-social-ico" aria-hidden="true">SP</span>
+            <input type="url" id="dashIdSocialSpotify" class="dash-field-input"
+                   placeholder="https://open.spotify.com/artist/..." maxlength="300" />
+          </label>
+          <label class="dash-social-row">
+            <span class="dash-social-ico" aria-hidden="true">SC</span>
+            <input type="url" id="dashIdSocialSoundcloud" class="dash-field-input"
+                   placeholder="https://soundcloud.com/tonhandle" maxlength="300" />
+          </label>
+        </div>
+
+        <!-- Actions -->
+        <div class="dash-identity-actions">
+          <div class="dash-identity-status" id="dashIdStatus" role="status" aria-live="polite"></div>
+          <button type="button" class="dash-btn-primary" onclick="dashIdentitySave()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Enregistrer
+          </button>
+        </div>
+
       </div>
 
-      <!-- Infos -->
-      <div class="dash-artist-info">
-        <div class="dash-artist-name" id="artistName">Artiste WATT</div>
-        <div class="dash-artist-genre" id="artistGenre">Genre non défini</div>
-        <div class="dash-artist-bio-short" id="artistBioShort">Aucune bio renseignée.</div>
-        <div class="dash-artist-socials" id="artistSocials"></div>
-      </div>
+      <!-- ═══ Preview sticky ═══════════════════════════════════════════════ -->
+      <aside class="dash-identity-preview" aria-label="Aperçu de ta boutique publique">
+        <div class="dash-identity-preview-lbl">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          APERÇU · <span class="dash-identity-preview-url" id="dashIdPreviewUrl">/u/—</span>
+        </div>
+        <div class="dash-identity-preview-frame" id="dashIdPreviewFrame">
+          <!-- Mini-render injecté par renderIdentityPreview() -->
+          <div class="dash-preview-empty">Remplis tes infos pour voir l'aperçu.</div>
+        </div>
+        <a class="dash-btn-secondary dash-identity-preview-link"
+           id="dashIdPreviewLink" href="#" target="_blank" rel="noopener">
+          Voir ma boutique publique
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
+      </aside>
 
-      <!-- KPIs -->
-      <div class="dash-kpi-row">
-        <div class="dash-kpi">
-          <div class="dash-kpi-val" id="kpiPlays">0</div>
-          <div class="dash-kpi-lbl">Écoutes</div>
-        </div>
-        <div class="dash-kpi">
-          <div class="dash-kpi-val" id="kpiTracks">0</div>
-          <div class="dash-kpi-lbl">Sons</div>
-        </div>
-        <div class="dash-kpi">
-          <div class="dash-kpi-val" id="kpiFollowers">0</div>
-          <div class="dash-kpi-lbl">Abonnés</div>
-        </div>
-        <div class="dash-kpi dash-kpi-rank" title="Classement dans la communauté WATT">
-          <div class="dash-kpi-val" id="kpiRank">—</div>
-          <div class="dash-kpi-lbl">Rang WATT</div>
-        </div>
-      </div>
     </div>
-
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       BLOC 2 — MA MUSIQUE (upload + mes sons)
+       BLOC 1 — CRÉATION
+       ──────────────────────────────────────────────────────────────────────────
+       Zone productive : tout ce que l'artiste PRODUIT et met en vente.
+         • Upload d'un morceau (mode prompt primary, mode simple secondaire)
+         • Pochette associée
+         • ADN (signature créative vendable — bloc sec-dna en continu visuel)
+       La liste "Mes Sons Publiés" a été déplacée dans la section Analytique
+       (vue mesure / performance), car elle relève de l'observation, pas de
+       la création.
        ────────────────────────────────────────────────────────────────────────── -->
   <section class="dash-section" id="sec-upload">
     <div class="dash-section-hdr">
       <div class="dash-section-num">02</div>
-      <h2 class="dash-section-title">Ma Musique</h2>
-      <span class="dash-section-sub">WAV · MP3 · FLAC · AAC · M4A · max 100&nbsp;MB</span>
+      <h2 class="dash-section-title">Création</h2>
+      <span class="dash-section-sub">Poste un son · publie ton ADN · WAV · MP3 · FLAC · AAC · M4A · max 100&nbsp;MB</span>
+    </div>
+
+    <!-- Sous-titre produit : rappel du premier sous-bloc -->
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">1a</span>
+      <span class="dash-subhdr-title">Poster un morceau</span>
+      <span class="dash-subhdr-sub">avec ou sans recette prompt vendable</span>
+    </div>
+
+    <!-- ═══ Gate "profil publié" (Étape 1) ═══════════════════════════════════
+         Tant que le profil n'est pas rendu public sur /u/<slug>, l'upload
+         est bloqué visuellement ici (et côté serveur : 409 sur POST
+         /api/watt/tracks). Affiché uniquement après que loadPublishStatus()
+         ait confirmé profile_public=false. renderCreationGate() gère le
+         toggle. ═══════════════════════════════════════════════════════════ -->
+    <div id="dashCreationGate" class="dash-creation-gate" style="display:none">
+      <div class="dash-creation-gate-ico">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div class="dash-creation-gate-body">
+        <div class="dash-creation-gate-title">Active d'abord ta présence sur la marketplace</div>
+        <div class="dash-creation-gate-sub">
+          Un son publié est rattaché à une boutique publique. Deux étapes
+          simples : (1) remplis ton <strong>identité publique</strong> juste
+          au-dessus (nom, bio, couleurs, socials), puis (2) active le switch
+          <strong>PLUG WATT</strong> ci-dessous pour apparaître sur la
+          marketplace. Tu pourras ensuite poster tes sons et vendre tes
+          prompts ici.
+        </div>
+        <div class="dash-creation-gate-actions">
+          <a class="dash-btn-primary" href="#sec-identity">
+            <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            1. Remplir mon identité
+          </a>
+          <a class="dash-btn-secondary" href="#sec-plug">
+            2. Activer PLUG WATT →
+          </a>
+        </div>
+      </div>
     </div>
 
     <!-- Compteur freemium -->
@@ -160,9 +455,12 @@
       </div>
       <div class="dpt-title">Ta playlist gratuite est complète</div>
       <div class="dpt-sub">Tu as publié tes 6 sons offerts pendant la bêta.</div>
+      <!-- Renommé de "PLUG WATT" vers "PASS WATT". PLUG WATT = la pill de
+           visibilité marketplace (gratuite). PASS WATT = l'abonnement
+           payant à venir. Deux concepts distincts, deux noms distincts. -->
       <div class="dpt-coming">
         <span class="dpt-coming-badge">Bientôt</span>
-        PLUG WATT · 0,99&nbsp;€ / mois
+        PASS WATT · 0,99&nbsp;€ / mois
       </div>
       <ul class="dpt-features">
         <li>⬆ Uploads illimités</li>
@@ -171,7 +469,7 @@
         <li>⭐ Badge premium + visibilité renforcée</li>
         <li>🏆 Placement prioritaire dans le classement</li>
       </ul>
-      <div class="dpt-note">Disponible en septembre 2025 — 0,99&nbsp;€/mois · sans engagement</div>
+      <div class="dpt-note">PASS WATT — 0,99&nbsp;€/mois · sans engagement · arrive bientôt</div>
     </div>
 
     <div class="dash-upload-layout" id="dashUploadLayout">
@@ -195,14 +493,54 @@
       <input type="file" id="dashAudioInput" accept=".wav,.mp3,.flac,.aac,.m4a,.ogg" style="display:none" onchange="handleFileSelect(event)" />
 
       <!-- Formulaire upload (visible après sélection) -->
-      <div id="dashUploadForm" class="dash-upload-form" style="display:none">
+      <!-- data-mode pilote toute la mise en page : `with_prompt` (défaut) =
+           architecture vente prompt complète ; `simple` = post sans recette
+           (bloc prompt masqué, grille crédits retirée, colonnes repliées). -->
+      <div id="dashUploadForm" class="dash-upload-form" data-mode="with_prompt" style="display:none">
 
         <div class="dash-upload-file-row" id="dashUploadFileRow">
           <!-- rempli par JS -->
         </div>
 
+        <!-- ═══ MODE SWITCHER ═══════════════════════════════════════════════
+             Le choix du mode est la DÉCISION STRUCTURANTE du post. Par
+             défaut on propose l'architecture "vente prompt" (primaire,
+             celle qui rapporte à l'artiste). Le mode "simple" est une
+             option secondaire pour ceux qui veulent juste partager un son
+             sans le commercialiser via prompt. NOTE PRODUIT : à terme les
+             sons avec/sans prompt ne cohabiteront PAS dans les mêmes
+             sections de la plateforme — traité plus tard.
+             ═════════════════════════════════════════════════════════════ -->
+        <div class="dash-mode-switch" role="tablist" aria-label="Type de publication">
+          <button type="button" class="dash-mode-pill is-active"
+                  data-mode="with_prompt" role="tab" aria-selected="true"
+                  onclick="setUploadMode('with_prompt')">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
+            </svg>
+            <span class="dash-mode-pill-label">
+              <strong>Avec recette prompt</strong>
+              <em>Je vends mon prompt — les fans peuvent recréer mon style</em>
+            </span>
+          </button>
+          <button type="button" class="dash-mode-pill"
+                  data-mode="simple" role="tab" aria-selected="false"
+                  onclick="setUploadMode('simple')">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+            </svg>
+            <span class="dash-mode-pill-label">
+              <strong>Simple (sans prompt)</strong>
+              <em>Je partage juste un son — pas de vente prompt associée</em>
+            </span>
+          </button>
+        </div>
+
+        <!-- Grille du formulaire — 3 colonnes en mode with_prompt, 2 en simple -->
         <div class="dash-upload-fields">
-          <div class="dash-field-col">
+
+          <!-- Col 1 : métadonnées communes (toujours visibles) -->
+          <div class="dash-field-col dash-upload-col-meta">
             <label class="dash-label">Titre du morceau <span class="dash-req">*</span></label>
             <input class="dash-input" id="dashTrackName" placeholder="Ex : Neon Dreams, Cosmic Drift..." />
 
@@ -210,28 +548,163 @@
             <input class="dash-input" id="dashGenre" placeholder="Ambient · Lofi · Electro · Dark · Trap..." />
 
             <label class="dash-label">Tags (séparés par des virgules)</label>
-            <input class="dash-input" id="dashTags" placeholder="électro, ia, suno, chill..." />
+            <input class="dash-input" id="dashTags" placeholder="électro, ia, deep house, chill..." />
 
             <label class="dash-label">Description</label>
             <textarea class="dash-textarea" id="dashDesc" placeholder="Raconte l'univers de ce son..." rows="3"></textarea>
           </div>
 
-          <div class="dash-cover-col">
-            <label class="dash-label">Pochette (optionnel)</label>
-            <div class="dash-cover-drop" id="dashCoverDrop"
-                 onclick="document.getElementById('dashCoverInput').click()"
-                 ondragover="handleCoverDragOver(event)"
-                 ondrop="handleCoverDrop(event)">
-              <img id="dashCoverPreview" src="" alt="" style="display:none" />
-              <div id="dashCoverPlaceholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28" style="opacity:.4">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
+          <!-- Col 2 : bloc RECETTE (prompt_text + lyrics + prix) — visible
+               uniquement en mode with_prompt. Le container reste dans le DOM
+               (aria-hidden géré par JS) pour que les champs soient
+               instantanément re-disponibles en retoggle. -->
+          <div class="dash-upload-col-prompt" id="dashPromptBlock">
+            <div class="dash-prompt-hdr">
+              <span class="dash-prompt-hdr-ico">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
                 </svg>
-                <span>Ajouter une pochette</span>
+              </span>
+              <div class="dash-prompt-hdr-titles">
+                <div class="dash-prompt-hdr-title">Recette IA — la partie vendable</div>
+                <div class="dash-prompt-hdr-sub">Ce que les fans débloquent contre des crédits</div>
               </div>
             </div>
-            <input type="file" id="dashCoverInput" accept="image/*" style="display:none" onchange="handleCoverSelect(event)" />
+
+            <label class="dash-label">Prompt IA exact <span class="dash-req">*</span></label>
+            <textarea class="dash-textarea" id="dashPromptText" rows="6"
+              maxlength="1000"
+              oninput="updatePromptCharCount()"
+              placeholder="Ex: dancehall / afrobeats, 100 BPM, deep bass, female vocals, sunset vibe, inspired by Burna Boy..."></textarea>
+            <div class="dash-help dash-help-count">
+              <span>Min. 100 · Max. 1000 caractères <span class="dash-help-suno">(plafond Suno)</span></span>
+              <span class="dash-char-count" id="dashPromptCharCount" data-state="empty">0 / 1000</span>
+            </div>
+
+            <label class="dash-label">Paroles (optionnel)</label>
+            <textarea class="dash-textarea" id="dashPromptLyrics" rows="5"
+              placeholder="Colle ici les paroles complètes si le morceau est vocal. Laisser vide pour un instrumental."></textarea>
+            <div class="dash-help">🎤 Les fans verront un badge "Avec paroles" sur la carte. Contenu gated jusqu'à l'achat.</div>
+
+            <label class="dash-label">Prix de débloquage (crédits) <span class="dash-req">*</span></label>
+            <input class="dash-input" id="dashPromptPrice" type="number"
+                   min="3" max="500" value="80"
+                   oninput="updateCreditGrid()" />
+            <div class="dash-help">Min. 3 · Max. 500 crédits. Si l'acheteur possède ton ADN il a -30&nbsp;% automatique.</div>
+          </div>
+
+          <!-- Col 3 : aside (pochette + grille tarif crédits↔SMYLES)
+               En mode simple, la grille disparaît, la pochette reste seule. -->
+          <div class="dash-upload-col-aside">
+
+            <!-- Grille de prix crédits↔euros (SMYLES) — guide pour l'artiste
+                 qui fixe son prix. Sources packs : app/services/credits.py
+                 CREDIT_PACKS (pack_10=8€, pack_50=35€, pack_200=120€).
+                 Le bloc live "Ton prix = X€ à Y€" calcule la fourchette
+                 en fonction du tarif unitaire du plus petit et du plus gros
+                 pack, pour donner un repère concret à l'artiste. -->
+            <div class="dash-credit-grid" id="dashCreditGrid">
+              <div class="dash-credit-grid-hdr">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="#FFD700" stroke="none">
+                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M12 7v10M9 10h4.5a1.5 1.5 0 010 3H9a1.5 1.5 0 000 3h5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span>Repère SMYLES</span>
+              </div>
+              <div class="dash-credit-grid-sub">
+                Les acheteurs paient en crédits (SMYLES). Voici ce qu'ils ont
+                payé 1 crédit selon leur pack :
+              </div>
+              <ul class="dash-credit-grid-packs">
+                <li>
+                  <span class="dcg-pack">Pack 10</span>
+                  <span class="dcg-dots"></span>
+                  <span class="dcg-rate">0,80&nbsp;€ / crédit</span>
+                </li>
+                <li>
+                  <span class="dcg-pack">Pack 50</span>
+                  <span class="dcg-dots"></span>
+                  <span class="dcg-rate">0,70&nbsp;€ / crédit</span>
+                </li>
+                <li>
+                  <span class="dcg-pack">Pack 200</span>
+                  <span class="dcg-dots"></span>
+                  <span class="dcg-rate">0,60&nbsp;€ / crédit</span>
+                </li>
+              </ul>
+              <div class="dash-credit-live">
+                <div class="dash-credit-live-lbl">
+                  À <strong id="dashCreditLivePrice">80</strong>&nbsp;crédits,
+                  le fan paie entre
+                </div>
+                <div class="dash-credit-live-range">
+                  <span id="dashCreditLiveMin">48,00&nbsp;€</span>
+                  <span class="dcg-dash">—</span>
+                  <span id="dashCreditLiveMax">64,00&nbsp;€</span>
+                </div>
+                <div class="dash-credit-live-note">
+                  Tu touches 80&nbsp;% (split primary). Ajuste le prix pour
+                  trouver ton seuil juste.
+                </div>
+              </div>
+            </div>
+
+            <!-- Pochette -->
+            <div class="dash-cover-col">
+              <label class="dash-label">Pochette (optionnel)</label>
+              <div class="dash-cover-drop" id="dashCoverDrop"
+                   onclick="document.getElementById('dashCoverInput').click()"
+                   ondragover="handleCoverDragOver(event)"
+                   ondrop="handleCoverDrop(event)">
+                <img id="dashCoverPreview" src="" alt="" style="display:none" />
+                <div id="dashCoverPlaceholder">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28" style="opacity:.4">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  <span>Ajouter une pochette</span>
+                </div>
+              </div>
+              <input type="file" id="dashCoverInput" accept="image/*" style="display:none" onchange="handleCoverSelect(event)" />
+            </div>
+
+            <!-- ═══ Étape 2 — Couleur par morceau ═══════════════════════════
+                 Sert à la cellule orpheline (sans playlist) sur /u/<slug> :
+                 chaque son peut avoir sa propre teinte pour trancher
+                 visuellement même sans pochette. Fallback si non choisi :
+                 brandColor du profil. Le state par défaut est "hériter" —
+                 ça évite d'imposer un choix à l'artiste. ═══════════════ -->
+            <div class="dash-track-color" id="dashTrackColor" data-inherit="true">
+              <label class="dash-label">Couleur du morceau</label>
+              <div class="dash-track-color-row">
+                <button type="button"
+                        class="dash-track-color-inherit"
+                        id="dashTrackColorInherit"
+                        onclick="resetTrackColor()"
+                        aria-pressed="true"
+                        title="Hériter de la couleur de ton profil">
+                  <span class="dash-track-color-inherit-dot" id="dashTrackColorInheritDot"></span>
+                  Hériter de mon profil
+                </button>
+                <label class="dash-track-color-swatch" title="Choisir une couleur">
+                  <input type="color" id="dashTrackColorInput"
+                         value="#FFD700"
+                         oninput="onTrackColorPick(event)" />
+                  <span class="dash-track-color-swatch-ring"></span>
+                </label>
+              </div>
+              <div class="dash-track-color-presets">
+                <button type="button" class="dash-track-color-preset" data-color="#FFD700" onclick="pickTrackColor('#FFD700')" style="background:#FFD700"></button>
+                <button type="button" class="dash-track-color-preset" data-color="#8800FF" onclick="pickTrackColor('#8800FF')" style="background:#8800FF"></button>
+                <button type="button" class="dash-track-color-preset" data-color="#FF4B8B" onclick="pickTrackColor('#FF4B8B')" style="background:#FF4B8B"></button>
+                <button type="button" class="dash-track-color-preset" data-color="#00D4FF" onclick="pickTrackColor('#00D4FF')" style="background:#00D4FF"></button>
+                <button type="button" class="dash-track-color-preset" data-color="#2ECC71" onclick="pickTrackColor('#2ECC71')" style="background:#2ECC71"></button>
+                <button type="button" class="dash-track-color-preset" data-color="#FF7043" onclick="pickTrackColor('#FF7043')" style="background:#FF7043"></button>
+              </div>
+              <div class="dash-help">
+                Sert de fond à la cellule du son sur ta page publique si tu n'as pas mis de pochette.
+              </div>
+            </div>
           </div>
         </div>
 
@@ -244,9 +717,9 @@
         </div>
 
         <div class="dash-upload-actions">
-          <button class="dash-btn-primary" onclick="uploadTrack()">
+          <button class="dash-btn-primary" onclick="uploadTrack()" id="dashUploadCta">
             <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Publier sur WATT
+            <span id="dashUploadCtaLbl">Publier avec recette</span>
           </button>
           <button class="dash-btn-ghost" onclick="cancelUpload()">Annuler</button>
         </div>
@@ -258,92 +731,183 @@
       </div>
 
     </div><!-- /dash-upload-layout -->
+  </section>
 
-    <!-- Mes Sons Publiés (intégré dans Ma Musique) -->
-    <div class="dash-tracks-panel">
-      <div class="dash-tracks-hdr">
-        <span class="dash-tracks-hdr-title">Mes Sons Publiés</span>
-        <span class="dash-tracks-count" id="myTracksCount">0 / 6 sons</span>
+  <!-- ──────────────────────────────────────────────────────────────────────────
+       Le profil artiste vit désormais UNIQUEMENT sur /artiste/<slug> :
+         • Création + édition in-place (mode owner)
+         • Vue publique (fans, gate profile_public)
+       Plus de section "Mon Profil" dans le dashboard — le WATT BOARD est
+       dédié au back : analytique, upload sons + prompts, rétention, ranking.
+       Tout lien "Éditer mon profil" dans le dropdown topbar doit cibler
+       /artiste/<slug> directement (cf. section header ci-dessus).
+       ────────────────────────────────────────────────────────────────────────── -->
+
+  <!-- ──────────────────────────────────────────────────────────────────────────
+       BLOC 1b — MON ADN (sous-section de Création)
+       ──────────────────────────────────────────────────────────────────────────
+       L'ADN est la signature créative vendable (1 max par artiste — contrainte
+       DB). Visuellement fusionné dans la zone Création depuis la restructure
+       nav à 2 pills : le header de section est remplacé par un sous-titre
+       inline pour garder un flux continu avec l'upload.
+       Endpoints (inchangés) :
+         GET/POST/PATCH  /artist/me/adn
+       Validations Pydantic :
+         description min 200 · price_credits 30..500
+       ────────────────────────────────────────────────────────────────────────── -->
+  <section class="dash-section dash-section-sub" id="sec-dna">
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">1b</span>
+      <span class="dash-subhdr-title">Mon ADN</span>
+      <span class="dash-subhdr-sub">signature créative — vendable une fois publiée</span>
+    </div>
+
+    <!-- État : pas encore d'ADN (placeholder + CTA "créer") -->
+    <div class="dash-adn-empty" id="dashAdnEmpty">
+      <div class="dash-adn-empty-icon">
+        <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:.35">
+          <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
+          <path d="M7 7h10M7 17h10M9 11h6M9 13h6"/>
+        </svg>
       </div>
+      <div class="dash-adn-empty-title">Pas encore d'ADN défini</div>
+      <div class="dash-adn-empty-sub">
+        Ton ADN est le prompt de ta trame créative complète qui décrit ton
+        univers musical : influences, atmosphères, références, BPM, notes
+        et clés généralement utilisés, styles d'influence et guide
+        d'utilisation. Les fans peuvent l'acheter pour composer dans ton
+        style ; le posséder leur déclenche automatiquement un bonus -30 %
+        sur tous tes morceaux promptés mis en vente sur ton profil.
+      </div>
+      <button type="button" class="dash-btn-primary" onclick="openAdnEditor()">
+        <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Créer mon ADN
+      </button>
+    </div>
+
+    <!-- État : ADN existant (résumé + actions) -->
+    <div class="dash-adn-summary" id="dashAdnSummary" style="display:none">
+      <div class="dash-adn-summary-hdr">
+        <div class="dash-adn-summary-titles">
+          <div class="dash-adn-summary-eyebrow">Signature créative · ADN</div>
+          <div class="dash-adn-summary-status" id="dashAdnStatus">Brouillon</div>
+        </div>
+        <div class="dash-adn-summary-price">
+          <span id="dashAdnPriceVal">—</span>
+          <span class="dash-adn-summary-price-unit">crédits</span>
+        </div>
+      </div>
+      <p class="dash-adn-summary-desc" id="dashAdnDescPreview"></p>
+      <div class="dash-adn-summary-meta" id="dashAdnSummaryMeta"></div>
+      <div class="dash-adn-summary-actions">
+        <button type="button" class="dash-btn-secondary" onclick="openAdnEditor()">
+          Modifier
+        </button>
+        <button type="button" class="dash-btn-primary"
+                id="dashAdnTogglePublishBtn" onclick="toggleAdnPublish()">
+          Publier
+        </button>
+      </div>
+      <div class="dash-adn-lock-note" id="dashAdnLockNote" style="display:none">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+        </svg>
+        La description est verrouillée — un acheteur l'a déjà acquise. Tu
+        peux encore modifier le guide d'usage, les exemples et le prix.
+      </div>
+    </div>
+
+    <!-- Éditeur inline (toggle via openAdnEditor / closeAdnEditor) -->
+    <div class="dash-adn-editor" id="dashAdnEditor" style="display:none">
+      <div class="dash-adn-editor-inner">
+        <div class="dash-adn-editor-hdr">
+          <h3 class="dash-adn-editor-title" id="dashAdnEditorTitle">Créer mon ADN</h3>
+          <button type="button" class="dash-adn-editor-close" onclick="closeAdnEditor()" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="dash-field-col">
+          <label class="dash-label">
+            Description complète <span class="dash-req">*</span>
+          </label>
+          <textarea class="dash-textarea" id="dashAdnDescription" rows="8"
+            placeholder="Raconte ton univers en détail : influences (artistes, genres, époques), atmosphères recherchées, instruments signature, mood émotionnel, références (films, lieux, couleurs)... Min. 200 caractères."></textarea>
+          <div class="dash-help" id="dashAdnDescHelp">
+            Min. 200 chars — c'est le contenu que l'acheteur reçoit après
+            déblocage. Plus c'est précis, plus ton ADN a de valeur.
+          </div>
+
+          <label class="dash-label">Guide d'usage (optionnel)</label>
+          <textarea class="dash-textarea" id="dashAdnUsageGuide" rows="4"
+            placeholder="Comment utiliser ton ADN : quels types de prompts fonctionnent, ce qu'il faut éviter, les combinaisons qui marchent..."></textarea>
+
+          <label class="dash-label">Exemples de morceaux (optionnel)</label>
+          <textarea class="dash-textarea" id="dashAdnExampleOutputs" rows="4"
+            placeholder="Liens / titres / références d'œuvres qui incarnent bien ton ADN. Peut être tes propres morceaux ou des références externes."></textarea>
+
+          <label class="dash-label">
+            Prix en crédits <span class="dash-req">*</span>
+          </label>
+          <input type="number" class="dash-input" id="dashAdnPrice"
+                 min="30" max="500" value="80" />
+          <div class="dash-help">Entre 30 et 500 crédits. Achat unique par utilisateur.</div>
+        </div>
+
+        <div class="dash-adn-editor-actions">
+          <button type="button" class="dash-btn-ghost" onclick="closeAdnEditor()">Annuler</button>
+          <button type="button" class="dash-btn-primary" onclick="saveAdn()">
+            <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ──────────────────────────────────────────────────────────────────────────
+       BLOC 2 — ANALYTIQUE
+       ──────────────────────────────────────────────────────────────────────────
+       Zone de mesure / performance, en trois sous-blocs :
+         2a  Mes Sons Publiés    (déplacé depuis Création — c'est un état, pas une action)
+         2b  Statistiques         (écoutes, abonnés, courbe)
+         2c  Classement + Réseau  (rang WATT + ranking global + canvas — ex sec-ranking, fusionné en continu visuel)
+       ────────────────────────────────────────────────────────────────────────── -->
+  <section class="dash-section" id="sec-stats">
+    <div class="dash-section-hdr">
+      <div class="dash-section-num">03</div>
+      <h2 class="dash-section-title">Analytique</h2>
+      <span class="dash-section-sub">Tes sons publiés · tes stats · ton rang WATT</span>
+    </div>
+
+    <!-- ═══ 2a. Mes Sons Publiés ═══════════════════════════════════════════
+         Déplacé depuis l'ex-section "Ma Musique" : la liste des tracks n'est
+         pas une action de création, c'est un reflet de ce qui tourne déjà.
+         Les IDs (myTracksList / myTracksCount) sont préservés pour que
+         renderMyTracks() continue à cibler le bon DOM sans modif JS. ═══ -->
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">2a</span>
+      <span class="dash-subhdr-title">Mes Sons Publiés</span>
+      <span class="dash-subhdr-sub" id="myTracksCount">0 / 6 sons</span>
+    </div>
+    <div class="dash-tracks-panel">
       <div id="myTracksList" class="dash-tracks-list">
         <div class="dash-empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="40" height="40" style="opacity:.2">
             <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
           </svg>
-          <p>Aucun son encore.<br>Glisse ton premier fichier ci-dessus.</p>
+          <p>Aucun son encore.<br>Retourne dans Création pour glisser ton premier fichier.</p>
         </div>
       </div>
     </div>
-  </section>
 
-  <!-- ──────────────────────────────────────────────────────────────────────────
-       PROFIL ARTISTE (édition — ancre invisible, inclus dans Identité nav)
-       ────────────────────────────────────────────────────────────────────────── -->
-  <section class="dash-section" id="sec-profile">
-    <div class="dash-section-hdr">
-      <h2 class="dash-section-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        Mon Profil Artiste
-      </h2>
-      <button class="dash-edit-toggle" id="profileEditToggle" onclick="toggleProfileEdit()">Modifier</button>
-    </div>
-
-    <!-- Vue profil -->
-    <div id="profileViewMode" class="dash-profile-view">
-      <div class="dash-pv-row">
-        <div class="dash-pv-avatar" id="pvAvatar">?</div>
-        <div class="dash-pv-info">
-          <div class="dash-pv-name" id="pvName">—</div>
-          <div class="dash-pv-genre" id="pvGenre">Genre non défini</div>
-        </div>
-      </div>
-      <div class="dash-pv-bio" id="pvBio">Pas encore de bio...</div>
-      <div class="dash-pv-links" id="pvLinks"></div>
-      <div class="dash-public-link" id="pvPublicLink" style="display:none"></div>
-    </div>
-
-    <!-- Edition profil -->
-    <div id="profileEditMode" class="dash-profile-edit" style="display:none">
-      <div class="dash-edit-grid">
-        <div>
-          <label class="dash-label">Nom d'artiste <span class="dash-req">*</span></label>
-          <input class="dash-input" id="peArtistName" placeholder="Ton nom d'artiste" />
-        </div>
-        <div>
-          <label class="dash-label">Genre musical</label>
-          <input class="dash-input" id="peGenre" placeholder="Ambient, Lofi, Dark Electro, Trap, Cinematic..." />
-        </div>
-        <div class="dash-edit-full">
-          <label class="dash-label">Bio</label>
-          <textarea class="dash-textarea" id="peBio" placeholder="Raconte ton univers artistique..." rows="4"></textarea>
-        </div>
-        <div>
-          <label class="dash-label">SoundCloud URL</label>
-          <input class="dash-input" id="peSoundcloud" placeholder="https://soundcloud.com/..." />
-        </div>
-        <div>
-          <label class="dash-label">Instagram</label>
-          <input class="dash-input" id="peInstagram" placeholder="@tonhandle" />
-        </div>
-        <div>
-          <label class="dash-label">YouTube / autre</label>
-          <input class="dash-input" id="peYoutube" placeholder="https://..." />
-        </div>
-      </div>
-      <div class="dash-edit-actions">
-        <button class="dash-btn-primary" onclick="saveProfile()">Sauvegarder le profil</button>
-        <button class="dash-btn-ghost" onclick="cancelProfileEdit()">Annuler</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ──────────────────────────────────────────────────────────────────────────
-       BLOC 3 — STATISTIQUES
-       ────────────────────────────────────────────────────────────────────────── -->
-  <section class="dash-section" id="sec-stats">
-    <div class="dash-section-hdr">
-      <div class="dash-section-num">03</div>
-      <h2 class="dash-section-title">Statistiques</h2>
+    <!-- ═══ 2b. Statistiques ═══════════════════════════════════════════════ -->
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">2b</span>
+      <span class="dash-subhdr-title">Statistiques</span>
+      <span class="dash-subhdr-sub">écoutes, abonnés, tendance</span>
     </div>
 
     <!-- Onglets période -->
@@ -428,13 +992,16 @@
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       BLOC 4 — RÉSEAU & CLASSEMENT WATT
+       BLOC 2c — RÉSEAU & CLASSEMENT (sous-section d'Analytique)
+       ──────────────────────────────────────────────────────────────────────────
+       Visuellement continu avec sec-stats (pas de section-hdr propre), mais
+       garde son id="sec-ranking" pour d'éventuelles ancres externes.
        ────────────────────────────────────────────────────────────────────────── -->
-  <section class="dash-section" id="sec-ranking">
-    <div class="dash-section-hdr">
-      <div class="dash-section-num">04</div>
-      <h2 class="dash-section-title">Réseau &amp; Classement</h2>
-      <span class="dash-section-sub">Trié par écoutes · puis par abonnés</span>
+  <section class="dash-section dash-section-sub" id="sec-ranking">
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">2c</span>
+      <span class="dash-subhdr-title">Classement &amp; Réseau WATT</span>
+      <span class="dash-subhdr-sub">trié par écoutes · puis par abonnés</span>
     </div>
 
     <!-- Ma position -->
@@ -464,25 +1031,126 @@
     </div>
   </section>
 
+  <!-- ──────────────────────────────────────────────────────────────────────────
+       BLOC 3 — PLUG WATT  (visibilité marketplace)
+       ──────────────────────────────────────────────────────────────────────────
+       Contrôle unifié de la PRÉSENCE publique de l'utilisateur sur la
+       marketplace WATT. Remplace l'ex-page watt.html (route orpheline).
+       Trois éléments :
+         • Un interrupteur ON/OFF qui bascule profile_public via
+           /watt/me/profile/publish ou /unpublish.
+         • Un preview de la cellule marketplace telle qu'elle apparaîtra
+           (ou n'apparaîtra pas) dans la grille publique — permet de
+           vérifier nom, brandColor, genre avant publication.
+         • Des compteurs live (abonnés, écoutes, rang) + un lien direct
+           "Ouvrir ma boutique" vers /u/<slug>.
+       Les écrans tactiles compactent automatiquement (cf. CSS).
+       ────────────────────────────────────────────────────────────────────────── -->
+  <section class="dash-section" id="sec-plug">
+    <div class="dash-section-hdr">
+      <div class="dash-section-num">04</div>
+      <h2 class="dash-section-title">PLUG WATT</h2>
+      <span class="dash-section-sub">Ta présence publique sur la marketplace</span>
+    </div>
+
+    <div class="dash-plug-wrap">
+
+      <!-- ═══ Interrupteur + statut ═══════════════════════════════════════ -->
+      <div class="dash-plug-toggle-card" id="dashPlugToggleCard">
+        <div class="dash-plug-toggle-left">
+          <div class="dash-plug-toggle-dot" id="dashPlugDot" aria-hidden="true"></div>
+          <div class="dash-plug-toggle-text">
+            <div class="dash-plug-toggle-title" id="dashPlugTitle">Chargement…</div>
+            <div class="dash-plug-toggle-sub"   id="dashPlugSub">On vérifie ton statut.</div>
+          </div>
+        </div>
+
+        <div class="dash-plug-toggle-right">
+          <!-- Switch accessible : le checkbox natif pilote l'état ;
+               le label .dash-plug-switch dessine l'UI. -->
+          <label class="dash-plug-switch" for="dashPlugSwitch" title="Active ou désactive ta présence publique">
+            <input type="checkbox" id="dashPlugSwitch" onchange="dashPlugToggle(this.checked)">
+            <span class="dash-plug-switch-slider" aria-hidden="true"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ═══ Preview cellule marketplace ═══════════════════════════════════
+           Rendu statique — pas de clic, c'est juste une vignette "aperçu".
+           On met à jour avatarInitial, name, genre et --brand via JS. -->
+      <div class="dash-plug-preview">
+        <div class="dash-plug-preview-head">Aperçu de ta cellule marketplace</div>
+        <div class="dash-plug-cell" id="dashPlugCell">
+          <div class="dash-plug-cell-avatar" id="dashPlugCellAvatar">?</div>
+          <div class="dash-plug-cell-body">
+            <div class="dash-plug-cell-name"  id="dashPlugCellName">Ton nom d'artiste</div>
+            <div class="dash-plug-cell-genre" id="dashPlugCellGenre">Ton genre</div>
+          </div>
+          <div class="dash-plug-cell-chip" id="dashPlugCellChip">Brouillon</div>
+        </div>
+        <div class="dash-plug-preview-note" id="dashPlugPreviewNote">
+          Ton profil est en brouillon — personne ne peut encore le voir.
+        </div>
+      </div>
+
+      <!-- ═══ Compteurs + lien boutique ════════════════════════════════════ -->
+      <div class="dash-plug-stats">
+        <div class="dash-plug-stat">
+          <div class="dash-plug-stat-val" id="dashPlugFollowers">—</div>
+          <div class="dash-plug-stat-lbl">Abonnés</div>
+        </div>
+        <div class="dash-plug-stat">
+          <div class="dash-plug-stat-val" id="dashPlugPlays">—</div>
+          <div class="dash-plug-stat-lbl">Écoutes</div>
+        </div>
+        <div class="dash-plug-stat">
+          <div class="dash-plug-stat-val" id="dashPlugRank">—</div>
+          <div class="dash-plug-stat-lbl">Rang WATT</div>
+        </div>
+      </div>
+
+      <div class="dash-plug-actions">
+        <a class="dash-plug-open" id="dashPlugOpen" href="#" onclick="return dashPlugOpenShop(event)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>
+          </svg>
+          <span id="dashPlugOpenLabel">Ouvrir ma boutique</span>
+        </a>
+        <span class="dash-plug-actions-hint" id="dashPlugActionsHint">
+          Ta boutique est ton profil <code>/u/&lt;slug&gt;</code>.
+        </span>
+      </div>
+
+    </div>
+  </section>
+
 </main>
 
 <!-- ═══════ TOAST ════════════════════════════════════════════════════════════ -->
 <div id="dash-toast" class="dash-toast"></div>
 
-<!-- ═══════ GUARD (fallback si JS désactivé) ═════════════════════════════════ -->
+<!-- ═══════ GUARD (fallback si JS désactivé ou user pas connecté) ═════════════
+     Philosophie unifiée : un seul compte WATT = accès auto au profil
+     artiste. Pas de signup "PLUG WATT" séparé, on renvoie simplement vers
+     le modal auth unique sur l'accueil. ═══════════════════════════════════════ -->
 <div id="dash-guard" class="dash-guard" style="display:none">
   <div class="dash-guard-box">
     <svg viewBox="0 0 24 24" fill="currentColor" width="40" height="40" style="color:#FFD700">
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
     </svg>
-    <h2>Rejoins la bêta WATT</h2>
-    <p>Crée ton compte pour accéder au dashboard artiste.</p>
-    <a href="/watt" class="dash-btn-primary">⚡ Rejoindre PLUG WATT — Gratuit</a>
+    <h2>Connecte-toi pour gérer ton profil artiste</h2>
+    <p>Un compte WATT suffit — ton espace artiste est inclus, tu le remplis quand tu veux.</p>
+    <a href="/?auth=signup&return=/dashboard" class="dash-btn-primary">⚡ Créer mon compte — Gratuit</a>
+    <a href="/?auth=login&return=/dashboard" class="dash-btn-secondary" style="margin-top:8px">Déjà un compte ? Se connecter</a>
   </div>
 </div>
 
 <script src="ui/core/api.js"></script>
+<script src="ui/core/events.js"></script>
+<script src="ui/core/toast.js"></script>
 <script src="dashboard.js"></script>
 <script src="/ui/smyle-balance.js" defer></script>
+<script src="/ui/modals/search.js" defer></script>
+<script src="/ui/session-guard.js" defer></script>
 </body>
 </html>

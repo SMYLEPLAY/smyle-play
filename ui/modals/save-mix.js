@@ -29,12 +29,32 @@ function closeSaveMix() {
 
 function confirmSaveMix() {
   const name = document.getElementById('mix-save-name').value.trim();
-  if (!name) { document.getElementById('saveMixMsg').textContent = 'Entre un nom.'; return; }
+  const msgEl = document.getElementById('saveMixMsg');
+  if (!name) { if (msgEl) msgEl.textContent = 'Entre un nom.'; return; }
+
+  // Si une playlist de ce nom existe déjà → on demande confirmation (overwrite)
+  const existing = (typeof getUserPlaylists === 'function')
+    ? getUserPlaylists().find(p => p.name === name)
+    : null;
+  if (existing && !window.confirm(`Une playlist « ${name} » existe déjà. La remplacer ?`)) {
+    if (msgEl) msgEl.textContent = 'Choisis un autre nom.';
+    return;
+  }
+
   const ok = saveUserPlaylist(name, myMixTracks.map(m => ({ ...m })));
   if (ok) {
-    showToast(`Playlist « ${name} » sauvegardée !`);
+    // Toast global (si dispo) ou fallback local
+    if (typeof window.smyleToast === 'function') {
+      window.smyleToast(`« ${name} » sauvegardée`, { type: 'success', duration: 2800 });
+    } else {
+      showToast(`Playlist « ${name} » sauvegardée !`);
+    }
     closeSaveMix();
+    // Re-rendre le mix panel pour faire apparaître la nouvelle playlist
+    if (typeof renderMixPanel === 'function') renderMixPanel();
   } else {
-    document.getElementById('saveMixMsg').textContent = 'Erreur lors de la sauvegarde.';
+    if (msgEl) {
+      msgEl.textContent = 'Erreur lors de la sauvegarde. Connecte-toi puis réessaie.';
+    }
   }
 }

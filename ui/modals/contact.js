@@ -35,7 +35,7 @@ function submitContact() {
   localStorage.setItem('smyle_feedback', JSON.stringify(feedbacks));
 
   // Ouvrir le client mail de l'utilisateur en fallback
-  const subject = encodeURIComponent(`[SMYLE PLAY] ${type} — ${name || 'Anonyme'}`);
+  const subject = encodeURIComponent(`[WATT] ${type} — ${name || 'Anonyme'}`);
   const body    = encodeURIComponent(`Catégorie : ${type}\nNom : ${name || '—'}\nEmail : ${email || '—'}\n\n${msg}`);
   const mailto  = `mailto:smyletheplan@gmail.com?subject=${subject}&body=${body}`;
   window.location.href = mailto;

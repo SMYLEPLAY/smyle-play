@@ -52,3 +52,37 @@ logs/
 
 # ── Graphify — code-graph build artifacts (rebuilt on demand) ─────────────
 graphify-out/
+
+# ── Vault Obsidian (notes perso, exclues du repo) ────────────────────────
+Smyle-play/
+
+# ── Backups éditeur ──────────────────────────────────────────────────────
+*.bak
+*.swp
+*.swo
+*~
+
+# ── Environnements virtuels Python ───────────────────────────────────────
+venv/
+.venv/
+env/
+smyleplay-api/venv/
+smyleplay-api/_archive_bak/
+
+# ── Secrets (NE JAMAIS COMMIT) ───────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.pem
+*.key
+
+# ── IDE ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+
+# ── Node (si front futur) ────────────────────────────────────────────────
+node_modules/
+
+# ── Logs ─────────────────────────────────────────────────────────────────
+*.log

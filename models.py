@@ -37,6 +37,12 @@ class User(db.Model):
     email         = db.Column(db.String(200), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     credits       = db.Column(db.Integer, default=0, nullable=False)   # Phase 1 — solde crédits
+    # `profile_public` est écrit par FastAPI (migration 0016/0017/follows.py)
+    # dans la MÊME table `users` partagée. Flask le lit en read-only pour
+    # gater POST /api/watt/tracks : un son ne peut être publié que si le
+    # profil est déjà rendu public depuis /u/<slug>. Ne jamais le setter
+    # côté Flask — c'est la responsabilité de FastAPI.
+    profile_public = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -158,6 +164,11 @@ class Track(db.Model):
     r2_key      = db.Column(db.String(300), default='')   # clé R2 (pour suppression)
     plays       = db.Column(db.Integer,     default=0)
     uploaded_at = db.Column(db.DateTime,    default=datetime.utcnow, index=True)
+    # Étape 2 — couleur perso affichée sur les cellules orphelines de la
+    # page publique /u/<slug>. NULL = fallback brandColor de l'artiste.
+    # Ajouté via ensure_schema() (additive), miroir de la migration Alembic
+    # 0020 côté FastAPI (table `tracks`).
+    color       = db.Column(db.String(7),   nullable=True)
 
     def to_dict(self) -> dict:
         return {
@@ -167,6 +178,7 @@ class Track(db.Model):
             'streamUrl':  self.stream_url,
             'r2Key':      self.r2_key,
             'plays':      self.plays,
+            'color':      self.color,
             'uploadedAt': int(self.uploaded_at.timestamp() * 1000),
             'date':       self.uploaded_at.strftime('%-d %b'),
         }
@@ -396,3 +408,16 @@ def ensure_schema(app) -> None:
                     ))
                     conn.commit()
                 log.info('[ensure_schema] users.credits ajoutée')
+
+        # Étape 2 — watt_tracks.color (couleur par morceau, NULL = hérite
+        # de la brandColor de l'artiste). Additive : pas de DEFAULT, pas de
+        # NOT NULL, compatible Postgres + SQLite sans backfill.
+        if 'watt_tracks' in existing_tables:
+            cols = {c['name'] for c in insp.get_columns('watt_tracks')}
+            if 'color' not in cols:
+                with db.engine.connect() as conn:
+                    conn.execute(text(
+                        "ALTER TABLE watt_tracks ADD COLUMN color VARCHAR(7)"
+                    ))
+                    conn.commit()
+                log.info('[ensure_schema] watt_tracks.color ajoutée')

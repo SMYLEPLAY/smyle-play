@@ -7,9 +7,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>SMYLE PLAY</title>
+  <title>WATT · Marketplace des artistes</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="watt-panel.css" />
+  <!-- Phase 2 refonte marketplace : hero + vitrine Smyle + rankings + listes -->
+  <link rel="stylesheet" href="marketplace.css" />
 </head>
 <body>
 
@@ -82,31 +84,23 @@
         <ellipse cx="0" cy="-2" rx="11" ry="10" fill="none" stroke="rgba(200,150,255,.06)" stroke-width="8"/>
       </g>
     </svg>
-    <span class="logo-text">SMYLE PLAY</span>
+    <span class="logo-text">WATT</span>
   </div>
 
   <!-- Zone auth (remplie dynamiquement par renderAuthArea) -->
   <div id="authArea"></div>
 
-  <!-- Solde Smyle (widget auto-injecté par smyle-balance.js) -->
+  <!-- Solde Smyle (widget auto-injecté par smyle-balance.js)
+       Placé juste à côté du chip profil — éléments "compte" regroupés à
+       gauche des actions (WATT, MY MIX). Mirror du layout wattboard. -->
   <div id="smyle-balance"></div>
 
-  <!-- Bouton WATT (DNA · CONNECT · ARTIST) -->
-  <button class="watt-toggle-btn" onclick="toggleWattPanel()" title="WATT · DNA · CONNECT · ARTIST">
+  <!-- Bouton WATT BOARD — ouvre directement l'espace artiste.
+       DNA + CONNECT ne sont plus dans le panneau : ils vivent dans les deux
+       barres de recherche du hero marketplace (plus discret, plus uni). -->
+  <button class="watt-toggle-btn" onclick="toggleWattPanel()" title="Espace artiste · WATT BOARD">
     <svg viewBox="0 0 24 24" width="11" height="11" fill="#FFD700"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    WATT
-  </button>
-
-  <!-- Bouton Artiste Premium → page PLUG WATT -->
-  <a href="/watt" class="premium-header-btn" title="Espace Artiste Premium PLUG WATT">
-    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    Artiste
-  </a>
-
-  <!-- Bouton Contact / Support -->
-  <button class="support-btn" onclick="openContactModal()" title="Contact · Support">
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-    Support
+    WATT BOARD
   </button>
 
   <!-- Bouton MY MIX -->
@@ -116,21 +110,114 @@
   </button>
 </header>
 
-<!-- ═══════════════════════════════════════════════════════════ HERO -->
-<section class="hero">
-  <h1 class="hero-title">SMYLE PLAY</h1>
-  <p class="hero-sub">Artistes · Musique · Réseau créatif</p>
+<!-- Bouton Contact / Support — en position flottante bas-droite -->
+<button class="support-btn support-btn-floating" onclick="openContactModal()" title="Contact · Support">
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+  <span class="support-btn-label">Support</span>
+</button>
+
+<!-- ═══════════════════════════════════════════════════════════ HERO MARKETPLACE -->
+<!-- Phase 2 refonte : le hero de l'accueil EST la marketplace. Deux barres
+     de recherche distinctes (DNA pour les sons, CONNECT pour les profils)
+     permettent d'entrer directement en exploration sans panneau flottant.
+     Le watt-panel historique reste disponible pour compat mais disparaîtra
+     quand tout sera migré inline. -->
+<section class="mp-hero">
+  <h1 class="mp-hero-title">WATT</h1>
+  <p class="mp-hero-sub">La marketplace des artistes · Écoute. Connecte. Achète.</p>
+
+  <div class="mp-search-wrap">
+    <!-- DNA : recherche sémantique sur les sons (genre, mood, BPM, influences) -->
+    <label class="mp-search-bar mp-search-bar-dna">
+      <svg class="mp-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M12 2C12 2 8 6 8 10s2 4 4 6c2-2 4-2 4-6S12 2 12 2z"/>
+        <path d="M12 22c0 0-4-4-4-8s2-4 4-6c2 2 4 2 4 6s-4 8-4 8z"/>
+        <circle cx="12" cy="12" r="2"/>
+      </svg>
+      <span class="mp-search-tag">DNA</span>
+      <input type="search"
+             id="mp-search-dna"
+             class="mp-search-input"
+             placeholder="Cherche un son · genre, mood, BPM, influences…"
+             autocomplete="off" />
+    </label>
+
+    <!-- CONNECT : recherche sur les profils artistes (nom, ville, style) -->
+    <label class="mp-search-bar mp-search-bar-connect">
+      <svg class="mp-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="2"/>
+        <circle cx="4" cy="4" r="1.5"/><circle cx="20" cy="4" r="1.5"/>
+        <circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="20" r="1.5"/>
+        <line x1="12" y1="12" x2="4"  y2="4"/>
+        <line x1="12" y1="12" x2="20" y2="4"/>
+        <line x1="12" y1="12" x2="4"  y2="20"/>
+        <line x1="12" y1="12" x2="20" y2="20"/>
+      </svg>
+      <span class="mp-search-tag">CONNECT</span>
+      <input type="search"
+             id="mp-search-connect"
+             class="mp-search-input"
+             placeholder="Cherche un profil · nom, ville, style…"
+             autocomplete="off" />
+    </label>
+  </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════ SÉLECTION OFFICIELLE -->
-<div class="selection-officielle-header">
-  <div class="soh-line"></div>
-  <div class="soh-label">
-    <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10" style="color:rgba(136,0,255,.5)"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    Sélection Officielle
+<!-- ═══════════════════════════════════════════════════════════ VITRINE SMYLE -->
+<!-- Le compte officiel "Smyle" (is_official=true) apparaît en tête de la
+     marketplace avec son checkmark coloré, sa bio, et ses 4 packs modèles
+     (Jungle Osmose, Night City, Hit Mix, Sunset Lover). Hydraté par
+     ui/hub/marketplace.js via GET /watt/artists/smyle. Les compteurs et
+     le lien "Voir le profil" sont live — tant que le fetch n'a pas répondu,
+     on affiche des placeholders neutres ("—"). -->
+<section class="smyle-vitrine" id="smyle-vitrine" style="--smyle-brand:#7C3AED">
+  <div class="smyle-vitrine-head">
+    <div class="smyle-vitrine-avatar" id="smyle-vitrine-avatar">
+      <!-- Fallback initiale "S" si pas d'avatarUrl — remplacé par <img> si présent -->
+      S
+    </div>
+    <div class="smyle-vitrine-identity">
+      <div class="smyle-vitrine-name-row">
+        <span class="smyle-vitrine-name" id="smyle-vitrine-name">Smyle</span>
+        <!-- Checkmark officiel coloré — distinct du badge bleu "artiste vérifié"
+             historique : celui-ci n'apparaît QUE sur is_official=true. -->
+        <span class="smyle-vitrine-checkmark" title="Compte officiel Smyle" aria-label="Compte officiel">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M12 2l2.5 2.2 3.3-.4 1.3 3 3 1.3-.4 3.3L24 14l-2.3 2.4.4 3.3-3 1.3-1.3 3-3.3-.4L12 26l-2.4-2.3-3.3.4-1.3-3-3-1.3.4-3.3L0 14l2.4-2.6-.4-3.3 3-1.3 1.3-3 3.3.4z"
+                  opacity=".95"/>
+            <polyline points="7 12 10.5 15.5 17 9"
+                      fill="none" stroke="#fff" stroke-width="2.2"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </div>
+      <p class="smyle-vitrine-bio" id="smyle-vitrine-bio">
+        Compte officiel Smyle. Nos playlists modèles, nos sons de référence, l'ADN collectif de la plateforme.
+      </p>
+      <div class="smyle-vitrine-stats">
+        <span class="smyle-vitrine-stat"><b id="smyle-vitrine-followers">—</b> abonnés</span>
+        <span class="smyle-vitrine-stat-sep">·</span>
+        <span class="smyle-vitrine-stat"><b id="smyle-vitrine-tracks">—</b> sons</span>
+        <span class="smyle-vitrine-stat-sep">·</span>
+        <span class="smyle-vitrine-stat"><b id="smyle-vitrine-plays">—</b> écoutes</span>
+      </div>
+    </div>
+    <a class="smyle-vitrine-cta" id="smyle-vitrine-link" href="/u/smyle">
+      Voir le profil →
+    </a>
   </div>
-  <div class="soh-line"></div>
-</div>
+
+  <!-- Étiquette "Packs officiels Smyle" qui remplace l'ancien bandeau
+       "Sélection Officielle" : on rattache explicitement les packs au
+       profil Smyle plutôt qu'à une entité floue. -->
+  <div class="smyle-vitrine-packs-label">
+    <div class="soh-line"></div>
+    <div class="soh-label">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10" style="color:var(--smyle-brand);opacity:.7"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Packs officiels Smyle
+    </div>
+    <div class="soh-line"></div>
+  </div>
 
 <!-- ═══════════════════════════════════════════════════════════ CARDS GRID (3 playlists) -->
 <div class="playlists-grid">
@@ -274,38 +361,63 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════ COMMUNITY HUB -->
-<section class="community-hub" id="community-hub">
+</section><!-- /.smyle-vitrine -->
 
-  <!-- En-tête minimal -->
-  <div class="hub-head">
-    <svg viewBox="0 0 24 24" fill="#FFD700" width="12" height="12" style="flex-shrink:0"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    <span class="hub-head-watt">WATT</span>
-    <span class="hub-head-tagline">Réseau Artistes</span>
+<!-- ═══════════════════════════════════════════════════════════ CLASSEMENT SONS -->
+<!-- Top 10 sons de la marketplace, tous artistes confondus. Trié par plays
+     décroissants côté backend. Rempli par ui/hub/marketplace.js au load et
+     mis à jour live via SmyleEvents (smyle:track-uploaded, smyle:track-played). -->
+<section class="mp-section mp-section-top-sons">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Classement</span>
+    <h2 class="mp-section-title">Top Sons</h2>
+    <span class="mp-section-sub">Les plus écoutés cette semaine</span>
   </div>
+  <ol class="mp-ranking" id="mp-top-sons">
+    <li class="mp-ranking-empty">Chargement…</li>
+  </ol>
+</section>
 
-  <!-- Bloc 1 — Statistiques en une ligne -->
-  <div class="hub-stats-line">
-    <span id="hub-nb-artists">0</span>&nbsp;artistes
-    <span class="hsl-sep">·</span>
-    <span id="hub-nb-tracks">0</span>&nbsp;sons
-    <span class="hsl-sep">·</span>
-    <span id="hub-nb-plays">0</span>&nbsp;écoutes
-    <span class="hsl-sep">·</span>
-    <span class="hsl-live"><span class="hub-live-dot"></span>Live</span>
+<!-- ═══════════════════════════════════════════════════════════ CLASSEMENT ARTISTES -->
+<section class="mp-section mp-section-top-artists">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Classement</span>
+    <h2 class="mp-section-title">Top Artistes</h2>
+    <span class="mp-section-sub">Profils qui montent sur la plateforme</span>
   </div>
+  <ol class="mp-ranking" id="mp-top-artists">
+    <li class="mp-ranking-empty">Chargement…</li>
+  </ol>
+</section>
 
-  <!-- Bloc 2 — Top 3 artistes -->
-  <div class="hub-top3" id="hub-top3">
-    <!-- rempli par renderCommunityHub() -->
+<!-- ═══════════════════════════════════════════════════════════ TOUS LES SONS -->
+<!-- Grille de toutes les cartes-son disponibles à l'écoute / l'achat. Le
+     format "carte" reprend la métaphore Pokémon : image + nom + artiste +
+     prix (à venir). Pour l'instant, on expose juste nom + artiste + plays. -->
+<section class="mp-section mp-section-sons">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Catalogue</span>
+    <h2 class="mp-section-title">Tous les sons</h2>
+    <span class="mp-section-sub">Le catalogue complet de la marketplace</span>
   </div>
+  <div class="mp-grid mp-grid-sons" id="mp-grid-sons">
+    <div class="mp-grid-empty">Chargement du catalogue…</div>
+  </div>
+</section>
 
-  <!-- Bloc 3 — CTA unique -->
-  <a href="/watt" class="hub-cta-solo">
-    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    Rejoindre WATT
-  </a>
-
+<!-- ═══════════════════════════════════════════════════════════ TOUS LES ARTISTES -->
+<!-- Liste de tous les profils publics. Chaque ligne = une "boutique".
+     Clic → /u/<slug>. Le compte officiel Smyle est filtré ici car déjà
+     mis en avant dans la vitrine au-dessus. -->
+<section class="mp-section mp-section-artists">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Profils</span>
+    <h2 class="mp-section-title">Tous les artistes</h2>
+    <span class="mp-section-sub">Les boutiques actives sur la plateforme</span>
+  </div>
+  <div class="mp-grid mp-grid-artists" id="mp-grid-artists">
+    <div class="mp-grid-empty">Chargement des profils…</div>
+  </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ OVERLAY -->
@@ -336,31 +448,32 @@
   <div class="mix-track-list" id="mix-list">
     <div class="mix-empty">Ajoute des morceaux<br>depuis n'importe quelle playlist</div>
   </div>
+
+  <!-- Mes playlists sauvegardées -->
+  <div class="mix-saved-wrap" id="mix-saved-wrap">
+    <div class="mix-saved-head">
+      <span class="mix-saved-title">Mes playlists sauvegardées</span>
+      <span class="mix-saved-count" id="mix-saved-count">0</span>
+    </div>
+    <div class="mix-saved-list" id="mix-saved-list">
+      <div class="mix-saved-empty">Aucune playlist sauvegardée pour le moment.</div>
+    </div>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════ WATT PANEL (DNA + CONNECT + ARTIST) -->
-<div class="watt-panel" id="wattPanel">
+<!-- ═══════════════════════════════════════════ WATT PANEL (WATTBOARD only)
+     DNA + CONNECT ont été retirés d'ici : ils sont maintenant branchés sur
+     les deux barres de recherche du hero marketplace (analyseur d'univers
+     DNA + matcher de catégories CONNECT). Le panneau ne porte plus que
+     l'espace artiste (PLUG WATT / wattboard). -->
+<div class="watt-panel watt-panel-solo" id="wattPanel">
   <div class="watt-panel-header">
     <button class="watt-panel-close" onclick="closeWattPanel()" title="Fermer">✕</button>
     <div class="watt-panel-title">
       <svg viewBox="0 0 24 24" width="12" height="12" fill="#FFD700"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      WATT
+      WATT BOARD
     </div>
   </div>
-  <nav class="watt-panel-tabs">
-    <button class="watt-tab-btn active" data-tab="dna" onclick="wattTab('dna')">
-      <svg class="watt-tab-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2C12 2 8 6 8 10s2 4 4 6c2-2 4-2 4-6S12 2 12 2z"/><path d="M12 22c0 0-4-4-4-8s2-4 4-6c2 2 4 2 4 6s-4 8-4 8z"/><circle cx="12" cy="12" r="2"/></svg>
-      DNA
-    </button>
-    <button class="watt-tab-btn" data-tab="connect" onclick="wattTab('connect')">
-      <svg class="watt-tab-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><circle cx="4" cy="4" r="1.5"/><circle cx="20" cy="4" r="1.5"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="20" r="1.5"/><line x1="12" y1="12" x2="4" y2="4"/><line x1="12" y1="12" x2="20" y2="4"/><line x1="12" y1="12" x2="4" y2="20"/><line x1="12" y1="12" x2="20" y2="20"/><line x1="4" y1="4" x2="20" y2="4" opacity=".4"/><line x1="4" y1="20" x2="20" y2="20" opacity=".4"/><line x1="4" y1="4" x2="4" y2="20" opacity=".4"/><line x1="20" y1="4" x2="20" y2="20" opacity=".4"/></svg>
-      CONNECT
-    </button>
-    <button class="watt-tab-btn" data-tab="artist" onclick="wattTab('artist')">
-      <svg class="watt-tab-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="2" width="12" height="6" rx="1"/><rect x="9" y="8" width="6" height="4"/><circle cx="8" cy="16" r="2"/><circle cx="16" cy="16" r="2"/><line x1="8" y1="16" x2="8" y2="12"/><line x1="16" y1="16" x2="16" y2="12"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      ARTIST
-    </button>
-  </nav>
   <div class="watt-panel-body" id="watt-body"></div>
 </div>
 
@@ -423,16 +536,22 @@
 
     <!-- Connexion -->
     <form id="form-login" onsubmit="submitLogin(); return false;">
-      <input class="modal-input" id="login-email"    type="email"    placeholder="Email" required />
-      <input class="modal-input" id="login-password" type="password" placeholder="Mot de passe" required />
+      <input class="modal-input" id="login-email"    type="email"    placeholder="Email" required autocomplete="email" />
+      <div class="modal-pwd-wrap">
+        <input class="modal-input" id="login-password" type="password" placeholder="Mot de passe" required autocomplete="current-password" />
+        <button type="button" class="modal-pwd-toggle" onclick="togglePasswordVisibility('login-password', this)" aria-label="Afficher / masquer le mot de passe" tabindex="-1">👁</button>
+      </div>
       <button type="submit" class="modal-submit">Se connecter</button>
     </form>
 
     <!-- Inscription -->
     <form id="form-signup" style="display:none" onsubmit="submitSignup(); return false;">
-      <input class="modal-input" id="signup-name"     type="text"     placeholder="Ton prénom" required />
-      <input class="modal-input" id="signup-email"    type="email"    placeholder="Email" required />
-      <input class="modal-input" id="signup-password" type="password" placeholder="Mot de passe (min 6 car.)" required />
+      <input class="modal-input" id="signup-name"     type="text"     placeholder="Ton prénom" required autocomplete="given-name" />
+      <input class="modal-input" id="signup-email"    type="email"    placeholder="Email" required autocomplete="email" />
+      <div class="modal-pwd-wrap">
+        <input class="modal-input" id="signup-password" type="password" placeholder="Mot de passe (min 6 car.)" required autocomplete="new-password" minlength="6" />
+        <button type="button" class="modal-pwd-toggle" onclick="togglePasswordVisibility('signup-password', this)" aria-label="Afficher / masquer le mot de passe" tabindex="-1">👁</button>
+      </div>
       <button type="submit" class="modal-submit">Créer mon compte</button>
     </form>
 
@@ -494,9 +613,12 @@
 
     <div class="premium-cta-block">
       <div class="premium-price" style="font-size:11px;letter-spacing:.2em;color:rgba(255,215,0,.5)">Bêta gratuite · Accès libre</div>
-      <a href="/watt" class="watt-premium-btn" style="text-decoration:none;display:inline-block">
-        ⚡ Rejoindre WATT — Gratuit
-      </a>
+      <!-- Philosophie unifiée : pas de signup séparé "PLUG WATT". Un compte
+           WATT inclut l'espace artiste — on ouvre simplement le modal
+           d'inscription unique. -->
+      <button type="button" class="watt-premium-btn" style="border:0;cursor:pointer" onclick="closePremiumModal(); openAuthModal('signup');">
+        ⚡ Créer mon compte — Gratuit
+      </button>
       <p class="premium-modal-msg" id="premiumMsg"></p>
     </div>
   </div>
@@ -506,7 +628,7 @@
 <div class="modal-overlay" id="contactModal">
   <div class="modal-box">
     <button class="modal-close" onclick="closeContactModal()">✕</button>
-    <div class="modal-title">Contact · SMYLE PLAY</div>
+    <div class="modal-title">Contact · WATT</div>
     <form id="contact-form" onsubmit="submitContact(); return false;">
       <input  class="modal-input"      id="contact-name"  type="text"  placeholder="Ton prénom (optionnel)" />
       <input  class="modal-input"      id="contact-email" type="email" placeholder="Ton email (optionnel)" />
@@ -525,16 +647,18 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════ FOOTER -->
-<footer style="padding:32px 48px 96px;text-align:center">
-  <p style="font-size:10px;letter-spacing:.3em;color:rgba(136,0,255,.2);text-transform:uppercase">
-    © 2025 SMYLE PLAY · Playlists · WATT · DNA · CONNECT
-    · <span onclick="openContactModal()" style="cursor:pointer;color:rgba(136,0,255,.35)">Contact</span>
-    · <a href="https://suno.ai" target="_blank" style="color:rgba(136,0,255,.18);text-decoration:none;font-size:9px">sons générés via Suno</a>
+<footer class="smyle-footer">
+  <p class="smyle-footer-line">
+    © 2025 WATT · Playlists · WATT BOARD · DNA · CONNECT
+    · <span class="smyle-footer-link" onclick="openContactModal()">Contact</span>
+    · <span class="smyle-footer-tag">sons générés par IA</span>
   </p>
 </footer>
 
 <!-- ui modules — load order matters: state must load before any consumer -->
 <script src="ui/core/api.js"></script>
+<script src="ui/core/events.js"></script>
+<script src="ui/core/toast.js"></script>
 <script src="ui/core/state.js"></script>
 <script src="ui/core/dom.js"></script>
 <script src="ui/core/storage.js"></script>
@@ -546,9 +670,19 @@
 <script src="ui/modals/premium.js"></script>
 <script src="ui/modals/save-mix.js"></script>
 <script src="ui/hub/community.js"></script>
+<!-- watt-panel.js expose window.WattDNA et window.WattConnect (analyseur
+     d'univers + matcher de catégories). Il doit être chargé AVANT
+     marketplace.js pour que les barres de recherche DNA/CONNECT puissent
+     consommer ces modules dès le premier input. -->
 <script src="ui/panels/agent.js"></script>
 <script src="ui/panels/watt-panel.js"></script>
+<!-- Phase 2 refonte marketplace : fetch + render de la vitrine Smyle, des
+     classements (top sons / top artistes) et des grilles (tous sons / tous
+     artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
+<script src="ui/hub/marketplace.js"></script>
 <script src="ui/app.js"></script>
 <script src="/ui/smyle-balance.js" defer></script>
+<script src="/ui/modals/search.js" defer></script>
+<script src="/ui/session-guard.js" defer></script>
 </body>
 </html>

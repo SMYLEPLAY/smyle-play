@@ -121,9 +121,7 @@ async function _agentLoadTab(tabKey) {
 // ── Tab : Cockpit (stats + classement) ───────────────────────────────────────
 
 async function _agentRenderCockpit(body) {
-  const res     = await fetch('/api/artists');
-  if (!res.ok) throw new Error(`API /api/artists : ${res.status}`);
-  const { artists } = await res.json();
+  const { artists } = await apiFetch('/watt/artists');
 
   _agent.data.artists = artists || [];
 
@@ -135,7 +133,7 @@ async function _agentRenderCockpit(body) {
         const medals = ['🥇', '🥈', '🥉'];
         const medal  = i < 3 ? `<span class="agent-medal">${medals[i]}</span>` : `<span class="agent-rank-num">${String(i + 1).padStart(2, '0')}</span>`;
         return `
-          <div class="agent-rank-row" onclick="window.location.href='/artiste/${_esc(a.slug)}'">
+          <div class="agent-rank-row" onclick="window.location.href='/u/${_esc(a.slug)}'">
             ${medal}
             <div class="agent-rank-info">
               <span class="agent-rank-name">${_esc(a.artistName)}</span>
@@ -148,7 +146,7 @@ async function _agentRenderCockpit(body) {
     : `<div class="agent-empty">
          <div class="agent-empty-icon">🎵</div>
          <div>Aucun artiste dans le réseau pour l'instant.</div>
-         <a href="/watt" class="agent-cta-link">Rejoindre WATT →</a>
+         <a href="/?auth=signup" class="agent-cta-link">Créer mon compte →</a>
        </div>`;
 
   body.innerHTML = `
@@ -175,17 +173,16 @@ async function _agentRenderCockpit(body) {
     </div>
     <div class="agent-rank-list">${rankRows}</div>
 
-    <!-- Lien vers la page WATT complète -->
-    <a href="/watt" class="agent-full-link">Voir la page WATT complète →</a>
+    <!-- Phase 3 refonte : plus de page /watt — le classement complet
+         est maintenant sur la marketplace (accueil). -->
+    <a href="/" class="agent-full-link">Voir le classement complet →</a>
   `;
 }
 
 // ── Tab : Monitoring (derniers sons) ─────────────────────────────────────────
 
 async function _agentRenderMonitoring(body) {
-  const res = await fetch('/api/tracks/recent');
-  if (!res.ok) throw new Error(`API /api/tracks/recent : ${res.status}`);
-  const { tracks } = await res.json();
+  const { tracks } = await apiFetch('/watt/tracks-recent');
 
   _agent.data.tracks = tracks || [];
 
@@ -195,7 +192,7 @@ async function _agentRenderMonitoring(body) {
         const dateStr = d.toLocaleDateString('fr', { day: 'numeric', month: 'short', year: 'numeric' });
         const timeStr = d.toLocaleTimeString('fr', { hour: '2-digit', minute: '2-digit' });
         return `
-          <div class="agent-track-row" onclick="window.location.href='/artiste/${_esc(t.artistSlug || '')}'">
+          <div class="agent-track-row" onclick="window.location.href='/u/${_esc(t.artistSlug || '')}'">
             <div class="agent-track-avatar">${(t.artistName || '?')[0].toUpperCase()}</div>
             <div class="agent-track-info">
               <div class="agent-track-name">${_esc(t.name || 'Sans titre')}</div>
@@ -256,7 +253,7 @@ async function _agentRenderInbox(body) {
           <div class="agent-collab-row">
             <div class="agent-collab-header">
               <div class="agent-collab-from">
-                <a href="/artiste/${_esc(c.from.slug)}" class="agent-collab-name">${_esc(c.from.name)}</a>
+                <a href="/u/${_esc(c.from.slug)}" class="agent-collab-name">${_esc(c.from.name)}</a>
                 <span class="agent-collab-arrow">→</span>
                 <span class="agent-collab-to">${_esc(c.to.name)}</span>
               </div>
@@ -318,7 +315,7 @@ function _agentRenderDNA(body) {
     </div>
 
     <div id="agent-dna-result">
-      ${prev ? _agentDNAResultHTML(prev) : '<div class="agent-empty"><span class="agent-empty-icon">🧬</span><div>Lance une analyse pour voir l\'ADN du morceau, la playlist cible et le prompt Suno.</div></div>'}
+      ${prev ? _agentDNAResultHTML(prev) : '<div class="agent-empty"><span class="agent-empty-icon">🧬</span><div>Lance une analyse pour voir l\'ADN du morceau, la playlist cible et le prompt IA.</div></div>'}
     </div>
   `;
 }
@@ -423,10 +420,10 @@ function _agentDNAResultHTML(r) {
       <div class="agent-dna-scores">${scoreRows}</div>
     </div>
 
-    <!-- Prompt Suno -->
+    <!-- Prompt IA -->
     <div class="agent-section-title" style="margin-top:18px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="10" height="10" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      Prompt Suno généré
+      Prompt IA généré
     </div>
     <div class="agent-suno-box">
       <div class="agent-suno-prompt" id="agent-suno-text">${_esc(r.suno_prompt)}</div>
@@ -440,7 +437,7 @@ function _agentDNAResultHTML(r) {
     <!-- BPM + négatif -->
     <div class="agent-dna-meta">
       <span>⏱ ${_esc(r.bpm_hint)}</span>
-      ${r.negative ? `<span title="À éviter dans Suno">✗ ${_esc(r.negative.split(',').slice(0,3).join(', '))}…</span>` : ''}
+      ${r.negative ? `<span title="À éviter dans le générateur">✗ ${_esc(r.negative.split(',').slice(0,3).join(', '))}…</span>` : ''}
     </div>
 
     <div class="agent-dna-method">méthode : ${_esc(r.method)} · analysé le ${new Date(r.processed_at).toLocaleString('fr')}</div>

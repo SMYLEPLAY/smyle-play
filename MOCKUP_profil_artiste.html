@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<title>MOCKUP — Refonte profil artiste · SMYLE PLAY</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+  :root {
+    --brand: #FFD700;    /* couleur de marque — modifiée par le picker */
+    --bg:    #0a0612;
+    --bg-2:  #120a1e;
+    --ink:   #e9e3ff;
+    --ink-s: rgba(233,227,255,.55);
+    --gold:  #FFD700;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); min-height: 100vh;
+    background-image: radial-gradient(800px 400px at 20% 0%, rgba(var(--brand-rgb), .12), transparent 60%),
+                      radial-gradient(600px 300px at 80% 20%, rgba(var(--brand-rgb), .06), transparent 60%);
+  }
+  /* ─────────── Barre de contrôle en haut ─────────── */
+  .toolbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10, 6, 18, .92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    padding: 14px 22px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .toolbar-title {
+    font-size: 12px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--brand); font-weight: 700;
+  }
+  .toolbar-divider { width: 1px; height: 22px; background: rgba(255,255,255,.08); }
+  .toolbar-label { font-size: 11px; color: var(--ink-s); letter-spacing: .1em; text-transform: uppercase; }
+  .color-swatches { display: flex; gap: 8px; }
+  .color-swatch {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.1);
+    cursor: pointer; transition: transform .15s, border-color .15s;
+    position: relative;
+  }
+  .color-swatch:hover { transform: scale(1.12); }
+  .color-swatch.active { border-color: #fff; }
+  .color-swatch.active::after {
+    content: '✓'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #000; font-weight: 900; font-size: 13px;
+  }
+  .custom-picker {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px; border: 1px solid rgba(255,255,255,.15);
+    border-radius: 3px; cursor: pointer;
+  }
+  .custom-picker input[type=color] {
+    width: 22px; height: 22px; border: 0; padding: 0; background: transparent; cursor: pointer;
+  }
+  .compare-toggle {
+    display: inline-flex; background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08); border-radius: 4px; padding: 3px;
+  }
+  .compare-toggle button {
+    padding: 6px 14px; background: transparent; color: var(--ink-s);
+    border: 0; font-size: 10px; letter-spacing: .15em; text-transform: uppercase;
+    cursor: pointer; border-radius: 3px; font-weight: 600;
+  }
+  .compare-toggle button.active { background: var(--brand); color: #000; }
+
+  /* ─────────── Zone de rendu — split ou pleine ─────────── */
+  .stage { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .stage.split { grid-template-columns: 1fr 1fr; }
+  .panel {
+    padding: 30px 22px 60px;
+    border-right: 1px solid rgba(255,255,255,.04);
+    min-height: 80vh;
+  }
+  .panel:last-child { border-right: 0; }
+  .panel-hdr {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10px; letter-spacing: .25em; text-transform: uppercase;
+    color: var(--ink-s); margin-bottom: 20px;
+  }
+  .panel-hdr .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .panel.old .dot   { background: #888; }
+  .panel.new .dot   { background: var(--brand); box-shadow: 0 0 8px var(--brand); }
+
+  /* ─────────── ANCIENNE version (gauche) ─────────── */
+  .old-hero {
+    padding: 22px; background: rgba(255,255,255,.02);
+    border: 1px solid rgba(255,255,255,.06); border-radius: 6px;
+    display: flex; align-items: center; gap: 18px; margin-bottom: 22px;
+  }
+  .old-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: #8800ff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+  .old-name { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+  .old-bio  { font-size: 12px; color: var(--ink-s); margin: 0; max-width: 340px; }
+  .old-stats {
+    display: flex; gap: 18px; padding: 14px 18px;
+    background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06);
+    border-radius: 6px; margin-bottom: 22px;
+  }
+  .old-stat { text-align: center; }
+  .old-stat-val { display: block; font-size: 18px; font-weight: 700; color: var(--gold); }
+  .old-stat-lbl { font-size: 9px; color: var(--ink-s); letter-spacing: .15em; text-transform: uppercase; }
+  .old-section-title {
+    font-size: 13px; letter-spacing: .18em; text-transform: uppercase;
+    margin: 22px 0 10px; color: var(--ink);
+  }
+  .old-track-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; background: rgba(255,255,255,.02);
+    border: 1px solid rgba(255,255,255,.04); border-radius: 4px; margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .old-track-item .cover { width: 34px; height: 34px; background: #333; border-radius: 4px; flex-shrink: 0; }
+
+  /* ─────────── NOUVELLE version (droite) ─────────── */
+  .new-hero {
+    position: relative;
+    border-radius: 10px; overflow: hidden;
+    margin-bottom: 22px;
+    border: 1px solid rgba(var(--brand-rgb), .22);
+    box-shadow: 0 6px 40px rgba(var(--brand-rgb), .12);
+  }
+  .new-hero-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(600px 200px at 20% 20%, rgba(var(--brand-rgb), .35), transparent 60%),
+      radial-gradient(400px 200px at 90% 80%, rgba(var(--brand-rgb), .2), transparent 60%),
+      linear-gradient(135deg, rgba(var(--brand-rgb), .08), rgba(0,0,0,.4));
+  }
+  .new-hero-bg::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(
+      90deg, transparent 0 2px, rgba(var(--brand-rgb), .05) 2px 3px
+    );
+    opacity: .6;
+  }
+  .new-hero-inner {
+    position: relative; z-index: 1;
+    padding: 32px 26px;
+    display: flex; align-items: flex-start; gap: 22px; flex-wrap: wrap;
+  }
+  .new-avatar {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand), color-mix(in oklab, var(--brand) 60%, black));
+    color: #000; font-size: 38px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 28px rgba(var(--brand-rgb), .4);
+    border: 3px solid rgba(var(--brand-rgb), .35);
+    flex-shrink: 0;
+  }
+  .new-hero-info { flex: 1; min-width: 0; }
+  .new-watt-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; background: rgba(var(--brand-rgb), .18);
+    border: 1px solid rgba(var(--brand-rgb), .4);
+    border-radius: 10px; font-size: 9px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--brand); font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .new-name {
+    font-size: 28px; font-weight: 800; margin: 0 0 4px;
+    background: linear-gradient(90deg, #fff, var(--brand));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    letter-spacing: .01em;
+  }
+  .new-genre {
+    display: inline-block; padding: 2px 9px; background: rgba(var(--brand-rgb), .08);
+    border: 1px solid rgba(var(--brand-rgb), .25); border-radius: 2px;
+    font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--brand); margin-bottom: 10px;
+  }
+  .new-bio { margin: 6px 0 14px; font-size: 12.5px; line-height: 1.65; color: rgba(233,227,255,.75); max-width: 560px; }
+  .new-follow-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 11px 22px; border-radius: 3px;
+    background: linear-gradient(135deg, var(--brand), color-mix(in oklab, var(--brand) 70%, black));
+    color: #000; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700;
+    border: 0; cursor: pointer; box-shadow: 0 4px 18px rgba(var(--brand-rgb), .25);
+  }
+
+  .new-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin-bottom: 26px;
+  }
+  .new-stat {
+    padding: 14px 12px; text-align: center;
+    background: rgba(var(--brand-rgb), .04);
+    border: 1px solid rgba(var(--brand-rgb), .15);
+    border-radius: 6px;
+  }
+  .new-stat-val { font-size: 22px; font-weight: 800; color: var(--brand); display: block; line-height: 1; }
+  .new-stat-lbl { font-size: 9px; color: var(--ink-s); letter-spacing: .2em; text-transform: uppercase; margin-top: 6px; display: block; }
+
+  .section-block { margin-bottom: 26px; }
+  .section-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--brand); font-weight: 700; margin-bottom: 12px;
+  }
+  .section-title::before {
+    content: ''; width: 3px; height: 18px; background: var(--brand); border-radius: 2px;
+    box-shadow: 0 0 8px var(--brand);
+  }
+  .section-count { margin-left: auto; font-size: 10px; color: var(--ink-s); font-weight: 400; letter-spacing: .1em; }
+
+  /* Tracks grid */
+  .tracks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .track-card {
+    padding: 12px; background: rgba(var(--brand-rgb), .03);
+    border: 1px solid rgba(var(--brand-rgb), .12); border-radius: 6px;
+    transition: all .2s; cursor: pointer;
+  }
+  .track-card:hover { border-color: rgba(var(--brand-rgb), .35); transform: translateY(-2px); }
+  .track-cover {
+    width: 100%; aspect-ratio: 1; border-radius: 4px;
+    background: linear-gradient(135deg, rgba(var(--brand-rgb), .4), rgba(var(--brand-rgb), .1));
+    margin-bottom: 10px; display: flex; align-items: center; justify-content: center;
+    color: rgba(0,0,0,.5); font-size: 26px;
+  }
+  .track-title { font-size: 12px; font-weight: 600; margin-bottom: 3px; color: var(--ink); }
+  .track-meta { font-size: 10px; color: var(--ink-s); }
+
+  /* ADN card */
+  .adn-card {
+    padding: 20px; border-radius: 8px;
+    background: linear-gradient(135deg, rgba(var(--brand-rgb), .12), rgba(var(--brand-rgb), .02));
+    border: 1px solid rgba(var(--brand-rgb), .3);
+  }
+  .adn-head {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+  }
+  .adn-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--ink); }
+  .adn-desc { font-size: 12px; color: var(--ink-s); line-height: 1.6; margin-bottom: 14px; }
+  .adn-price {
+    padding: 4px 10px; background: rgba(var(--brand-rgb), .2); color: var(--brand);
+    border-radius: 2px; font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  }
+  .adn-unlock {
+    width: 100%; padding: 11px; background: var(--brand); color: #000;
+    border: 0; border-radius: 3px; font-size: 11px; letter-spacing: .15em;
+    text-transform: uppercase; font-weight: 700; cursor: pointer;
+  }
+
+  /* Recettes grid */
+  .recipes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .recipe-card {
+    padding: 14px; background: rgba(var(--brand-rgb), .03);
+    border: 1px solid rgba(var(--brand-rgb), .15); border-radius: 6px;
+  }
+  .recipe-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .recipe-preview {
+    font-size: 10.5px; color: var(--ink-s); line-height: 1.5;
+    padding: 8px; background: rgba(0,0,0,.25); border-radius: 3px;
+    margin-bottom: 10px; max-height: 54px; overflow: hidden;
+    position: relative;
+  }
+  .recipe-preview::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 26px;
+    background: linear-gradient(transparent, rgba(0,0,0,.6));
+  }
+  .recipe-btn {
+    width: 100%; padding: 8px; background: rgba(var(--brand-rgb), .12);
+    border: 1px solid rgba(var(--brand-rgb), .35); color: var(--brand);
+    border-radius: 3px; font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+  }
+  .recipe-btn:hover { background: rgba(var(--brand-rgb), .22); }
+
+  /* Abonnés mini-cartes */
+  .followers-row {
+    display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .follower-card {
+    flex-shrink: 0; width: 96px; text-align: center;
+    padding: 12px 6px; background: rgba(var(--brand-rgb), .03);
+    border: 1px solid rgba(var(--brand-rgb), .12); border-radius: 6px;
+    cursor: pointer; transition: all .2s;
+  }
+  .follower-card:hover { border-color: rgba(var(--brand-rgb), .4); transform: translateY(-2px); }
+  .follower-ava {
+    width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #000;
+  }
+  .follower-name { font-size: 10.5px; font-weight: 600; color: var(--ink); }
+  .follower-sub { font-size: 9px; color: var(--ink-s); margin-top: 2px; }
+
+  /* Socials */
+  .socials-block { display: flex; flex-wrap: wrap; gap: 8px; }
+  .social-link {
+    padding: 10px 16px; background: rgba(var(--brand-rgb), .05);
+    border: 1px solid rgba(var(--brand-rgb), .2); color: var(--brand);
+    border-radius: 3px; font-size: 10px; letter-spacing: .15em;
+    text-transform: uppercase; font-weight: 600; text-decoration: none;
+  }
+  .social-link:hover { background: rgba(var(--brand-rgb), .12); }
+
+  /* ─────────── Aperçu cellule wattboard ─────────── */
+  .wattboard-demo {
+    margin: 40px auto 0; max-width: 1200px; padding: 0 22px;
+  }
+  .wattboard-demo h2 {
+    font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--brand); margin-bottom: 12px;
+  }
+  .wattboard-demo p { font-size: 12.5px; color: var(--ink-s); line-height: 1.7; max-width: 720px; }
+  .wb-frame {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-top: 22px; background: rgba(255,255,255,.02);
+    border: 1px solid rgba(255,255,255,.06); border-radius: 8px; padding: 18px;
+  }
+  .wb-side h3 {
+    font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--ink-s); margin: 0 0 14px;
+  }
+  .wb-cell {
+    padding: 18px 16px;
+    border: 1px solid rgba(255,255,255,.1); border-radius: 4px;
+    background: rgba(255,255,255,.03);
+  }
+  .wb-cell.branded {
+    background:
+      radial-gradient(400px 100px at 30% 0%, rgba(var(--brand-rgb), .18), transparent 70%),
+      rgba(var(--brand-rgb), .04);
+    border-color: rgba(var(--brand-rgb), .35);
+    box-shadow: 0 4px 20px rgba(var(--brand-rgb), .15);
+  }
+  .wb-cell-hdr {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  .wb-chip {
+    padding: 3px 8px; background: rgba(var(--brand-rgb), .2); color: var(--brand);
+    border-radius: 10px; font-size: 9px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  }
+  .wb-cell.plain .wb-chip { background: rgba(255,215,0,.18); color: var(--gold); }
+  .wb-cell-name { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .wb-cell-stats {
+    display: flex; gap: 12px; font-size: 10px; color: var(--ink-s);
+  }
+  .wb-cell.branded .wb-cell-stats strong { color: var(--brand); }
+  .wb-cell.plain   .wb-cell-stats strong { color: var(--gold); }
+
+  /* ─────────── Flow création ─────────── */
+  .flow-block {
+    margin: 40px auto 80px; max-width: 1200px; padding: 0 22px;
+  }
+  .flow-block h2 {
+    font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--brand); margin-bottom: 14px;
+  }
+  .flow-steps {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin-top: 18px;
+  }
+  .flow-step {
+    padding: 18px 16px; background: rgba(var(--brand-rgb), .04);
+    border: 1px solid rgba(var(--brand-rgb), .18); border-radius: 6px;
+    position: relative;
+  }
+  .flow-step-num {
+    position: absolute; top: -11px; left: 14px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--brand); color: #000;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800;
+  }
+  .flow-step h3 {
+    font-size: 12px; margin: 6px 0 6px; color: var(--ink);
+  }
+  .flow-step p {
+    font-size: 11px; line-height: 1.6; color: var(--ink-s); margin: 0;
+  }
+
+  @media (max-width: 900px) {
+    .stage.split { grid-template-columns: 1fr; }
+    .panel { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .new-stats { grid-template-columns: repeat(2, 1fr); }
+    .flow-steps { grid-template-columns: 1fr 1fr; }
+    .wb-frame { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ TOOLBAR ══════════════ -->
+<div class="toolbar">
+  <div class="toolbar-title">⚡ Mockup refonte profil</div>
+  <div class="toolbar-divider"></div>
+  <span class="toolbar-label">Couleur de marque :</span>
+  <div class="color-swatches">
+    <div class="color-swatch active" style="background:#FFD700" data-color="#FFD700" data-rgb="255,215,0" title="Gold"></div>
+    <div class="color-swatch" style="background:#FF4D7E" data-color="#FF4D7E" data-rgb="255,77,126" title="Pink"></div>
+    <div class="color-swatch" style="background:#00E0C6" data-color="#00E0C6" data-rgb="0,224,198" title="Teal"></div>
+    <div class="color-swatch" style="background:#9B5CFF" data-color="#9B5CFF" data-rgb="155,92,255" title="Purple"></div>
+    <div class="color-swatch" style="background:#FF7A00" data-color="#FF7A00" data-rgb="255,122,0" title="Orange"></div>
+    <div class="color-swatch" style="background:#4DA3FF" data-color="#4DA3FF" data-rgb="77,163,255" title="Blue"></div>
+  </div>
+  <label class="custom-picker">
+    <input type="color" id="customColor" value="#FFD700"/>
+    <span style="font-size:10px;color:var(--ink-s)">custom</span>
+  </label>
+  <div class="toolbar-divider"></div>
+  <div class="compare-toggle">
+    <button class="active" data-view="split">Avant / Après</button>
+    <button data-view="new">Nouveau seulement</button>
+  </div>
+</div>
+
+<!-- ══════════════ RENDU SIDE-BY-SIDE ══════════════ -->
+<div class="stage split" id="stage">
+
+  <!-- AVANT -->
+  <div class="panel old">
+    <div class="panel-hdr"><span class="dot"></span> Version actuelle — ce que tu vois aujourd'hui</div>
+
+    <div class="old-hero">
+      <div class="old-avatar">W</div>
+      <div>
+        <h1 class="old-name">WATT Artist</h1>
+        <p class="old-bio">Jungle Osmose / Night City / Electro — un univers signature tropical et nocturne.</p>
+      </div>
+    </div>
+
+    <div class="old-stats">
+      <div class="old-stat"><span class="old-stat-val">12</span><span class="old-stat-lbl">sons</span></div>
+      <div class="old-stat"><span class="old-stat-val">2.4K</span><span class="old-stat-lbl">écoutes</span></div>
+      <div class="old-stat"><span class="old-stat-val">#7</span><span class="old-stat-lbl">classement</span></div>
+    </div>
+
+    <div class="old-section-title">Sons publiés</div>
+    <div class="old-track-item"><div class="cover"></div> Sunset Lover — 2:47</div>
+    <div class="old-track-item"><div class="cover"></div> Jungle Osmose — 3:12</div>
+    <div class="old-track-item"><div class="cover"></div> Night City 4am — 2:58</div>
+
+    <p style="font-size:11px;color:var(--ink-s);margin-top:22px;line-height:1.6">
+      → Tout est empilé verticalement, pas de hiérarchie visuelle, pas de couleur propre à l'artiste, pas de bloc communauté, ADN et recettes IA cachées dans une section secondaire sans démarcation.
+    </p>
+  </div>
+
+  <!-- APRÈS -->
+  <div class="panel new">
+    <div class="panel-hdr"><span class="dot"></span> Refonte proposée — avec couleur de marque de l'artiste</div>
+
+    <!-- HERO -->
+    <div class="new-hero">
+      <div class="new-hero-bg"></div>
+      <div class="new-hero-inner">
+        <div class="new-avatar">W</div>
+        <div class="new-hero-info">
+          <div class="new-watt-badge">⚡ Artiste WATT · En vitrine</div>
+          <h1 class="new-name">WATT Artist</h1>
+          <div class="new-genre">Electro tropical nocturne</div>
+          <p class="new-bio">Jungle Osmose / Night City / Sunset Lover — trois univers signature qui racontent la même histoire : la nuit, les lumières, et les sons qui restent.</p>
+          <button class="new-follow-btn">⚡ Suivre cet artiste</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="new-stats">
+      <div class="new-stat"><span class="new-stat-val">12</span><span class="new-stat-lbl">sons</span></div>
+      <div class="new-stat"><span class="new-stat-val">2.4K</span><span class="new-stat-lbl">écoutes</span></div>
+      <div class="new-stat"><span class="new-stat-val">48</span><span class="new-stat-lbl">abonnés</span></div>
+      <div class="new-stat"><span class="new-stat-val">#7</span><span class="new-stat-lbl">classement WATT</span></div>
+    </div>
+
+    <!-- SECTION TRACKS -->
+    <div class="section-block">
+      <div class="section-title">🎵 Sons publiés <span class="section-count">12 tracks</span></div>
+      <div class="tracks-grid">
+        <div class="track-card">
+          <div class="track-cover">🌴</div>
+          <div class="track-title">Sunset Lover</div>
+          <div class="track-meta">2:47 · 420 écoutes</div>
+        </div>
+        <div class="track-card">
+          <div class="track-cover">🌿</div>
+          <div class="track-title">Jungle Osmose</div>
+          <div class="track-meta">3:12 · 680 écoutes</div>
+        </div>
+        <div class="track-card">
+          <div class="track-cover">🌃</div>
+          <div class="track-title">Night City 4am</div>
+          <div class="track-meta">2:58 · 510 écoutes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION ADN -->
+    <div class="section-block">
+      <div class="section-title">🧬 ADN Playlist — Univers signature</div>
+      <div class="adn-card">
+        <div class="adn-head">
+          <div>
+            <div class="adn-title">ADN : Nuit Tropicale</div>
+            <div class="adn-desc">Le pack complet : ambiance, palette sonore, prompts noyau, lyrics type. Tu reproduis l'univers de l'artiste dans tes propres tracks.</div>
+          </div>
+          <span class="adn-price">250 Smyles</span>
+        </div>
+        <button class="adn-unlock">⚡ Débloquer l'ADN</button>
+      </div>
+    </div>
+
+    <!-- SECTION RECETTES -->
+    <div class="section-block">
+      <div class="section-title">🎛 Recettes IA <span class="section-count">3 prompts à débloquer</span></div>
+      <div class="recipes-grid">
+        <div class="recipe-card">
+          <div class="recipe-title">Sunset Lover — Recette</div>
+          <div class="recipe-preview">[Verse] Soft tropical house, warm pads, filtered saxophone, deep bass…</div>
+          <button class="recipe-btn">80 Smyles · Débloquer</button>
+        </div>
+        <div class="recipe-card">
+          <div class="recipe-title">Jungle Osmose — Recette</div>
+          <div class="recipe-preview">[Intro] Field recording rainforest, 124 BPM afro-house, polyrhythmic…</div>
+          <button class="recipe-btn">80 Smyles · Débloquer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION ABONNÉS -->
+    <div class="section-block">
+      <div class="section-title">🔗 Réseau — 48 abonnés</div>
+      <div class="followers-row">
+        <div class="follower-card"><div class="follower-ava" style="background:#FF4D7E">M</div><div class="follower-name">Maya K.</div><div class="follower-sub">8 sons</div></div>
+        <div class="follower-card"><div class="follower-ava" style="background:#00E0C6">T</div><div class="follower-name">Théo R.</div><div class="follower-sub">14 sons</div></div>
+        <div class="follower-card"><div class="follower-ava" style="background:#9B5CFF">L</div><div class="follower-name">Luna X.</div><div class="follower-sub">6 sons</div></div>
+        <div class="follower-card"><div class="follower-ava" style="background:#FF7A00">S</div><div class="follower-name">Sami D.</div><div class="follower-sub">22 sons</div></div>
+        <div class="follower-card"><div class="follower-ava" style="background:#4DA3FF">A</div><div class="follower-name">Alix B.</div><div class="follower-sub">4 sons</div></div>
+        <div class="follower-card"><div class="follower-ava" style="background:#FFD700">+</div><div class="follower-name">Voir tous</div><div class="follower-sub">43 autres</div></div>
+      </div>
+    </div>
+
+    <!-- SECTION RÉSEAUX SOCIAUX -->
+    <div class="section-block">
+      <div class="section-title">🌐 Retrouver l'artiste</div>
+      <div class="socials-block">
+        <a href="#" class="social-link">SoundCloud</a>
+        <a href="#" class="social-link">Instagram</a>
+        <a href="#" class="social-link">YouTube</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CELLULE WATTBOARD ══════════════ -->
+<div class="wattboard-demo">
+  <h2>🎛 Effet sur la cellule wattboard</h2>
+  <p>Ta couleur de marque se propage aussi sur ta cellule personnelle dans le wattboard (accueil) — ton profil devient reconnaissable au premier coup d'œil. À gauche la version actuelle (or uniforme pour tout le monde), à droite ta cellule avec ta couleur.</p>
+
+  <div class="wb-frame">
+    <div class="wb-side">
+      <h3>Aujourd'hui — or uniforme</h3>
+      <div class="wb-cell plain">
+        <div class="wb-cell-hdr">
+          <span class="wb-chip">Wattboard</span>
+          <span style="font-size:10px;color:var(--ink-s)">#7 WATT</span>
+        </div>
+        <div class="wb-cell-name">WATT Artist</div>
+        <div class="wb-cell-stats">
+          <span><strong>12</strong> sons</span>
+          <span><strong>2.4K</strong> écoutes</span>
+          <span><strong>48</strong> abonnés</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wb-side">
+      <h3>Avec ta couleur de marque</h3>
+      <div class="wb-cell branded">
+        <div class="wb-cell-hdr">
+          <span class="wb-chip">Wattboard</span>
+          <span style="font-size:10px;color:var(--ink-s)">#7 WATT</span>
+        </div>
+        <div class="wb-cell-name">WATT Artist</div>
+        <div class="wb-cell-stats">
+          <span><strong>12</strong> sons</span>
+          <span><strong>2.4K</strong> écoutes</span>
+          <span><strong>48</strong> abonnés</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ FLOW CRÉATION DE PROFIL ══════════════ -->
+<div class="flow-block">
+  <h2>📐 Flow proposé — choix de la couleur à la création du profil</h2>
+  <p style="font-size:12.5px;color:var(--ink-s);line-height:1.7;max-width:720px">
+    Tu as raison : le choix de couleur doit se faire <strong style="color:var(--brand)">à la création du profil</strong>, c'est une signature identitaire. Ensuite, depuis le wattboard, on peut toujours la changer (comme changer sa bio). Voici le parcours que je propose :
+  </p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-step-num">1</div>
+      <h3>Inscription</h3>
+      <p>Email + mot de passe, comme aujourd'hui.</p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">2</div>
+      <h3>Nom d'artiste & bio</h3>
+      <p>Les deux champs requis pour publier plus tard.</p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">3</div>
+      <h3 style="color:var(--brand)">Ta couleur signature</h3>
+      <p>6 presets + custom — appliquée partout (profil, cellule wattboard, cartes prompts, bannière).</p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">4</div>
+      <h3>Premier son</h3>
+      <p>Upload d'au moins un track → le profil devient publiable.</p>
+    </div>
+  </div>
+
+  <p style="font-size:12px;color:var(--ink-s);margin-top:22px;line-height:1.7;max-width:720px">
+    Ensuite, dans le wattboard onglet <em>Modifier</em>, tu retrouves la même palette → tu changes de couleur quand tu veux (par saison, par album, par humeur). Le champ <code style="background:rgba(255,255,255,.08);padding:2px 6px;border-radius:3px;color:var(--brand)">brand_color</code> est déjà dans ta base de données, il suffit de brancher l'UI.
+  </p>
+</div>
+
+<script>
+  // ─── Live color swap ───
+  const root = document.documentElement;
+  function setBrand(hex, rgb) {
+    root.style.setProperty('--brand', hex);
+    root.style.setProperty('--brand-rgb', rgb);
+  }
+  setBrand('#FFD700', '255,215,0');
+
+  document.querySelectorAll('.color-swatch').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+      setBrand(el.dataset.color, el.dataset.rgb);
+      document.getElementById('customColor').value = el.dataset.color;
+    });
+  });
+
+  document.getElementById('customColor').addEventListener('input', (e) => {
+    const hex = e.target.value;
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    setBrand(hex, `${r},${g},${b}`);
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  });
+
+  // ─── Toggle split / new only ───
+  document.querySelectorAll('.compare-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.compare-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const stage = document.getElementById('stage');
+      if (btn.dataset.view === 'new') {
+        stage.classList.remove('split');
+        document.querySelector('.panel.old').style.display = 'none';
+      } else {
+        stage.classList.add('split');
+        document.querySelector('.panel.old').style.display = '';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

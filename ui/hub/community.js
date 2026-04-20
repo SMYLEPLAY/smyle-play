@@ -26,18 +26,15 @@
 // ── 2. CHARGEMENT DYNAMIQUE DES PLAYLISTS ───────────────────────────────────
 
 async function fetchPlaylists() {
-  // Charge directement /tracks.json (catalogue statique avec URLs R2 intégrées)
-  // Plus fiable que /api/tracks sur Railway (pas de scan filesystem)
+  // Charge depuis FastAPI /watt/tracks-catalog (shape identique au tracks.json legacy).
   try {
-    const res = await fetch('/tracks.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    PLAYLISTS = await res.json();
+    PLAYLISTS = await apiFetch('/watt/tracks-catalog');
   } catch (err) {
-    // Fallback : essayer /api/tracks si tracks.json inaccessible
-    console.warn('[SMYLE] /tracks.json erreur, essai /api/tracks :', err.message);
+    // Fallback : tracks.json statique (dev hors API ou API down)
+    console.warn('[SMYLE] /watt/tracks-catalog erreur, fallback /tracks.json :', err.message);
     try {
-      const res2 = await fetch('/api/tracks');
-      if (res2.ok) PLAYLISTS = await res2.json();
+      const res = await fetch('/tracks.json');
+      if (res.ok) PLAYLISTS = await res.json();
     } catch (e2) {
       console.error('[SMYLE] Impossible de charger les playlists :', e2);
     }
@@ -129,8 +126,7 @@ async function _renderHubFromAPI() {
   let artists = [];
 
   try {
-    const res  = await fetch('/api/artists');
-    const json = await res.json();
+    const json = await apiFetch('/watt/artists');
     artists = json.artists || [];
   } catch (_) {
     // Fallback localStorage si l'API est indisponible
@@ -156,27 +152,60 @@ async function _renderHubFromAPI() {
   setVal('hub-nb-tracks',  totalTracks);
   setVal('hub-nb-plays',   _fmtHub(totalPlays));
 
-  // Top 3
+  // Bandes d'artistes — classement public (type "réseau + classement" du dashboard)
   const el = document.getElementById('hub-top3');
   if (!el) return;
 
   if (!artists.length) {
-    el.innerHTML = `<div class="hub-t3-empty">Aucun artiste pour l'instant · <a href="/watt" class="hub-t3-empty-link">Rejoindre WATT →</a></div>`;
+    // Philosophie unifiée : pas de signup séparé "WATT", on invite à créer
+    // un compte SMYLE PLAY qui inclut automatiquement l'espace artiste.
+    el.innerHTML = `<div class="hub-t3-empty">Aucun artiste pour l'instant · <a href="/?auth=signup" class="hub-t3-empty-link">Créer mon compte →</a></div>`;
     return;
   }
 
-  const src    = [...artists].sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, 3);
-  const medals = ['🥇', '🥈', '🥉'];
+  // On affiche jusqu'à 10 artistes, triés par plays décroissants
+  const src = [...artists].sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, 10);
 
   el.innerHTML = src.map((a, i) => {
-    const slug = a.slug || _slugify(a.artistName);
-    const url  = slug ? `/artiste/${slug}` : '/watt';
-    return `<div class="hub-t3-row" onclick="window.location.href='${url}'"
-                 role="button" tabindex="0"
-                 onkeydown="if(event.key==='Enter')window.location.href='${url}'">
-      <span class="hub-t3-medal">${medals[i]}</span>
-      <span class="hub-t3-name">${_esc(a.artistName)}</span>
-      <span class="hub-t3-plays">${_fmtHub(a.plays || 0)}&thinsp;▶</span>
-    </div>`;
+    const slug   = a.slug || _slugify(a.artistName);
+    const url    = slug ? `/u/${slug}` : '/watt';
+    // Chantier 1.2 — on privilégie `brandColor` (canonique) défini par
+    // l'artiste dans son wattboard. `avatarColor` reste le fallback legacy
+    // pour les comptes qui n'ont pas encore choisi de couleur explicite.
+    const brand  = a.brandColor || a.avatarColor || '#FFD700';
+    const name   = a.artistName || 'Artiste';
+    const genre  = (a.genre || '').trim();
+    const plays  = _fmtHub(a.plays || 0);
+    const tracks = a.trackCount || 0;
+    // Initiales pour l'avatar (2 premières lettres du nom d'artiste)
+    const initialsBase = String(name).replace(/[^a-z0-9]/gi, ' ').trim();
+    const parts = initialsBase.split(/\s+/);
+    const initials = (parts.length >= 2
+      ? (parts[0][0] + parts[1][0])
+      : initialsBase.slice(0, 2)).toUpperCase();
+    const rankCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'plain';
+
+    return `
+      <a class="hub-band hub-band-${rankCls}" href="${url}"
+         style="--band-brand:${brand}"
+         aria-label="Voir le profil de ${_esc(name)}">
+        <span class="hub-band-rank">${String(i + 1).padStart(2, '0')}</span>
+        <span class="hub-band-avatar" style="background:linear-gradient(135deg, ${brand}, rgba(10,4,26,.9))">
+          ${_esc(initials)}
+        </span>
+        <span class="hub-band-info">
+          <span class="hub-band-name">${_esc(name)}</span>
+          <span class="hub-band-meta">
+            ${genre ? `<span class="hub-band-genre">${_esc(genre)}</span>` : ''}
+            ${genre ? `<span class="hub-band-dot">·</span>` : ''}
+            <span class="hub-band-tracks">${tracks} son${tracks > 1 ? 's' : ''}</span>
+          </span>
+        </span>
+        <span class="hub-band-plays">
+          <span class="hub-band-plays-val">${plays}</span>
+          <span class="hub-band-plays-lbl">écoutes</span>
+        </span>
+        <span class="hub-band-arrow" aria-hidden="true">→</span>
+      </a>`;
   }).join('');
 }

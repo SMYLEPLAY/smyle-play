@@ -33,7 +33,7 @@ function submitPremiumInterest() {
   msg.textContent = '✓ Noté ! Tu seras averti(e) à l\'ouverture de l\'espace artiste.';
   // Ouvrir client mail pour notifier l'équipe
   if (user) {
-    const subject = encodeURIComponent('[SMYLE PLAY] Intérêt Premium Artiste');
+    const subject = encodeURIComponent('[WATT] Intérêt Premium Artiste');
     const body = encodeURIComponent(`Utilisateur intéressé : ${user.name} <${user.email}>`);
     setTimeout(() => { window.location.href = `mailto:smyletheplan@gmail.com?subject=${subject}&body=${body}`; }, 1200);
   }

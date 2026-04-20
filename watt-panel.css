@@ -146,6 +146,10 @@
   color: var(--w-artist);
   border-bottom-color: var(--w-artist);
 }
+/* WATTBOARD = 9 lettres → letter-spacing resserré pour rester compact dans le tiers de cellule */
+.watt-tab-btn[data-tab="artist"] {
+  letter-spacing: .08em;
+}
 
 /* ── Panel body ──────────────────────────────────────────────────────────── */
 .watt-panel-body {
@@ -369,6 +373,58 @@
   flex-direction: column;
   align-items: center;
   padding: 24px 0 20px;
+}
+/* Version cliquable : prise = bouton d'accès au wattboard (/dashboard) */
+.artist-plug-hero-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 16px;
+  transition: transform .2s ease, background .2s ease;
+  position: relative;
+}
+.artist-plug-hero-link:hover {
+  background: radial-gradient(ellipse at center top, rgba(255,215,0,.08), transparent 70%);
+  transform: translateY(-2px);
+}
+.artist-plug-hero-link:hover .artist-plug-icon {
+  filter: drop-shadow(0 0 22px rgba(255,215,0,.6));
+  transform: scale(1.06);
+}
+.artist-plug-hero-link:active .artist-plug-icon {
+  transform: scale(0.96);
+}
+.artist-plug-hero-link .artist-plug-icon {
+  transition: transform .2s ease, filter .2s ease;
+  animation: plugPulseLive 2s ease-in-out infinite;
+}
+.artist-plug-hero-link .artist-plug-sub {
+  color: #FFD700;
+  font-weight: 600;
+}
+/* Pulse "branché" — plus fort que plugPulse (prise active quand user connecté) */
+@keyframes plugPulseLive {
+  0%, 100% { filter: drop-shadow(0 0 14px rgba(255,215,0,.45)); }
+  50%      { filter: drop-shadow(0 0 26px rgba(255,215,0,.75)); }
+}
+
+/* Prise ÉTEINTE — état non connecté : prise grise, pas d'animation */
+.artist-plug-hero:not(.artist-plug-hero-link) .artist-plug-icon {
+  filter: drop-shadow(0 0 8px rgba(180,180,200,.12)) grayscale(60%);
+  opacity: 0.55;
+  animation: none;
+  transition: filter .3s ease, opacity .3s ease;
+}
+.artist-plug-hero:not(.artist-plug-hero-link):hover .artist-plug-icon {
+  filter: drop-shadow(0 0 14px rgba(255,215,0,.35)) grayscale(20%);
+  opacity: 0.85;
+}
+.artist-plug-hero:not(.artist-plug-hero-link) .artist-plug-title {
+  opacity: 0.75;
+}
+.artist-plug-hero:not(.artist-plug-hero-link) .artist-plug-sub {
+  color: rgba(255,215,0,0.6);
+  font-style: italic;
 }
 .artist-plug-icon {
   width: 80px;

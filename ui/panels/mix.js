@@ -28,6 +28,8 @@ function toggleMixPanel() {
     closePanel();
     panel.classList.add('open');
     document.getElementById('overlay').classList.add('show');
+    // Rafraîchir contenu (dont la section "Mes playlists sauvegardées")
+    renderMixPanel();
   }
 }
 
@@ -91,6 +93,83 @@ function renderMixPanel() {
         `;
       }).join('')
     : `<div class="mix-empty">Ajoute des morceaux<br>depuis n'importe quelle playlist</div>`;
+
+  // Rafraîchir aussi les playlists sauvegardées
+  renderSavedPlaylists();
+}
+
+// ── SAVED PLAYLISTS (localStorage) ──────────────────────────────────────────
+// Affichées sous le mix courant. Cliquer → charge dans MY MIX. Bouton ✕ → supprime.
+
+function renderSavedPlaylists() {
+  const wrap  = document.getElementById('mix-saved-wrap');
+  const listEl = document.getElementById('mix-saved-list');
+  const countEl = document.getElementById('mix-saved-count');
+  if (!wrap || !listEl) return;
+
+  const user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if (!user) {
+    // Non connecté → on cache la section (les playlists sont liées à un user)
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+
+  const saved = (typeof getUserPlaylists === 'function') ? getUserPlaylists() : [];
+  if (countEl) countEl.textContent = saved.length;
+
+  if (!saved.length) {
+    listEl.innerHTML = `<div class="mix-saved-empty">Aucune playlist sauvegardée pour le moment.</div>`;
+    return;
+  }
+
+  // Tri par date de mise à jour décroissante
+  const sorted = [...saved].sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+
+  listEl.innerHTML = sorted.map(p => {
+    const n = (p.tracks || []).length;
+    const safeName = _mixEsc(p.name || 'Sans nom');
+    return `
+      <div class="mix-saved-item" onclick="loadSavedPlaylist('${_mixEsc(p.id)}')" title="Charger dans MY MIX">
+        <div class="mix-saved-item-info">
+          <div class="mix-saved-item-name">${safeName}</div>
+          <div class="mix-saved-item-meta">${n} titre${n > 1 ? 's' : ''}</div>
+        </div>
+        <button class="mix-saved-del" onclick="deleteSavedPlaylist(event, '${_mixEsc(p.id)}')" title="Supprimer">✕</button>
+      </div>`;
+  }).join('');
+}
+
+function loadSavedPlaylist(id) {
+  const saved = (typeof getUserPlaylists === 'function') ? getUserPlaylists() : [];
+  const p = saved.find(x => x.id === id);
+  if (!p) { showToast('Playlist introuvable.'); return; }
+  if (!p.tracks || !p.tracks.length) { showToast('Cette playlist est vide.'); return; }
+
+  // Remplacement complet du mix courant
+  myMixTracks = p.tracks.map(t => ({ ...t }));
+  mixPlaying = false;
+  mixIdx = 0;
+  renderMixPanel();
+  showToast(`« ${p.name} » chargée dans MY MIX`);
+}
+
+function deleteSavedPlaylist(e, id) {
+  if (e) e.stopPropagation();
+  if (typeof deleteUserPlaylist !== 'function') return;
+  const ok = deleteUserPlaylist(id);
+  if (ok) {
+    showToast('Playlist supprimée.');
+    renderSavedPlaylists();
+  } else {
+    showToast('Impossible de supprimer cette playlist.');
+  }
+}
+
+function _mixEsc(s) {
+  return String(s || '').replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
 }
 
 function removeFromMix(e, idx) {

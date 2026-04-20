@@ -1479,6 +1479,48 @@
   flex-shrink: 0;
 }
 
+/* ── Chantier 1.2 — pastille couleur de marque ─────────────────────────────
+   Affichée entre le rang et le nom d'artiste dans le classement "reste".
+   C'est le premier signal visuel de l'identité colorée de l'artiste ; ça
+   permet de repérer rapidement ses sons dans le flux sans casser le design
+   doré existant. */
+.wpr-rest-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c, rgba(255, 215, 0, .5));
+  box-shadow: 0 0 8px var(--c, rgba(255, 215, 0, .3));
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── Chantier 1.2 — bordure brand sur les cartes podium ──────────────────── */
+.wpr-card.wpr-has-brand {
+  border-top: 2px solid var(--wpr-brand, rgba(255, 215, 0, .5));
+  box-shadow: 0 -1px 0 var(--wpr-brand, rgba(255, 215, 0, .3));
+}
+
+/* ── Tâche #13 — nom artiste teinté brandColor dans tout le classement ───
+   Chaque nom prend la couleur choisie à la création du profil (artiste.
+   brand_color côté DB, remontée par /watt/artists). Léger glow néon pour
+   rester dans la D.A WATT (enseigne lumineuse) sans écraser la lecture.
+   Fallback au doré existant quand l'artiste n'a pas personnalisé. */
+.wpr-card.wpr-has-brand .wpr-card-name {
+  color: var(--wpr-brand);
+  text-shadow:
+    0 0 8px  color-mix(in srgb, var(--wpr-brand) 55%, transparent),
+    0 0 22px color-mix(in srgb, var(--wpr-brand) 22%, transparent);
+}
+.wpr-rest-item.wpr-has-brand .wpr-rest-name {
+  color: var(--wpr-brand);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--wpr-brand) 32%, transparent);
+}
+.wpr-rest-item.wpr-has-brand:hover .wpr-rest-name {
+  text-shadow:
+    0 0 8px  color-mix(in srgb, var(--wpr-brand) 50%, transparent),
+    0 0 18px color-mix(in srgb, var(--wpr-brand) 22%, transparent);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    DERNIERS SONS — Grille de cartes avec avatar
    ══════════════════════════════════════════════════════════════════════════ */
@@ -1650,6 +1692,148 @@
   .wpr-card-rank  { font-size: 22px; }
   .wpr-card-medal { font-size: 14px; }
   .wpr-card-plays { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MARKETPLACE ADN — Cartes univers (Phase 3)
+   ══════════════════════════════════════════════════════════════════════════ */
+.watt-mkt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.watt-mkt-card {
+  --brand: #FFD700;
+  position: relative;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand) 6%, transparent), rgba(255,215,0,0.02));
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  border-radius: 14px;
+  padding: 18px 16px 16px;
+  cursor: pointer;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+.watt-mkt-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(120% 60% at 0% 0%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%);
+  opacity: .9;
+}
+.watt-mkt-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--brand) 50%, transparent);
+  box-shadow: 0 6px 24px -8px color-mix(in srgb, var(--brand) 35%, transparent);
+}
+.watt-mkt-card:active { transform: translateY(0); }
+
+.watt-mkt-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+.watt-mkt-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  color: #0c0018;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.4), 0 0 14px -2px var(--brand);
+}
+
+.watt-mkt-price {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--brand);
+  background: rgba(0,0,0,.35);
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
+  border-radius: 4px;
+  padding: 4px 9px;
+}
+.watt-mkt-price span {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .65;
+  margin-left: 2px;
+}
+
+.watt-mkt-name {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: .02em;
+  color: rgba(255, 245, 220, 0.95);
+  margin-top: 6px;
+  line-height: 1.2;
+}
+
+.watt-mkt-tag {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+  border-radius: 3px;
+  padding: 2px 7px;
+  align-self: flex-start;
+}
+
+.watt-mkt-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: rgba(255, 245, 220, 0.55);
+  letter-spacing: .04em;
+  margin-top: 4px;
+}
+.watt-mkt-stats strong {
+  color: rgba(255, 245, 220, 0.92);
+  font-weight: 800;
+  margin-right: 2px;
+}
+.watt-mkt-dot { opacity: .35; }
+
+.watt-mkt-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--brand) 55%, transparent);
+  margin-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+  padding-top: 10px;
+  transition: color .15s;
+}
+.watt-mkt-card:hover .watt-mkt-card-footer {
+  color: var(--brand);
+}
+
+@media (max-width: 640px) {
+  .watt-mkt-grid { grid-template-columns: 1fr; }
 }
 
 /* ── LOADING STATE ───────────────────────────────────────────────────────── */

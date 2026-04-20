@@ -1,9 +1,17 @@
 /* ─────────────────────────────────────────────────────────────────────────
    SMYLE PLAY — ui/panels/watt-panel.js
-   WATT Panel — DNA + CONNECT + ARTIST (hub central)
+   WATT Panel — WATTBOARD (espace artiste)
 
-   Remplace l'ancien Control Center (ui/panels/agent.js).
-   Lit le state partagé de ui/core/state.js : PLAYLISTS, loadTrack, openPlaylist.
+   Refonte : DNA + CONNECT ont été retirés de ce panneau. Leur logique de
+   scoring (analyse d'émotion → univers gagnant, matching de catégories
+   collaborateur) est maintenant exposée comme modules window.WattDNA et
+   window.WattConnect, consommés par la marketplace (ui/hub/marketplace.js)
+   pour enrichir les deux barres de recherche du hero de façon discrète.
+
+   Ce fichier ne rend plus qu'un seul contenu : l'espace artiste
+   (PLUG WATT / wattboard). Pas de canvas, pas d'animation — on garde
+   uniquement ce qui a une utilité business directe : un accès rapide
+   vers le dashboard artiste + stats + menu.
    ───────────────────────────────────────────────────────────────────────── */
 
 'use strict';
@@ -26,7 +34,7 @@ const WATT = {
 
 const WATT_UNIVERSES = ['sunset', 'jungle', 'night', 'hitmix'];
 
-// Émotions rapides mappées aux univers
+// Émotions rapides mappées aux univers — utilisé par WattDNA.analyze
 const EMOTION_MAP = {
   // Sunset Lover — chaleur, soleil, détente
   'Chill':     { universe: 'sunset', weight: .9 },
@@ -54,25 +62,169 @@ const EMOTION_MAP = {
   'Éclectique':{ universe: 'hitmix', weight: .8 },
 };
 
-// ══════════════════════════════════════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════════════════════════════════════
-
-const _watt = {
-  activeTab: 'dna',
-  dnaResult: null,
-  dnaCanvas: null,
-  dnaCtx: null,
-  connectCanvas: null,
-  connectCtx: null,
-  dnaNodes: [],
-  connectNodes: [],
-  dnaAnim: null,
-  connectAnim: null,
+// Mots-clés libres par univers — fallback pour les queries qui ne tapent
+// pas sur un nom d'émotion exact. Réutilisé par la marketplace pour
+// re-ranker les sons.
+const UNIVERSE_KEYWORDS = {
+  sunset:  ['soleil','chaleur','plage','chill','relax','été','warm','sun','beach','groove','deep','house','disco','cocktail','doux','calm','soir','nu-disco','lover'],
+  jungle:  ['jungle','tropical','afro','beat','afrobeat','énergie','danse','dance','festival','tribal','reggae','reggaeton','island','carib','latin','rumba','salsa','bongo','dancehall'],
+  night:   ['nuit','night','jazz','soul','lofi','lo-fi','mélancolie','pluie','rain','city','urban','piano','froid','dark','blue','introspect','smoke','rhodes','ambient','neo-soul'],
+  hitmix:  ['mix','hit','best','eclectique','surprise','boom','party','fire','top','electro','drop','bass','trap','hype','energy','explos','future','pop','crossover'],
 };
 
+// Catégories CONNECT — utilisées par WattConnect.match pour tagger la
+// recherche profils en fonction du métier / rôle cherché.
+const CONNECT_CATEGORIES = [
+  { key: 'beatmakers', label: 'Beatmakers',     keywords: ['beatmaker','beat','prod','producer','producteur','beatmaking'] },
+  { key: 'voix',       label: 'Voix',           keywords: ['voix','chanteur','chanteuse','vocal','singer','voice','rap','rappeur','rappeuse'] },
+  { key: 'musiciens',  label: 'Musiciens',      keywords: ['musicien','guitariste','bassiste','pianiste','batteur','drums','guitar','bass','piano','instrument'] },
+  { key: 'videastes',  label: 'Vidéastes',      keywords: ['vidéaste','videaste','vidéo','video','clip','réalisateur','realisateur','director'] },
+  { key: 'visuels',    label: 'Visuels',        keywords: ['visuel','visual','graphiste','designer','artwork','cover','illustrateur','illustrator','photo','photographe'] },
+  { key: 'ingsons',    label: 'Ingénieurs son', keywords: ['ingénieur','ingenieur','mix','mixage','mastering','sound engineer','sonorisation'] },
+  { key: 'topliners',  label: 'Topliners',      keywords: ['topliner','topline','hook','songwriter','songwriting','songwritter'] },
+  { key: 'composit',   label: 'Compositeurs',   keywords: ['composit','arrangeur','arrangement','score','orchestra','classique'] },
+];
+
 // ══════════════════════════════════════════════════════════════════════════
-//  OPEN / CLOSE / TOGGLE
+//  MODULE : WattDNA — Analyseur d'univers exposé pour la marketplace
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Analyse une query libre et retourne l'univers gagnant (ou null si la
+ * query est trop vague pour déclencher un match fort).
+ * @param {string} query
+ * @returns {{
+ *   winner: string|null,
+ *   confidence: number,   // 0..1
+ *   pcts: Record<string, number>,
+ *   label: string|null,
+ *   color: string|null,
+ *   playlistKey: string|null,
+ *   keywords: string[]    // mots de l'univers gagnant, utiles pour re-ranker
+ * }}
+ */
+function dnaAnalyze(query) {
+  const empty = { winner: null, confidence: 0, pcts: {}, label: null, color: null, playlistKey: null, keywords: [] };
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return empty;
+
+  const scores = { sunset: 0, jungle: 0, night: 0, hitmix: 0 };
+  const words = q.split(/[\s,;.!?]+/).filter(Boolean);
+
+  // Helper : match strict = soit égalité, soit un des deux contient l'autre
+  // MAIS seulement si le token contenu fait au moins 4 caractères. Ça évite
+  // les collisions genre "rap" ⊂ "g-rap-histe" qui sortaient CONNECT=Voix
+  // sur une query "graphiste".
+  const strictMatch = (word, token) => {
+    if (!word || !token) return false;
+    if (word === token) return true;
+    if (token.length >= 4 && word.includes(token)) return true;
+    if (word.length >= 4 && token.includes(word)) return true;
+    return false;
+  };
+
+  // 1) Match strict sur l'emotion map (mots précis, poids fort)
+  for (const [emotion, data] of Object.entries(EMOTION_MAP)) {
+    const emo = emotion.toLowerCase();
+    for (const word of words) {
+      if (strictMatch(word, emo)) scores[data.universe] += data.weight;
+    }
+  }
+
+  // 2) Match libre sur les keywords par univers (poids modéré)
+  for (const [u, keywords] of Object.entries(UNIVERSE_KEYWORDS)) {
+    for (const word of words) {
+      for (const k of keywords) {
+        if (strictMatch(word, k)) scores[u] += 0.5;
+      }
+    }
+  }
+
+  const total = Object.values(scores).reduce((a, b) => a + b, 0);
+  // Seuil : en dessous, on ne prétend pas avoir détecté un univers —
+  // on laisse la recherche textuelle classique opérer sans pill coloré.
+  if (total < 0.5) return empty;
+
+  let winner = 'sunset';
+  let max = 0;
+  const pcts = {};
+  for (const u of WATT_UNIVERSES) {
+    pcts[u] = Math.round((scores[u] / total) * 100);
+    if (scores[u] > max) { max = scores[u]; winner = u; }
+  }
+
+  const col = WATT.colors[winner];
+  // Confidence = écart du gagnant au total, borné 0..1
+  const confidence = Math.min(1, max / Math.max(total, 1));
+
+  return {
+    winner,
+    confidence,
+    pcts,
+    label: col.label,
+    color: col.hex,
+    playlistKey: col.key,
+    keywords: UNIVERSE_KEYWORDS[winner] || [],
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  MODULE : WattConnect — Matcher de catégories collaborateur
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Détecte si une query CONNECT cible une catégorie de collaborateur
+ * (beatmaker, voix, visuel, etc.).
+ * @param {string} query
+ * @returns {{ key: string, label: string, keywords: string[] }|null}
+ */
+function connectMatch(query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return null;
+  const words = q.split(/[\s,;.!?]+/).filter(Boolean);
+
+  // Même logique stricte que dnaAnalyze pour éviter les collisions de
+  // substrings trop courts (ex: "rap" dans "graphiste").
+  const strictMatch = (word, token) => {
+    if (!word || !token) return false;
+    if (word === token) return true;
+    if (token.length >= 4 && word.includes(token)) return true;
+    if (word.length >= 4 && token.includes(word)) return true;
+    return false;
+  };
+
+  let best = null;
+  let bestScore = 0;
+  for (const cat of CONNECT_CATEGORIES) {
+    let s = 0;
+    for (const word of words) {
+      for (const k of cat.keywords) {
+        if (strictMatch(word, k)) s += 1;
+      }
+    }
+    if (s > bestScore) { bestScore = s; best = cat; }
+  }
+  return bestScore > 0 ? best : null;
+}
+
+// Exposition globale — la marketplace lira ces modules.
+if (typeof window !== 'undefined') {
+  window.WattDNA = {
+    analyze:    dnaAnalyze,
+    UNIVERSES:  WATT_UNIVERSES,
+    COLORS:     WATT.colors,
+    EMOTIONS:   EMOTION_MAP,
+    KEYWORDS:   UNIVERSE_KEYWORDS,
+  };
+  window.WattConnect = {
+    match:      connectMatch,
+    CATEGORIES: CONNECT_CATEGORIES,
+    COLOR:      WATT.connect,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  OPEN / CLOSE / TOGGLE — panneau WATTBOARD seul
 // ══════════════════════════════════════════════════════════════════════════
 
 function openWattPanel() {
@@ -87,18 +239,15 @@ function openWattPanel() {
   panel.classList.add('open');
   document.getElementById('overlay').classList.add('show');
 
-  // Init the active tab
-  _wattRenderTab(_watt.activeTab);
+  // Un seul contenu possible désormais : l'espace artiste.
+  const body = document.getElementById('watt-body');
+  if (body) _renderArtistTab(body);
 }
 
 function closeWattPanel() {
   const panel = document.getElementById('wattPanel');
   if (!panel) return;
   panel.classList.remove('open');
-
-  // Stop animations
-  if (_watt.dnaAnim) { cancelAnimationFrame(_watt.dnaAnim); _watt.dnaAnim = null; }
-  if (_watt.connectAnim) { cancelAnimationFrame(_watt.connectAnim); _watt.connectAnim = null; }
 
   const trackOpen = document.getElementById('trackPanel')?.classList.contains('open');
   const mixOpen = document.getElementById('mixPanel')?.classList.contains('open');
@@ -113,604 +262,15 @@ function toggleWattPanel() {
   panel.classList.contains('open') ? closeWattPanel() : openWattPanel();
 }
 
-// ══════════════════════════════════════════════════════════════════════════
-//  TAB SWITCHING
-// ══════════════════════════════════════════════════════════════════════════
-
-function wattTab(tabKey) {
-  _watt.activeTab = tabKey;
-  document.querySelectorAll('.watt-tab-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.tab === tabKey);
-  });
-  _wattRenderTab(tabKey);
-}
-
-function _wattRenderTab(tabKey) {
+// Compat : anciens appels wattTab(...) éventuellement encore présents.
+// On n'expose plus de tabs, mais on évite le runtime error.
+function wattTab(_tabKey) {
   const body = document.getElementById('watt-body');
-  if (!body) return;
-
-  // Stop all animations when switching tabs
-  if (_watt.dnaAnim) { cancelAnimationFrame(_watt.dnaAnim); _watt.dnaAnim = null; }
-  if (_watt.connectAnim) { cancelAnimationFrame(_watt.connectAnim); _watt.connectAnim = null; }
-
-  if (tabKey === 'dna') {
-    _renderDNATab(body);
-  } else if (tabKey === 'connect') {
-    _renderConnectTab(body);
-  } else if (tabKey === 'artist') {
-    _renderArtistTab(body);
-  }
+  if (body) _renderArtistTab(body);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-//  DNA TAB — Recommandation musicale
-// ══════════════════════════════════════════════════════════════════════════
-
-function _renderDNATab(container) {
-  const emotionChips = Object.keys(EMOTION_MAP).map(e =>
-    `<button class="dna-emotion-chip" onclick="_dnaQuickEmotion('${e}')">${e}</button>`
-  ).join('');
-
-  let resultHTML = '';
-  if (_watt.dnaResult) {
-    resultHTML = _buildDNAResultHTML(_watt.dnaResult);
-  }
-
-  container.innerHTML = `
-    <div class="dna-canvas-wrap">
-      <canvas id="dna-mini-canvas"></canvas>
-      <div class="dna-dice-wrap">
-        <button class="dna-dice-btn" onclick="_dnaRollDice()" title="Recommandation aléatoire">
-          <svg id="dna-dice-svg" viewBox="0 0 100 100"></svg>
-        </button>
-      </div>
-    </div>
-    <div class="dna-form">
-      <input class="dna-input" id="dna-emotion-input" type="text"
-             placeholder="Décris ton mood… (ex: nuit calme, énergie tropicale)"
-             onkeydown="if(event.key==='Enter'){_dnaAnalyze();}" />
-      <button class="dna-submit" onclick="_dnaAnalyze()">Analyser</button>
-    </div>
-    <div class="dna-quick-emotions">${emotionChips}</div>
-    <div id="dna-result-zone">${resultHTML}</div>
-  `;
-
-  // Init canvas
-  requestAnimationFrame(() => {
-    _initDNACanvas();
-    _drawDice();
-  });
-}
-
-// ── DNA Canvas (particules des 4 univers) ─────────────────────────────────
-
-function _initDNACanvas() {
-  const c = document.getElementById('dna-mini-canvas');
-  if (!c) return;
-  const ctx = c.getContext('2d');
-  const rect = c.parentElement.getBoundingClientRect();
-  c.width = rect.width * 2;
-  c.height = rect.height * 2;
-  ctx.scale(2, 2);
-  _watt.dnaCanvas = c;
-  _watt.dnaCtx = ctx;
-
-  const w = rect.width, h = rect.height;
-
-  // Create nodes for each universe
-  _watt.dnaNodes = [];
-  WATT_UNIVERSES.forEach((u, ui) => {
-    const col = WATT.colors[u];
-    const cx = (ui + 0.5) * (w / 4);
-    for (let i = 0; i < 8; i++) {
-      _watt.dnaNodes.push({
-        x: cx + (Math.random() - 0.5) * (w / 5),
-        y: h * 0.2 + Math.random() * h * 0.6,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        r: 2 + Math.random() * 3,
-        universe: u,
-        color: col.hex,
-        rgb: col.rgb,
-      });
-    }
-  });
-
-  _animDNA(w, h);
-}
-
-function _animDNA(w, h) {
-  const ctx = _watt.dnaCtx;
-  if (!ctx) return;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Update + draw connections
-  const nodes = _watt.dnaNodes;
-  for (let i = 0; i < nodes.length; i++) {
-    const n = nodes[i];
-    n.x += n.vx;
-    n.y += n.vy;
-    if (n.x < 0 || n.x > w) n.vx *= -1;
-    if (n.y < 0 || n.y > h) n.vy *= -1;
-    n.x = Math.max(0, Math.min(w, n.x));
-    n.y = Math.max(0, Math.min(h, n.y));
-
-    // Connections to nearby same-universe nodes
-    for (let j = i + 1; j < nodes.length; j++) {
-      const m = nodes[j];
-      const dx = n.x - m.x, dy = n.y - m.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = n.universe === m.universe ? 100 : 60;
-      if (dist < maxDist) {
-        const alpha = n.universe === m.universe
-          ? 0.15 + (1 - dist / maxDist) * 0.35
-          : 0.04 + (1 - dist / maxDist) * 0.08;
-        const lw = n.universe === m.universe
-          ? 0.6 + (1 - dist / maxDist) * 1.5
-          : 0.3;
-
-        // Bezier curve
-        const mx = (n.x + m.x) / 2 + (Math.random() - 0.5) * 8;
-        const my = (n.y + m.y) / 2 + (Math.random() - 0.5) * 8;
-
-        ctx.beginPath();
-        ctx.moveTo(n.x, n.y);
-        ctx.quadraticCurveTo(mx, my, m.x, m.y);
-        ctx.strokeStyle = `rgba(${n.rgb},${alpha})`;
-        ctx.lineWidth = lw;
-        ctx.stroke();
-      }
-    }
-  }
-
-  // Draw nodes
-  for (const n of nodes) {
-    ctx.beginPath();
-    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-    ctx.fillStyle = n.color;
-    ctx.globalAlpha = 0.7;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // Glow
-    ctx.beginPath();
-    ctx.arc(n.x, n.y, n.r + 4, 0, Math.PI * 2);
-    const grd = ctx.createRadialGradient(n.x, n.y, n.r, n.x, n.y, n.r + 6);
-    grd.addColorStop(0, `rgba(${n.rgb},.2)`);
-    grd.addColorStop(1, 'transparent');
-    ctx.fillStyle = grd;
-    ctx.fill();
-  }
-
-  _watt.dnaAnim = requestAnimationFrame(() => _animDNA(w, h));
-}
-
-// ── Dice (3D isometric, playlist colors) ──────────────────────────────────
-
-function _drawDice() {
-  const svg = document.getElementById('dna-dice-svg');
-  if (!svg) return;
-
-  const c = WATT.colors;
-  svg.innerHTML = `
-    <!-- Top face — Sunset orange -->
-    <polygon points="50,15 85,35 50,55 15,35" fill="${c.sunset.hex}" opacity="0.85"/>
-    <polygon points="50,15 85,35 50,55 15,35" fill="url(#diceTopGrad)" opacity="0.3"/>
-    <!-- Left face — Night blue -->
-    <polygon points="15,35 50,55 50,90 15,70" fill="${c.night.hex}" opacity="0.7"/>
-    <!-- Right face — Jungle green -->
-    <polygon points="85,35 50,55 50,90 85,70" fill="${c.jungle.hex}" opacity="0.6"/>
-    <!-- "D" letter — HitMix violet with glow -->
-    <defs>
-      <linearGradient id="diceTopGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#fff" stop-opacity="0.3"/>
-        <stop offset="1" stop-color="#000" stop-opacity="0.1"/>
-      </linearGradient>
-      <filter id="diceGlow">
-        <feGaussianBlur stdDeviation="2" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <text x="50" y="59" text-anchor="middle" dominant-baseline="central"
-          font-family="'Helvetica Neue',Helvetica,Arial,sans-serif"
-          font-size="20" font-weight="900" letter-spacing="1"
-          fill="${c.hitmix.hex}" filter="url(#diceGlow)">D</text>
-    <!-- Edge highlights -->
-    <line x1="50" y1="15" x2="85" y2="35" stroke="rgba(255,255,255,.15)" stroke-width="0.5"/>
-    <line x1="50" y1="15" x2="15" y2="35" stroke="rgba(255,255,255,.12)" stroke-width="0.5"/>
-    <line x1="15" y1="35" x2="15" y2="70" stroke="rgba(255,255,255,.06)" stroke-width="0.5"/>
-    <line x1="85" y1="35" x2="85" y2="70" stroke="rgba(255,255,255,.06)" stroke-width="0.5"/>
-  `;
-}
-
-// ── DNA Analysis ──────────────────────────────────────────────────────────
-
-function _dnaQuickEmotion(emotion) {
-  const input = document.getElementById('dna-emotion-input');
-  if (input) input.value = emotion;
-  _dnaAnalyze();
-}
-
-function _dnaRollDice() {
-  // Random universe pick with animation
-  const btn = document.querySelector('.dna-dice-btn');
-  if (btn) {
-    btn.style.transform = 'scale(.85) rotate(360deg)';
-    setTimeout(() => { btn.style.transform = ''; }, 400);
-  }
-
-  // Pick random emotion
-  const emotions = Object.keys(EMOTION_MAP);
-  const pick = emotions[Math.floor(Math.random() * emotions.length)];
-  const input = document.getElementById('dna-emotion-input');
-  if (input) input.value = pick;
-  setTimeout(() => _dnaAnalyze(), 300);
-}
-
-function _dnaAnalyze() {
-  const input = document.getElementById('dna-emotion-input');
-  const query = (input?.value || '').trim();
-  if (!query) return;
-
-  // Score each universe
-  const scores = { sunset: 0, jungle: 0, night: 0, hitmix: 0 };
-  const words = query.toLowerCase().split(/[\s,;.!?]+/);
-
-  // Match against emotion map
-  for (const [emotion, data] of Object.entries(EMOTION_MAP)) {
-    for (const word of words) {
-      if (emotion.toLowerCase().includes(word) || word.includes(emotion.toLowerCase())) {
-        scores[data.universe] += data.weight;
-      }
-    }
-  }
-
-  // Keyword matching fallback
-  const kw = {
-    sunset:  ['soleil','chaleur','plage','chill','relax','été','warm','sun','beach','groove','deep','house','disco','cocktail','doux','calm','soir'],
-    jungle:  ['jungle','tropical','afro','beat','énergie','danse','dance','festival','tribal','reggae','island','carib','latin','rumba','salsa','bongo'],
-    night:   ['nuit','night','jazz','soul','lofi','lo-fi','mélancolie','pluie','rain','city','urban','piano','froid','dark','blue','introspect','calm','smoke'],
-    hitmix:  ['mix','hit','best','eclectique','surprise','boom','party','fire','top','electro','drop','bass','trap','hype','energy','explos'],
-  };
-
-  for (const [u, keywords] of Object.entries(kw)) {
-    for (const word of words) {
-      for (const k of keywords) {
-        if (word.includes(k) || k.includes(word)) {
-          scores[u] += 0.5;
-        }
-      }
-    }
-  }
-
-  // If no match, add small random scores
-  const total = Object.values(scores).reduce((a, b) => a + b, 0);
-  if (total < 0.1) {
-    WATT_UNIVERSES.forEach(u => { scores[u] = 0.2 + Math.random() * 0.6; });
-  }
-
-  // Normalize to percentages
-  const sum = Object.values(scores).reduce((a, b) => a + b, 0);
-  const pcts = {};
-  let winner = 'sunset';
-  let maxScore = 0;
-  for (const u of WATT_UNIVERSES) {
-    pcts[u] = Math.round((scores[u] / sum) * 100);
-    if (scores[u] > maxScore) { maxScore = scores[u]; winner = u; }
-  }
-
-  // Get tracks from real playlists
-  const playlistKey = WATT.colors[winner].key;
-  const pl = PLAYLISTS[playlistKey];
-  let tracks = [];
-  if (pl && pl.tracks) {
-    // Pick 5 random tracks
-    const shuffled = [...pl.tracks].sort(() => Math.random() - 0.5);
-    tracks = shuffled.slice(0, 5);
-  }
-
-  // Build result
-  _watt.dnaResult = {
-    query,
-    winner,
-    pcts,
-    tracks,
-    playlistKey,
-    mood: _getMoodDescription(winner, query),
-    sunoPrompt: _buildSunoPrompt(winner, query),
-  };
-
-  // Render
-  const zone = document.getElementById('dna-result-zone');
-  if (zone) {
-    zone.innerHTML = _buildDNAResultHTML(_watt.dnaResult);
-  }
-
-  // Highlight winning nodes on canvas
-  _watt.dnaNodes.forEach(n => {
-    if (n.universe === winner) {
-      n.r = 4 + Math.random() * 3;
-    } else {
-      n.r = 2 + Math.random() * 2;
-    }
-  });
-}
-
-function _getMoodDescription(universe, query) {
-  const moods = {
-    sunset:  `"${query}" évoque un coucher de soleil, des vibrations deep house et nu-disco. Laisse-toi porter par les ondes dorées.`,
-    jungle:  `"${query}" résonne avec les rythmes tropicaux et l'énergie afrobeat. La jungle t'appelle.`,
-    night:   `"${query}" te guide vers les ruelles nocturnes, entre jazz et soul. La ville respire à ton rythme.`,
-    hitmix:  `"${query}" est un concentré d'éclectisme. Le meilleur du lab, sans frontières.`,
-  };
-  return moods[universe] || moods.hitmix;
-}
-
-function _buildSunoPrompt(universe, query) {
-  const prompts = {
-    sunset:  `Deep house mélodique, nu-disco, groove ensoleillé. Ambiance ${query}. Synthés chauds, basse ronde, hi-hats délicats, pad atmosphérique. Tempo 118-124 BPM. Feeling Sunset Lover.`,
-    jungle:  `Afrobeat tropical, dancehall, reggaeton fusion. Énergie ${query}. Percussions organiques, steel drums, basse rebondissante, chœurs lointains. Tempo 95-110 BPM. Feeling Jungle Osmose.`,
-    night:   `Lo-fi jazz, neo-soul, ambient nocturne. Atmosphère ${query}. Piano Rhodes, contrebasse feutrée, vinyle crackle, pads brumeux. Tempo 70-85 BPM. Feeling Night City.`,
-    hitmix:  `Electro-pop, future bass, crossover. Mood ${query}. Drops percutants, synthés brillants, bass design, build-ups cinématiques. Tempo 125-140 BPM. Feeling Hit Mix.`,
-  };
-  return prompts[universe] || prompts.hitmix;
-}
-
-function _buildDNAResultHTML(result) {
-  if (!result) return '';
-
-  const col = WATT.colors[result.winner];
-
-  // Score bars
-  let scoreBars = '';
-  for (const u of WATT_UNIVERSES) {
-    const c = WATT.colors[u];
-    const isWinner = u === result.winner;
-    scoreBars += `
-      <div class="dna-score-row ${isWinner ? 'winner' : ''}">
-        <span class="dna-score-label" style="color:${isWinner ? c.hex : ''}">${c.label}</span>
-        <div class="dna-score-bar-wrap">
-          <div class="dna-score-bar ${u}" style="width:${result.pcts[u]}%"></div>
-        </div>
-        <span class="dna-score-pct">${result.pcts[u]}%</span>
-      </div>`;
-  }
-
-  // Track list
-  let trackItems = '';
-  if (result.tracks && result.tracks.length) {
-    trackItems = result.tracks.map((t, i) => {
-      const dur = t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.floor(t.duration % 60)).padStart(2, '0')}` : '';
-      return `
-        <div class="dna-track-row" onclick="_dnaPlayTrack('${result.playlistKey}', ${i})">
-          <div class="dna-track-play-icon ${result.winner}">▶</div>
-          <div class="dna-track-info">
-            <div class="dna-track-name">${_esc(t.name || t.file)}</div>
-            <div class="dna-track-meta">${col.label}</div>
-          </div>
-          <span class="dna-track-dur">${dur}</span>
-        </div>`;
-    }).join('');
-  }
-
-  return `
-    <div class="dna-result">
-      <div class="dna-result-badge ${result.winner}">${col.label}</div>
-      <div class="dna-result-mood">${result.mood}</div>
-      <div class="dna-scores">${scoreBars}</div>
-    </div>
-    ${trackItems ? `
-      <div class="dna-tracks-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="${col.hex}" stroke-width="1.8" width="12" height="12">
-          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-        </svg>
-        Écouter maintenant
-      </div>
-      <div class="dna-track-list">${trackItems}</div>
-    ` : ''}
-    <div class="dna-suno-box">
-      <div class="dna-suno-label">Prompt Suno généré</div>
-      <div class="dna-suno-prompt">${_esc(result.sunoPrompt)}</div>
-      <button class="dna-suno-copy" onclick="_dnaCopyPrompt()">Copier</button>
-    </div>
-  `;
-}
-
-function _dnaPlayTrack(playlistKey, idx) {
-  // Find the track in the real PLAYLISTS data and play it
-  const pl = PLAYLISTS[playlistKey];
-  if (!pl || !pl.tracks) return;
-
-  // The idx here is relative to the shuffled subset — find real index
-  const result = _watt.dnaResult;
-  if (!result || !result.tracks[idx]) return;
-
-  const track = result.tracks[idx];
-  // Find real index in playlist
-  const realIdx = pl.tracks.findIndex(t => t.id === track.id || t.file === track.file);
-  if (realIdx >= 0) {
-    loadTrack(playlistKey, realIdx);
-    showPlayerUI();
-  }
-}
-
-function _dnaCopyPrompt() {
-  if (!_watt.dnaResult) return;
-  navigator.clipboard.writeText(_watt.dnaResult.sunoPrompt).then(() => {
-    const btn = document.querySelector('.dna-suno-copy');
-    if (btn) { btn.textContent = 'Copié ✓'; setTimeout(() => { btn.textContent = 'Copier'; }, 2000); }
-  }).catch(() => {});
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-//  CONNECT TAB — Réseau créatif rouge néon
-// ══════════════════════════════════════════════════════════════════════════
-
-function _renderConnectTab(container) {
-  const categories = ['Beatmakers', 'Voix', 'Musiciens', 'Vidéastes', 'Visuels', 'Ingénieurs son', 'Topliners', 'Compositeurs'];
-  const catChips = categories.map(c =>
-    `<span class="connect-cat-chip">${c}</span>`
-  ).join('');
-
-  container.innerHTML = `
-    <div class="connect-canvas-wrap">
-      <canvas id="connect-mini-canvas"></canvas>
-    </div>
-    <div class="connect-stats">
-      <div class="connect-stat-card">
-        <div class="connect-stat-val" id="connect-artists">0</div>
-        <div class="connect-stat-lbl">Artistes</div>
-      </div>
-      <div class="connect-stat-card">
-        <div class="connect-stat-val" id="connect-collabs">0</div>
-        <div class="connect-stat-lbl">Collabs</div>
-      </div>
-      <div class="connect-stat-card">
-        <div class="connect-stat-val" id="connect-online">0</div>
-        <div class="connect-stat-lbl">En ligne</div>
-      </div>
-    </div>
-    <div class="connect-empty">
-      <div class="connect-empty-title">La toile attend ses créateurs</div>
-      <div class="connect-empty-sub">
-        CONNECT est le réseau collaboratif de SMYLE PLAY.<br>
-        Rejoins WATT pour te connecter avec d'autres artistes.
-      </div>
-      <div class="connect-categories">${catChips}</div>
-      <div class="connect-cta">
-        <a href="/watt" class="connect-cta-btn">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Rejoindre WATT
-        </a>
-        <span class="connect-cta-note">Bêta gratuite · Accès libre</span>
-      </div>
-    </div>
-  `;
-
-  // Fetch community stats
-  _fetchConnectStats();
-
-  // Init canvas
-  requestAnimationFrame(() => _initConnectCanvas());
-}
-
-function _fetchConnectStats() {
-  fetch('/api/watt/stats').then(r => r.json()).then(d => {
-    const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    el('connect-artists', d.artists || 0);
-    el('connect-collabs', d.collabs || 0);
-    el('connect-online', d.online || 0);
-  }).catch(() => {});
-}
-
-// ── Connect Canvas (réseau rouge néon) ────────────────────────────────────
-
-function _initConnectCanvas() {
-  const c = document.getElementById('connect-mini-canvas');
-  if (!c) return;
-  const ctx = c.getContext('2d');
-  const rect = c.parentElement.getBoundingClientRect();
-  c.width = rect.width * 2;
-  c.height = rect.height * 2;
-  ctx.scale(2, 2);
-  _watt.connectCanvas = c;
-  _watt.connectCtx = ctx;
-
-  const w = rect.width, h = rect.height;
-
-  // Ghost nodes (empty state)
-  _watt.connectNodes = [];
-  for (let i = 0; i < 20; i++) {
-    _watt.connectNodes.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      r: 2 + Math.random() * 3,
-      pulse: Math.random() * Math.PI * 2,
-    });
-  }
-
-  _animConnect(w, h);
-}
-
-function _animConnect(w, h) {
-  const ctx = _watt.connectCtx;
-  if (!ctx) return;
-
-  const rgb = WATT.connect.rgb;
-  ctx.clearRect(0, 0, w, h);
-
-  const nodes = _watt.connectNodes;
-  const t = Date.now() * 0.001;
-
-  // Update and draw connections
-  for (let i = 0; i < nodes.length; i++) {
-    const n = nodes[i];
-    n.x += n.vx;
-    n.y += n.vy;
-    if (n.x < 0 || n.x > w) n.vx *= -1;
-    if (n.y < 0 || n.y > h) n.vy *= -1;
-    n.x = Math.max(0, Math.min(w, n.x));
-    n.y = Math.max(0, Math.min(h, n.y));
-
-    for (let j = i + 1; j < nodes.length; j++) {
-      const m = nodes[j];
-      const dx = n.x - m.x, dy = n.y - m.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 80) {
-        const alpha = 0.08 + (1 - dist / 80) * 0.2;
-        const mx = (n.x + m.x) / 2 + Math.sin(t + i) * 5;
-        const my = (n.y + m.y) / 2 + Math.cos(t + j) * 5;
-        ctx.beginPath();
-        ctx.moveTo(n.x, n.y);
-        ctx.quadraticCurveTo(mx, my, m.x, m.y);
-        ctx.strokeStyle = `rgba(${rgb},${alpha})`;
-        ctx.lineWidth = 0.6 + (1 - dist / 80) * 1;
-        ctx.stroke();
-      }
-    }
-  }
-
-  // Draw nodes
-  for (const n of nodes) {
-    const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + n.pulse);
-    ctx.beginPath();
-    ctx.arc(n.x, n.y, n.r * (0.8 + pulse * 0.4), 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${rgb},${0.3 + pulse * 0.3})`;
-    ctx.fill();
-
-    // Glow
-    ctx.beginPath();
-    ctx.arc(n.x, n.y, n.r + 5, 0, Math.PI * 2);
-    const grd = ctx.createRadialGradient(n.x, n.y, n.r, n.x, n.y, n.r + 6);
-    grd.addColorStop(0, `rgba(${rgb},${0.1 + pulse * 0.1})`);
-    grd.addColorStop(1, 'transparent');
-    ctx.fillStyle = grd;
-    ctx.fill();
-  }
-
-  // Center pulse (the "heart" of the network)
-  const cx = w / 2, cy = h / 2;
-  const pr = 6 + Math.sin(t * 2) * 3;
-  ctx.beginPath();
-  ctx.arc(cx, cy, pr, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(${rgb},${0.4 + Math.sin(t * 2) * 0.2})`;
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx, cy, pr + 12, 0, Math.PI * 2);
-  const grd = ctx.createRadialGradient(cx, cy, pr, cx, cy, pr + 15);
-  grd.addColorStop(0, `rgba(${rgb},.15)`);
-  grd.addColorStop(1, 'transparent');
-  ctx.fillStyle = grd;
-  ctx.fill();
-
-  _watt.connectAnim = requestAnimationFrame(() => _animConnect(w, h));
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-//  ARTIST TAB — Espace artiste · PLUG WATT
+//  ARTIST / WATTBOARD — seul contenu du panneau
 // ══════════════════════════════════════════════════════════════════════════
 
 // SVG inline : prise électrique néon
@@ -807,13 +367,13 @@ function _renderArtistTab(container) {
   `).join('');
 
   if (isLoggedIn) {
-    // Connected state
+    // Connected state — la prise DEVIENT le bouton principal vers le wattboard
     container.innerHTML = `
-      <div class="artist-plug-hero">
+      <a class="artist-plug-hero artist-plug-hero-link" href="/dashboard" title="Ouvrir le wattboard — poster, analytique, profil">
         ${_PLUG_SVG}
         <div class="artist-plug-title">PLUG WATT</div>
-        <div class="artist-plug-sub">Espace Artiste</div>
-      </div>
+        <div class="artist-plug-sub">Ouvrir le wattboard →</div>
+      </a>
       ${statsHTML}
       <div class="artist-menu">${menuHTML}</div>
     `;
@@ -845,14 +405,14 @@ function _renderArtistTab(container) {
       <div class="artist-gate">
         <div class="artist-gate-title">Branche-toi sur WATT</div>
         <div class="artist-gate-desc">
-          Publie ta musique, crée ton profil artiste<br>
-          et rejoins le réseau mondial WATT.
+          Ton espace artiste est inclus dans ton compte WATT —<br>
+          publie ta musique et rejoins le réseau mondial WATT.
         </div>
         <div class="artist-gate-features">${featHTML}</div>
         <div class="artist-cta">
-          <a href="/watt" class="artist-cta-btn">
+          <a href="/?auth=signup" class="artist-cta-btn">
             <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Rejoindre WATT
+            Créer mon compte
           </a>
           <span class="artist-cta-note">Bêta gratuite · 6 sons offerts</span>
         </div>
@@ -862,25 +422,12 @@ function _renderArtistTab(container) {
 }
 
 function _fetchArtistStats() {
-  fetch('/api/watt/me/stats').then(r => {
-    if (!r.ok) throw new Error('not auth');
-    return r.json();
-  }).then(d => {
+  apiFetch('/watt/me/stats').then(d => {
     const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     el('artist-tracks', d.tracks || 0);
     el('artist-plays', d.plays || 0);
     el('artist-rank', d.rank ? `#${d.rank}` : '—');
   }).catch(() => {
-    // Silently fail — stats will show "—"
+    // Silently fail — stats will show "—" (user probably not logged in)
   });
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-//  HELPERS
-// ══════════════════════════════════════════════════════════════════════════
-
-function _esc(s) {
-  const el = document.createElement('span');
-  el.textContent = s;
-  return el.innerHTML;
 }

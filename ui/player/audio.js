@@ -55,8 +55,8 @@ function loadTrack(playlistKey, idx) {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title:  track.name  || 'Titre inconnu',
-      artist: pl.label    || 'SMYLE PLAY',
-      album:  'SMYLE PLAY',
+      artist: pl.label    || 'WATT',
+      album:  'WATT',
     });
     navigator.mediaSession.setActionHandler('play',          () => { audio.play().catch(() => {}); isPlaying = true;  updatePlayBtn(); });
     navigator.mediaSession.setActionHandler('pause',         () => { audio.pause(); isPlaying = false; updatePlayBtn(); });
@@ -159,7 +159,7 @@ function loadMixTrack() {
     navigator.mediaSession.metadata = new MediaMetadata({
       title:  track.name || 'Titre inconnu',
       artist: 'MY MIX',
-      album:  'SMYLE PLAY',
+      album:  'WATT',
     });
     navigator.mediaSession.setActionHandler('nexttrack',     () => nextMixTrack());
     navigator.mediaSession.setActionHandler('previoustrack', () => prevMixTrack());

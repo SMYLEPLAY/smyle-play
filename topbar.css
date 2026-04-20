@@ -1,0 +1,299 @@
+/* =============================================================
+   topbar.css — Phase 4 refonte architecture
+   -------------------------------------------------------------
+   Styles du composant topbar partagé (ui/topbar/topbar.js).
+   Appliqué sur les pages qui exposent <div id="smyle-topbar"></div>.
+
+   Design tokens
+   -------------
+   On reprend les mêmes couleurs de fond / glass que style.css pour que
+   l'œil perçoive une topbar commune entre pages (même hauteur, même
+   padding, même backdrop-filter). Les pages qui gardent leur topbar
+   propre (index.html pour l'instant) auront une future passe visuelle
+   pour s'aligner dessus.
+   ============================================================= */
+
+.stb-root {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 18px;
+  background: rgba(10, 6, 22, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: 56px;
+}
+
+@media (max-width: 720px) {
+  .stb-root {
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+  /* Sur mobile on replie la nav dans le dropdown — on la masque ici
+     parce que les 2 liens restants sont accessibles via le menu user. */
+  .stb-nav { display: none; }
+}
+
+
+/* ── Logo ───────────────────────────────────────────────────────── */
+
+.stb-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #fff;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  font-size: 14px;
+  transition: opacity 0.15s;
+}
+
+.stb-logo:hover { opacity: 0.85; }
+
+.stb-logo svg {
+  width: 22px;
+  height: 30px;
+  transform: rotate(-11deg);
+  flex-shrink: 0;
+}
+
+.stb-logo-text {
+  text-transform: uppercase;
+}
+
+
+/* ── Nav (centre) ───────────────────────────────────────────────── */
+
+.stb-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: center;
+}
+
+.stb-nav-link {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.stb-nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+
+/* ── Côté droit ─────────────────────────────────────────────────── */
+
+.stb-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+}
+
+.stb-balance-slot {
+  /* smyle-balance.js injecte son widget ici. Si rien n'est injecté
+     (ex. user anonyme), la slot reste vide, pas de place réservée. */
+  display: contents;
+}
+
+
+/* ── Bouton MY MIX ──────────────────────────────────────────────── */
+
+.stb-mymix {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.stb-mymix:hover {
+  background: rgba(255, 215, 0, 0.10);
+  border-color: rgba(255, 215, 0, 0.35);
+  color: #fff;
+}
+
+.stb-mymix-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(255, 215, 0, 0.85);
+  color: #1a0030;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+
+/* ── Chip utilisateur ───────────────────────────────────────────── */
+
+.stb-user-wrap {
+  position: relative;
+}
+
+.stb-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px 5px 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stb-user-chip:hover,
+.stb-user-wrap-open .stb-user-chip {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.stb-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--stb-user-color, #7C3AED);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.stb-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stb-user-name {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stb-user-caret {
+  opacity: 0.6;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.stb-user-wrap-open .stb-user-caret {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 540px) {
+  .stb-user-name { display: none; }
+}
+
+
+/* ── Dropdown ───────────────────────────────────────────────────── */
+
+.stb-user-drop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  padding: 6px;
+  background: rgba(20, 10, 40, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+}
+
+.stb-drop-item {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  transition: background 0.12s, color 0.12s;
+}
+
+.stb-drop-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.stb-drop-sep {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 4px 0;
+}
+
+.stb-drop-logout {
+  color: rgba(255, 120, 120, 0.9);
+}
+
+.stb-drop-logout:hover {
+  background: rgba(255, 80, 80, 0.12);
+  color: #ff9a9a;
+}
+
+
+/* ── CTA anonyme ────────────────────────────────────────────────── */
+
+.stb-auth-cta {
+  padding: 8px 16px;
+  background: rgba(255, 215, 0, 0.14);
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  border-radius: 8px;
+  color: #ffd700;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.stb-auth-cta:hover {
+  background: rgba(255, 215, 0, 0.22);
+  transform: translateY(-1px);
+}

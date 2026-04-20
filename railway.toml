@@ -2,8 +2,15 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+# Uvicorn ASGI — sert FastAPI (routes /watt/*, /api/auth/*, etc.)
+# et monte Flask sur "/" via a2wsgi (index.html + /api/* legacy).
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2 --access-log"
+
+# Pré-deploy : applique les migrations Alembic avant de booter le process.
+preDeployCommand = "cd smyleplay-api && alembic upgrade head"
+
 healthcheckPath = "/health"
 healthcheckTimeout = 30
+
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

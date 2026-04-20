@@ -1,0 +1,409 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SMYLE PLAY — Page Bibliothèque (/library)
+   Contenu possédé : prompts IA + ADN Playlists débloqués
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --lib-bg:      #070608;
+  --lib-panel:   rgba(14, 12, 18, .96);
+  --lib-gold:    #FFD700;
+  --lib-gold-2:  #FFC107;
+  --lib-violet:  #AA00FF;
+  --lib-green:   #00E676;
+  --lib-border:  rgba(255, 215, 0, .1);
+  --lib-border2: rgba(255, 215, 0, .06);
+  --lib-text:    rgba(232, 228, 240, .9);
+  --lib-dim:     rgba(255, 255, 255, .35);
+  --lib-topbar:  54px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-x: hidden; }
+body {
+  background: var(--lib-bg);
+  color: var(--lib-text);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+button   { font-family: inherit; cursor: pointer; }
+a        { text-decoration: none; color: inherit; }
+textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
+
+
+/* ── Topbar ──────────────────────────────────────────────────────────────── */
+
+.lib-topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+  height: var(--lib-topbar);
+  background: rgba(7, 6, 8, .93);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(255, 215, 0, .06);
+}
+.lib-topbar-logo {
+  display: flex; align-items: center; gap: 10px;
+  color: rgba(136, 0, 255, .65);
+  font-size: 13px; font-weight: 900;
+  letter-spacing: .35em; text-transform: uppercase;
+  transition: color .2s;
+}
+.lib-topbar-logo:hover { color: #cc88ff; }
+.lib-topbar-right { display: flex; align-items: center; gap: 14px; }
+.lib-topbar-link {
+  font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
+  color: rgba(255, 255, 255, .35);
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 6px;
+  transition: color .2s, border-color .2s;
+}
+.lib-topbar-link:hover { color: #fff; border-color: rgba(255, 255, 255, .2); }
+
+
+/* ── Locked state (non-connecté) ─────────────────────────────────────────── */
+
+.lib-locked {
+  min-height: calc(100vh - var(--lib-topbar));
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 24px;
+}
+.lib-locked-inner { max-width: 380px; text-align: center; }
+.lib-locked-icon { font-size: 42px; margin-bottom: 20px; }
+.lib-locked h2 {
+  font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 12px;
+  letter-spacing: .01em;
+}
+.lib-locked p {
+  font-size: 12px; line-height: 1.6; color: var(--lib-dim);
+  margin-bottom: 24px;
+}
+.lib-locked-btn {
+  display: inline-block;
+  padding: 11px 22px;
+  background: linear-gradient(180deg, var(--lib-gold) 0%, var(--lib-gold-2) 100%);
+  color: #0a0812;
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 8px;
+  transition: transform .14s, filter .2s;
+}
+.lib-locked-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+
+
+/* ── Main ────────────────────────────────────────────────────────────────── */
+
+.lib-main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 28px 24px 80px;
+}
+
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+
+.lib-hero { margin-bottom: 26px; }
+.lib-hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px;
+  font-size: 9px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--lib-gold);
+  background: rgba(255, 215, 0, .06);
+  border: 1px solid rgba(255, 215, 0, .18);
+  border-radius: 20px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.lib-hero-title {
+  font-size: 26px; font-weight: 900;
+  color: #fff;
+  letter-spacing: -.01em;
+  margin-bottom: 6px;
+}
+.lib-hero-sub {
+  font-size: 12px; line-height: 1.55;
+  color: var(--lib-dim);
+}
+
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+
+.lib-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  margin-bottom: 22px;
+}
+.lib-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--lib-dim);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  transition: color .18s, border-color .18s;
+  cursor: pointer;
+}
+.lib-tab-icon {
+  flex: 0 0 auto;
+  opacity: .75;
+  transition: opacity .18s, transform .18s, filter .18s;
+}
+.lib-tab:hover .lib-tab-icon { opacity: 1; transform: translateY(-1px); }
+.lib-tab.active .lib-tab-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, .55));
+}
+.lib-tab:hover { color: rgba(255, 255, 255, .7); }
+.lib-tab.active {
+  color: var(--lib-gold);
+  border-bottom-color: var(--lib-gold);
+}
+.lib-tab-count {
+  display: inline-block;
+  padding: 1px 7px;
+  margin-left: 4px;
+  font-size: 9px;
+  background: rgba(255, 255, 255, .06);
+  border-radius: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .6);
+}
+.lib-tab.active .lib-tab-count {
+  background: rgba(255, 215, 0, .12);
+  color: var(--lib-gold);
+}
+
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+
+.lib-tab-panel { display: none; }
+.lib-tab-panel.active { display: block; }
+
+.lib-list {
+  display: flex; flex-direction: column;
+  gap: 12px;
+}
+
+.lib-loading, .lib-empty {
+  padding: 40px 24px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--lib-dim);
+  border: 1px dashed rgba(255, 255, 255, .08);
+  border-radius: 10px;
+}
+.lib-empty-cta {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 8px 14px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--lib-gold);
+  border: 1px solid rgba(255, 215, 0, .3);
+  border-radius: 6px;
+  transition: background .18s;
+}
+.lib-empty-cta:hover { background: rgba(255, 215, 0, .08); }
+
+
+/* ── Item card (commun prompts / adn) ─────────────────────────────────────── */
+
+.lib-item {
+  padding: 16px 18px;
+  background: rgba(14, 12, 18, .86);
+  border: 1px solid var(--lib-border2);
+  border-radius: 12px;
+  transition: border-color .18s;
+}
+.lib-item:hover { border-color: var(--lib-border); }
+
+.lib-item-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.lib-item-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 14px; font-weight: 800;
+  color: #fff;
+  letter-spacing: .01em;
+  flex: 1;
+}
+.lib-adn-dna-icon {
+  flex: 0 0 auto;
+  color: var(--lib-gold, #FFD700);
+  filter: drop-shadow(0 0 5px rgba(255, 215, 0, .45));
+}
+.lib-adn-kind {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04);
+  color: rgba(255, 255, 255, .78);
+}
+.lib-adn-kind-playlist {
+  border-color: rgba(170, 0, 255, .35);
+  background: rgba(170, 0, 255, .1);
+  color: #d49bff;
+}
+.lib-adn-kind-artist {
+  border-color: rgba(255, 215, 0, .45);
+  background: rgba(255, 215, 0, .1);
+  color: #ffe066;
+}
+.lib-empty-note {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, .55);
+  line-height: 1.55;
+}
+.lib-empty-note b { color: rgba(255, 255, 255, .85); font-weight: 700; }
+.lib-locked-note {
+  margin-top: 14px;
+  font-size: 10.5px;
+  color: var(--lib-dim, rgba(255,255,255,.45));
+  letter-spacing: .02em;
+}
+.lib-item-meta {
+  font-size: 9.5px;
+  color: var(--lib-dim);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.lib-item-artist {
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.lib-item-artist a {
+  color: rgba(255, 215, 0, .75);
+  transition: color .18s;
+}
+.lib-item-artist a:hover { color: var(--lib-gold); }
+
+.lib-item-desc {
+  font-size: 11px; line-height: 1.55;
+  color: rgba(232, 228, 240, .65);
+  margin-bottom: 12px;
+}
+
+
+/* ── Gated content block (prompt_text, usage_guide, example_outputs, lyrics) ── */
+
+.lib-content-block {
+  margin-top: 10px;
+  background: rgba(0, 0, 0, .3);
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.lib-content-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px;
+  font-size: 9.5px; letter-spacing: .15em; text-transform: uppercase;
+  color: rgba(255, 215, 0, .72);
+  background: rgba(255, 215, 0, .04);
+  border-bottom: 1px solid rgba(255, 215, 0, .08);
+  font-weight: 700;
+}
+.lib-content-label { display: flex; align-items: center; gap: 6px; }
+.lib-copy-btn {
+  padding: 3px 9px;
+  font-size: 8.5px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase;
+  color: rgba(255, 215, 0, .9);
+  background: transparent;
+  border: 1px solid rgba(255, 215, 0, .3);
+  border-radius: 5px;
+  transition: background .18s, color .18s;
+}
+.lib-copy-btn:hover { background: rgba(255, 215, 0, .12); color: var(--lib-gold); }
+.lib-copy-btn.copied { color: var(--lib-green); border-color: rgba(0, 230, 118, .5); }
+.lib-content-body {
+  padding: 12px 14px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(232, 228, 240, .92);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+/* Lyrics = teinte violette (cohérent avec HIT MIX) */
+.lib-content-block.lyrics .lib-content-header {
+  color: rgba(204, 140, 255, .85);
+  background: rgba(170, 0, 255, .05);
+  border-bottom-color: rgba(170, 0, 255, .12);
+}
+.lib-content-block.lyrics .lib-copy-btn {
+  color: rgba(204, 140, 255, .9);
+  border-color: rgba(170, 0, 255, .35);
+}
+.lib-content-block.lyrics .lib-copy-btn:hover {
+  background: rgba(170, 0, 255, .12);
+}
+
+/* ADN — example outputs ≠ usage_guide */
+.lib-adn-section-title {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 9.5px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .45);
+}
+
+
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+
+.lib-toast {
+  position: fixed;
+  bottom: 30px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: 10px 18px;
+  background: rgba(14, 12, 18, .98);
+  border: 1px solid rgba(255, 215, 0, .25);
+  border-radius: 8px;
+  color: var(--lib-text);
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .02em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 200;
+}
+.lib-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .lib-topbar { padding: 0 16px; }
+  .lib-topbar-logo span { display: none; }
+  .lib-main { padding: 20px 14px 60px; }
+  .lib-hero-title { font-size: 22px; }
+  .lib-tabs { overflow-x: auto; }
+  .lib-tab { padding: 10px 12px; font-size: 10px; }
+}

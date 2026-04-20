@@ -18,7 +18,7 @@ Usage production (Railway) :
 
 import os
 import logging
-from flask import Flask, jsonify, send_from_directory, request, session
+from flask import Flask, jsonify, send_from_directory, request, session, redirect, url_for
 
 from config import get_config
 from scanner import scan_playlists
@@ -83,17 +83,38 @@ def create_app(config_class=None):
     def index():
         return send_from_directory(BASE_DIR, 'index.html')
 
+    # Phase 3 refonte marketplace : la page /watt historique (watt.html) est
+    # remplacée par la marketplace unifiée sur /. On garde la route pour ne
+    # pas casser les liens externes/bookmarks existants, mais elle redirige
+    # en 301 vers l'accueil. Le fichier watt.html a été supprimé.
     @app.route('/watt')
-    def watt_page():
-        return send_from_directory(BASE_DIR, 'watt.html')
+    def watt_page_legacy():
+        return redirect(url_for('index'), code=301)
 
     @app.route('/dashboard')
     def dashboard_page():
         return send_from_directory(BASE_DIR, 'dashboard.html')
 
-    @app.route('/artiste/<slug>')
-    def artiste_page(slug):
+    @app.route('/u/<slug>')
+    def user_page(slug):
+        # La page /u/<slug> est l'unique endroit où vit le profil membre :
+        # création (mode owner, squelette éditable), édition (édit-in-place),
+        # vue publique. URL neutre : on ne présume pas que l'utilisateur est
+        # artiste — le statut « artiste » est acquis par l'action (1er son
+        # publié), pas par une étape d'inscription. Un compte fan (sans son)
+        # existe pleinement : il peut follow, remplir sa bio, etc.
         return send_from_directory(BASE_DIR, 'artiste.html')
+
+    # Alias rétro-compat : les anciens liens /artiste/<slug> continuent à
+    # fonctionner (redirection vers /u/<slug>). À retirer quand tous les
+    # liens internes auront migré.
+    @app.route('/artiste/<slug>')
+    def artiste_page_legacy(slug):
+        return redirect(url_for('user_page', slug=slug), code=301)
+
+    @app.route('/library')
+    def library_page():
+        return send_from_directory(BASE_DIR, 'library.html')
 
     # ── API Playlists / Tracks officiels ──────────────────────────────────
 
@@ -539,20 +560,43 @@ def create_app(config_class=None):
         if not user_id:
             return jsonify({'error': 'Non authentifié'}), 401
 
-        from models import db, Artist, Track
+        from models import db, Artist, Track, User
 
         artist = Artist.query.filter_by(user_id=user_id).first()
 
         if request.method == 'POST':
+            # ── Gate "profil publié" (Étape 1) ────────────────────────────────
+            # Un son ne peut être publié que si l'utilisateur a déjà rendu son
+            # profil public depuis /u/<slug>. Le flag est porté par la colonne
+            # users.profile_public (écrite par FastAPI, lue ici). 409 permet
+            # au front d'afficher un CTA pédagogique distinct du 400 "pas
+            # d'artiste" (qui ne devrait plus arriver en pratique).
+            user = User.query.get(user_id)
+            if not user or not bool(getattr(user, 'profile_public', False)):
+                return jsonify({
+                    'error':   'profile_not_published',
+                    'message': 'Publie d\'abord ton profil pour pouvoir publier un son.',
+                    'redirect': '/u/me',
+                }), 409
             if not artist:
                 return jsonify({'error': 'Profil artiste requis avant de publier'}), 400
             data = request.get_json() or {}
+            # Étape 2 — couleur optionnelle. On valide le format côté API pour
+            # rester cohérent avec Pydantic (HEX_COLOR_RE) sans dépendre de
+            # la contrainte DB (volontairement absente pour rester additive).
+            # Une valeur invalide est silencieusement ignorée (color=NULL →
+            # fallback brandColor) plutôt que de 422 l'upload entier, car
+            # c'est un champ d'agrément, pas une donnée critique.
+            import re as _re
+            _raw_color = (data.get('color') or '').strip()
+            color = _raw_color if _re.match(r'^#[0-9a-fA-F]{6}$', _raw_color) else None
             track = Track(
                 artist_id  = artist.id,
                 name       = (data.get('name') or 'Sans titre')[:200],
                 genre      = (data.get('genre') or '')[:80],
                 stream_url = data.get('streamUrl') or '',
                 r2_key     = data.get('r2Key') or '',
+                color      = color,
             )
             db.session.add(track)
             db.session.commit()
@@ -832,6 +876,100 @@ def create_app(config_class=None):
             # Mode dev sans R2 : on simule l'URL
             logger.info(f'[WATT] Mode sans R2 — clé simulée : {key}')
             return jsonify({'ok': True, 'url': None, 'key': key, 'mock': True})
+
+    # ── API WATT — Upload d'image de profil (avatar / cover) ──────────────
+    #
+    # Endpoint dédié aux images de profil artiste (photo de profil + cover
+    # photo). Distinct de /api/watt/upload (audio) car :
+    #   • types MIME différents (image/* vs audio/*)
+    #   • limite de taille plus basse (5 MB vs 50 MB pour l'audio)
+    #   • clé R2 namespacée PROFILE/{userId}/{kind}-{ts}.{ext}
+    #
+    # Usage côté frontend (artiste.js) :
+    #   POST /api/watt/upload-image
+    #     multipart/form-data : file=<File>, userId=<uuid>, kind=avatar|cover
+    #   → 200 { ok: true, url: 'https://…', key: 'PROFILE/…' }
+    #
+    # Le frontend enchaîne avec PATCH /users/me { avatar_url / cover_photo_url }
+    # pour persister l'URL dans la DB.
+
+    @app.route('/api/watt/upload-image', methods=['POST'])
+    def watt_upload_image():
+        """Upload d'une image de profil (avatar ou cover) vers R2."""
+        import time, re, mimetypes
+
+        user_id = request.form.get('userId', '').strip()
+        kind    = request.form.get('kind', '').strip().lower()
+
+        if not user_id:
+            return jsonify({'error': 'userId manquant'}), 400
+        if kind not in ('avatar', 'cover'):
+            return jsonify({'error': 'kind doit être "avatar" ou "cover"'}), 400
+        if 'file' not in request.files:
+            return jsonify({'error': 'Aucun fichier fourni'}), 400
+
+        f = request.files['file']
+        if not f.filename:
+            return jsonify({'error': 'Fichier vide'}), 400
+
+        # ── Validation MIME + extension (whitelist stricte) ───────────────
+        ALLOWED_EXT  = {'jpg', 'jpeg', 'png', 'webp', 'gif'}
+        ALLOWED_MIME = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+        ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+        if ext not in ALLOWED_EXT:
+            return jsonify({
+                'error': f'Format non supporté — utilise {", ".join(sorted(ALLOWED_EXT))}'
+            }), 400
+
+        mime, _ = mimetypes.guess_type(f.filename)
+        if mime and mime not in ALLOWED_MIME:
+            return jsonify({'error': f'MIME non autorisé : {mime}'}), 400
+        ct = mime or 'image/jpeg'
+
+        # ── Limite de taille : 5 MB (on lit en mémoire car les images sont petites) ──
+        MAX_SIZE = 5 * 1024 * 1024
+        f.stream.seek(0, 2)   # seek to end
+        size = f.stream.tell()
+        f.stream.seek(0)
+        if size > MAX_SIZE:
+            return jsonify({
+                'error': f'Image trop lourde ({size // 1024} KB) — max 5 MB.'
+            }), 400
+
+        # ── Clé R2 ─────────────────────────────────────────────────────────
+        safe_uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id)[:60]
+        ts       = int(time.time())
+        key      = f'PROFILE/{safe_uid}/{kind}-{ts}.{ext}'
+
+        if app.r2_client:
+            try:
+                app.r2_client.upload_fileobj(
+                    f.stream,
+                    app.config.get('R2_BUCKET', 'smyle-play-audio'),
+                    key,
+                    ExtraArgs={
+                        'ContentType': ct,
+                        # Les images de profil sont publiques par nature
+                        'CacheControl': 'public, max-age=604800',
+                    },
+                )
+                base_url = app.config.get('CLOUD_AUDIO_BASE_URL', '').rstrip('/')
+                if not base_url:
+                    return jsonify({
+                        'error': 'Bucket R2 non exposé publiquement (CLOUD_AUDIO_BASE_URL manquant). Utilise "Coller une URL" à la place.'
+                    }), 500
+                url = f'{base_url}/{key}'
+                logger.info(f'[PROFILE] Upload R2 image : {key}')
+                return jsonify({'ok': True, 'url': url, 'key': key})
+            except Exception as e:
+                logger.error(f'[PROFILE] Erreur upload image : {e}')
+                return jsonify({'error': str(e)}), 500
+        else:
+            # Mode dev sans R2 : on renvoie une erreur explicite plutôt
+            # qu'une fausse URL qui casserait le rendu de la page.
+            return jsonify({
+                'error': 'Stockage R2 non configuré en dev local — utilise "Coller une URL" à la place.'
+            }), 503
 
     # ── API WATT Agents — Pipeline ADN ────────────────────────────────────
 

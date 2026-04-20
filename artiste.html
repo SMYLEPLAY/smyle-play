@@ -2,257 +2,418 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#070608" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- OG / partage social -->
-  <meta property="og:type" content="profile" />
-  <meta property="og:site_name" content="SMYLE PLAY" />
-  <meta property="og:title" content="Artiste WATT · SMYLE PLAY" />
-  <meta property="og:description" content="Découvre les créations musicales IA de cet artiste sur SMYLE PLAY" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Artiste WATT · SMYLE PLAY" />
-  <meta name="twitter:description" content="Musique IA · Artistes · Réseau créatif" />
-
-  <title>Artiste · SMYLE PLAY</title>
-  <link rel="stylesheet" href="artiste.css" />
+  <title>Artiste · WATT</title>
+  <!-- Chemins ABSOLUS obligatoires : l'URL /artiste/<slug> ajoute un
+       segment dans le path, donc un href relatif "artiste.css" serait
+       résolu en "/artiste/artiste.css" (404). -->
+  <link rel="stylesheet" href="/artiste.css" />
+  <!-- Phase 4 refonte architecture : topbar partagée (ui/topbar/topbar.js).
+       Remplace l'ex-header .ap-topbar spécifique à cette page. -->
+  <link rel="stylesheet" href="/topbar.css" />
 </head>
 <body class="ap-page">
 
-<!-- ═══════════════════════════════════════════════════════ TOPBAR -->
-<header class="ap-topbar">
-  <a href="/" class="ap-topbar-logo">
-    <svg viewBox="0 0 13 18" fill="none" width="13" height="18">
-      <polygon points="7,0 1,8 6.5,8 5.5,18 12,10 6.5,10 7,0" fill="rgba(136,0,255,.7)"/>
-    </svg>
-    <span>SMYLE PLAY</span>
-  </a>
-  <div class="ap-topbar-right">
-    <a href="/" class="ap-back-btn">← Accueil</a>
-    <button class="ap-share-btn" onclick="shareProfile()" title="Partager ce profil">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-        <polyline points="16 6 12 2 8 6"/>
-        <line x1="12" y1="2" x2="12" y2="15"/>
-      </svg>
-      <span>Partager</span>
-    </button>
-  </div>
-</header>
+<!-- ═══════════════════════════════════════════════════════ TOPBAR PARTAGÉE -->
+<!-- Le composant se rend ici via ui/topbar/topbar.js. Le balance widget
+     (smyle-balance.js) vient s'injecter dans le #smyle-balance que la
+     topbar crée elle-même. Le context est auto-détecté comme "profile"
+     puisqu'on est sur /u/<slug> ou /artiste/<slug>. -->
+<div id="smyle-topbar"></div>
 
-<!-- ═══════════════════════════════════════════════════════ NOT FOUND -->
-<div class="ap-not-found" id="ap-not-found" style="display:none">
-  <div class="ap-nf-inner">
-    <div class="ap-nf-icon">⚡</div>
-    <h2>Profil introuvable</h2>
-    <p>Cet artiste n'a pas encore de profil public sur SMYLE PLAY.</p>
-    <a href="/" class="ap-nf-btn">← Retour à l'accueil</a>
-    <a href="/watt" class="ap-nf-btn-watt">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      Créer mon profil — Gratuit
-    </a>
+<!-- ─── BARRE MODE OWNER ────────────────────────────────────────────────────
+     Sticky sous la topbar, visible UNIQUEMENT quand isSelf=true.
+     Trois états visuels gérés par artiste.js via des classes sur #ap-owner-bar :
+       • .ap-owner-view   → message "Tu vois ta page comme les fans" + bouton Modifier
+       • .ap-owner-edit   → message "Mode édition" + bouton Terminer + Publier
+       • .ap-owner-draft  → message gate "Poste un son pour publier" (trackCount=0)
+     Les classes body pilotent l'état d'édition :
+       • body.ap-owner           → isSelf=true
+       • body.ap-owner-editing   → mode édition actif (contenteditable ON)
+     La barre apparaît AU-DESSUS du hero, ne scrolle pas avec la page. -->
+<div class="ap-owner-bar" id="ap-owner-bar" style="display:none" role="toolbar" aria-label="Outils de profil">
+  <div class="ap-owner-bar-inner">
+
+    <!-- ─ Vue actuelle ─ -->
+    <div class="ap-owner-bar-status">
+      <span class="ap-owner-bar-dot" aria-hidden="true"></span>
+      <span class="ap-owner-bar-label" id="ap-owner-bar-label">Tu vois ta page comme les fans</span>
+    </div>
+
+    <!-- ─ Actions ─ -->
+    <div class="ap-owner-bar-actions">
+      <button type="button" class="ap-owner-btn ap-owner-btn-edit"
+              id="ap-owner-btn-edit" onclick="toggleOwnerEdit()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        <span id="ap-owner-btn-edit-label">Modifier</span>
+      </button>
+
+      <!-- Publier / Retirer — la vraie bascule vit dans PLUG WATT (WATT BOARD).
+           Sur la page profil on expose juste un pointeur "Gérer la visibilité"
+           qui mène à la pill sec-plug. Le bouton Publier initial (profil
+           brouillon jamais publié) reste accessible ici pour offrir un 1er
+           clic sans quitter la page de création — c'est le chemin nominal
+           "je remplis mon profil → je publie direct". Une fois le profil
+           public, toute (dé)activation se fait depuis PLUG WATT. -->
+      <button type="button" class="ap-owner-btn ap-owner-btn-publish"
+              id="ap-owner-btn-publish" onclick="ownerPublish()"
+              title="Passe ton profil en mode public">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        <span id="ap-owner-btn-publish-label">Publier mon profil</span>
+      </button>
+
+      <!-- Visible quand le profil est DÉJÀ public : pointe vers PLUG WATT
+           plutôt que d'offrir une seconde bascule ici. Évite la
+           divergence d'état entre deux contrôles parallèles. -->
+      <a class="ap-owner-btn ap-owner-btn-manage"
+         id="ap-owner-btn-manage"
+         href="/dashboard#sec-plug"
+         title="Gérer la visibilité publique depuis PLUG WATT"
+         style="display:none">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.07a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.07a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.07a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Gérer la visibilité</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ─ Gate "1 son requis" affiché en dessous quand trackCount=0 ─ -->
+  <div class="ap-owner-bar-gate" id="ap-owner-bar-gate" style="display:none">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Pour publier, poste d'abord un son depuis ton WATT BOARD.</span>
+    <a href="/dashboard" class="ap-owner-bar-gate-link">Ouvrir le WATT BOARD →</a>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════ PROFILE -->
-<div class="ap-profile" id="ap-profile" style="display:none">
+<!-- ─── ÉTATS DE CHARGEMENT ─────────────────────────────────────────────── -->
+<div class="ap-loading" id="ap-loading">
+  <div class="ap-loading-spinner" aria-hidden="true"></div>
+  <p>Chargement du profil…</p>
+</div>
 
-  <!-- ── HERO ── -->
+<div class="ap-error" id="ap-error" style="display:none">
+  <h2 id="ap-error-title">Profil introuvable</h2>
+  <p id="ap-error-msg">Ce profil n'existe pas ou n'est pas encore publié.</p>
+  <a href="/" class="ap-nf-btn">← Retour à l'accueil</a>
+</div>
+
+<!-- ─── PROFIL ──────────────────────────────────────────────────────────── -->
+<!-- La page rend TOUJOURS son architecture. Pour un visiteur tiers, le
+     backend 404 si profile_public=false → on n'arrive jamais ici. Pour
+     l'owner, on peut voir la page à tout moment avec mode édition.
+     Classes sur body pour les modes :
+       .ap-skeleton       → profil pas encore publié ET pas owner (rare)
+       .ap-owner          → isSelf=true (barre + édition possible)
+       .ap-owner-editing  → mode édition activé (champs contenteditable) -->
+<main class="ap-profile" id="ap-profile" style="display:none">
+
+  <!-- ═══ Hero : cover photo + avatar + nom + bio ═══════════════════════ -->
   <section class="ap-hero">
     <div class="ap-hero-bg" id="ap-hero-bg"></div>
+
+    <!-- Bouton d'édition du cover (mode owner-editing seulement) -->
+    <button type="button" class="ap-hero-bg-edit" id="ap-hero-bg-edit"
+            onclick="openOwnerField('coverPhotoUrl')" title="Modifier la photo de couverture"
+            style="display:none">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Changer la couverture
+    </button>
+
     <div class="ap-hero-inner">
 
       <div class="ap-avatar-wrap">
-        <div class="ap-avatar" id="ap-avatar">?</div>
-        <div class="ap-watt-badge-wrap">
-          <span class="ap-watt-badge">
-            <svg viewBox="0 0 24 24" fill="#FFD700" width="9" height="9"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Artiste WATT · Bêta
-          </span>
+        <div class="ap-avatar ap-avatar-ghost" id="ap-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>
+          </svg>
         </div>
+        <!-- Bouton d'édition avatar (mode owner-editing seulement) -->
+        <button type="button" class="ap-avatar-edit" id="ap-avatar-edit"
+                onclick="openOwnerField('avatarUrl')" title="Modifier l'avatar"
+                style="display:none">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
       </div>
 
       <div class="ap-hero-info">
-        <h1 class="ap-artist-name" id="ap-artist-name">—</h1>
-        <div class="ap-genre-tag" id="ap-genre-tag"></div>
-        <p class="ap-bio" id="ap-bio"></p>
-        <div class="ap-socials" id="ap-socials"></div>
-      </div>
+        <h1 class="ap-artist-name ap-editable"
+            id="ap-artist-name"
+            data-field="artistName"
+            data-placeholder="Ton nom d'artiste"
+            spellcheck="false">Nom d'artiste</h1>
 
+        <!-- Tagline courte dans le hero : casquettes déclarées + genre +
+             ville. Les casquettes sont les rôles que l'utilisateur a
+             cochés (Artiste / Producteur / Topliner / ...). L'ensemble est
+             purement déclaratif : le compte ne gagne pas de droits
+             techniques, c'est une carte d'identité pour le réseau.
+             Cf. renderRoles() + openRolesPicker() dans artiste.js. -->
+        <div class="ap-hero-meta">
+          <!-- Chips de rôles (1 par casquette). Remplis par renderRoles. -->
+          <div class="ap-roles" id="ap-roles" aria-label="Casquettes"></div>
+
+          <!-- Bouton d'édition des rôles — visible uniquement en mode owner
+               (display togglé par toggleOwnerEdit). Ouvre un popover avec
+               les 12 checkboxes. -->
+          <button type="button" class="ap-roles-edit-btn" id="ap-roles-edit-btn"
+                  onclick="openRolesPicker()" style="display:none"
+                  title="Choisir mes casquettes">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span>Casquettes</span>
+          </button>
+
+          <span class="ap-editable ap-meta-chip"
+                id="ap-genre"
+                data-field="genre"
+                data-placeholder="Genre">—</span>
+          <span class="ap-meta-sep" aria-hidden="true">·</span>
+          <span class="ap-editable ap-meta-chip"
+                id="ap-city"
+                data-field="city"
+                data-placeholder="Ville">—</span>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- ── STATS BAR ── -->
-  <div class="ap-stats-bar">
-    <div class="ap-stat">
-      <span class="ap-stat-val" id="ap-nb-tracks">0</span>
-      <span class="ap-stat-lbl">sons</span>
-    </div>
-    <div class="ap-stat">
-      <span class="ap-stat-val" id="ap-nb-plays">0</span>
-      <span class="ap-stat-lbl">écoutes</span>
-    </div>
-    <div class="ap-stat">
-      <span class="ap-stat-val" id="ap-watt-rank">#—</span>
-      <span class="ap-stat-lbl">classement WATT</span>
-    </div>
-  </div>
+  <!-- ═══ Section profil (unique : Biographie) ═════════════════════════════
+       La page /u/<slug> n'expose que l'identité publique : nom, casquettes,
+       genre, ville, bio. Les champs "influences musicales" et "univers"
+       sont délibérément DÉPLACÉS dans le WATT BOARD car ils alimentent la
+       création de DNA et de prompts (produits vendables de la marketplace).
+       Les exposer en clair sur le profil public reviendrait à offrir
+       gratuitement ce qui doit passer par un achat crédits côté DNA.
+       — Cf. vision fan/artiste + WATT BOARD/DNA marketplace.            -->
 
-  <!-- ── MAIN LAYOUT ── -->
-  <main class="ap-main">
+  <!-- ─ Biographie (champ DB : bio, max 2000 chars) ─────────────────────── -->
+  <section class="ap-section ap-section-bio" id="ap-section-bio" aria-labelledby="ap-section-bio-title">
+    <h2 class="ap-section-title" id="ap-section-bio-title">Biographie</h2>
+    <div class="ap-section-body ap-editable ap-editable-long"
+         id="ap-bio"
+         data-field="bio"
+         data-placeholder="Raconte ton parcours, ce qui t'a amené à faire de la musique, ce que tu cherches à transmettre — quelques lignes qui donnent envie de te suivre."
+         spellcheck="true"></div>
+  </section>
 
-    <!-- Sons publiés -->
-    <section class="ap-tracks-section">
-      <div class="ap-tracks-header">
-        <h2 class="ap-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
+  <!-- ═══ Réseaux sociaux (#43) — visibles pour les fans, éditables owner ═══ -->
+  <section class="ap-socials" id="ap-socials" aria-label="Réseaux sociaux">
+    <!-- Rendu par renderSocials() :
+           • fans → chips de liens visibles seulement si renseignés
+           • owner → chips + "+ ajouter" pour les non-renseignés -->
+  </section>
+
+  <!-- ═══ DNA unlock (visible ssi l'artiste a un ADN publié) ════════════════
+       Règle produit (Tom, chantier "profil artiste vendeur") :
+         • Profil qui ne vend rien   → RIEN ne s'affiche ici (display:none)
+         • Profil qui vend un ADN    → cellule "Débloquer l'ADN" avec teaser
+                                        + prix en crédits + CTA unlock
+       Le bouton POST /unlocks/adns/{id}, gate côté backend : JWT + balance,
+       self-purchase refusé, déjà acheté → 409 silencieux (message toast).
+       La description complète + usage_guide + example_outputs sont
+       exposés APRÈS achat uniquement (/artist/me/owned-adns côté compte). -->
+  <section class="ap-dna-card" id="ap-dna-card" style="display:none"
+           aria-label="ADN de l'artiste">
+    <div class="ap-dna-card-inner">
+      <div class="ap-dna-card-hdr">
+        <div class="ap-dna-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
+            <path d="M7 7h10M7 17h10M9 11h6M9 13h6"/>
           </svg>
-          Sons publiés
-        </h2>
-        <span class="ap-tracks-count" id="ap-tracks-count"></span>
+        </div>
+        <div class="ap-dna-card-titles">
+          <div class="ap-dna-card-eyebrow">Signature créative</div>
+          <h3 class="ap-dna-card-title">Débloquer l'ADN</h3>
+        </div>
+        <div class="ap-dna-card-price">
+          <span id="ap-dna-price">—</span>
+          <span class="ap-dna-price-unit">crédits</span>
+        </div>
       </div>
-      <div class="ap-tracks-list" id="ap-tracks-list">
-        <!-- injecté par artiste.js -->
+      <p class="ap-dna-card-teaser" id="ap-dna-teaser">
+        <!-- Rempli par renderDna() — 240 chars max côté backend -->
+      </p>
+      <div class="ap-dna-card-meta" id="ap-dna-meta">
+        <!-- Badges éventuels : "📘 Guide d'usage", "🎧 Exemples" -->
       </div>
-    </section>
-
-    <!-- Aside -->
-    <aside class="ap-aside">
-
-      <!-- Mini player -->
-      <div class="ap-mini-player" id="ap-mini-player" style="display:none">
-        <div class="amp-header">
-          <span class="amp-label">
-            <svg viewBox="0 0 24 24" fill="#FFD700" width="9" height="9"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Lecture en cours
-          </span>
-        </div>
-        <div class="amp-track">
-          <div class="amp-cover" id="amp-cover">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="18" height="18"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          </div>
-          <div class="amp-info">
-            <div class="amp-title" id="amp-title">—</div>
-            <div class="amp-artist" id="amp-artist">—</div>
-          </div>
-        </div>
-        <div class="amp-progress-wrap" id="amp-progress-wrap">
-          <div class="amp-progress-fill" id="amp-progress-fill"></div>
-        </div>
-        <div class="amp-time-row">
-          <span class="amp-time" id="amp-time-current">0:00</span>
-          <span class="amp-time" id="amp-time-duration">0:00</span>
-        </div>
-        <div class="amp-controls">
-          <button class="amp-btn" onclick="ampPrev()" title="Précédent">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-              <polygon points="19,20 9,12 19,4"/><rect x="5" y="4" width="2" height="16"/>
-            </svg>
-          </button>
-          <button class="amp-btn amp-play" id="amp-play-btn" onclick="ampToggle()">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          </button>
-          <button class="amp-btn" onclick="ampNext()" title="Suivant">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-              <polygon points="5,4 15,12 5,20"/><rect x="17" y="4" width="2" height="16"/>
-            </svg>
-          </button>
-        </div>
-        <audio id="amp-audio"></audio>
-      </div>
-
-      <!-- Share card -->
-      <div class="ap-share-card">
-        <div class="ap-share-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-            <polyline points="16 6 12 2 8 6"/>
-            <line x1="12" y1="2" x2="12" y2="15"/>
+      <div class="ap-dna-card-actions">
+        <button type="button" class="ap-dna-unlock-btn"
+                id="ap-dna-unlock-btn" onclick="unlockDnaFromProfile()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
           </svg>
-          Partage ce profil
-        </div>
-        <div class="ap-share-url" id="ap-share-url"></div>
-        <button class="ap-copy-btn" id="ap-copy-btn" onclick="copyProfileUrl()">
-          Copier le lien
+          <span id="ap-dna-unlock-label">Débloquer l'ADN</span>
         </button>
+        <span class="ap-dna-perk-hint">
+          Possession = -30&nbsp;% sur toutes les recettes Suno de l'artiste
+        </span>
       </div>
-
-      <!-- WATT rank -->
-      <div class="ap-rank-card">
-        <div class="ap-rank-lbl">Classement WATT</div>
-        <div class="ap-rank-num" id="ap-rank-num">#—</div>
-        <div class="ap-rank-sub">Réseau artistes IA</div>
-        <a href="/#community-hub" class="ap-rank-link">Voir le classement →</a>
-      </div>
-
-      <!-- Collab CTA -->
-      <div class="ap-collab-card">
-        <div class="ap-collab-card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-          Collaborer
-        </div>
-        <p class="ap-collab-card-sub">Tu veux créer avec cet artiste ?</p>
-        <button class="ap-collab-btn" id="ap-collab-btn" onclick="openCollabModal()">
-          ⚡ Proposer une collab
-        </button>
-      </div>
-
-      <!-- Join CTA -->
-      <div class="ap-join-card">
-        <div class="ap-join-text">Tu crées de la musique avec l'IA ?</div>
-        <a href="/watt" class="ap-join-btn">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Devenir Artiste — Gratuit
-        </a>
-      </div>
-
-    </aside>
-  </main>
-
-</div><!-- /.ap-profile -->
-
-<!-- ═══════════════════════════════════════ MODAL COLLAB -->
-<div class="ap-collab-modal" id="ap-collab-modal" style="display:none" onclick="if(event.target===this)closeCollabModal()">
-  <div class="ap-collab-modal-inner">
-    <button class="ap-collab-modal-close" onclick="closeCollabModal()" aria-label="Fermer">✕</button>
-    <div class="ap-collab-modal-title">
-      <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      Proposer une collaboration
     </div>
-    <p class="ap-collab-modal-sub">Décris ton projet ou ton idée en quelques lignes. L'artiste recevra ton message dans son dashboard.</p>
-    <textarea
-      id="ap-collab-msg"
-      class="ap-collab-textarea"
-      placeholder="Ex : Je produis du lofi IA et j'aimerais co-créer une track avec toi sur le thème du voyage spatial..."
-      rows="5"
-      maxlength="600"
-    ></textarea>
-    <div class="ap-collab-char-hint">Max 600 caractères</div>
-    <div class="ap-collab-status" id="ap-collab-status"></div>
-    <div class="ap-collab-modal-actions">
-      <button class="ap-collab-cancel" onclick="closeCollabModal()">Annuler</button>
-      <button class="ap-collab-send" id="ap-collab-send" onclick="sendCollab()">
-        Envoyer la demande →
+  </section>
+
+  <!-- ═══ Recettes Suno (visibles ssi l'artiste a au moins 1 prompt publié) ══
+       Liste des prompts vendus par l'artiste. Chaque card montre le titre,
+       la description courte, le prix, et un bouton unlock. Le prompt_text
+       et les paroles restent GATED : /unlocks/prompts/{id} les renvoie après
+       paiement. Le badge "🎤 Avec paroles" signale qu'un prompt contient des
+       lyrics sans les révéler.                                             -->
+  <section class="ap-prompts" id="ap-prompts-section" style="display:none"
+           aria-label="Recettes Suno à débloquer">
+    <div class="ap-prompts-hdr">
+      <h2 class="ap-prompts-title">Recettes Suno</h2>
+      <span class="ap-prompts-count" id="ap-prompts-count">0 recette</span>
+    </div>
+    <div class="ap-prompts-list" id="ap-prompts-list">
+      <!-- Cards rendues par renderPrompts() -->
+    </div>
+  </section>
+
+  <!-- ═══ Sons publiés (visibles ssi l'artiste a au moins 1 track) ═════════
+       Liste compacte : pochette (initiale), titre, plays, date. Lecteur
+       audio natif <audio controls> pour pré-écoute directe (le catalogue
+       WATT principal reste le /watt avec lecteur flottant). -->
+  <section class="ap-tracks" id="ap-tracks-section" style="display:none"
+           aria-label="Sons publiés">
+    <div class="ap-tracks-hdr">
+      <h2 class="ap-tracks-title">Sons publiés</h2>
+      <span class="ap-tracks-count" id="ap-tracks-count">0 son</span>
+    </div>
+    <div class="ap-tracks-list" id="ap-tracks-list">
+      <!-- Cards rendues par renderTracks() -->
+    </div>
+  </section>
+
+  <!-- ═══ Section couleurs (mode owner-editing seulement) ═══
+       Deux pickers natifs qui repeignent la page en temps réel.
+       Le backend valide les 2 champs en hex #RRGGBB majuscule. -->
+  <section class="ap-colors" id="ap-colors" style="display:none" aria-label="Couleurs du profil">
+    <div class="ap-colors-inner">
+      <div class="ap-colors-title">Couleurs de ta page</div>
+      <div class="ap-colors-row">
+        <label class="ap-color-field">
+          <span class="ap-color-sublabel">Fond</span>
+          <input type="color" id="ap-color-bg" value="#070608" />
+          <span class="ap-color-hex" id="ap-color-bg-hex">#070608</span>
+        </label>
+        <label class="ap-color-field">
+          <span class="ap-color-sublabel">Accent</span>
+          <input type="color" id="ap-color-brand" value="#8800FF" />
+          <span class="ap-color-hex" id="ap-color-brand-hex">#8800FF</span>
+        </label>
+        <button type="button" class="ap-color-reset" onclick="resetOwnerColors()">Réinitialiser</button>
+      </div>
+      <p class="ap-colors-hint">Les fans verront ta page avec ces 2 couleurs. Les modifs sauvegardent automatiquement.</p>
+    </div>
+  </section>
+
+  <!-- ═══ Stats publiques ═══════════════════════════════════════════════
+       Les 4 tuiles sont toutes présentes dans le DOM mais 2 d'entre elles
+       (sons + rang WATT) ne s'affichent QUE pour les utilisateurs qui ont
+       publié au moins 1 son. Un fan (compte sans son) ne voit que ses
+       abonnés (+ éventuellement les écoutes à 0 si owner). Un artiste
+       voit les 4. Cf. renderStats() dans artiste.js.               -->
+  <section class="ap-stats" id="ap-stats" aria-label="Statistiques publiques">
+    <div class="ap-stat" id="ap-stat-cell-plays">
+      <div class="ap-stat-value" id="ap-stat-plays">—</div>
+      <div class="ap-stat-label">écoutes</div>
+    </div>
+    <div class="ap-stat" id="ap-stat-cell-tracks">
+      <div class="ap-stat-value" id="ap-stat-tracks">—</div>
+      <div class="ap-stat-label">sons</div>
+    </div>
+    <div class="ap-stat" id="ap-stat-cell-followers">
+      <div class="ap-stat-value" id="ap-stat-followers">—</div>
+      <div class="ap-stat-label">abonnés</div>
+    </div>
+    <div class="ap-stat" id="ap-stat-cell-rank">
+      <div class="ap-stat-value" id="ap-stat-rank">—</div>
+      <div class="ap-stat-label">rang WATT</div>
+    </div>
+  </section>
+</main>
+
+<!-- ─── Modal mini "champ libre" (avatar URL, cover URL, socials) ──────────
+     Pour les champs avatarUrl / coverPhotoUrl, on propose en plus un bouton
+     "Importer depuis mes fichiers" qui déclenche un <input type="file">
+     caché, uploade l'image sur R2 via /api/watt/upload-image puis fait
+     PATCH /users/me avec l'URL publique retournée.                       -->
+<div class="ap-modal" id="ap-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="ap-modal-title">
+  <div class="ap-modal-inner">
+    <h3 class="ap-modal-title" id="ap-modal-title">Modifier</h3>
+    <p class="ap-modal-hint" id="ap-modal-hint">Colle une URL publique (https://…)</p>
+
+    <!-- Section "Importer un fichier" — visible uniquement pour avatar/cover -->
+    <div class="ap-modal-upload" id="ap-modal-upload" style="display:none">
+      <button type="button" class="ap-modal-upload-btn" id="ap-modal-upload-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Importer depuis mes fichiers</span>
       </button>
+      <input type="file" id="ap-modal-file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" />
+      <div class="ap-modal-upload-status" id="ap-modal-upload-status"></div>
+      <div class="ap-modal-divider"><span>ou</span></div>
+    </div>
+
+    <input type="url" class="ap-modal-input" id="ap-modal-input" placeholder="https://..." />
+    <div class="ap-modal-actions">
+      <button type="button" class="ap-modal-btn ap-modal-btn-cancel" onclick="closeOwnerField()">Annuler</button>
+      <button type="button" class="ap-modal-btn ap-modal-btn-save" onclick="saveOwnerField()">Enregistrer</button>
     </div>
   </div>
 </div>
 
-<!-- Toast -->
-<div class="ap-toast" id="ap-toast"></div>
+<!-- ─── Toast micro ─────────────────────────────────────────────────────── -->
+<div class="ap-toast" id="ap-toast" role="status" aria-live="polite"></div>
 
-<script src="ui/core/api.js"></script>
-<script src="artiste.js"></script>
+<!-- ─── Popover "Mes casquettes" — multi-select (12 checkboxes) ─────────────
+     Déclenché par le bouton "+ Casquettes" visible uniquement en mode
+     owner-editing. Les cases cochées = roles choisis. Le bouton
+     "Enregistrer" PATCH /users/me avec { roles: [codes...] }.
+     L'UI se ferme au clic-extérieur + Escape (ap-roles-picker.js). -->
+<div class="ap-roles-picker" id="ap-roles-picker" style="display:none"
+     role="dialog" aria-modal="true" aria-labelledby="ap-roles-picker-title">
+  <div class="ap-roles-picker-inner">
+    <h3 class="ap-roles-picker-title" id="ap-roles-picker-title">Mes casquettes</h3>
+    <p class="ap-roles-picker-hint">Coche ce que tu es sur la plateforme. Plusieurs choix possibles.</p>
+    <div class="ap-roles-picker-list" id="ap-roles-picker-list">
+      <!-- Checkboxes injectées par buildRolesPicker() -->
+    </div>
+    <div class="ap-roles-picker-actions">
+      <button type="button" class="ap-roles-picker-btn ap-roles-picker-btn-cancel"
+              onclick="closeRolesPicker()">Annuler</button>
+      <button type="button" class="ap-roles-picker-btn ap-roles-picker-btn-save"
+              onclick="saveRolesPicker()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCRIPTS ─────────────────────────────────────────────────────────── -->
+<!-- Chemins ABSOLUS obligatoires : /artiste/<slug> ajoute un segment dans
+     le path, donc "artiste.js" serait résolu en "/artiste/artiste.js". -->
+<script src="/ui/core/api.js"></script>
+<script src="/ui/core/events.js"></script>
+<!-- Phase 4 refonte : topbar partagée. Chargée après events.js pour que le
+     bus SmyleEvents soit dispo quand le composant s'abonne aux events. -->
+<script src="/ui/topbar/topbar.js" defer></script>
+<script src="/artiste.js"></script>
 <script src="/ui/smyle-balance.js" defer></script>
+<script src="/ui/modals/search.js" defer></script>
 </body>
 </html>
