@@ -173,11 +173,29 @@
        fans vont voir sur /u/<slug>.
        ────────────────────────────────────────────────────────────────────────── -->
   <section class="dash-section" id="sec-identity">
-    <div class="dash-section-hdr">
-      <div class="dash-section-num">01</div>
-      <h2 class="dash-section-title">Identité publique</h2>
-      <span class="dash-section-sub">Ta vitrine sur /u/&lt;pseudo&gt; · visible par les fans</span>
-    </div>
+    <!-- Accordéon : section repliée par défaut pour ne pas prendre toute la
+         place. Clic sur le header → ouvre/ferme. Utilise <details>/<summary>
+         natif HTML5 : pas de JS à ajouter, accessible nativement (ARIA géré). -->
+    <style>
+      #sec-identity summary.dash-section-hdr {
+        display: flex; align-items: center; gap: 10px;
+        cursor: pointer; user-select: none; list-style: none;
+      }
+      #sec-identity summary.dash-section-hdr::-webkit-details-marker { display: none; }
+      #sec-identity .dash-section-chevron {
+        margin-left: auto; transition: transform .18s ease;
+        opacity: .55; font-size: 14px;
+      }
+      #sec-identity details[open] .dash-section-chevron { transform: rotate(180deg); }
+      #sec-identity .dash-identity-layout { margin-top: 16px; }
+    </style>
+    <details id="dashIdentityDetails">
+      <summary class="dash-section-hdr">
+        <div class="dash-section-num">01</div>
+        <h2 class="dash-section-title">Identité publique</h2>
+        <span class="dash-section-sub">Ta vitrine sur /u/&lt;pseudo&gt; · visible par les fans</span>
+        <span class="dash-section-chevron" aria-hidden="true">▾</span>
+      </summary>
 
     <!-- Layout 2 colonnes (≥960px) : formulaire à gauche, preview sticky à droite -->
     <div class="dash-identity-layout">
@@ -375,6 +393,7 @@
       </aside>
 
     </div>
+    </details>
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
@@ -734,13 +753,10 @@
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
-       Le profil artiste vit désormais UNIQUEMENT sur /artiste/<slug> :
-         • Création + édition in-place (mode owner)
-         • Vue publique (fans, gate profile_public)
-       Plus de section "Mon Profil" dans le dashboard — le WATT BOARD est
-       dédié au back : analytique, upload sons + prompts, rétention, ranking.
-       Tout lien "Éditer mon profil" dans le dropdown topbar doit cibler
-       /artiste/<slug> directement (cf. section header ci-dessus).
+       ARCHI PROFIL (Phase 5 — 2026-04-20, confirmée 2026-04-21) :
+         • /u/<slug>   = BOUTIQUE (vue publique lecture seule + CTA achat)
+         • /dashboard  = ATELIER (édition profil + upload + stats)
+       L'édition inline sur /u/<slug> est désactivée — cf. artiste.js.
        ────────────────────────────────────────────────────────────────────────── -->
 
   <!-- ──────────────────────────────────────────────────────────────────────────
