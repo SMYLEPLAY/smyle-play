@@ -223,7 +223,8 @@
               </svg>
               Changer la couverture
             </button>
-            <input type="file" id="dashIdCoverFile" accept="image/png,image/jpeg,image/webp" hidden />
+            <input type="file" id="dashIdCoverFile" accept="image/png,image/jpeg,image/webp"
+                   onchange="dashIdentityHandleCoverFile(event)" hidden />
           </div>
           <div class="dash-identity-avatar-wrap">
             <div class="dash-avatar-preview" id="dashIdAvatarPreview" aria-label="Avatar">?</div>
@@ -236,7 +237,8 @@
               </svg>
               Changer l'avatar
             </button>
-            <input type="file" id="dashIdAvatarFile" accept="image/png,image/jpeg,image/webp" hidden />
+            <input type="file" id="dashIdAvatarFile" accept="image/png,image/jpeg,image/webp"
+                   onchange="dashIdentityHandleAvatarFile(event)" hidden />
           </div>
         </div>
 
@@ -351,16 +353,23 @@
         </div>
 
         <!-- Actions -->
+        <!-- Chantier "1 bouton unifié" (2026-04-21) — le label du bouton bascule
+             dynamiquement selon `profile_public` :
+               • false (jamais publié) → "Publier mon profil"
+                                          (PATCH /users/me puis POST /watt/me/profile/publish)
+               • true                   → "Enregistrer"
+                                          (PATCH /users/me seul — toggle via PLUG WATT ailleurs)
+             Géré par _updateDashIdSaveButton() / dashIdentitySave() dans dashboard.js. -->
         <div class="dash-identity-actions">
           <div class="dash-identity-status" id="dashIdStatus" role="status" aria-live="polite"></div>
-          <button type="button" class="dash-btn-primary" onclick="dashIdentitySave()">
+          <button type="button" class="dash-btn-primary" id="dashIdSaveBtn" onclick="dashIdentitySave()">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
               <polyline points="17 21 17 13 7 13 7 21"/>
               <polyline points="7 3 7 8 15 8"/>
             </svg>
-            Enregistrer
+            <span id="dashIdSaveLabel">Enregistrer</span>
           </button>
         </div>
 
@@ -1133,7 +1142,7 @@
           <span id="dashPlugOpenLabel">Ouvrir ma boutique</span>
         </a>
         <span class="dash-plug-actions-hint" id="dashPlugActionsHint">
-          Ta boutique est ton profil <code>/u/&lt;slug&gt;</code>.
+          Ta boutique est ton profil public <code id="dashPlugSlugHint">/u/—</code>.
         </span>
       </div>
 

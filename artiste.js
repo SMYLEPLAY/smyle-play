@@ -348,19 +348,15 @@ function renderOwnerBar({ isSelf, isPublic, trackCount }) {
     };
   }
 
-  // Bouton "Publier" — visible UNIQUEMENT quand profil brouillon (pas public).
+  // Bouton "Publier mon profil" (Option B legacy) — DÉSACTIVÉ (chantier
+  // "1 bouton unifié", 2026-04-21). La publication ne peut plus se faire
+  // depuis /u/<slug> : elle est déclenchée automatiquement au premier
+  // enregistrement de profil depuis /dashboard#sec-identity. Ça supprime
+  // la distinction "save vs publish" que les users ne comprenaient pas.
+  // On masque le bouton en toutes circonstances pour éviter le chemin
+  // parallèle. Le HTML/DOM reste en place pour compat CSS / legacy states.
   const btnPub = $('ap-owner-btn-publish');
-  const lblPub = $('ap-owner-btn-publish-label');
-  if (btnPub) {
-    if (isPublic) {
-      btnPub.style.display = 'none';
-    } else {
-      btnPub.style.display = '';
-      btnPub.disabled = !canPublish;
-      btnPub.classList.toggle('is-disabled', !canPublish);
-      if (lblPub) lblPub.textContent = 'Publier mon profil';
-    }
-  }
+  if (btnPub) btnPub.style.display = 'none';
 
   // Lien "Gérer la visibilité" — quand le profil est DÉJÀ public, on ne
   // propose plus de (re)bascule ici : on pointe vers PLUG WATT (WATT BOARD).
