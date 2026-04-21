@@ -41,11 +41,14 @@ async function _fetchMeAndSync() {
   }
 }
 
-async function doSignup(email, password, name, { onAttempt } = {}) {
+async function doSignup(email, password, { onAttempt } = {}) {
   try {
+    // Signup minimal : email + password uniquement.
+    // Le profil artiste (artist_name, bio, slug) se crée via le WATT board
+    // après connexion (voir /dashboard#profile).
     await apiFetch('/auth/register', {
       method: 'POST',
-      json: { email, password, display_name: name },
+      json: { email, password },
       auth: false,
       retries:      1,
       retryDelayMs: 700,
@@ -293,7 +296,7 @@ function openAuthModal(tab) {
   // Focus auto sur le premier champ après l'anim d'ouverture
   setTimeout(() => {
     const firstInput = tab === 'signup'
-      ? document.getElementById('signup-name')
+      ? document.getElementById('signup-email')
       : document.getElementById('login-email');
     if (firstInput) firstInput.focus();
   }, 120);
@@ -313,7 +316,7 @@ function switchAuthTab(tab) {
   // Focus auto sur le bon champ quand on change d'onglet
   setTimeout(() => {
     const firstInput = tab === 'signup'
-      ? document.getElementById('signup-name')
+      ? document.getElementById('signup-email')
       : document.getElementById('login-email');
     if (firstInput && document.getElementById('authModal').classList.contains('open')) {
       firstInput.focus();
@@ -348,19 +351,18 @@ async function submitLogin() {
 }
 
 async function submitSignup() {
-  const name     = document.getElementById('signup-name').value.trim();
   const email    = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const msg      = document.getElementById('authMsg');
-  if (!name || !email || !password) {
-    msg.textContent = 'Tous les champs sont requis.';
+  if (!email || !password) {
+    msg.textContent = 'Email et mot de passe requis.';
     return;
   }
   msg.textContent = 'Création du compte…';
   const onAttempt = ({ willRetry }) => {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
-  const result = await doSignup(email, password, name, { onAttempt });
+  const result = await doSignup(email, password, { onAttempt });
   if (result.ok) { closeAuthModal(); renderAuthArea(); }
   else msg.textContent = result.msg;
 }
