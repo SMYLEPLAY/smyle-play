@@ -12,8 +12,13 @@
 # ── Dossier Claude local (config + worktrees) ────────────────────────────
 .claude/
 
-# ── Playlist HIT MIX (exclue, locale uniquement) ─────────────────────────
+# ── Assets audio (2+ Go, hébergés sur Cloudflare R2, pas dans Git) ───────
+assets_audio/
+# (anciens dossiers racine, conservés au cas où pour éviter un re-tracking)
 HIT MIX/
+NIGHT CITY/
+SUNSET LOVER/
+JUNGLE OSMOSE/
 
 # ── Dossier de triage Suno Router (fichiers en attente de classement) ────
 A_CLASSER/*
@@ -55,6 +60,12 @@ graphify-out/
 
 # ── Vault Obsidian (notes perso, exclues du repo) ────────────────────────
 Smyle-play/
+OBSIDIAN/
+
+# ── data/exports/ — dumps DB et exports temporaires (jamais commit) ───────
+data/exports/*
+!data/exports/.gitkeep
+!data/exports/README.md
 
 # ── Backups éditeur ──────────────────────────────────────────────────────
 *.bak

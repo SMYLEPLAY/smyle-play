@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  PG_USER: ci
+  PG_PASSWORD: ci
+  PG_DB: smyleplay_ci
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 — Migrations Alembic sur Postgres vierge
+  # Bloque un merge si une migration est cassée (chaînage, schéma, seeds).
+  # ─────────────────────────────────────────────────────────────────────────────
+  migrations:
+    name: Alembic upgrade head (fresh Postgres)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: smyleplay_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -U ci -d smyleplay_ci && exit 0
+            sleep 1
+          done
+          echo "Postgres not ready"; exit 1
+
+      - name: Alembic upgrade head
+        working-directory: smyleplay-api
+        run: alembic upgrade head
+
+      - name: Dump final schema state
+        working-directory: smyleplay-api
+        run: |
+          alembic current
+          alembic history | head -40
+
+      - name: Verify key tables exist
+        run: |
+          PGPASSWORD=ci psql -h localhost -U ci -d smyleplay_ci -c "\dt" \
+            | tee /tmp/tables.txt
+          for table in users tracks transactions; do
+            grep -q " $table " /tmp/tables.txt || { echo "Missing table: $table"; exit 1; }
+          done
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 — Smoke test : l'app démarre et /health répond 200
+  # Attrape une configuration cassée ou un import manquant avant prod.
+  # ─────────────────────────────────────────────────────────────────────────────
+  smoke-test:
+    name: Smoke test (/health)
+    needs: migrations
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: smyleplay_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
+      SECRET_KEY: ci-flask-secret
+      JWT_SECRET: ci-jwt-secret
+      ENVIRONMENT: test
+      PORT: "8000"
+      CORS_ALLOWED_ORIGINS: "*"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        working-directory: smyleplay-api
+        run: alembic upgrade head
+
+      - name: Start API
+        run: |
+          uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/uvicorn.log 2>&1 &
+          echo $! > /tmp/uvicorn.pid
+
+      - name: Wait for /health
+        run: |
+          for i in {1..30}; do
+            if curl -fs http://localhost:8000/health > /tmp/health.json; then
+              echo "OK: /health responded"
+              cat /tmp/health.json || true
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "FAIL: /health never responded"
+          echo "--- uvicorn log ---"
+          cat /tmp/uvicorn.log
+          exit 1
+
+      - name: Stop API
+        if: always()
+        run: |
+          [ -f /tmp/uvicorn.pid ] && kill "$(cat /tmp/uvicorn.pid)" || true
+
+      - name: Upload uvicorn log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uvicorn-log
+          path: /tmp/uvicorn.log

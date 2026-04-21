@@ -1,0 +1,228 @@
+{
+  "main": {
+    "id": "6597d5a5365f2b45",
+    "type": "split",
+    "children": [
+      {
+        "id": "962c3824a5024d84",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6cab3afc4a43d29b",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "Nouvel onglet"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "24772e8af31e125f",
+    "type": "split",
+    "children": [
+      {
+        "id": "06bba00a0decb04b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "fa8f892e70191439",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorateur de fichiers"
+            }
+          },
+          {
+            "id": "ac9d1492ed88db84",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Rechercher"
+            }
+          },
+          {
+            "id": "4f901e1f2aa12a1e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Signets"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "1788d0b841350d02",
+    "type": "split",
+    "children": [
+      {
+        "id": "c46260c3260b72ee",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "08c65b2caddd1674",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Rétroliens"
+            }
+          },
+          {
+            "id": "dcef550d2faf6469",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Liens sortants"
+            }
+          },
+          {
+            "id": "c4946c54667f3bbc",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Mots-clés"
+            }
+          },
+          {
+            "id": "d1786816820854c9",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Toutes les propriétés"
+            }
+          },
+          {
+            "id": "ab7f768ef53e3483",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Plan"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Ouvrir le sélecteur rapide": false,
+      "graph:Ouvrir la vue graphique": false,
+      "canvas:Créer une nouvelle toile": false,
+      "daily-notes:Ouvrir la note quotidienne": false,
+      "templates:Insérer le modèle": false,
+      "command-palette:Ouvrir la palette de commandes": false,
+      "bases:Créer une nouvelle base": false
+    }
+  },
+  "active": "6cab3afc4a43d29b",
+  "lastOpenFiles": [
+    "OBSIDIAN/05_TECH/Runbooks/CI_migrations.md",
+    "smyleplay-api/requirements.txt",
+    "README.md",
+    "data/exports/README.md",
+    "data/seeds/README.md",
+    "data/config/styles.json",
+    "data/config/univers.json",
+    "assets_audio/sunset_lover/sw-001 — memories Drift.wav",
+    "assets_audio/sunset_lover/sw-001 — YATCH MIRAGE Drift.wav",
+    "assets_audio/sunset_lover/sw-001 — UNDER Drift.wav",
+    "assets_audio/sunset_lover/sw-001 — SUMMER SADNESS Drift.wav",
+    "assets_audio/sunset_lover/sw-001 — SMOOTH CONFORT Drift.wav",
+    "assets_audio/sunset_lover/sw-001 — SENORITA Drift.wav",
+    "assets_audio/sunset_lover/sw-001 — ROOFTOP LEVITATION Drift.wav",
+    "OBSIDIAN/05_TECH/Legacy/Playlist Panel.md",
+    "OBSIDIAN/05_TECH/Runbooks/Watcher_setup.md",
+    "OBSIDIAN/05_TECH/Runbooks/Suno_router.md",
+    "OBSIDIAN/05_TECH/Runbooks/Mapping_Flask_to_FastAPI.md",
+    "OBSIDIAN/05_TECH/Runbooks/Etape_1_runbook.md",
+    "OBSIDIAN/05_TECH/Runbooks/Deploy.md",
+    "OBSIDIAN/05_TECH/Legacy/tracks.json.md",
+    "OBSIDIAN/05_TECH/Legacy/com.smyleplay.watcher.md",
+    "OBSIDIAN/05_TECH/Legacy/com.smyleplay.suno-router.md",
+    "OBSIDIAN/05_TECH/Legacy/_INDEX.md",
+    "OBSIDIAN/05_TECH/Legacy/Watcher Pipeline.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT Panel.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT Panel JS.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT Panel DNA.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT Panel Connect.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT Panel CSS.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT Panel Artist.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT JS.md",
+    "OBSIDIAN/05_TECH/Legacy/WATT CSS.md",
+    "OBSIDIAN/05_TECH/Legacy/Upload R2.md",
+    "OBSIDIAN/05_TECH/Legacy/Suno Router.md",
+    "OBSIDIAN/05_TECH/Legacy/Style CSS.md",
+    "A_CLASSER/smyleplay-web.archived-2026-04-19/node_modules/date-fns/docs/logotype.svg",
+    "A_CLASSER/smyleplay-web.archived-2026-04-19/node_modules/date-fns/docs/logo.svg",
+    "A_CLASSER/smyleplay-web.archived-2026-04-19/public/window.svg",
+    "A_CLASSER/smyleplay-web.archived-2026-04-19/public/vercel.svg",
+    "A_CLASSER/smyleplay-web.archived-2026-04-19/public/next.svg",
+    "A_CLASSER/smyleplay-web.archived-2026-04-19/public/globe.svg",
+    "A_CLASSER/smyleplay-web.archived-2026-04-19/public/file.svg",
+    "smyleplay-web.archived-2026-04-19/node_modules/date-fns/docs/logotype.svg",
+    "smyleplay-web.archived-2026-04-19/node_modules/date-fns/docs/logo.svg",
+    "smyleplay-web.archived-2026-04-19/public/window.svg"
+  ]
+}
