@@ -1581,6 +1581,14 @@ async function loadPublishStatus() {
     renderPublishBlock();
     renderCreationGate();
     renderPlugSection();
+    // Chantier "1 bouton unifié" — le label du bouton save dépend de
+    // profile_public qui n'est connu qu'après ce fetch. On bascule ici
+    // et on rafraîchit aussi le hint slug du bloc PLUG WATT.
+    try { _updateDashIdSaveButton(); } catch (_) {}
+    try { _updateDashPlugSlugHint(); } catch (_) {}
+    // Ré-hydrate les inputs #dashId* maintenant que le localStorage a
+    // été resynchronisé depuis la DB (voir saveWattProfile plus haut).
+    try { initDashIdentity(); } catch (_) {}
   } catch (err) {
     // Pas grave — on laisse le bloc caché si l'API n'est pas jointe.
     console.warn('[dashboard] loadPublishStatus échec :', err);
@@ -1845,6 +1853,336 @@ async function unpublishMyProfile() {
     dashToast('⚠ Impossible de retirer — réessaie dans un instant.');
     renderPublishBlock();
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHANTIER "1 BOUTON UNIFIÉ" — SECTION IDENTITÉ (sec-identity)
+// ═══════════════════════════════════════════════════════════════════════════
+// Follow-up ADR-001 (2026-04-21). La section #sec-identity du dashboard est
+// la SEULE zone d'édition du profil. Jusqu'ici ses handlers onclick
+// (dashIdentitySave / dashIdentityPickAvatar / dashIdentityPickCover)
+// pointaient sur du vide : boutons décoratifs. On les câble ici.
+//
+// Philosophie "1 bouton" (réf. Vinted / Airbnb / LinkedIn, validée par Tom) :
+//   • profile_public === false → label "Publier mon profil"
+//                                  → PATCH /users/me + POST /watt/me/profile/publish
+//   • profile_public === true  → label "Enregistrer"
+//                                  → PATCH /users/me seul
+// Un user ne DOIT PAS avoir à comprendre la distinction "save vs publish" la
+// première fois : un champ rempli = un profil en ligne. La dépublication
+// reste gérée par le switch PLUG WATT (cas rare).
+//
+// Upload avatar/cover : on réutilise l'endpoint Flask /api/watt/upload-image
+// déjà déployé (artiste.js en dépend aussi). Le backend renvoie { url } R2,
+// on PATCH /users/me avec avatar_url / cover_photo_url. ══════════════════════
+
+// Taille max image (aligné artiste.js + backend) — 5 Mo
+const _DASH_ID_IMG_MAX = 5 * 1024 * 1024;
+
+// Hydrate les inputs dashId* depuis getWattProfile() (source locale) / DB via
+// loadPublishStatus(). Appelé au DOMContentLoaded et après chaque save.
+function initDashIdentity() {
+  const p = getWattProfile() || {};
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('dashIdName',           p.artistName);
+  set('dashIdGenre',          p.genre);
+  set('dashIdCity',           p.city);
+  set('dashIdBio',            p.bio);
+  set('dashIdSocialInstagram', p.instagram);
+  set('dashIdSocialTiktok',    p.tiktok);
+  set('dashIdSocialYoutube',   p.youtube);
+  set('dashIdSocialSpotify',   p.spotify);
+  set('dashIdSocialSoundcloud',p.soundcloud);
+  // Couleurs : defaults WATT si pas de valeur perso
+  set('dashIdBgColor',     p.profileBgColor    || '#070608');
+  set('dashIdBrandColor',  p.profileBrandColor || '#8800FF');
+  _updateDashIdColorHex('dashIdBgColor',    'dashIdBgColorHex');
+  _updateDashIdColorHex('dashIdBrandColor', 'dashIdBrandColorHex');
+  // Previews visuels (avatar / cover)
+  _renderDashIdAvatarPreview(p.avatarUrl);
+  _renderDashIdCoverPreview(p.coverPhotoUrl);
+  // Compteur bio
+  _updateDashIdBioCount();
+  const bio = document.getElementById('dashIdBio');
+  if (bio && !bio.dataset.bound) {
+    bio.addEventListener('input', _updateDashIdBioCount);
+    bio.dataset.bound = '1';
+  }
+  // Repaint le hex à chaque tick du color picker
+  ['dashIdBgColor', 'dashIdBrandColor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.bound) {
+      el.addEventListener('input', () => _updateDashIdColorHex(id, id + 'Hex'));
+      el.dataset.bound = '1';
+    }
+  });
+  // Bouton save dynamique + hint slug
+  _updateDashIdSaveButton();
+  _updateDashPlugSlugHint();
+}
+
+function _updateDashIdColorHex(inputId, hexId) {
+  const el  = document.getElementById(inputId);
+  const hex = document.getElementById(hexId);
+  if (el && hex) hex.textContent = (el.value || '').toUpperCase();
+}
+
+function _updateDashIdBioCount() {
+  const bio = document.getElementById('dashIdBio');
+  const cnt = document.getElementById('dashIdBioCount');
+  if (bio && cnt) cnt.textContent = (bio.value || '').length;
+}
+
+function _renderDashIdAvatarPreview(url) {
+  const el = document.getElementById('dashIdAvatarPreview');
+  if (!el) return;
+  if (url) {
+    el.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover"/>`;
+  } else {
+    const p = getWattProfile() || {};
+    const initials = (p.artistName || '?')[0].toUpperCase();
+    el.textContent = initials;
+  }
+}
+
+function _renderDashIdCoverPreview(url) {
+  const el = document.getElementById('dashIdCoverPreview');
+  if (!el) return;
+  if (url) {
+    el.style.backgroundImage = `url("${url}")`;
+    el.style.backgroundSize  = 'cover';
+    el.style.backgroundPosition = 'center';
+  } else {
+    el.style.backgroundImage = '';
+  }
+}
+
+// Bascule le label "Publier mon profil" / "Enregistrer" selon profile_public.
+// Tant que loadPublishStatus() n'a pas répondu (_dashPublishState.loaded=false)
+// on reste optimiste sur "Enregistrer" pour ne pas flasher "Publier" puis
+// "Enregistrer" une fraction de seconde plus tard.
+function _updateDashIdSaveButton() {
+  const lbl = document.getElementById('dashIdSaveLabel');
+  if (!lbl) return;
+  const shouldPublish = _dashPublishState.loaded && !_dashPublishState.isPublic;
+  lbl.textContent = shouldPublish ? 'Publier mon profil' : 'Enregistrer';
+}
+
+// Remplit le hint "/u/<slug>" du bloc PLUG WATT avec le vrai slug calculé.
+// Fallback "/u/—" si pas de profil encore (cas first-run).
+function _updateDashPlugSlugHint() {
+  const el = document.getElementById('dashPlugSlugHint');
+  if (!el) return;
+  const user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  const p    = getWattProfile();
+  let slug = '';
+  try { slug = _deriveArtistSlug(user, p) || ''; } catch (_) { slug = ''; }
+  el.textContent = slug ? `/u/${slug}` : '/u/—';
+}
+
+// Handlers onclick des boutons "Changer la couverture" / "Changer l'avatar".
+// On déclenche l'input file caché ; l'onchange câblé dans dashboard.html
+// appellera dashIdentityHandle{Avatar,Cover}File() en retour.
+function dashIdentityPickAvatar() {
+  const f = document.getElementById('dashIdAvatarFile');
+  if (f) f.click();
+}
+function dashIdentityPickCover() {
+  const f = document.getElementById('dashIdCoverFile');
+  if (f) f.click();
+}
+
+function dashIdentityHandleAvatarFile(ev) {
+  const file = ev && ev.target && ev.target.files && ev.target.files[0];
+  if (!file) return;
+  _uploadDashIdImage(file, 'avatar');
+  // Reset le input pour pouvoir resélectionner le même fichier
+  ev.target.value = '';
+}
+
+function dashIdentityHandleCoverFile(ev) {
+  const file = ev && ev.target && ev.target.files && ev.target.files[0];
+  if (!file) return;
+  _uploadDashIdImage(file, 'cover');
+  ev.target.value = '';
+}
+
+// Upload vers /api/watt/upload-image (Flask), puis PATCH /users/me avec
+// l'URL R2 renvoyée, puis refresh du preview + du localStorage.
+async function _uploadDashIdImage(file, kind) {
+  // Validation client (le backend re-valide)
+  if (!/^image\//.test(file.type)) { dashToast('⚠ Ce fichier n\'est pas une image.'); return; }
+  if (file.size > _DASH_ID_IMG_MAX) {
+    dashToast(`⚠ Image trop lourde (${Math.round(file.size / 1024)} KB) — max 5 MB.`);
+    return;
+  }
+  const u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  if (!u || !u.id) { dashToast('⚠ Tu dois être connecté.'); return; }
+
+  _setDashIdStatus(kind === 'avatar' ? 'Upload avatar…' : 'Upload couverture…', 'loading');
+
+  const fd = new FormData();
+  fd.append('file',   file);
+  fd.append('userId', u.id);
+  fd.append('kind',   kind);
+
+  let uploadJson;
+  try {
+    const resp = await fetch('/api/watt/upload-image', { method: 'POST', body: fd });
+    uploadJson = await resp.json().catch(() => ({}));
+    if (!resp.ok || !uploadJson.url) {
+      throw new Error(uploadJson.error || `Upload impossible (HTTP ${resp.status}).`);
+    }
+  } catch (err) {
+    console.error('[dashboard] upload-image error', err);
+    _setDashIdStatus('⚠ Upload impossible — réessaie.', 'error');
+    return;
+  }
+
+  const url = uploadJson.url;
+  const apiField = (kind === 'avatar') ? 'avatar_url' : 'cover_photo_url';
+  try {
+    if (typeof apiFetch === 'function') {
+      await apiFetch('/users/me', { method: 'PATCH', json: { [apiField]: url } });
+    }
+  } catch (err) {
+    console.warn('[dashboard] PATCH /users/me image échec :', err);
+    _setDashIdStatus('⚠ Sauvegarde impossible — réessaie.', 'error');
+    return;
+  }
+
+  // Sync localStorage + preview
+  const p = getWattProfile() || {};
+  if (kind === 'avatar') {
+    saveWattProfile({ ...p, avatarUrl: url });
+    _renderDashIdAvatarPreview(url);
+  } else {
+    saveWattProfile({ ...p, coverPhotoUrl: url });
+    _renderDashIdCoverPreview(url);
+  }
+  _setDashIdStatus('✓ Image mise à jour.', 'ok');
+  setTimeout(() => _setDashIdStatus('', ''), 2000);
+}
+
+function _setDashIdStatus(text, kind) {
+  const el = document.getElementById('dashIdStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'dash-identity-status' + (kind ? ' is-' + kind : '');
+}
+
+// ══ LA FONCTION CENTRALE — "1 bouton unifié" ═══════════════════════════════
+// Lit tous les inputs #dashId*, construit le payload PATCH /users/me, puis
+// si profile_public=false, enchaîne automatiquement sur publishMyProfile()
+// pour publier dans la foulée. Aucune friction pour l'user.
+async function dashIdentitySave() {
+  const getVal = (id) => {
+    const el = document.getElementById(id);
+    return el ? (el.value || '').trim() : '';
+  };
+
+  const artistName = getVal('dashIdName');
+  if (!artistName) {
+    _setDashIdStatus('⚠ Le nom d\'artiste est obligatoire.', 'error');
+    dashToast('⚠ Le nom d\'artiste est obligatoire.');
+    return;
+  }
+
+  // Helper : string vide → null (pour que Pydantic empty_string_to_none
+  // propage bien "champ vidé" côté DB, sans dégrader les autres champs).
+  const setField = (payload, key, val) => {
+    payload[key] = (val === '' ? null : val);
+  };
+
+  // Couleurs : on normalise en #RRGGBB uppercase (regex Pydantic stricte)
+  const normHex = (raw) => {
+    const m = (raw || '').trim().match(/^#?([0-9a-f]{6})$/i);
+    return m ? `#${m[1].toUpperCase()}` : null;
+  };
+  const bgColor    = normHex(getVal('dashIdBgColor'));
+  const brandColor = normHex(getVal('dashIdBrandColor'));
+
+  const payload = { artist_name: artistName };
+  setField(payload, 'bio',         getVal('dashIdBio'));
+  setField(payload, 'genre',       getVal('dashIdGenre'));
+  setField(payload, 'city',        getVal('dashIdCity'));
+  setField(payload, 'instagram',   getVal('dashIdSocialInstagram'));
+  setField(payload, 'tiktok',      getVal('dashIdSocialTiktok'));
+  setField(payload, 'youtube',     getVal('dashIdSocialYoutube'));
+  setField(payload, 'spotify',     getVal('dashIdSocialSpotify'));
+  setField(payload, 'soundcloud',  getVal('dashIdSocialSoundcloud'));
+  // Defaults WATT (#070608 / #8800FF) → null côté DB (= "pas de perso, thème standard")
+  payload.profile_bg_color    = (bgColor    === '#070608') ? null : bgColor;
+  payload.profile_brand_color = (brandColor === '#8800FF') ? null : brandColor;
+  // brand_color (carte hub) : on cale sur la couleur d'accent choisie
+  if (brandColor) payload.brand_color = brandColor;
+
+  const btn = document.getElementById('dashIdSaveBtn');
+  if (btn) btn.disabled = true;
+  _setDashIdStatus('Enregistrement…', 'loading');
+
+  try {
+    if (typeof apiFetch === 'function') {
+      await apiFetch('/users/me', { method: 'PATCH', json: payload });
+    }
+  } catch (err) {
+    console.error('[dashboard] PATCH /users/me échec :', err);
+    if (btn) btn.disabled = false;
+    _setDashIdStatus('⚠ Enregistrement impossible — réessaie.', 'error');
+    dashToast('⚠ Enregistrement impossible — réessaie.');
+    return;
+  }
+
+  // Sync localStorage — source partagée avec les autres blocs (hub card,
+  // PLUG preview, artiste public).
+  const p = getWattProfile() || {};
+  saveWattProfile({
+    ...p,
+    artistName,
+    bio:        payload.bio        || '',
+    genre:      payload.genre      || '',
+    city:       payload.city       || '',
+    instagram:  payload.instagram  || '',
+    tiktok:     payload.tiktok     || '',
+    youtube:    payload.youtube    || '',
+    spotify:    payload.spotify    || '',
+    soundcloud: payload.soundcloud || '',
+    brandColor: brandColor || p.brandColor || '',
+    profileBgColor:    payload.profile_bg_color    || '',
+    profileBrandColor: payload.profile_brand_color || '',
+  });
+  if (brandColor) { try { applyDashboardBrandColor(brandColor); } catch (_) {} }
+
+  // ═══ LA LOGIQUE "1 BOUTON" ═══════════════════════════════════════════════
+  // Premier enregistrement (profile_public=false) → on publie dans la foulée.
+  // On laisse publishMyProfile() gérer ses propres états (loading, 422, toast).
+  // Pour les saves suivants (profile_public=true) → juste confirmation OK.
+  const shouldPublishNow = _dashPublishState.loaded && !_dashPublishState.isPublic;
+  if (shouldPublishNow) {
+    _setDashIdStatus('Publication…', 'loading');
+    await publishMyProfile();
+  } else {
+    _setDashIdStatus('✓ Profil enregistré.', 'ok');
+    dashToast('✓ Profil enregistré.');
+    setTimeout(() => _setDashIdStatus('', ''), 2000);
+  }
+
+  if (btn) btn.disabled = false;
+  _updateDashIdSaveButton();
+  _updateDashPlugSlugHint();
+  // Re-render des autres blocs qui consomment le profil
+  try { renderArtistCard(); }    catch (_) {}
+  try { renderProfileView(); }   catch (_) {}
+  try { renderPlugSection(); }   catch (_) {}
+}
+
+// Expose les handlers pour les onclick/onchange inline
+if (typeof window !== 'undefined') {
+  window.dashIdentitySave             = dashIdentitySave;
+  window.dashIdentityPickAvatar       = dashIdentityPickAvatar;
+  window.dashIdentityPickCover        = dashIdentityPickCover;
+  window.dashIdentityHandleAvatarFile = dashIdentityHandleAvatarFile;
+  window.dashIdentityHandleCoverFile  = dashIdentityHandleCoverFile;
 }
 
 // ── 8 ter. PILL PLUG WATT (sec-plug) ─────────────────────────────────────────
@@ -2237,6 +2575,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Section nav
   initSectionNav();
 
+  // Chantier "1 bouton unifié" — hydrate les inputs de la section Identité
+  // depuis le localStorage (rapide, pas d'attente réseau). loadPublishStatus()
+  // ré-hydrate plus tard avec les données DB fraîches.
+  try { initDashIdentity(); } catch (e) { console.warn('[dashboard] initDashIdentity error', e); }
+
   // Chantier 1 — charge le statut profile_public depuis /users/me
   // pour afficher le bon état du bloc "Publier mon profil".
   loadPublishStatus();
@@ -2270,6 +2613,8 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPublishBlock();
       renderCreationGate();
       renderPlugSection();
+      try { _updateDashIdSaveButton(); } catch (_) {}
+      try { _updateDashPlugSlugHint(); } catch (_) {}
     });
 
     window.SmyleEvents.on(window.SmyleEvents.TYPES.PROFILE_UNPUBLISHED, () => {
@@ -2278,6 +2623,8 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPublishBlock();
       renderCreationGate();
       renderPlugSection();
+      try { _updateDashIdSaveButton(); } catch (_) {}
+      try { _updateDashPlugSlugHint(); } catch (_) {}
     });
   }
 
