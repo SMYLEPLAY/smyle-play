@@ -1,25 +1,21 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   SMYLE PLAY — artiste.js  (V2 "Page unifiée")
+   SMYLE PLAY — artiste.js  (Phase 5 — 2026-04-20)
 
-   La page /artiste/<slug> est LE seul endroit où vit le profil artiste :
-     ► création          : owner ouvre sa page vide et remplit inline
-     ► édition continue  : owner modifie nom/bio/avatar/cover/couleurs
-     ► vue publique      : fans lisent (backend 404 si !profile_public)
+   La page /u/<slug> est la BOUTIQUE PUBLIQUE — 100% LECTURE SEULE.
+   L'édition du profil vit UNIQUEMENT sur /dashboard#sec-identity (ATELIER).
 
-   Trois modes visuels pilotés par des classes body :
-     • <pas de classe>     → vue publique / fan
-     • .ap-owner           → owner connecté sur sa page (barre visible)
-     • .ap-owner-editing   → owner en train d'éditer (contenteditable actif)
+     ► vue publique (fans)   : toujours lecture seule
+     ► vue owner + publié    : preview "comme les fans" + lien "Éditer dans le dashboard"
+     ► vue owner + brouillon : preview + bouton "Publier mon profil"
+     ► vue owner sans nom    : redirect auto vers /dashboard#sec-identity
 
-   Trois états owner dans la barre sticky :
-     • .ap-owner-view      → "Tu vois ta page comme les fans" + bouton Modifier
-     • .ap-owner-edit      → "Mode édition" + bouton Terminer + Publier
-     • .ap-owner-draft     → gate "Poste un son pour publier" (trackCount=0)
+   Pas de mode édition inline (`toggleOwnerEdit`, `.ap-owner-editing` et
+   `.ap-editable` sont conservés pour compat CSS mais neutralisés fonctionnellement).
 
    Backend touché :
-     GET  /watt/artists/<slug>         → récupère le profil (isSelf, publicProfile…)
-     PATCH /users/me                   → sauvegarde les champs modifiés
-     POST /watt/me/profile/publish     → bascule profile_public=TRUE
+     GET  /watt/artists/<slug>         → récupère le profil (isSelf, profilePublic…)
+     POST /watt/me/profile/publish     → bascule profile_public=TRUE (bouton "Publier")
+     (PATCH /users/me est désormais appelé UNIQUEMENT depuis dashboard.js.)
    ═══════════════════════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -197,43 +193,34 @@ async function loadArtist() {
   }
 }
 
-// Première visite owner : si le profil est squelettique (pas de nom ou pas
-// de bio), on ouvre direct le mode édition — évite au user d'avoir à
-// comprendre qu'il faut cliquer sur "Modifier" avant de pouvoir saisir.
-//
-// Deep-link dashboard → /u/me?edit=1 : le wattboard redirige ici avec
-// edit=1 quand l'user clique sur la gate "Crée d'abord ton profil".
-// On force alors l'ouverture de l'éditeur même si le profil a déjà un
-// nom/bio (cas d'un user qui a rempli mais jamais cliqué sur Publier).
+// Phase 5 (2026-04-20) — L'édition profil vit UNIQUEMENT sur /dashboard.
+//   • owner sans nom           → redirect vers /dashboard#sec-identity
+//     (la page publique n'a littéralement rien à afficher sans nom)
+//   • owner avec nom, !publié → on reste ici (preview + bouton Publier
+//     géré par renderOwnerBar)
+//   • owner avec nom, publié   → vue normale, identique aux fans
+// Le paramètre ?edit=1 legacy est ignoré + nettoyé silencieusement.
 function maybePromptFirstEdit() {
   const a = state.artist;
   if (!a || !a.isSelf) return;
 
-  const forceEdit = _hasEditIntentParam();
   const hasName = !!(a.artistName && a.artistName.trim());
-  const hasBio  = !!(a.bio && a.bio.trim());
 
-  if (forceEdit || !hasName || !hasBio) {
-    // Active le mode édition juste après le premier rendu.
-    // On passe par setTimeout pour laisser le paint initial finir,
-    // sinon les .ap-editable n'ont pas encore leur placeholder visible.
-    setTimeout(() => {
-      if (!state.editing) toggleOwnerEdit();
-      if (forceEdit) {
-        // Scroll vers la section identité pour que le user voie direct
-        // le champ "nom d'artiste" à remplir. Puis on nettoie l'URL
-        // pour ne pas re-déclencher au prochain reload spontané.
-        const target = document.getElementById('ap-identity-section')
-          || document.querySelector('.ap-identity')
-          || document.getElementById('ap-profile');
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        try {
-          const url = new URL(window.location.href);
-          url.searchParams.delete('edit');
-          window.history.replaceState(null, '', url.toString());
-        } catch (_) { /* URL API indisponible — ignore */ }
-      }
-    }, 60);
+  if (!hasName) {
+    // Profil squelettique → redirige vers l'atelier pour que l'user remplisse.
+    // Message d'accueil géré côté dashboard (sec-identity ouvert par défaut
+    // quand artist_name est null — cf. dashboard.js initIdentityAccordion).
+    window.location.href = '/dashboard#sec-identity';
+    return;
+  }
+
+  // Nettoie le ?edit=1 legacy s'il traîne (ne déclenche plus rien).
+  if (_hasEditIntentParam()) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('edit');
+      window.history.replaceState(null, '', url.toString());
+    } catch (_) { /* URL API indisponible — ignore */ }
   }
 }
 
@@ -347,11 +334,19 @@ function renderOwnerBar({ isSelf, isPublic, trackCount }) {
   }
   setText('ap-owner-bar-label', label);
 
-  // Bouton "Modifier / Terminer"
+  // Bouton "Modifier" — Phase 5 : édition migrée sur /dashboard#sec-identity.
+  // On transforme le bouton en lien vers l'atelier au lieu de lancer le mode
+  // édition inline. Le onclick inline défini dans le HTML est neutralisé.
   const btnEdit = $('ap-owner-btn-edit');
   const lblEdit = $('ap-owner-btn-edit-label');
-  if (lblEdit) lblEdit.textContent = editing ? 'Terminer' : 'Modifier';
-  if (btnEdit) btnEdit.classList.toggle('is-active', editing);
+  if (lblEdit) lblEdit.textContent = 'Éditer dans le dashboard';
+  if (btnEdit) {
+    btnEdit.classList.remove('is-active');
+    btnEdit.onclick = (ev) => {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      window.location.href = '/dashboard#sec-identity';
+    };
+  }
 
   // Bouton "Publier" — visible UNIQUEMENT quand profil brouillon (pas public).
   const btnPub = $('ap-owner-btn-publish');
@@ -941,12 +936,22 @@ function renderStats(artist) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MODE OWNER — édition inline
+   MODE OWNER — édition inline (DÉSACTIVÉ Phase 5 — 2026-04-20)
+
+   L'édition inline sur /u/<slug> est désactivée. Toute tentative redirige
+   vers /dashboard#sec-identity (atelier). Les fonctions sont conservées
+   pour compat ascendante (appels externes, handlers legacy) mais short-
+   circuitées en tête. Le code en dessous reste pour le jour où on voudrait
+   re-réactiver (pas de suppression brutale → pas de casse git blame).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Bascule le mode édition : contenteditable ON/OFF + pickers couleurs + boutons
+// No-op : redirige vers le dashboard au lieu d'ouvrir le mode édition inline.
 function toggleOwnerEdit() {
   if (!state.artist || !state.artist.isSelf) return;
+  // Phase 5 : édition déléguée au dashboard.
+  window.location.href = '/dashboard#sec-identity';
+  return;
+  // eslint-disable-next-line no-unreachable
   state.editing = !state.editing;
 
   document.body.classList.toggle('ap-owner-editing', state.editing);
