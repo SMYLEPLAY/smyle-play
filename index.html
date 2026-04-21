@@ -544,9 +544,10 @@
       <button type="submit" class="modal-submit">Se connecter</button>
     </form>
 
-    <!-- Inscription -->
+    <!-- Inscription — email + password uniquement.
+         Le profil artiste (artist_name, slug, bio) se crée depuis le WATT board
+         après connexion. Pas de friction au signup. -->
     <form id="form-signup" style="display:none" onsubmit="submitSignup(); return false;">
-      <input class="modal-input" id="signup-name"     type="text"     placeholder="Ton prénom" required autocomplete="given-name" />
       <input class="modal-input" id="signup-email"    type="email"    placeholder="Email" required autocomplete="email" />
       <div class="modal-pwd-wrap">
         <input class="modal-input" id="signup-password" type="password" placeholder="Mot de passe (min 6 car.)" required autocomplete="new-password" minlength="6" />
