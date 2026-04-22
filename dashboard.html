@@ -961,6 +961,196 @@
     </div>
   </section>
 
+  <!-- ──────────────────────────────────────────────────────────────────────────
+       BLOC 1c — VENDRE UNE VOIX (sous-section de Création)
+       ──────────────────────────────────────────────────────────────────────────
+       Permet à un·e artiste de proposer à la vente un sample vocal (recette B :
+       extrait audio a cappella, pas un clone IA). Apparaît sous une musique
+       générée comme "voix signature" disponible à la revente.
+       Champs : nom, style, genres compatibles, sample audio (30s-2min), licence,
+       prix en SMYLES.
+       Aperçu visuel P1-F9 — backend à venir (persistance + lien avec morceau).
+       ────────────────────────────────────────────────────────────────────────── -->
+  <style>
+    #sec-voice-sale .dash-voice-banner{
+      display:flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:10px;
+      background:rgba(255,215,0,.08);
+      border:1px solid rgba(255,215,0,.25);
+      color:rgba(255,215,0,.9);
+      font-size:12px; font-weight:500;
+      margin-bottom:16px;
+    }
+    #sec-voice-sale .dash-voice-chip{
+      font-size:12px; font-weight:500;
+      padding:8px 14px; border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      color:rgba(255,255,255,.72);
+      cursor:pointer; user-select:none;
+      transition:all .15s ease;
+    }
+    #sec-voice-sale .dash-voice-chip:hover{
+      border-color:rgba(255,255,255,.25);
+      color:#fff;
+    }
+    #sec-voice-sale .dash-voice-chip.is-on{
+      background:rgba(136,0,255,.16);
+      border-color:rgba(136,0,255,.55);
+      color:#fff;
+    }
+    #sec-voice-sale .dash-voice-chips-row{
+      display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;
+    }
+    #sec-voice-sale .dash-voice-radios{
+      display:flex; flex-direction:column; gap:8px; margin-top:6px;
+    }
+    #sec-voice-sale .dash-voice-radio{
+      display:flex; align-items:flex-start; gap:10px;
+      padding:10px 12px; border-radius:10px;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.08);
+      cursor:pointer; transition:all .15s ease;
+    }
+    #sec-voice-sale .dash-voice-radio:hover{
+      border-color:rgba(255,255,255,.18);
+    }
+    #sec-voice-sale .dash-voice-radio.is-on{
+      border-color:rgba(136,0,255,.55);
+      background:rgba(136,0,255,.08);
+    }
+    #sec-voice-sale .dash-voice-radio input{ margin-top:3px; }
+    #sec-voice-sale .dash-voice-radio-lbl{ font-weight:600; color:#fff; font-size:13px; }
+    #sec-voice-sale .dash-voice-radio-sub{
+      font-size:11px; color:rgba(255,255,255,.55);
+      margin-top:2px; line-height:1.4;
+    }
+    #sec-voice-sale .dash-voice-sample-zone{
+      display:flex; align-items:center; gap:12px;
+      padding:14px; border-radius:10px;
+      background:rgba(255,255,255,.03);
+      border:1px dashed rgba(255,255,255,.18);
+    }
+    #sec-voice-sale .dash-voice-sample-zone.has-file{
+      border-style:solid;
+      border-color:rgba(136,0,255,.45);
+      background:rgba(136,0,255,.06);
+    }
+    #sec-voice-sale .dash-voice-sample-info{
+      flex:1; min-width:0;
+      font-size:12px; color:rgba(255,255,255,.72);
+    }
+    #sec-voice-sale .dash-voice-sample-info strong{
+      color:#fff; display:block; margin-bottom:2px;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    #sec-voice-sale .dash-voice-price-row{
+      display:flex; align-items:center; gap:10px;
+    }
+    #sec-voice-sale .dash-voice-price-row .dash-input{
+      max-width:140px;
+    }
+    #sec-voice-sale .dash-voice-price-suffix{
+      font-size:13px; color:rgba(255,215,0,.85);
+      font-weight:600;
+    }
+  </style>
+  <section class="dash-section dash-section-sub" id="sec-voice-sale">
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">1c</span>
+      <span class="dash-subhdr-title">Vendre une voix</span>
+      <span class="dash-subhdr-sub">propose un sample vocal signature en revente sous tes morceaux</span>
+    </div>
+
+    <div class="dash-voice-banner">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Aperçu visuel — la persistance backend arrive avec P1-F9. Tes saisies ne sont pas encore sauvegardées.
+    </div>
+
+    <div class="dash-field-col">
+      <label class="dash-label">
+        Nom de la voix <span class="dash-req">*</span>
+      </label>
+      <input type="text" class="dash-input" id="dashVoiceName"
+             placeholder="ex : Velvet Midnight, Lava Queen, North Echo..." maxlength="40" />
+      <div class="dash-help">Max 40 caractères. Unique, mémorable — c'est le nom qui apparaîtra sous ton morceau.</div>
+
+      <label class="dash-label">
+        Style de voix <span class="dash-req">*</span>
+      </label>
+      <input type="text" class="dash-input" id="dashVoiceStyle"
+             placeholder="ex : feutrée rauque, aérienne falsetto, grave slow, nasale percussive..." maxlength="80" />
+      <div class="dash-help">Décris la texture en 1 ligne — c'est ce qui donne envie d'acheter.</div>
+
+      <label class="dash-label">
+        Genres compatibles <span class="dash-req">*</span>
+      </label>
+      <div class="dash-voice-chips-row" id="dashVoiceGenresGrid"></div>
+      <div class="dash-help">Sélectionne tous les genres où ta voix fonctionne (au moins 1).</div>
+
+      <label class="dash-label">
+        Sample audio <span class="dash-req">*</span>
+      </label>
+      <div class="dash-voice-sample-zone" id="dashVoiceSampleZone">
+        <div class="dash-voice-sample-info" id="dashVoiceSampleInfo">
+          <strong>Aucun fichier</strong>
+          .mp3, .wav, .m4a — 30s à 2min — a cappella de préférence
+        </div>
+        <label class="dash-btn-secondary" style="cursor:pointer;margin:0">
+          <input type="file" id="dashVoiceSampleFile" accept=".mp3,.wav,.m4a,audio/*"
+                 style="display:none" onchange="dashVoiceHandleSampleFile(event)" />
+          Choisir
+        </label>
+      </div>
+      <div class="dash-help">Extrait vocal seul (sans instrumental). C'est ce que l'acheteur écoutera avant d'acheter.</div>
+
+      <label class="dash-label">
+        Type de licence <span class="dash-req">*</span>
+      </label>
+      <div class="dash-voice-radios" id="dashVoiceLicenseGrid">
+        <label class="dash-voice-radio is-on" data-license="personnel">
+          <input type="radio" name="voiceLicense" value="personnel" checked onchange="dashVoiceSelectLicense(this)" />
+          <div>
+            <div class="dash-voice-radio-lbl">Personnel</div>
+            <div class="dash-voice-radio-sub">Usage privé uniquement. Pas de diffusion publique ni monétisation.</div>
+          </div>
+        </label>
+        <label class="dash-voice-radio" data-license="commercial">
+          <input type="radio" name="voiceLicense" value="commercial" onchange="dashVoiceSelectLicense(this)" />
+          <div>
+            <div class="dash-voice-radio-lbl">Commercial</div>
+            <div class="dash-voice-radio-sub">Peut diffuser publiquement et monétiser. Non-exclusif : d'autres peuvent acheter.</div>
+          </div>
+        </label>
+        <label class="dash-voice-radio" data-license="exclusif">
+          <input type="radio" name="voiceLicense" value="exclusif" onchange="dashVoiceSelectLicense(this)" />
+          <div>
+            <div class="dash-voice-radio-lbl">Exclusif</div>
+            <div class="dash-voice-radio-sub">Un seul acheteur. La voix est retirée de la vente après l'achat.</div>
+          </div>
+        </label>
+      </div>
+
+      <label class="dash-label">
+        Prix <span class="dash-req">*</span>
+      </label>
+      <div class="dash-voice-price-row">
+        <input type="number" class="dash-input" id="dashVoicePrice"
+               min="50" max="5000" value="200" />
+        <span class="dash-voice-price-suffix">SMYLES</span>
+      </div>
+      <div class="dash-help">Entre 50 et 5000 SMYLES. Les licences exclusives se vendent plus cher (× 3 à × 10 le tarif commercial).</div>
+
+      <div class="dash-adn-editor-actions" style="margin-top:14px">
+        <button type="button" class="dash-btn-ghost" onclick="dashVoiceResetForm()">Réinitialiser</button>
+        <button type="button" class="dash-btn-primary" onclick="dashVoiceSave()">
+          <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Enregistrer (aperçu)
+        </button>
+      </div>
+    </div>
+  </section>
+
 
   <!-- ──────────────────────────────────────────────────────────────────────────
        BLOC 2 — ANALYTIQUE

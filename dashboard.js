@@ -1925,6 +1925,145 @@ if (typeof window !== 'undefined') {
   window.dashIdentityToggleRole = dashIdentityToggleRole;
 }
 
+// ───────────────────────────────────────────────────────────────
+// P1-F9 — Vendre une voix (bloc 1c, cellule Création)
+// Visual-only (aperçu). Persistance localStorage en attendant le backend.
+// ───────────────────────────────────────────────────────────────
+const DASH_VOICE_GENRES = [
+  { key: 'rnb',     label: 'RnB' },
+  { key: 'pop',     label: 'Pop' },
+  { key: 'trap',    label: 'Trap' },
+  { key: 'rap',     label: 'Rap' },
+  { key: 'electro', label: 'Electro' },
+  { key: 'house',   label: 'House' },
+  { key: 'afro',    label: 'Afro' },
+  { key: 'jazz',    label: 'Jazz' },
+  { key: 'soul',    label: 'Soul' },
+  { key: 'rock',    label: 'Rock' },
+  { key: 'autre',   label: 'Autre' },
+];
+
+function _getVoiceDraft() {
+  try { return JSON.parse(localStorage.getItem('wattVoiceDraft') || '{}'); }
+  catch (_) { return {}; }
+}
+function _saveVoiceDraft(d) {
+  try { localStorage.setItem('wattVoiceDraft', JSON.stringify(d || {})); }
+  catch (_) {}
+}
+
+function renderVoiceGenresChips() {
+  const grid = document.getElementById('dashVoiceGenresGrid');
+  if (!grid) return;
+  const d = _getVoiceDraft();
+  const selected = Array.isArray(d.genres) ? d.genres : [];
+  grid.innerHTML = DASH_VOICE_GENRES.map(g => {
+    const isOn = selected.includes(g.key);
+    return `<button type="button" class="dash-voice-chip${isOn ? ' is-on' : ''}"
+      data-genre-key="${g.key}" onclick="dashVoiceToggleGenre('${g.key}')"
+      aria-pressed="${isOn}">${g.label}</button>`;
+  }).join('');
+}
+
+function dashVoiceToggleGenre(key) {
+  const d = _getVoiceDraft();
+  const current = Array.isArray(d.genres) ? [...d.genres] : [];
+  const idx = current.indexOf(key);
+  if (idx >= 0) current.splice(idx, 1);
+  else current.push(key);
+  _saveVoiceDraft({ ...d, genres: current });
+  renderVoiceGenresChips();
+}
+
+function dashVoiceSelectLicense(radio) {
+  if (!radio) return;
+  const wrap = document.getElementById('dashVoiceLicenseGrid');
+  if (wrap) {
+    wrap.querySelectorAll('.dash-voice-radio').forEach(r => r.classList.remove('is-on'));
+    const label = radio.closest('.dash-voice-radio');
+    if (label) label.classList.add('is-on');
+  }
+  const d = _getVoiceDraft();
+  _saveVoiceDraft({ ...d, license: radio.value });
+}
+
+function dashVoiceHandleSampleFile(ev) {
+  const file = ev && ev.target && ev.target.files && ev.target.files[0];
+  const zone = document.getElementById('dashVoiceSampleZone');
+  const info = document.getElementById('dashVoiceSampleInfo');
+  if (!file || !zone || !info) return;
+  const sizeKb = Math.round(file.size / 1024);
+  const sizeLbl = sizeKb > 1024 ? (sizeKb / 1024).toFixed(1) + ' Mo' : sizeKb + ' Ko';
+  info.innerHTML = `<strong>${file.name}</strong>${sizeLbl} · ${file.type || 'audio'}`;
+  zone.classList.add('has-file');
+  const d = _getVoiceDraft();
+  _saveVoiceDraft({ ...d, sampleName: file.name, sampleSize: file.size });
+}
+
+function dashVoiceResetForm() {
+  ['dashVoiceName', 'dashVoiceStyle'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const price = document.getElementById('dashVoicePrice');
+  if (price) price.value = 200;
+  const firstRadio = document.querySelector('#dashVoiceLicenseGrid input[value="personnel"]');
+  if (firstRadio) { firstRadio.checked = true; dashVoiceSelectLicense(firstRadio); }
+  const zone = document.getElementById('dashVoiceSampleZone');
+  const info = document.getElementById('dashVoiceSampleInfo');
+  if (zone) zone.classList.remove('has-file');
+  if (info) info.innerHTML = `<strong>Aucun fichier</strong>.mp3, .wav, .m4a — 30s à 2min — a cappella de préférence`;
+  _saveVoiceDraft({ genres: [], license: 'personnel' });
+  renderVoiceGenresChips();
+}
+
+function dashVoiceSave() {
+  const name   = (document.getElementById('dashVoiceName')  || {}).value || '';
+  const style  = (document.getElementById('dashVoiceStyle') || {}).value || '';
+  const price  = parseInt((document.getElementById('dashVoicePrice') || {}).value || '0', 10);
+  const d = _getVoiceDraft();
+  const genres = Array.isArray(d.genres) ? d.genres : [];
+  const license = d.license || 'personnel';
+  const sample = d.sampleName || '';
+  const errs = [];
+  if (!name.trim())           errs.push('Nom de la voix');
+  if (!style.trim())          errs.push('Style de voix');
+  if (genres.length === 0)    errs.push('Au moins 1 genre');
+  if (!sample)                errs.push('Sample audio');
+  if (!price || price < 50 || price > 5000) errs.push('Prix (50-5000)');
+  if (errs.length) {
+    alert('Champs manquants ou invalides :\n• ' + errs.join('\n• '));
+    return;
+  }
+  _saveVoiceDraft({ ...d, name, style, price });
+  alert('Aperçu enregistré localement.\n\nLa persistance backend arrive avec P1-F9 — ta voix sera alors proposée sous tes morceaux publiés.');
+}
+
+function initDashVoiceSale() {
+  renderVoiceGenresChips();
+  const d = _getVoiceDraft();
+  if (d.name)   { const el = document.getElementById('dashVoiceName');  if (el) el.value = d.name; }
+  if (d.style)  { const el = document.getElementById('dashVoiceStyle'); if (el) el.value = d.style; }
+  if (d.price)  { const el = document.getElementById('dashVoicePrice'); if (el) el.value = d.price; }
+  if (d.license) {
+    const r = document.querySelector(`#dashVoiceLicenseGrid input[value="${d.license}"]`);
+    if (r) { r.checked = true; dashVoiceSelectLicense(r); }
+  }
+  if (d.sampleName) {
+    const zone = document.getElementById('dashVoiceSampleZone');
+    const info = document.getElementById('dashVoiceSampleInfo');
+    if (zone) zone.classList.add('has-file');
+    if (info) info.innerHTML = `<strong>${d.sampleName}</strong>fichier enregistré (aperçu local)`;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.dashVoiceToggleGenre     = dashVoiceToggleGenre;
+  window.dashVoiceSelectLicense   = dashVoiceSelectLicense;
+  window.dashVoiceHandleSampleFile = dashVoiceHandleSampleFile;
+  window.dashVoiceResetForm       = dashVoiceResetForm;
+  window.dashVoiceSave            = dashVoiceSave;
+}
+
 function initDashIdentity() {
   const p = getWattProfile() || {};
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
@@ -2611,6 +2750,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // depuis le localStorage (rapide, pas d'attente réseau). loadPublishStatus()
   // ré-hydrate plus tard avec les données DB fraîches.
   try { initDashIdentity(); } catch (e) { console.warn('[dashboard] initDashIdentity error', e); }
+  try { initDashVoiceSale(); } catch (e) { console.warn('[dashboard] initDashVoiceSale error', e); }
 
   // Chantier 1 — charge le statut profile_public depuis /users/me
   // pour afficher le bon état du bloc "Publier mon profil".
