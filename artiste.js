@@ -280,6 +280,7 @@ function renderProfile() {
   renderDna(artist);
   renderPrompts(artist);
   renderTracks(artist);
+  _updateSaleDisclaimerVisibility(artist);
 
   // ── Onglet navigateur ────────────────────────────────────────────────
   const name = artist.artistName && artist.artistName.trim();
@@ -622,6 +623,19 @@ async function saveRolesPicker() {
    - 400 self-purchase   → toast silencieux (ne devrait pas arriver, le
                             bouton est masqué pour isSelf)                  */
 
+// ═══ Item 7 · Disclaimer fiche vente ════════════════════════════════════
+// Affiche le disclaimer UNIQUEMENT si l'artiste vend quelque chose.
+// Critère : au moins 1 ADN OU au moins 1 prompt publié.
+// (Les voix arriveront avec P1-F9 backend — le flag côté serveur manque
+// encore, donc pour l'instant on ne regarde que adn + prompts.)
+function _updateSaleDisclaimerVisibility(artist) {
+  const el = document.getElementById('ap-sale-disclaimer');
+  if (!el) return;
+  const hasAdn     = !!(artist && artist.adn);
+  const hasPrompts = Array.isArray(artist && artist.prompts) && artist.prompts.length > 0;
+  el.style.display = (hasAdn || hasPrompts) ? '' : 'none';
+}
+
 function renderDna(artist) {
   const card = $('ap-dna-card');
   if (!card) return;
@@ -726,6 +740,15 @@ function renderTracks(artist) {
   setText('ap-tracks-count',
     `${tracks.length} son${tracks.length > 1 ? 's' : ''}`);
 
+  // Item 1 — libellé lisible des plateformes d'origine
+  const PLATFORM_LBL = {
+    suno:         'Suno',
+    udio:         'Udio',
+    riffusion:    'Riffusion',
+    stable_audio: 'Stable Audio',
+    autre:        'Autre',
+  };
+
   list.innerHTML = '';
   tracks.forEach(t => {
     const card = document.createElement('article');
@@ -736,12 +759,24 @@ function renderTracks(artist) {
     const audio    = t.streamUrl
       ? `<audio controls preload="none" src="${t.streamUrl}" class="ap-track-audio"></audio>`
       : '';
+    // Item 1 — badge plateforme (si connu). Gracieusement absent tant que le
+    // backend ne renvoie pas le champ `platform` sur /api/artists/{slug}.
+    const platformBadge = (t.platform && PLATFORM_LBL[t.platform])
+      ? `<span class="ap-track-card-platform" title="Plateforme d'origine">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
+          </svg>
+          ${PLATFORM_LBL[t.platform]}
+        </span>`
+      : '';
     card.innerHTML = `
       <div class="ap-track-card-top">
         <h3 class="ap-track-card-title">${safeName}</h3>
         <div class="ap-track-card-meta">
           <span>▶ ${plays}</span>
           ${date ? `<span>· ${date}</span>` : ''}
+          ${platformBadge}
         </div>
       </div>
       ${audio}

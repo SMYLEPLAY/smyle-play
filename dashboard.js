@@ -1045,9 +1045,14 @@ async function uploadTrack() {
     return;
   }
 
-  const genre = document.getElementById('dashGenre').value.trim();
-  const tags  = document.getElementById('dashTags').value.trim();
-  const desc  = document.getElementById('dashDesc').value.trim();
+  const genre    = document.getElementById('dashGenre').value.trim();
+  const tags     = document.getElementById('dashTags').value.trim();
+  const desc     = document.getElementById('dashDesc').value.trim();
+  // Item 1 — Plateforme d'origine du prompt (P1-F4 partiel)
+  // Stockée en localStorage pour l'instant : le backend accueillera le champ
+  // avec la migration P1-F4. Quand la DB stocke, on l'enverra aussi dans le
+  // payload POST /api/watt/tracks. Affiché sur la fiche de vente publique.
+  const platform = (document.getElementById('dashTrackPlatform')?.value || '').trim();
 
   // Afficher progression
   const progressWrap = document.getElementById('dashProgressWrap');
@@ -1140,6 +1145,8 @@ async function uploadTrack() {
     uploadedAt:   Date.now(),
     cloud:        uploaded,
     streamUrl,
+    // Item 1 — plateforme d'origine ('suno'|'udio'|'riffusion'|'stable_audio'|'autre'|'')
+    platform:     platform || null,
   };
   tracks.unshift(newTrack);
   saveMyTracks(tracks);
