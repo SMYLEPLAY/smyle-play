@@ -63,11 +63,31 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    # En production : exiger une vraie SECRET_KEY
+    # SECRET_KEY résolue explicitement au boot via get_config() — si absente
+    # en prod, on crashe immédiatement avec un message actionnable plutôt que
+    # de laisser l'app tourner avec None puis exploser à la 1ère signature
+    # de session.
     SECRET_KEY = os.environ.get('SECRET_KEY')
 
 
 # Sélection auto selon l'env
 def get_config():
     env = os.environ.get('FLASK_ENV', 'development')
-    return ProductionConfig if env == 'production' else DevelopmentConfig
+    if env == 'production':
+        # Garde-fou prod : SECRET_KEY doit être définie et non triviale.
+        # Sans ça, Flask signerait les sessions avec None → crash obscur à
+        # la première requête. Mieux vaut refuser de démarrer.
+        if not ProductionConfig.SECRET_KEY:
+            raise RuntimeError(
+                "SECRET_KEY is missing in production environment. "
+                "Set it in Railway → Variables before deploying. "
+                "Generate one with: "
+                "python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+            )
+        if ProductionConfig.SECRET_KEY == 'dev-secret-change-in-production':
+            raise RuntimeError(
+                "SECRET_KEY is still set to the development default value. "
+                "Rotate it immediately in Railway → Variables."
+            )
+        return ProductionConfig
+    return DevelopmentConfig
