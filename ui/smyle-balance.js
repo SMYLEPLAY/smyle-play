@@ -214,16 +214,41 @@
   }
 
   function getOrCreateContainer() {
+    // Nettoyage défensif : si un rendu précédent a laissé un badge flottant
+    // en dehors de la topbar (race init ou hot reload), on le supprime pour
+    // éviter le doublon "S10 smyleES" qui chevauche l'avatar.
+    _removeFloatingOrphans();
+
     // Priorité 1 : container explicite posé dans la page
     let container = document.getElementById('smyle-balance');
     if (container) return container;
 
-    // Priorité 2 : création automatique en flottant (position fixed)
+    // Priorité 2 : si la page a une topbar partagée (placeholder
+    // #smyle-topbar), on attend qu'elle crée son propre slot — ne PAS
+    // créer de flottant prématuré qui resterait collé au coin haut-droit
+    // en doublon de celui de la topbar.
+    if (document.getElementById('smyle-topbar')) return null;
+
+    // Priorité 3 : pas de topbar → création automatique en flottant
     container = document.createElement('div');
     container.id = 'smyle-balance';
     container.className = 'smyle-balance is-floating';
     document.body.appendChild(container);
     return container;
+  }
+
+  function _removeFloatingOrphans() {
+    // Si un #smyle-balance existe dans la topbar ET qu'il y a aussi un
+    // élément flottant en dehors, le flottant est un résidu → remove.
+    // querySelectorAll voit bien les id dupliqués (browser toléré).
+    const topbar = document.getElementById('smyle-topbar');
+    if (!topbar) return;
+    const all = document.querySelectorAll('#smyle-balance, .smyle-balance.is-floating');
+    all.forEach((el) => {
+      if (!topbar.contains(el) && el.classList.contains('is-floating')) {
+        el.remove();
+      }
+    });
   }
 
   function renderBalance(container) {
@@ -338,6 +363,9 @@
 
   async function refresh() {
     const container = getOrCreateContainer();
+    // Pas de container dispo (topbar pas encore montée) : on skip. La topbar
+    // rappellera SmyleBalance.refresh() après son _render() (cf. topbar.js).
+    if (!container) return;
     const me = await fetchMeAndCredits();
     state.user = me;
     if (!me) {
@@ -370,6 +398,7 @@
   // cadenas, clic = reconnecter) sans attendre le prochain tick de 60s.
   function _handleSessionExpired() {
     const container = getOrCreateContainer();
+    if (!container) return;
     const cached = readBalanceCache();
     if (cached && typeof cached.balance === 'number') {
       state.user    = null;
