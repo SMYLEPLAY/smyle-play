@@ -298,6 +298,74 @@
     </div>
   </section>
 
+  <!-- ═══ Disclaimer fiches de vente (Item 7 — 2026-04-23) ══════════════════
+       Affiché UNIQUEMENT si l'artiste vend quelque chose (ADN ou prompts
+       ou voix). Activé par JS (artiste.js renderDna/renderPrompts) qui
+       bascule display:block dès qu'une cellule vendable est montée.
+       Texte statique, non modifiable par le vendeur — cohérence légale
+       et éditoriale sur toute la plateforme.
+       Version honnête validée par Tom 2026-04-23 : aucun argument commercial
+       non prouvé (pas de "plus précis avec l'ADN acheté" etc). ═══════════ -->
+  <style>
+    #ap-sale-disclaimer {
+      margin: 16px auto;
+      max-width: 720px;
+      padding: 0 16px;
+    }
+    #ap-sale-disclaimer .ap-sale-disclaimer-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .035);
+      border: 1px solid rgba(255, 255, 255, .08);
+      color: rgba(255, 255, 255, .72);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    #ap-sale-disclaimer svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      opacity: .55;
+    }
+    #ap-sale-disclaimer .ap-sale-disclaimer-text {
+      flex: 1;
+    }
+    /* Item 1 · Badge plateforme d'origine sur les cards track */
+    .ap-track-card-platform {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(136, 0, 255, .12);
+      border: 1px solid rgba(136, 0, 255, .32);
+      color: rgba(255, 255, 255, .85);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+    .ap-track-card-platform svg { opacity: .8; }
+  </style>
+  <section class="ap-sale-disclaimer" id="ap-sale-disclaimer" style="display:none"
+           aria-label="Informations légales sur les achats de prompts">
+    <div class="ap-sale-disclaimer-inner">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div class="ap-sale-disclaimer-text">
+        L'achat d'un prompt ne garantit jamais la reproduction exacte du son.
+        Il permet de s'approcher d'un résultat proche, surtout si les réglages
+        indiqués (plateforme, weirdness, influences) sont respectés et si
+        l'IA d'origine est utilisée.
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ Section couleurs (mode owner-editing seulement) ═══
        Deux pickers natifs qui repeignent la page en temps réel.
        Le backend valide les 2 champs en hex #RRGGBB majuscule. -->

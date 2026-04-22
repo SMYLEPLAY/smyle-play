@@ -642,6 +642,18 @@
             <label class="dash-label">Titre du morceau <span class="dash-req">*</span></label>
             <input class="dash-input" id="dashTrackName" placeholder="Ex : Neon Dreams, Cosmic Drift..." />
 
+            <!-- Item 1 · Plateforme d'origine du prompt (P1-F4 partiel) -->
+            <label class="dash-label">Plateforme d'origine du son <span class="dash-req">*</span></label>
+            <select class="dash-input" id="dashTrackPlatform">
+              <option value="">— Sélectionne —</option>
+              <option value="suno">Suno</option>
+              <option value="udio">Udio</option>
+              <option value="riffusion">Riffusion</option>
+              <option value="stable_audio">Stable Audio</option>
+              <option value="autre">Autre</option>
+            </select>
+            <div class="dash-help">L'IA ou l'outil avec lequel ce son a été généré. Affiché sur ta fiche de vente publique.</div>
+
             <label class="dash-label">Genre</label>
             <input class="dash-input" id="dashGenre" placeholder="Ambient · Lofi · Electro · Dark · Trap..." />
 
