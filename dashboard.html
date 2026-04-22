@@ -144,13 +144,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Analytique
     </a>
-    <!-- Nouvelle pill 03 — visibilité sur la marketplace. Elle reprend
-         l'identité historique "PLUG WATT" (éclair) mais vit désormais comme
-         sous-section du WATT BOARD. -->
-    <a class="dash-snav-pill" href="#sec-plug" data-sec="sec-plug">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      PLUG WATT
-    </a>
+    <!-- P1-B3 (2026-04-22) — pill "PLUG WATT" retirée : la présence publique
+         sur la marketplace (switch ON/OFF + preview cellule) est désormais
+         intégrée à la cellule 01 Identité, pour ne pas fragmenter le flow
+         de création de profil. -->
   </div>
 </nav>
 
@@ -188,6 +185,23 @@
       }
       #sec-identity details[open] .dash-section-chevron { transform: rotate(180deg); }
       #sec-identity .dash-identity-layout { margin-top: 16px; }
+      /* P1-B3 (2026-04-22) — switch PLUG WATT + lien boutique sous les
+         actions. Compact, se fond avec la colonne gauche du formulaire. */
+      #sec-identity .dash-identity-actions + .dash-plug-toggle-card { margin-top: 14px; }
+      #sec-identity .dash-identity-shoplink { margin-top: 10px; }
+      #sec-identity .dash-identity-shoplink .dash-plug-open {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 12px; color: rgba(255,255,255,.72);
+        text-decoration: none; padding: 6px 0;
+      }
+      #sec-identity .dash-identity-shoplink .dash-plug-open:hover { color: #fff; }
+      #sec-identity .dash-identity-shoplink .dash-plug-open.is-disabled {
+        opacity: .45; pointer-events: none;
+      }
+      #sec-identity .dash-plug-slug-hint {
+        font-size: 11px; opacity: .55; font-family: ui-monospace, Menlo, monospace;
+        margin-left: 4px;
+      }
     </style>
     <details id="dashIdentityDetails">
       <summary class="dash-section-hdr">
@@ -353,13 +367,11 @@
         </div>
 
         <!-- Actions -->
-        <!-- Chantier "1 bouton unifié" (2026-04-21) — le label du bouton bascule
-             dynamiquement selon `profile_public` :
-               • false (jamais publié) → "Publier mon profil"
-                                          (PATCH /users/me puis POST /watt/me/profile/publish)
-               • true                   → "Enregistrer"
-                                          (PATCH /users/me seul — toggle via PLUG WATT ailleurs)
-             Géré par _updateDashIdSaveButton() / dashIdentitySave() dans dashboard.js. -->
+        <!-- P1-B3 (2026-04-22) — "1 endroit unique pour son identité publique".
+             Le bouton Enregistrer gère UNIQUEMENT le PATCH /users/me.
+             Le switch PLUG WATT ci-dessous bascule profile_public (publish /
+             unpublish). Plus de label dynamique "Publier mon profil" : la
+             publication passe par le switch, pas par le bouton. -->
         <div class="dash-identity-actions">
           <div class="dash-identity-status" id="dashIdStatus" role="status" aria-live="polite"></div>
           <button type="button" class="dash-btn-primary" id="dashIdSaveBtn" onclick="dashIdentitySave()">
@@ -373,32 +385,70 @@
           </button>
         </div>
 
+        <!-- ═══ Switch "PLUG WATT" (ex-cellule 04 fusionnée ici) ═══════════════
+             Contrôle unique de la présence publique sur la marketplace WATT.
+             Bascule profile_public via /watt/me/profile/publish ou /unpublish.
+             Dot rouge (brouillon) / vert (en ligne). Lien "Ouvrir ma boutique"
+             s'active dès qu'un slug existe. Gère par renderPlugSection() /
+             dashPlugToggle() / dashPlugOpenShop() dans dashboard.js. ═══════ -->
+        <div class="dash-plug-toggle-card" id="dashPlugToggleCard">
+          <div class="dash-plug-toggle-left">
+            <div class="dash-plug-toggle-dot" id="dashPlugDot" aria-hidden="true"></div>
+            <div class="dash-plug-toggle-text">
+              <div class="dash-plug-toggle-title" id="dashPlugTitle">Chargement…</div>
+              <div class="dash-plug-toggle-sub"   id="dashPlugSub">On vérifie ton statut.</div>
+            </div>
+          </div>
+          <div class="dash-plug-toggle-right">
+            <label class="dash-plug-switch" for="dashPlugSwitch" title="Active ou désactive ta présence publique">
+              <input type="checkbox" id="dashPlugSwitch" onchange="dashPlugToggle(this.checked)">
+              <span class="dash-plug-switch-slider" aria-hidden="true"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Lien "Ouvrir ma boutique" — petit lien texte sous le switch.
+             Désactivé tant qu'il n'y a pas de slug (premier run). -->
+        <div class="dash-identity-shoplink">
+          <a class="dash-plug-open" id="dashPlugOpen" href="#" onclick="return dashPlugOpenShop(event)">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>
+            </svg>
+            <span id="dashPlugOpenLabel">Ouvrir ma boutique</span>
+            <code id="dashPlugSlugHint" class="dash-plug-slug-hint">/u/—</code>
+          </a>
+        </div>
+
       </div>
 
-      <!-- ═══ Preview sticky ═══════════════════════════════════════════════ -->
-      <aside class="dash-identity-preview" aria-label="Aperçu de ta boutique publique">
+      <!-- ═══ Preview cellule marketplace ═══════════════════════════════════
+           P1-B3 (2026-04-22) — Remplace l'ex-iframe "Aperçu boutique" (trop
+           lourde, peu fidèle à la vraie cellule marketplace). On affiche la
+           vignette telle qu'elle apparaîtra dans la grille publique : avatar
+           + nom + genre + chip "Brouillon" / "En ligne". Rendue par
+           renderPlugSection() (source unique, le switch est juste au-dessus). -->
+      <aside class="dash-identity-preview" aria-label="Aperçu de ta cellule marketplace">
         <div class="dash-identity-preview-lbl">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
             <circle cx="12" cy="12" r="3"/>
           </svg>
-          APERÇU · <span class="dash-identity-preview-url" id="dashIdPreviewUrl">/u/—</span>
+          APERÇU · cellule marketplace
         </div>
-        <div class="dash-identity-preview-frame" id="dashIdPreviewFrame">
-          <!-- Mini-render injecté par renderIdentityPreview() -->
-          <div class="dash-preview-empty">Remplis tes infos pour voir l'aperçu.</div>
+        <div class="dash-plug-preview">
+          <div class="dash-plug-cell" id="dashPlugCell">
+            <div class="dash-plug-cell-avatar" id="dashPlugCellAvatar">?</div>
+            <div class="dash-plug-cell-body">
+              <div class="dash-plug-cell-name"  id="dashPlugCellName">Ton nom d'artiste</div>
+              <div class="dash-plug-cell-genre" id="dashPlugCellGenre">Ton genre</div>
+            </div>
+            <div class="dash-plug-cell-chip" id="dashPlugCellChip">Brouillon</div>
+          </div>
+          <div class="dash-plug-preview-note" id="dashPlugPreviewNote">
+            Ton profil est en brouillon — personne ne peut encore le voir.
+          </div>
         </div>
-        <a class="dash-btn-secondary dash-identity-preview-link"
-           id="dashIdPreviewLink" href="#" target="_blank" rel="noopener">
-          Voir ma boutique publique
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-        </a>
       </aside>
 
     </div>
@@ -446,20 +496,16 @@
       <div class="dash-creation-gate-body">
         <div class="dash-creation-gate-title">Active d'abord ta présence sur la marketplace</div>
         <div class="dash-creation-gate-sub">
-          Un son publié est rattaché à une boutique publique. Deux étapes
-          simples : (1) remplis ton <strong>identité publique</strong> juste
-          au-dessus (nom, bio, couleurs, socials), puis (2) active le switch
-          <strong>PLUG WATT</strong> ci-dessous pour apparaître sur la
-          marketplace. Tu pourras ensuite poster tes sons et vendre tes
-          prompts ici.
+          Un son publié est rattaché à une boutique publique. Remplis ton
+          <strong>identité publique</strong> juste au-dessus (nom, bio,
+          couleurs, socials) puis bascule le switch <strong>PLUG WATT</strong>
+          pour apparaître sur la marketplace. Tu pourras ensuite poster tes
+          sons et vendre tes prompts ici.
         </div>
         <div class="dash-creation-gate-actions">
           <a class="dash-btn-primary" href="#sec-identity">
             <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            1. Remplir mon identité
-          </a>
-          <a class="dash-btn-secondary" href="#sec-plug">
-            2. Activer PLUG WATT →
+            Remplir mon identité + activer ma boutique
           </a>
         </div>
       </div>
@@ -1056,98 +1102,12 @@
     </div>
   </section>
 
-  <!-- ──────────────────────────────────────────────────────────────────────────
-       BLOC 3 — PLUG WATT  (visibilité marketplace)
-       ──────────────────────────────────────────────────────────────────────────
-       Contrôle unifié de la PRÉSENCE publique de l'utilisateur sur la
-       marketplace WATT. Remplace l'ex-page watt.html (route orpheline).
-       Trois éléments :
-         • Un interrupteur ON/OFF qui bascule profile_public via
-           /watt/me/profile/publish ou /unpublish.
-         • Un preview de la cellule marketplace telle qu'elle apparaîtra
-           (ou n'apparaîtra pas) dans la grille publique — permet de
-           vérifier nom, brandColor, genre avant publication.
-         • Des compteurs live (abonnés, écoutes, rang) + un lien direct
-           "Ouvrir ma boutique" vers /u/<slug>.
-       Les écrans tactiles compactent automatiquement (cf. CSS).
-       ────────────────────────────────────────────────────────────────────────── -->
-  <section class="dash-section" id="sec-plug">
-    <div class="dash-section-hdr">
-      <div class="dash-section-num">04</div>
-      <h2 class="dash-section-title">PLUG WATT</h2>
-      <span class="dash-section-sub">Ta présence publique sur la marketplace</span>
-    </div>
-
-    <div class="dash-plug-wrap">
-
-      <!-- ═══ Interrupteur + statut ═══════════════════════════════════════ -->
-      <div class="dash-plug-toggle-card" id="dashPlugToggleCard">
-        <div class="dash-plug-toggle-left">
-          <div class="dash-plug-toggle-dot" id="dashPlugDot" aria-hidden="true"></div>
-          <div class="dash-plug-toggle-text">
-            <div class="dash-plug-toggle-title" id="dashPlugTitle">Chargement…</div>
-            <div class="dash-plug-toggle-sub"   id="dashPlugSub">On vérifie ton statut.</div>
-          </div>
-        </div>
-
-        <div class="dash-plug-toggle-right">
-          <!-- Switch accessible : le checkbox natif pilote l'état ;
-               le label .dash-plug-switch dessine l'UI. -->
-          <label class="dash-plug-switch" for="dashPlugSwitch" title="Active ou désactive ta présence publique">
-            <input type="checkbox" id="dashPlugSwitch" onchange="dashPlugToggle(this.checked)">
-            <span class="dash-plug-switch-slider" aria-hidden="true"></span>
-          </label>
-        </div>
-      </div>
-
-      <!-- ═══ Preview cellule marketplace ═══════════════════════════════════
-           Rendu statique — pas de clic, c'est juste une vignette "aperçu".
-           On met à jour avatarInitial, name, genre et --brand via JS. -->
-      <div class="dash-plug-preview">
-        <div class="dash-plug-preview-head">Aperçu de ta cellule marketplace</div>
-        <div class="dash-plug-cell" id="dashPlugCell">
-          <div class="dash-plug-cell-avatar" id="dashPlugCellAvatar">?</div>
-          <div class="dash-plug-cell-body">
-            <div class="dash-plug-cell-name"  id="dashPlugCellName">Ton nom d'artiste</div>
-            <div class="dash-plug-cell-genre" id="dashPlugCellGenre">Ton genre</div>
-          </div>
-          <div class="dash-plug-cell-chip" id="dashPlugCellChip">Brouillon</div>
-        </div>
-        <div class="dash-plug-preview-note" id="dashPlugPreviewNote">
-          Ton profil est en brouillon — personne ne peut encore le voir.
-        </div>
-      </div>
-
-      <!-- ═══ Compteurs + lien boutique ════════════════════════════════════ -->
-      <div class="dash-plug-stats">
-        <div class="dash-plug-stat">
-          <div class="dash-plug-stat-val" id="dashPlugFollowers">—</div>
-          <div class="dash-plug-stat-lbl">Abonnés</div>
-        </div>
-        <div class="dash-plug-stat">
-          <div class="dash-plug-stat-val" id="dashPlugPlays">—</div>
-          <div class="dash-plug-stat-lbl">Écoutes</div>
-        </div>
-        <div class="dash-plug-stat">
-          <div class="dash-plug-stat-val" id="dashPlugRank">—</div>
-          <div class="dash-plug-stat-lbl">Rang WATT</div>
-        </div>
-      </div>
-
-      <div class="dash-plug-actions">
-        <a class="dash-plug-open" id="dashPlugOpen" href="#" onclick="return dashPlugOpenShop(event)">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>
-          </svg>
-          <span id="dashPlugOpenLabel">Ouvrir ma boutique</span>
-        </a>
-        <span class="dash-plug-actions-hint" id="dashPlugActionsHint">
-          Ta boutique est ton profil public <code id="dashPlugSlugHint">/u/—</code>.
-        </span>
-      </div>
-
-    </div>
-  </section>
+  <!-- P1-B3 (2026-04-22) — ex-section #sec-plug (PLUG WATT) retirée.
+       Son switch ON/OFF, sa preview cellule marketplace et son lien "Ouvrir
+       ma boutique" ont migré dans la cellule 01 Identité publique pour
+       unifier le flow de création de profil (un seul endroit pour créer /
+       éditer / publier son identité artiste). Voir la spec dans
+       OBSIDIAN/03_SESSIONS/2026-04-22_spec_merge_01_04.md. -->
 
 </main>
 

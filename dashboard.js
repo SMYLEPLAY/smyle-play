@@ -1957,15 +1957,14 @@ function _renderDashIdCoverPreview(url) {
   }
 }
 
-// Bascule le label "Publier mon profil" / "Enregistrer" selon profile_public.
-// Tant que loadPublishStatus() n'a pas répondu (_dashPublishState.loaded=false)
-// on reste optimiste sur "Enregistrer" pour ne pas flasher "Publier" puis
-// "Enregistrer" une fraction de seconde plus tard.
+// P1-B3 (2026-04-22) — Plus de label dynamique : le bouton Enregistrer
+// fait PATCH /users/me, point. La publication est gérée par le switch
+// PLUG WATT (dashPlugToggle). Fonction conservée pour compat d'appel,
+// elle force simplement "Enregistrer".
 function _updateDashIdSaveButton() {
   const lbl = document.getElementById('dashIdSaveLabel');
   if (!lbl) return;
-  const shouldPublish = _dashPublishState.loaded && !_dashPublishState.isPublic;
-  lbl.textContent = shouldPublish ? 'Publier mon profil' : 'Enregistrer';
+  lbl.textContent = 'Enregistrer';
 }
 
 // Remplit le hint "/u/<slug>" du bloc PLUG WATT avec le vrai slug calculé.
@@ -2153,19 +2152,13 @@ async function dashIdentitySave() {
   });
   if (brandColor) { try { applyDashboardBrandColor(brandColor); } catch (_) {} }
 
-  // ═══ LA LOGIQUE "1 BOUTON" ═══════════════════════════════════════════════
-  // Premier enregistrement (profile_public=false) → on publie dans la foulée.
-  // On laisse publishMyProfile() gérer ses propres états (loading, 422, toast).
-  // Pour les saves suivants (profile_public=true) → juste confirmation OK.
-  const shouldPublishNow = _dashPublishState.loaded && !_dashPublishState.isPublic;
-  if (shouldPublishNow) {
-    _setDashIdStatus('Publication…', 'loading');
-    await publishMyProfile();
-  } else {
-    _setDashIdStatus('✓ Profil enregistré.', 'ok');
-    dashToast('✓ Profil enregistré.');
-    setTimeout(() => _setDashIdStatus('', ''), 2000);
-  }
+  // P1-B3 (2026-04-22) — Plus de publish auto après save. Le switch PLUG
+  // WATT (juste en-dessous du bouton Enregistrer) gère la publication de
+  // manière explicite. Ce bouton fait UNIQUEMENT PATCH /users/me, ce qui
+  // évite les saves involontaires qui re-publient un profil retiré.
+  _setDashIdStatus('✓ Profil enregistré.', 'ok');
+  dashToast('✓ Profil enregistré.');
+  setTimeout(() => _setDashIdStatus('', ''), 2000);
 
   if (btn) btn.disabled = false;
   _updateDashIdSaveButton();
@@ -2185,16 +2178,18 @@ if (typeof window !== 'undefined') {
   window.dashIdentityHandleCoverFile  = dashIdentityHandleCoverFile;
 }
 
-// ── 8 ter. PILL PLUG WATT (sec-plug) ─────────────────────────────────────────
-// Contrôle centralisé de la présence publique sur la marketplace. Ingrédients :
-//   • switch ON/OFF qui bascule profile_public (réutilise publishMyProfile /
-//     unpublishMyProfile pour que _dashPublishState reste la source unique
-//     de vérité — pas de double état à synchroniser).
-//   • preview de la cellule marketplace (nom, genre, brand) — permet à l'user
-//     de vérifier visuellement avant de basculer le switch.
-//   • 3 compteurs (abonnés, écoutes, rang) — mis à jour par renderStats() via
-//     renderPlugStatsFromAggregate() à chaque refresh.
-//   • lien "Ouvrir ma boutique" → /u/<slug>.
+// ── 8 ter. PLUG WATT (intégré dans la cellule 01 Identité depuis P1-B3) ─────
+// Contrôle centralisé de la présence publique sur la marketplace, désormais
+// fusionné dans la cellule Identité publique (voir P1-B3, 2026-04-22).
+// Ingrédients :
+//   • switch ON/OFF (sous le bouton Enregistrer de l'Identité) qui bascule
+//     profile_public via publishMyProfile / unpublishMyProfile —
+//     _dashPublishState reste la source unique de vérité.
+//   • preview de la cellule marketplace (aside droit du formulaire Identité)
+//     — permet de vérifier visuellement avant de basculer le switch.
+//   • lien "Ouvrir ma boutique" → /u/<slug> (petit lien texte sous le switch).
+// Les 3 compteurs (abonnés / écoutes / rang) ont été retirés : ils vivent
+// désormais uniquement dans la cellule Analytique (2b) / Classement (2c).
 // Écoute aussi smyle:profile-published / smyle:profile-unpublished émis par
 // artiste.js (mise à jour croisée : si le user bascule depuis son profil,
 // le dashboard se met à jour sans refresh).
@@ -2291,19 +2286,11 @@ function renderPlugSection() {
   renderPlugStatsFromDom();
 }
 
-// Synchro légère : on lit les mêmes valeurs que celles affichées dans les
-// stat cards (statsPlays / statsFollowers / statsRank) pour ne pas re-fetcher
-// à chaque toggle. renderStats() les alimente déjà au chargement.
-function renderPlugStatsFromDom() {
-  const copyFrom = (srcId, dstId) => {
-    const src = document.getElementById(srcId);
-    const dst = document.getElementById(dstId);
-    if (src && dst) dst.textContent = src.textContent || '—';
-  };
-  copyFrom('statsFollowers', 'dashPlugFollowers');
-  copyFrom('statsPlays',     'dashPlugPlays');
-  copyFrom('statsRank',      'dashPlugRank');
-}
+// P1-B3 (2026-04-22) — Les 3 compteurs (abonnés/écoutes/rang) qui vivaient
+// dans l'ex-cellule 04 PLUG WATT dupliquaient les stat cards 2b / 2c. Ils
+// ont été supprimés avec la section. Fonction laissée en no-op pour éviter
+// de casser les call-sites existants (renderPlugSection, renderStats).
+function renderPlugStatsFromDom() { /* no-op depuis P1-B3 */ }
 
 // Handler du switch — on délègue aux endpoints déjà testés
 // (publishMyProfile / unpublishMyProfile), avec petit garde-fou :

@@ -53,13 +53,13 @@
         <span id="ap-owner-btn-edit-label">Modifier</span>
       </button>
 
-      <!-- Publier / Retirer — la vraie bascule vit dans PLUG WATT (WATT BOARD).
-           Sur la page profil on expose juste un pointeur "Gérer la visibilité"
-           qui mène à la pill sec-plug. Le bouton Publier initial (profil
-           brouillon jamais publié) reste accessible ici pour offrir un 1er
-           clic sans quitter la page de création — c'est le chemin nominal
-           "je remplis mon profil → je publie direct". Une fois le profil
-           public, toute (dé)activation se fait depuis PLUG WATT. -->
+      <!-- Publier / Retirer — la vraie bascule vit désormais dans la cellule
+           01 Identité du WATT BOARD (fusion PLUG WATT depuis P1-B3 —
+           2026-04-22). Sur la page profil on expose juste un pointeur
+           "Gérer la visibilité" qui mène à #sec-identity. Le bouton Publier
+           initial (profil brouillon jamais publié) reste accessible ici pour
+           offrir un 1er clic sans quitter la page de création. Une fois le
+           profil public, toute (dé)activation se fait depuis l'Identité. -->
       <button type="button" class="ap-owner-btn ap-owner-btn-publish"
               id="ap-owner-btn-publish" onclick="ownerPublish()"
               title="Passe ton profil en mode public">
@@ -69,13 +69,14 @@
         <span id="ap-owner-btn-publish-label">Publier mon profil</span>
       </button>
 
-      <!-- Visible quand le profil est DÉJÀ public : pointe vers PLUG WATT
-           plutôt que d'offrir une seconde bascule ici. Évite la
-           divergence d'état entre deux contrôles parallèles. -->
+      <!-- Visible quand le profil est DÉJÀ public : pointe vers la cellule
+           Identité (ex-PLUG WATT fusionné depuis P1-B3) plutôt que d'offrir
+           une seconde bascule ici. Évite la divergence d'état entre deux
+           contrôles parallèles. -->
       <a class="ap-owner-btn ap-owner-btn-manage"
          id="ap-owner-btn-manage"
-         href="/dashboard#sec-plug"
-         title="Gérer la visibilité publique depuis PLUG WATT"
+         href="/dashboard#sec-identity"
+         title="Gérer la visibilité publique depuis ta cellule Identité"
          style="display:none">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
