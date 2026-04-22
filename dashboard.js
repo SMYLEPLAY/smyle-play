@@ -1881,6 +1881,50 @@ const _DASH_ID_IMG_MAX = 5 * 1024 * 1024;
 
 // Hydrate les inputs dashId* depuis getWattProfile() (source locale) / DB via
 // loadPublishStatus(). Appelé au DOMContentLoaded et après chaque save.
+// P1-B7 (2026-04-22) — Casquettes sélectionnables (multi-select chips).
+// Liste verrouillée avec Tom. Chips individuels (pas de chip hybride) :
+// si un user est à la fois producteur et interprète, il coche les deux.
+// Stocké en localStorage.roles pour l'instant (visual-only — le câblage DB
+// viendra avec P0-F1 / P1-F4 "persistance profil"). Sert pour futur Connect.
+const DASH_ID_ROLES = [
+  { key: 'artiste',    label: 'Artiste / Interprète' },
+  { key: 'producteur', label: 'Producteur / Beatmaker' },
+  { key: 'topliner',   label: 'Topliner / Songwriter' },
+  { key: 'dj',         label: 'DJ' },
+  { key: 'inge_son',   label: 'Ingé son' },
+  { key: 'visuel',     label: 'Visuel' },
+  { key: 'manager',    label: 'Manager / Label' },
+  { key: 'a_and_r',    label: 'A&R' },
+  { key: 'auditeur',   label: 'Auditeur' },
+  { key: 'autre',      label: 'Autre' },
+];
+
+function renderIdentityRolesGrid() {
+  const grid = document.getElementById('dashIdRolesGrid');
+  if (!grid) return;
+  const p = getWattProfile() || {};
+  const selected = Array.isArray(p.roles) ? p.roles : [];
+  grid.innerHTML = DASH_ID_ROLES.map(r => {
+    const isOn = selected.includes(r.key);
+    return `<button type="button" class="dash-role-chip${isOn ? ' is-on' : ''}"
+      data-role-key="${r.key}" onclick="dashIdentityToggleRole('${r.key}')"
+      aria-pressed="${isOn}">${r.label}</button>`;
+  }).join('');
+}
+
+function dashIdentityToggleRole(key) {
+  const p = getWattProfile() || {};
+  const current = Array.isArray(p.roles) ? [...p.roles] : [];
+  const idx = current.indexOf(key);
+  if (idx >= 0) current.splice(idx, 1);
+  else current.push(key);
+  saveWattProfile({ ...p, roles: current });
+  renderIdentityRolesGrid();
+}
+if (typeof window !== 'undefined') {
+  window.dashIdentityToggleRole = dashIdentityToggleRole;
+}
+
 function initDashIdentity() {
   const p = getWattProfile() || {};
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
@@ -1893,6 +1937,7 @@ function initDashIdentity() {
   set('dashIdSocialYoutube',   p.youtube);
   set('dashIdSocialSpotify',   p.spotify);
   set('dashIdSocialSoundcloud',p.soundcloud);
+  renderIdentityRolesGrid();
   // Couleurs : defaults WATT si pas de valeur perso
   set('dashIdBgColor',     p.profileBgColor    || '#070608');
   set('dashIdBrandColor',  p.profileBrandColor || '#8800FF');
