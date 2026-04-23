@@ -29,12 +29,22 @@
   font-size: clamp(48px, 7vw, 88px);
   font-weight: 900;
   letter-spacing: -0.04em;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   background: linear-gradient(180deg, #fff 0%, #c8a3ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   line-height: 0.95;
+}
+
+/* Développement de l'acronyme W.A.T.T. — petit caps mauve, sous le titre */
+.mp-hero-acronym {
+  font-size: 11px;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: rgba(200, 163, 255, 0.75);
+  margin: 0 0 10px;
+  font-weight: 600;
 }
 
 .mp-hero-sub {
