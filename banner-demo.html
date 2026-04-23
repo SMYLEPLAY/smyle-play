@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banner Card — Démo · WATT</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      background: #0a0a10;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+    .demo-wrap {
+      max-width: 880px;
+      margin: 0 auto;
+    }
+    .demo-h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      margin: 0 0 8px;
+      background: linear-gradient(180deg, #fff 0%, #c8a3ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .demo-sub {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin: 0 0 40px;
+    }
+    .demo-section {
+      margin-bottom: 44px;
+    }
+    .demo-section h2 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(200, 163, 255, 0.7);
+      margin: 0 0 8px;
+    }
+    .demo-section p {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      margin: 0 0 16px;
+    }
+    .demo-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 10px;
+    }
+    .demo-back {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.1);
+      color: rgba(255,255,255,.7);
+      text-decoration: none;
+      font-size: 12px;
+    }
+  </style>
+  <link rel="stylesheet" href="banner-card.css" />
+</head>
+<body>
+  <div class="demo-wrap">
+    <a href="index.html" class="demo-back">← Retour accueil</a>
+    <h1 class="demo-h1">Banner Card</h1>
+    <p class="demo-sub">Composant unifié · P1-B5 · 2026-04-23</p>
+
+    <section class="demo-section">
+      <h2>1. Hero — mise en avant accueil</h2>
+      <p>Remplace l'ancienne grosse card profil sur la vitrine. 1 par page, pour mettre en avant un artiste.</p>
+      <div id="demo-hero"></div>
+    </section>
+
+    <section class="demo-section">
+      <h2>2. Classement — avec rangs or/argent/bronze</h2>
+      <p>Utilisé pour Top Sons et Top Artistes. Rang auto-calculé depuis l'ordre.</p>
+      <div class="demo-stack" id="demo-ranking"></div>
+    </section>
+
+    <section class="demo-section">
+      <h2>3. Default — grille "tous les artistes"</h2>
+      <p>Format équilibré, réutilisé aussi pour les résultats de recherche Connect.</p>
+      <div class="demo-grid" id="demo-grid"></div>
+    </section>
+
+    <section class="demo-section">
+      <h2>4. Compact — résultats recherche (DNA / Voice)</h2>
+      <p>Format dense, pour afficher beaucoup de résultats sans saturer l'écran.</p>
+      <div class="demo-stack" id="demo-compact"></div>
+    </section>
+  </div>
+
+  <script src="banner-card.js"></script>
+  <script>
+    // ─── DATA DÉMO ────────────────────────────────────────────────────────
+    const smyle = {
+      slug: 'smyle',
+      displayName: 'Smyle',
+      genre: 'Deep House',
+      subLine: 'Compte officiel · 12 sons publiés',
+      verified: true,
+      stats: [
+        { value: '1.2k', label: 'fans' },
+        { value: '12', label: 'sons' },
+      ],
+    };
+
+    const artists = [
+      { slug: 'nyra',   displayName: 'Nyra',   genre: 'Afro',       subLine: 'Paris · 8 sons',  stats: [{ value: '842', label: 'fans' }] },
+      { slug: 'luma',   displayName: 'Luma',   genre: 'Jazz',       subLine: 'Lyon · 5 sons',   stats: [{ value: '533', label: 'fans' }] },
+      { slug: 'k4',     displayName: 'K4',     genre: 'Jersey',     subLine: 'Marseille · 3 sons', stats: [{ value: '201', label: 'fans' }] },
+      { slug: 'mira',   displayName: 'Mira',   genre: 'Reggaeton',  subLine: 'Bordeaux · 9 sons',  stats: [{ value: '1.1k', label: 'fans' }] },
+      { slug: 'sono',   displayName: 'Sono',   genre: 'Electro',    subLine: 'Paris · 4 sons',  stats: [{ value: '388', label: 'fans' }] },
+      { slug: 'teo',    displayName: 'Teo',    genre: 'Soul',       subLine: 'Nantes · 6 sons', stats: [{ value: '617', label: 'fans' }] },
+    ];
+
+    // ─── RENDER ───────────────────────────────────────────────────────────
+    // 1. Hero
+    document.getElementById('demo-hero').innerHTML =
+      renderArtistBanner(smyle, { size: 'hero' });
+
+    // 2. Classement avec rangs auto
+    renderArtistBannerList(
+      document.getElementById('demo-ranking'),
+      artists.slice(0, 5),
+      { size: 'compact', autoRank: true }
+    );
+
+    // 3. Grille default
+    renderArtistBannerList(
+      document.getElementById('demo-grid'),
+      artists,
+      { size: 'default' }
+    );
+
+    // 4. Compact sans rang (résultats recherche)
+    renderArtistBannerList(
+      document.getElementById('demo-compact'),
+      artists.slice(0, 4),
+      { size: 'compact' }
+    );
+  </script>
+</body>
+</html>

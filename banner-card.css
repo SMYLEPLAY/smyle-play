@@ -1,0 +1,232 @@
+/* ═════════════════════════════════════════════════════════════════════════
+   BANNER CARD — composant unifié
+   ─────────────────────────────────────────────────────────────────────────
+   Un seul composant pour afficher une cellule artiste dans :
+   · La vitrine accueil (remplace l'ancienne grosse card profil)
+   · Les classements (top sons / top artistes)
+   · La grille "Tous les artistes"
+   · Les résultats de recherche (DNA / Connect / Voice)
+
+   3 tailles via classe modifier :
+   · .banner-card--compact    → classement / résultats recherche
+   · .banner-card--default    → grille "tous les artistes"
+   · .banner-card--hero       → mise en avant accueil (Smyle vitrine)
+
+   Brand DNA PLUG WATT respectée : noir, chrome subtil, mauve/bleu électrique
+   en accent. Pas de gradient gras — un voile discret au hover.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.banner-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(20, 20, 26, 0.9) 0%, rgba(12, 12, 16, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.18s, transform 0.18s, background 0.18s;
+  overflow: hidden;
+}
+
+/* Voile mauve au hover — signature brand WATT */
+.banner-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(200, 163, 255, 0.08), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
+}
+
+.banner-card:hover {
+  border-color: rgba(200, 163, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.banner-card:hover::after {
+  opacity: 1;
+}
+
+/* ─── Avatar ───────────────────────────────────────────────────────────── */
+.banner-card__avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2a1a4a 0%, #0a1a3a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.banner-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Badge vérifié / smyle officiel — posé sur l'avatar en bas-droite */
+.banner-card__badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #00d4ff;
+  border: 2px solid #0a0a10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0a0a10;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+/* ─── Corps (titre + sous-titre) ──────────────────────────────────────── */
+.banner-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.banner-card__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.banner-card__sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banner-card__sub-sep {
+  opacity: 0.4;
+}
+
+/* ─── Meta (stats à droite) ───────────────────────────────────────────── */
+.banner-card__meta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.banner-card__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── Rang (classements) ──────────────────────────────────────────────── */
+.banner-card__rank {
+  font-size: 20px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.25);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  flex-shrink: 0;
+}
+
+.banner-card__rank--gold   { color: #FFD700; }
+.banner-card__rank--silver { color: #C0C0C0; }
+.banner-card__rank--bronze { color: #CD7F32; }
+
+/* ─── Grille avec rang en préfixe ─────────────────────────────────────── */
+.banner-card--with-rank {
+  grid-template-columns: 32px auto 1fr auto;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   VARIANTES DE TAILLE
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Compact : classement, résultats recherche — dense */
+.banner-card--compact {
+  padding: 10px 14px;
+  gap: 10px;
+}
+.banner-card--compact .banner-card__avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+.banner-card--compact .banner-card__title { font-size: 13px; }
+.banner-card--compact .banner-card__sub   { font-size: 11px; }
+.banner-card--compact .banner-card__rank  { font-size: 16px; min-width: 24px; }
+
+/* Default : grille "tous les artistes" — équilibré (valeurs de base) */
+
+/* Hero : vitrine accueil — grosse mise en avant */
+.banner-card--hero {
+  padding: 20px 22px;
+  gap: 18px;
+  border-radius: 16px;
+  border-color: rgba(200, 163, 255, 0.15);
+  background: linear-gradient(180deg, rgba(40, 20, 70, 0.35) 0%, rgba(15, 10, 25, 0.9) 100%);
+}
+.banner-card--hero .banner-card__avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 26px;
+}
+.banner-card--hero .banner-card__title { font-size: 20px; }
+.banner-card--hero .banner-card__sub   { font-size: 13px; }
+.banner-card--hero .banner-card__meta  { font-size: 13px; gap: 12px; }
+
+/* ─── Genre chip ──────────────────────────────────────────────────────── */
+.banner-card__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(200, 163, 255, 0.12);
+  color: rgba(200, 163, 255, 0.85);
+  border: 1px solid rgba(200, 163, 255, 0.18);
+}
+
+/* ─── Responsive mobile ───────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .banner-card {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+  .banner-card__meta {
+    display: none; /* méta cachée en mobile — accessible au clic sur profil */
+  }
+  .banner-card--hero .banner-card__meta {
+    display: flex; /* sauf en hero où la méta reste */
+    font-size: 12px;
+  }
+}
