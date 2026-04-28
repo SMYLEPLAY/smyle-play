@@ -236,7 +236,15 @@ async def list_artists(db: AsyncSession = Depends(get_db)) -> dict:
             subq.c.track_count,
             followers_subq.c.followers_count,
         )
-        .join(subq, User.id == subq.c.aid)
+        # P1-B9 (2026-04-28) : OUTER JOIN sur la sous-requête tracks pour
+        # que les artistes publiés sans track (vendent uniquement ADN /
+        # voix / prompts) apparaissent quand même dans la marketplace.
+        # Avant : INNER JOIN excluait silencieusement les profils sans
+        # track — bug constaté sur compte officiel Smyle (4 playlists
+        # historiques retirées) et sur tout compte fraîchement créé.
+        # `total_plays` et `track_count` sont déjà protégés par `or 0`
+        # plus bas, donc le fallback NULL est géré côté Python.
+        .outerjoin(subq, User.id == subq.c.aid)
         .outerjoin(followers_subq, User.id == followers_subq.c.uid)
         .where(User.profile_public.is_(True))
         # Phase 2 refonte marketplace : le compte officiel Smyle reste
