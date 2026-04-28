@@ -1576,6 +1576,11 @@ async function loadPublishStatus() {
         // "pas de perso → defaults violet WATT".
         profileBgColor:    me.profile_bg_color    || p.profileBgColor    || '',
         profileBrandColor: me.profile_brand_color || p.profileBrandColor || '',
+        // P0-F1 reliquat (2026-04-28) — Casquettes : la DB est source de vérité.
+        // Si me.roles est null (jamais coché), on retombe sur localStorage puis [].
+        // Si me.roles est [] explicitement, c'est un choix utilisateur valide
+        // (« aucune casquette ») → on respecte, pas de fallback localStorage.
+        roles:         Array.isArray(me.roles) ? me.roles : (Array.isArray(p.roles) ? p.roles : []),
       };
       saveWattProfile(merged);
       applyDashboardBrandColor(merged.brandColor);
@@ -1888,22 +1893,25 @@ const _DASH_ID_IMG_MAX = 5 * 1024 * 1024;
 
 // Hydrate les inputs dashId* depuis getWattProfile() (source locale) / DB via
 // loadPublishStatus(). Appelé au DOMContentLoaded et après chaque save.
-// P1-B7 (2026-04-22) — Casquettes sélectionnables (multi-select chips).
-// Liste verrouillée avec Tom. Chips individuels (pas de chip hybride) :
-// si un user est à la fois producteur et interprète, il coche les deux.
-// Stocké en localStorage.roles pour l'instant (visual-only — le câblage DB
-// viendra avec P0-F1 / P1-F4 "persistance profil"). Sert pour futur Connect.
+// P1-B7 + P0-F1 reliquat (2026-04-28) — Casquettes sélectionnables (multi-select chips).
+// Liste alignée sur ROLE_CODES backend (app/schemas/user.py, migration 0018).
+// Si la liste backend bouge, mettre à jour ICI en miroir, sinon le PATCH /users/me
+// rejettera avec "Rôle inconnu". Chips individuels (pas de chip hybride) : si un
+// user est à la fois producteur et interprète, il coche les deux. Persisté en DB
+// via `roles` array (cf. dashIdentitySave) + miroir localStorage.
 const DASH_ID_ROLES = [
-  { key: 'artiste',    label: 'Artiste / Interprète' },
-  { key: 'producteur', label: 'Producteur / Beatmaker' },
-  { key: 'topliner',   label: 'Topliner / Songwriter' },
-  { key: 'dj',         label: 'DJ' },
-  { key: 'inge_son',   label: 'Ingé son' },
-  { key: 'visuel',     label: 'Visuel' },
-  { key: 'manager',    label: 'Manager / Label' },
-  { key: 'a_and_r',    label: 'A&R' },
-  { key: 'auditeur',   label: 'Auditeur' },
-  { key: 'autre',      label: 'Autre' },
+  { key: 'artiste',       label: 'Artiste / Interprète' },
+  { key: 'producteur',    label: 'Producteur' },
+  { key: 'beatmaker',     label: 'Beatmaker' },
+  { key: 'topliner',      label: 'Topliner' },
+  { key: 'ghostwriter',   label: 'Ghostwriter' },
+  { key: 'compositeur',   label: 'Compositeur' },
+  { key: 'parolier',      label: 'Parolier' },
+  { key: 'arrangeur',     label: 'Arrangeur' },
+  { key: 'editeur',       label: 'Éditeur' },
+  { key: 'dj',            label: 'DJ' },
+  { key: 'ingenieur_son', label: 'Ingénieur son' },
+  { key: 'auditeur',      label: 'Auditeur' },
 ];
 
 function renderIdentityRolesGrid() {
@@ -2301,6 +2309,14 @@ async function dashIdentitySave() {
   setField(payload, 'youtube',     getVal('dashIdSocialYoutube'));
   setField(payload, 'spotify',     getVal('dashIdSocialSpotify'));
   setField(payload, 'soundcloud',  getVal('dashIdSocialSoundcloud'));
+
+  // P0-F1 reliquat (2026-04-28) — Casquettes : on lit l'état stocké en
+  // localStorage par dashIdentityToggleRole et on l'envoie au backend.
+  // Liste vide [] = "aucune casquette" (valide). Liste alignée sur
+  // ROLE_CODES backend, sinon Pydantic rejette avec "Rôle inconnu".
+  const _profileForRoles = getWattProfile() || {};
+  const _currentRoles    = Array.isArray(_profileForRoles.roles) ? _profileForRoles.roles : [];
+  payload.roles = _currentRoles;
   // Defaults WATT (#070608 / #8800FF) → null côté DB (= "pas de perso, thème standard")
   payload.profile_bg_color    = (bgColor    === '#070608') ? null : bgColor;
   payload.profile_brand_color = (brandColor === '#8800FF') ? null : brandColor;
