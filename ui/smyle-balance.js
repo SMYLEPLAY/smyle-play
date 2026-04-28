@@ -312,10 +312,16 @@
         }
         return;
       }
-      if (typeof window.smyleToast === 'function') {
+      // P1-C2a (2026-04-28) — Click sur badge balance → ouvre la modale
+      // d'achat de SMYLES (ui/modals/credits-buy.js, V1 stub gratuit, V2
+      // bascule sur Stripe Checkout). Si la modale n'est pas chargée sur
+      // cette page (ex: page legacy non migrée), on retombe sur le toast
+      // "bientôt disponible" historique pour ne pas casser l'UX.
+      if (typeof window.openCreditsBuyModal === 'function') {
+        window.openCreditsBuyModal();
+      } else if (typeof window.smyleToast === 'function') {
         window.smyleToast('Page d\'achat de Smyles — bientôt disponible', { type: 'info', duration: 2800 });
       } else {
-        // Fallback si toast.js pas chargé (ex: page library.html qui ne l'importe pas)
         alert('Page d\'achat de Smyles — bientôt disponible');
       }
     };
