@@ -265,11 +265,25 @@
     // Pas de fetch logout côté API (JWT sans serveur-state) — on nettoie
     // juste le token + on recharge la page pour repartir propre.
     try { if (window.clearAuthToken) window.clearAuthToken(); } catch (_) {}
-    // Nettoyage des clés compat legacy si présentes.
+    // P1-B8 (2026-04-29) — purge complète des caches smyle_* / watt* pour
+    // éviter toute fuite de données vers le compte suivant qui se
+    // connecterait sur le même navigateur. Itération sur toutes les clés
+    // localStorage : robuste si on ajoute de nouveaux caches plus tard.
     try {
-      localStorage.removeItem('smyle_watt_profile');
-      localStorage.removeItem('smyle_watt_tracks');
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.startsWith('smyle_') || k.startsWith('watt_') || k === 'smyleWattVoiceDraft') {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => {
+        try { localStorage.removeItem(k); } catch (_) {}
+      });
     } catch (_) {}
+    // Reset le cache balance widget côté composant lui-même
+    try { if (window.SmyleBalance && typeof window.SmyleBalance.clearCache === 'function') window.SmyleBalance.clearCache(); } catch (_) {}
     if (window.SmyleEvents) {
       window.SmyleEvents.emit('smyle:auth-changed', { user: null });
     }

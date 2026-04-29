@@ -352,9 +352,48 @@
       closeCreditsBuyModal();
     } catch (err) {
       console.error('[credits-buy] grant failed:', err);
-      const msg = (err && err.detail) || 'Échec de l\'opération. Réessaie.';
+      // C4 (2026-04-29) — En prod publique, l'endpoint renvoie 403 avec
+      // detail.code='grant_disabled_in_prod' tant que Stripe n'est pas
+      // branché. On bascule la modale en mode informatif (bandeau + boutons
+      // désactivés) plutôt que de répéter le toast d'erreur à chaque click.
+      if (err && err.status === 403) {
+        _showStripeArrivingMode();
+        btn.classList.remove('is-loading');
+        return;
+      }
+      const detail = err && err.body && err.body.detail;
+      const msg = (typeof detail === 'string' ? detail : null)
+               || (detail && detail.message)
+               || (err && err.message)
+               || 'Échec de l\'opération. Réessaie.';
       _toast(`⚠ ${msg}`, 'error');
       btn.classList.remove('is-loading');
+    }
+  }
+
+  // C4 (2026-04-29) — Bascule la modale en "mode Stripe à venir".
+  // Désactive tous les boutons pack et remplace le disclaimer V1 par un
+  // bandeau honnête expliquant que le paiement réel est en route.
+  function _showStripeArrivingMode() {
+    const container = document.getElementById('creditsPacks');
+    if (container) {
+      container.querySelectorAll('.credits-pack').forEach((b) => {
+        b.classList.add('is-loading');
+        b.style.cursor = 'not-allowed';
+        b.style.opacity = '0.55';
+      });
+    }
+    const modal = document.getElementById(MODAL_ID);
+    if (modal) {
+      const disclaimer = modal.querySelector('.credits-modal__disclaimer');
+      if (disclaimer) {
+        disclaimer.innerHTML = `
+          <strong>Paiement réel en route.</strong>
+          L'achat direct de crédits est actuellement désactivé sur cette
+          version publique. Stripe Checkout est en intégration — tu
+          pourras acheter tes Smyles ici sous peu.
+        `;
+      }
     }
   }
 

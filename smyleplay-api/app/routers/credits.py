@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import get_current_user
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.credit import (
@@ -13,6 +14,14 @@ from app.schemas.credit import (
 from app.services.credits import CREDIT_PACKS, grant_credits_atomic
 
 router = APIRouter(prefix="/credits", tags=["credits"])
+
+
+# C4 (2026-04-29) — Liste des environnements où /credits/grant est ACTIF.
+# Pour ouverture publique : passer ENVIRONMENT à "production" sur Railway,
+# ce qui désactive automatiquement le grant gratuit. Côté front, la modale
+# d'achat (ui/modals/credits-buy.js) capture le 403 et affiche le bandeau
+# "Paiement réel arrive bientôt".
+_GRANT_ENABLED_ENVS = {"development", "staging", "test"}
 
 
 @router.get("/packs", response_model=CreditPacksResponse)
@@ -40,7 +49,19 @@ async def grant_credits(
     """
     STUB V1 : ajoute manuellement des crédits au user connecté.
     À remplacer par Stripe checkout en Phase 11.
+
+    C4 (2026-04-29) — Verrou de sécurité : actif uniquement en environnement
+    dev/staging/test. En production publique, retourne 403 pour empêcher
+    tout user de s'auto-créditer ∞ SMYLES en attendant Stripe.
     """
+    if settings.ENVIRONMENT not in _GRANT_ENABLED_ENVS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "grant_disabled_in_prod",
+                "message": "L'achat direct de crédits est désactivé. Le paiement réel (Stripe) arrive bientôt.",
+            },
+        )
     try:
         tx = await grant_credits_atomic(
             db=db,
