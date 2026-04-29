@@ -143,9 +143,14 @@
     // _derive_artist_slug → slugify('Smyle') = 'smyle'). Si le backend n'a
     // pas encore joué la migration, on reçoit 404 → on laisse les
     // placeholders en place et on log (pas de toast bruyant).
+    // P1-B9 front (2026-04-29) — l'endpoint renvoie { artist: {...} }
+    // (cf. watt_compat.py:535), pas l'objet artist directement. Avant ce
+    // fix, _state.smyleArtist contenait le wrapper → tous les a.artistName,
+    // a.bio, a.brandColor étaient undefined → vitrine vide silencieusement.
+    // On extrait .artist défensivement (compat si l'API change un jour).
     try {
-      const artist = await apiFetch('/watt/artists/smyle');
-      _state.smyleArtist = artist;
+      const data = await apiFetch('/watt/artists/smyle');
+      _state.smyleArtist = (data && data.artist) ? data.artist : data;
     } catch (err) {
       console.warn('[marketplace] vitrine Smyle indisponible :', err && err.message);
       _state.smyleArtist = null;
