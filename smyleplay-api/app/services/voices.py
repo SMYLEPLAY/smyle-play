@@ -238,3 +238,80 @@ async def list_voices_owned_by(
         .order_by(OwnedVoice.owned_at.desc())
     )
     return list((await db.execute(stmt)).scalars().all())
+
+
+# -----------------------------------------------------------------------------
+# Enrichissement artist info (feat/voices-enriched-payload)
+# -----------------------------------------------------------------------------
+
+async def enrich_voices_with_artist(
+    db: AsyncSession,
+    voices: list[Voice],
+    *,
+    include_sample: bool = True,
+) -> list[dict]:
+    """
+    Transforme une liste de Voice en list[dict] sérialisables par les
+    schémas Voice*Read avec le sous-objet `artist` rempli.
+
+    Performance : 1 SELECT IN sur User (pas de N+1) même si la liste
+    contient des voix de N artistes différents (cas /api/voices/me/unlocked).
+
+    `include_sample=False` retire `sample_url` et `updated_at` du dict —
+    utile pour les routes publiques qui veulent du VoicePublicRead strict.
+    """
+    if not voices:
+        return []
+
+    # Import local pour éviter un cycle (services.voices référence User pour
+    # le typage de retour, mais on n'a pas besoin de l'importer en tête).
+    from app.core.slug import derive_artist_slug
+    from app.models.user import User
+
+    artist_ids = list({v.artist_id for v in voices})
+    artists_rows = (await db.execute(
+        select(User).where(User.id.in_(artist_ids))
+    )).scalars().all()
+    artists_map = {u.id: u for u in artists_rows}
+
+    out: list[dict] = []
+    for v in voices:
+        a = artists_map.get(v.artist_id)
+        artist_info: dict | None = None
+        if a is not None:
+            artist_info = {
+                "id": a.id,
+                "artist_name": a.artist_name,
+                "slug": derive_artist_slug(a),
+                "brand_color": a.brand_color,
+            }
+        d: dict = {
+            "id": v.id,
+            "artist_id": v.artist_id,
+            "artist": artist_info,
+            "name": v.name,
+            "style": v.style,
+            "genres": v.genres,
+            "license": v.license,
+            "price_credits": v.price_credits,
+            "is_published": v.is_published,
+            "created_at": v.created_at,
+        }
+        if include_sample:
+            d["sample_url"] = v.sample_url
+            d["updated_at"] = v.updated_at
+        out.append(d)
+    return out
+
+
+async def voice_to_full_dict(
+    db: AsyncSession,
+    voice: Voice,
+) -> dict:
+    """
+    Helper unitaire : enrichit UNE voix avec son artist info (1 SELECT User).
+    Utilisé pour les endpoints qui retournent une voix unique
+    (POST /api/voices, PATCH, GET /{id}).
+    """
+    enriched = await enrich_voices_with_artist(db, [voice], include_sample=True)
+    return enriched[0] if enriched else {}

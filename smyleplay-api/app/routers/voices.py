@@ -36,8 +36,10 @@ from app.schemas.voice import (
     VoiceUpdate,
 )
 from app.services.voices import (
+    enrich_voices_with_artist,
     list_voices_for_artist,
     list_voices_owned_by,
+    voice_to_full_dict,
 )
 
 
@@ -108,7 +110,11 @@ async def create_voice(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create voice",
         )
-    return VoiceFullRead.model_validate(voice)
+    # On renvoie le payload enrichi avec artist info (1 SELECT supplémentaire,
+    # acceptable sur un POST qui crée + commit). Le frontend dashboard veut
+    # le name/slug du créateur même sur sa propre voix (cohérence du payload
+    # avec /api/voices/me et /me/unlocked).
+    return VoiceFullRead.model_validate(await voice_to_full_dict(db, voice))
 
 
 # -----------------------------------------------------------------------------
@@ -123,7 +129,8 @@ async def list_my_voices(
     voices = await list_voices_for_artist(
         db, artist_id=current_user.id, only_published=False
     )
-    return [VoiceFullRead.model_validate(v) for v in voices]
+    enriched = await enrich_voices_with_artist(db, voices, include_sample=True)
+    return [VoiceFullRead.model_validate(d) for d in enriched]
 
 
 # -----------------------------------------------------------------------------
@@ -138,9 +145,12 @@ async def list_my_unlocked_voices(
     """
     Retourne les voix que l'user a unlock. `sample_url` exposée car owned.
     Triées par owned_at desc (plus récents d'abord).
+    Inclut les infos d'artiste pour que /library affiche "par <Artiste>"
+    + lien /u/<slug> sans 2e round-trip.
     """
     voices = await list_voices_owned_by(db, user_id=current_user.id)
-    return [VoiceFullRead.model_validate(v) for v in voices]
+    enriched = await enrich_voices_with_artist(db, voices, include_sample=True)
+    return [VoiceFullRead.model_validate(d) for d in enriched]
 
 
 # -----------------------------------------------------------------------------
@@ -158,11 +168,14 @@ async def list_artist_voices(
     """
     Vue publique des voix d'un artiste. Pas d'auth requise.
     `sample_url` JAMAIS renvoyée ici — gating publique stricte.
+    L'artist info (1 SELECT) permet au front de styliser la card
+    avec brand_color sans 2e round-trip.
     """
     voices = await list_voices_for_artist(
         db, artist_id=artist_id, only_published=True
     )
-    return [VoicePublicRead.model_validate(v) for v in voices]
+    enriched = await enrich_voices_with_artist(db, voices, include_sample=False)
+    return [VoicePublicRead.model_validate(d) for d in enriched]
 
 
 # -----------------------------------------------------------------------------
@@ -195,7 +208,8 @@ async def get_voice(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Voice not found",
         )
-    return VoicePublicRead.model_validate(voice)
+    enriched = await enrich_voices_with_artist(db, [voice], include_sample=False)
+    return VoicePublicRead.model_validate(enriched[0])
 
 
 # -----------------------------------------------------------------------------
@@ -234,7 +248,7 @@ async def update_voice(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update voice",
         )
-    return VoiceFullRead.model_validate(voice)
+    return VoiceFullRead.model_validate(await voice_to_full_dict(db, voice))
 
 
 # -----------------------------------------------------------------------------
