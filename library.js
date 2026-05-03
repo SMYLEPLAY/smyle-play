@@ -28,7 +28,7 @@ function fmtDate(iso) {
   } catch (_) { return '—'; }
 }
 
-let _libData = { prompts: [], adns: [] };
+let _libData = { prompts: [], adns: [], voices: [] };
 
 
 /* ── Init + auth gate ────────────────────────────────────────────────────── */
@@ -73,9 +73,15 @@ function _showMain() {
 /* ── Chargement (en parallèle) ───────────────────────────────────────────── */
 
 async function loadAll() {
-  const [promptsRes, adnsRes] = await Promise.allSettled([
+  // P1-F9 — voix (3e onglet) chargées en parallèle des 2 autres.
+  // Note importante sur le shape : /api/voices/me/unlocked renvoie
+  // directement une liste (pas un { items: [...] }) — le backend voices
+  // n'est pas paginé contrairement à /me/library/prompts. On accède donc
+  // à voicesRes.value directement, pas .items.
+  const [promptsRes, adnsRes, voicesRes] = await Promise.allSettled([
     apiFetch('/me/library/prompts?per_page=100'),
     apiFetch('/me/library/adns?per_page=100'),
+    apiFetch('/api/voices/me/unlocked'),
   ]);
 
   if (promptsRes.status === 'fulfilled') {
@@ -92,8 +98,16 @@ async function loadAll() {
     _renderError('lib-adns-list', adnsRes.reason);
   }
 
+  if (voicesRes.status === 'fulfilled') {
+    _libData.voices = Array.isArray(voicesRes.value) ? voicesRes.value : [];
+    renderVoices(_libData.voices);
+  } else {
+    _renderError('lib-voices-list', voicesRes.reason);
+  }
+
   setEl('lib-count-prompts', _libData.prompts.length);
   setEl('lib-count-adns',    _libData.adns.length);
+  setEl('lib-count-voices',  _libData.voices.length);
 }
 
 function _renderError(containerId, err) {
@@ -250,6 +264,89 @@ function renderAdns(items) {
         ${a.description ? `<div class="lib-item-desc">${esc(a.description)}</div>` : ''}
         ${usageBlock}
         ${exampleBlock}
+      </div>`;
+  }).join('');
+}
+
+
+/* ── Render Voices (P1-F9) ───────────────────────────────────────────────
+   Affiche les voix unlock par l'user (GET /api/voices/me/unlocked).
+   Chaque card expose :
+   - nom + style + licence
+   - genres compatibles
+   - lecteur audio inline (sample_url R2)
+   - bouton "Télécharger" (a download de sample_url)
+
+   Note sur l'absence de nom d'artiste : le backend /api/voices renvoie
+   uniquement artist_id (pas le payload artist enrichi). Pour la 1re
+   version, on laisse l'utilisateur cliquer "Voir l'artiste" → /u/<id>
+   (résolu côté serveur). On enrichira plus tard si besoin (effort
+   minimal côté backend pour ajouter artist_name + slug).                  */
+
+const VOICE_LICENSE_LBL_LIB = {
+  personnel:  'Personnel',
+  commercial: 'Commercial',
+  exclusif:   'Exclusif',
+};
+
+const VOICE_GENRES_LBL_LIB = {
+  rnb: 'RnB', pop: 'Pop', trap: 'Trap', rap: 'Rap', electro: 'Electro',
+  house: 'House', afro: 'Afro', jazz: 'Jazz', soul: 'Soul', rock: 'Rock',
+  autre: 'Autre',
+};
+
+function _libVoiceGenresStr(keys) {
+  if (!Array.isArray(keys) || !keys.length) return '';
+  return keys.map(k => VOICE_GENRES_LBL_LIB[k] || k).join(' · ');
+}
+
+function renderVoices(items) {
+  const el = getEl('lib-voices-list');
+  if (!el) return;
+
+  if (!items.length) {
+    el.innerHTML = `
+      <div class="lib-empty">
+        Tu n'as pas encore débloqué de voix.<br>
+        <span class="lib-empty-note">Une voix débloquée te donne accès au sample audio + à la licence d'usage. Choisis-la sur le profil de l'artiste.</span><br>
+        <a href="/" class="lib-empty-cta">Explorer la marketplace →</a>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = items.map((v, i) => {
+    const license = VOICE_LICENSE_LBL_LIB[v.license] || v.license || '';
+    const genres  = _libVoiceGenresStr(v.genres);
+    // Téléchargement du sample : on pose un <a download> direct sur l'URL R2.
+    // Pas d'auth header → l'URL R2 doit être publique (signed-URL ou public-read).
+    // Le backend renvoie l'URL telle quelle ; côté Cloudflare R2, le bucket
+    // smyle-play-audio est accessible via base public CLOUD_AUDIO_BASE_URL.
+    const dlBtn = v.sample_url
+      ? `<a href="${esc(v.sample_url)}" download class="lib-copy-btn">Télécharger le sample</a>`
+      : `<span class="lib-copy-btn" style="opacity:.5">Sample indisponible</span>`;
+    const audioBlock = v.sample_url
+      ? `<div class="lib-content-block">
+           <div class="lib-content-header">
+             <span class="lib-content-label">🎙 Sample audio</span>
+             ${dlBtn}
+           </div>
+           <div class="lib-content-body lib-voice-audio-wrap">
+             <audio controls preload="none" src="${esc(v.sample_url)}" class="lib-voice-audio"></audio>
+           </div>
+         </div>`
+      : '';
+    return `
+      <div class="lib-item">
+        <div class="lib-item-head">
+          <div class="lib-item-title">
+            🎙 ${esc(v.name || 'Voix')}
+            <span class="lib-adn-kind lib-adn-kind-playlist">${esc(license)}</span>
+          </div>
+          <div class="lib-item-meta">Acquise le ${fmtDate(v.owned_at || v.updated_at || v.created_at)}</div>
+        </div>
+        ${v.style ? `<div class="lib-item-desc">${esc(v.style)}</div>` : ''}
+        ${genres ? `<div class="lib-item-artist">Genres : ${esc(genres)}</div>` : ''}
+        ${audioBlock}
       </div>`;
   }).join('');
 }

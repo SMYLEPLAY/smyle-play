@@ -397,6 +397,20 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 }
 
 
+/* ── Voices tab (P1-F9) ──────────────────────────────────────────────────── */
+
+.lib-voice-audio-wrap {
+  padding: 8px;
+}
+.lib-voice-audio {
+  width: 100%;
+  height: 36px;
+  outline: none;
+  border-radius: 6px;
+  filter: invert(1) hue-rotate(180deg) brightness(.85);
+}
+
+
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {

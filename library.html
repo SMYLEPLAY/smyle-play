@@ -71,6 +71,16 @@
       </svg>
       ADN <span class="lib-tab-count" id="lib-count-adns">—</span>
     </button>
+    <button class="lib-tab" data-tab="voices" onclick="switchTab('voices')">
+      <!-- Microphone -->
+      <svg class="lib-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5 11a7 7 0 0 0 14 0"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+        <line x1="9" y1="22" x2="15" y2="22"/>
+      </svg>
+      Voix <span class="lib-tab-count" id="lib-count-voices">—</span>
+    </button>
   </div>
 
   <!-- Prompts tab -->
@@ -84,6 +94,13 @@
   <section class="lib-tab-panel" id="lib-panel-adns">
     <div class="lib-list" id="lib-adns-list">
       <div class="lib-loading">Chargement de tes ADN…</div>
+    </div>
+  </section>
+
+  <!-- Voices tab (P1-F9 frontend — voix unlockées) -->
+  <section class="lib-tab-panel" id="lib-panel-voices">
+    <div class="lib-list" id="lib-voices-list">
+      <div class="lib-loading">Chargement de tes voix…</div>
     </div>
   </section>
 
