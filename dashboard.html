@@ -1066,6 +1066,72 @@
       font-size:13px; color:rgba(255,215,0,.85);
       font-weight:600;
     }
+
+    /* Liste des voix existantes (brouillons + publiées) ─────────────────── */
+    #sec-voice-sale .dash-voices-list-wrap{
+      margin-top:24px; padding-top:18px;
+      border-top:1px solid rgba(255,215,0,.18);
+    }
+    #sec-voice-sale .dash-voices-list-title{
+      margin:0 0 12px; font-size:13px; font-weight:700;
+      letter-spacing:.04em; text-transform:uppercase;
+      color:rgba(255,255,255,.78);
+    }
+    #sec-voice-sale .dash-voices-list{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    #sec-voice-sale .dash-voice-card{
+      display:flex; align-items:center; gap:14px;
+      padding:12px 14px; border-radius:10px;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+    }
+    #sec-voice-sale .dash-voice-card.is-published{
+      border-color:rgba(255,215,0,.35);
+      background:rgba(255,215,0,.05);
+    }
+    #sec-voice-sale .dash-voice-card-main{
+      flex:1; min-width:0;
+    }
+    #sec-voice-sale .dash-voice-card-name{
+      font-weight:700; color:#fff; font-size:14px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    #sec-voice-sale .dash-voice-card-meta{
+      margin-top:3px; font-size:12px;
+      color:rgba(255,255,255,.6);
+    }
+    #sec-voice-sale .dash-voice-card-status{
+      font-size:11px; font-weight:700;
+      padding:3px 8px; border-radius:4px;
+      letter-spacing:.04em; text-transform:uppercase;
+    }
+    #sec-voice-sale .dash-voice-card-status.is-draft{
+      background:rgba(255,255,255,.08); color:rgba(255,255,255,.7);
+    }
+    #sec-voice-sale .dash-voice-card-status.is-published{
+      background:rgba(255,215,0,.18); color:#FFD700;
+    }
+    #sec-voice-sale .dash-voice-card-actions{
+      display:flex; gap:6px;
+    }
+    #sec-voice-sale .dash-voice-card-btn{
+      padding:6px 10px; font-size:12px;
+      background:transparent; border:1px solid rgba(255,255,255,.18);
+      color:rgba(255,255,255,.85); border-radius:6px;
+      cursor:pointer; font-weight:600;
+    }
+    #sec-voice-sale .dash-voice-card-btn:hover{
+      background:rgba(255,255,255,.06); border-color:rgba(255,215,0,.4);
+    }
+    #sec-voice-sale .dash-voice-card-btn.is-danger:hover{
+      border-color:rgba(255,80,80,.5); color:#ff8080;
+    }
+    #sec-voice-sale .dash-voices-empty{
+      padding:14px; text-align:center;
+      font-size:12px; color:rgba(255,255,255,.45);
+      border:1px dashed rgba(255,255,255,.1); border-radius:10px;
+    }
   </style>
   <section class="dash-section dash-section-sub" id="sec-voice-sale">
     <div class="dash-subhdr">
@@ -1075,8 +1141,8 @@
     </div>
 
     <div class="dash-voice-banner">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Aperçu visuel — la persistance backend arrive avec P1-F9. Tes saisies ne sont pas encore sauvegardées.
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+      Tes voix sont enregistrées en base. Coche "Publier" pour qu'elles apparaissent sur ton profil et soient achetables.
     </div>
 
     <div class="dash-field-col">
@@ -1155,11 +1221,17 @@
 
       <div class="dash-adn-editor-actions" style="margin-top:14px">
         <button type="button" class="dash-btn-ghost" onclick="dashVoiceResetForm()">Réinitialiser</button>
-        <button type="button" class="dash-btn-primary" onclick="dashVoiceSave()">
+        <button type="button" class="dash-btn-primary" id="dashVoiceSaveBtn" onclick="dashVoiceSave()">
           <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Enregistrer (aperçu)
+          <span id="dashVoiceSaveLbl">Enregistrer ma voix</span>
         </button>
       </div>
+    </div>
+
+    <!-- Liste des voix existantes (brouillons + publiées) — rendue par renderMyVoicesList() -->
+    <div id="dashVoicesListWrap" class="dash-voices-list-wrap">
+      <h3 class="dash-voices-list-title">Mes voix mises en vente</h3>
+      <div id="dashVoicesList" class="dash-voices-list"></div>
     </div>
   </section>
 
