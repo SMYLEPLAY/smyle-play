@@ -45,6 +45,19 @@ class Prompt(Base):
             "char_length(prompt_text) BETWEEN 100 AND 1000",
             name="ck_prompts_prompt_text_length",
         ),
+        # P1-F4 (2026-05-04) — enums réglages génération.
+        # Conditionnelles (IS NULL OR IN ...) pour rétro-compat des
+        # prompts existants en DB qui n'ont pas ces champs.
+        CheckConstraint(
+            "prompt_platform IS NULL OR prompt_platform IN "
+            "('suno', 'udio', 'riffusion', 'stable_audio', 'autre')",
+            name="ck_prompts_platform_enum",
+        ),
+        CheckConstraint(
+            "prompt_vocal_gender IS NULL OR prompt_vocal_gender IN "
+            "('masculin', 'feminin', 'instrumental')",
+            name="ck_prompts_vocal_gender_enum",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -78,6 +91,27 @@ class Prompt(Base):
         default=True,
         server_default="true",
     )
+
+    # ── P1-F4 (2026-05-04) — Réglages de génération de la fiche prompt ──
+    # Tous nullable côté DB pour rétro-compat. La validation strict
+    # (4 obligatoires) est portée par PromptCreate Pydantic — les anciens
+    # prompts restent valides en DB, les nouveaux doivent renseigner.
+    prompt_platform: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+    prompt_model_version: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )
+    prompt_weirdness: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )
+    prompt_style_influence: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    prompt_vocal_gender: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

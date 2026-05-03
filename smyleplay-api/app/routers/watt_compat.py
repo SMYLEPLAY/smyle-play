@@ -430,6 +430,14 @@ async def build_artist_detail_payload(
             "description":  p.description or "",
             "priceCredits": p.price_credits,
             "hasLyrics":    bool(p.lyrics),
+            # P1-F4 (2026-05-04) — réglages de génération exposés
+            # publiquement (badges sur la fiche). Ne révèlent pas le
+            # prompt_text complet, juste les paramètres pour reproduire.
+            "promptPlatform":      p.prompt_platform,
+            "promptModelVersion":  p.prompt_model_version,
+            "promptWeirdness":     p.prompt_weirdness,
+            "promptStyleInfluence": p.prompt_style_influence,
+            "promptVocalGender":   p.prompt_vocal_gender,
             # prompt_text omis volontairement — gated jusqu'à unlock
         }
         for p in prompts_rows
