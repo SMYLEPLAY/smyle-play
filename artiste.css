@@ -3209,6 +3209,37 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
   color: rgba(255,255,255,.5);
   font-style: italic;
 }
+/* P1-F4 (2026-05-04) — réglages génération sur card prompt publique.
+   Badges plateforme/modèle/vocal gender + bloc weirdness/style influence. */
+.ap-prompt-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ap-prompt-settings {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 215, 0, .04);
+  border: 1px dashed rgba(255, 215, 0, .15);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ap-prompt-setting {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, .72);
+  line-height: 1.4;
+}
+.ap-prompt-setting-key {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, .82);
+  margin-right: 6px;
+}
 /* Lecteur de pré-écoute publique (P1-F9 enhancement 2026-05-03).
    Audio jouable avant achat — le bouton Télécharger n'apparaît qu'après
    unlock dans /library. */

@@ -701,6 +701,43 @@
                    min="3" max="500" value="80"
                    oninput="updateCreditGrid()" />
             <div class="dash-help">Min. 3 · Max. 500 crédits. Si l'acheteur possède ton ADN il a -30&nbsp;% automatique.</div>
+
+            <!-- ──────────────────────────────────────────────────────────────
+                 P1-F4 (2026-05-04) — Réglages de génération (4 obligatoires + 1 optionnel)
+                 Sans ces réglages, l'acheteur tape le prompt dans Suno mais
+                 obtient une variante divergente. C'est ce qui rend le prompt
+                 reproductible — la valeur réelle du produit. ────────────── -->
+            <div class="dash-prompt-settings" id="dashPromptSettings">
+              <div class="dash-prompt-settings-hdr">
+                <span class="dash-prompt-settings-title">Réglages de génération</span>
+                <span class="dash-prompt-settings-sub">Pour que l'acheteur puisse reproduire ton son fidèlement</span>
+              </div>
+
+              <label class="dash-label">Modèle / version</label>
+              <input class="dash-input" id="dashPromptModelVersion"
+                     placeholder="Suno v4, Udio 1.5, ..." maxlength="50" />
+              <div class="dash-help">Optionnel. Si tu connais la version exacte, plus l'acheteur reproduit fidèlement.</div>
+
+              <label class="dash-label">Weirdness <span class="dash-req">*</span></label>
+              <input class="dash-input" id="dashPromptWeirdness"
+                     placeholder="40, très varié, 0-100..." maxlength="50" />
+              <div class="dash-help">Réglage Suno (curseur "Weirdness & Variety"). Une valeur ou un mot-clé.</div>
+
+              <label class="dash-label">Style influence <span class="dash-req">*</span></label>
+              <textarea class="dash-textarea" id="dashPromptStyleInfluence" rows="2"
+                        maxlength="500"
+                        placeholder="D'Angelo + James Blake, soul ralentie 70s..."></textarea>
+              <div class="dash-help">Artistes/genres de référence. Court — 1 à 3 lignes max.</div>
+
+              <label class="dash-label">Voix <span class="dash-req">*</span></label>
+              <select class="dash-input" id="dashPromptVocalGender">
+                <option value="">— Sélectionne —</option>
+                <option value="masculin">Masculin</option>
+                <option value="feminin">Féminin</option>
+                <option value="instrumental">Instrumental (pas de voix)</option>
+              </select>
+              <div class="dash-help">Pour un acheteur, savoir s'il y a une voix et quel genre est crucial avant l'achat.</div>
+            </div>
           </div>
 
           <!-- Col 3 : aside (pochette + grille tarif crédits↔SMYLES)

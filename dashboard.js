@@ -1165,12 +1165,31 @@ async function uploadTrack() {
     const priceRaw   = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
     const price      = Number.isFinite(priceRaw) ? priceRaw : 80;
 
-    if (promptText.length < 100) {
-      dashToast('⚠ Recette IA : prompt trop court (min 100 caractères). Son publié, prompt non créé.');
-    } else if (promptText.length > 1000) {
-      dashToast('⚠ Recette IA : prompt trop long (max 1000 — plafond Suno). Son publié, prompt non créé.');
-    } else if (price < 3 || price > 500) {
-      dashToast('⚠ Prix prompt entre 3 et 500 crédits. Son publié, prompt non créé.');
+    // P1-F4 (2026-05-04) — réglages de génération.
+    // 4 obligatoires (platform, weirdness, style_influence, vocal_gender)
+    // + 1 optionnel (model_version). Sans ces 4, le prompt est inutilisable
+    // pour l'acheteur — on bloque la création de prompt (mais le son
+    // reste publié, l'artiste peut compléter et republier le prompt
+    // ultérieurement via la gestion catalogue).
+    // La plateforme du prompt = celle de la track (déjà sélectionnée
+    // dans dashTrackPlatform en haut du formulaire).
+    const platformVal       = (document.getElementById('dashTrackPlatform')?.value || '').trim();
+    const modelVersionVal   = (document.getElementById('dashPromptModelVersion')?.value || '').trim();
+    const weirdnessVal      = (document.getElementById('dashPromptWeirdness')?.value || '').trim();
+    const styleInfluenceVal = (document.getElementById('dashPromptStyleInfluence')?.value || '').trim();
+    const vocalGenderVal    = (document.getElementById('dashPromptVocalGender')?.value || '').trim();
+
+    const promptErrs = [];
+    if (promptText.length < 100)               promptErrs.push('prompt trop court (min 100 caractères)');
+    if (promptText.length > 1000)              promptErrs.push('prompt trop long (max 1000)');
+    if (price < 3 || price > 500)              promptErrs.push('prix entre 3 et 500 crédits');
+    if (!platformVal)                          promptErrs.push('plateforme d\'origine');
+    if (!weirdnessVal)                         promptErrs.push('weirdness');
+    if (!styleInfluenceVal)                    promptErrs.push('style influence');
+    if (!vocalGenderVal)                       promptErrs.push('voix (M/F/Instrumental)');
+
+    if (promptErrs.length) {
+      dashToast(`⚠ Son publié, prompt non créé — manque : ${promptErrs.join(', ')}`);
     } else {
       try {
         await apiFetch('/artist/me/prompts', {
@@ -1182,6 +1201,12 @@ async function uploadTrack() {
             lyrics:       lyrics || null,
             price_credits: price,
             is_published: true,
+            // P1-F4 — réglages génération (4 obligatoires + 1 optionnel)
+            prompt_platform:        platformVal,
+            prompt_model_version:   modelVersionVal || null,
+            prompt_weirdness:       weirdnessVal,
+            prompt_style_influence: styleInfluenceVal,
+            prompt_vocal_gender:    vocalGenderVal,
           },
         });
         dashToast(`💎 Recette IA "${name}" publiée sur la marketplace.`);

@@ -2547,6 +2547,32 @@ html { scroll-behavior: smooth; }
 }
 .dash-help-suno { opacity: .65; font-size: .62rem; }
 
+/* ── P1-F4 (2026-05-04) — Réglages génération sous le bloc Recette IA ──── */
+.dash-prompt-settings {
+  margin-top: 18px;
+  padding: 14px 14px 6px;
+  border: 1px dashed rgba(255, 215, 0, .18);
+  border-radius: 10px;
+  background: rgba(255, 215, 0, .025);
+}
+.dash-prompt-settings-hdr {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.dash-prompt-settings-title {
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(255, 215, 0, .85);
+}
+.dash-prompt-settings-sub {
+  font-size: .68rem;
+  color: rgba(255, 255, 255, .55);
+}
+
 .dash-char-count {
   font-variant-numeric: tabular-nums;
   font-size: .68rem;

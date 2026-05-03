@@ -682,6 +682,29 @@ function renderDna(artist) {
   }
 }
 
+// P1-F4 (2026-05-04) — libellés humains des enums backend pour les
+// réglages de génération exposés sur les cards prompts publiques.
+// Aligned avec PromptPlatform / PromptVocalGender (smyleplay-api).
+const _PROMPT_PLATFORM_LBL = {
+  suno:         'Suno',
+  udio:         'Udio',
+  riffusion:    'Riffusion',
+  stable_audio: 'Stable Audio',
+  autre:        'Autre',
+};
+function _voicePromptPlatformLbl(key) {
+  return _PROMPT_PLATFORM_LBL[key] || (key || '');
+}
+
+const _PROMPT_VOCAL_GENDER_LBL = {
+  masculin:     '🎙 Voix masculine',
+  feminin:      '🎙 Voix féminine',
+  instrumental: '🎵 Instrumental',
+};
+function _promptVocalGenderLbl(key) {
+  return _PROMPT_VOCAL_GENDER_LBL[key] || (key || '');
+}
+
 function renderPrompts(artist) {
   const section = $('ap-prompts-section');
   const list    = $('ap-prompts-list');
@@ -706,6 +729,25 @@ function renderPrompts(artist) {
     const lyricsBadge = p.hasLyrics
       ? '<span class="ap-prompt-badge">🎤 Avec paroles</span>'
       : '';
+    // P1-F4 (2026-05-04) — badges réglages génération.
+    // Visibles publiquement pour donner confiance à l'acheteur (il sait
+    // qu'il a tout ce qu'il faut pour reproduire). Ne révèlent pas le
+    // prompt_text — juste les paramètres.
+    const platformBadge = p.promptPlatform
+      ? `<span class="ap-prompt-badge">${_voicePromptPlatformLbl(p.promptPlatform)}</span>`
+      : '';
+    const modelBadge = p.promptModelVersion
+      ? `<span class="ap-prompt-badge">${(p.promptModelVersion || '').replace(/</g, '&lt;')}</span>`
+      : '';
+    const vocalBadge = p.promptVocalGender
+      ? `<span class="ap-prompt-badge">${_promptVocalGenderLbl(p.promptVocalGender)}</span>`
+      : '';
+    const settingsBlock = (p.promptWeirdness || p.promptStyleInfluence)
+      ? `<div class="ap-prompt-settings">
+           ${p.promptWeirdness ? `<div class="ap-prompt-setting"><span class="ap-prompt-setting-key">Weirdness</span> ${(p.promptWeirdness || '').replace(/</g, '&lt;')}</div>` : ''}
+           ${p.promptStyleInfluence ? `<div class="ap-prompt-setting"><span class="ap-prompt-setting-key">Influence</span> ${(p.promptStyleInfluence || '').replace(/</g, '&lt;')}</div>` : ''}
+         </div>`
+      : '';
     // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
     const unlockBtn = artist.isSelf
       ? '<span class="ap-prompt-owner-note">Ton prompt</span>'
@@ -719,6 +761,12 @@ function renderPrompts(artist) {
         ${lyricsBadge}
       </div>
       ${safeDesc ? `<p class="ap-prompt-card-desc">${safeDesc}</p>` : ''}
+      <div class="ap-prompt-card-meta">
+        ${platformBadge}
+        ${modelBadge}
+        ${vocalBadge}
+      </div>
+      ${settingsBlock}
       <div class="ap-prompt-card-actions">${unlockBtn}</div>
     `;
     list.appendChild(card);

@@ -11,6 +11,7 @@ Conventions strictes (alignées sur user.py / credit.py existants):
   - Lock après vente : géré côté SERVICE (pas Pydantic) car nécessite query DB.
 """
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -127,6 +128,13 @@ class AdnRead(BaseModel):
 # Prompt — Create / Update / Read
 # -----------------------------------------------------------------------------
 
+# Enums P1-F4 (2026-05-04) — alignés avec ck_prompts_*_enum côté DB.
+PromptPlatform = Literal[
+    "suno", "udio", "riffusion", "stable_audio", "autre"
+]
+PromptVocalGender = Literal["masculin", "feminin", "instrumental"]
+
+
 class PromptCreate(BaseModel):
     """
     Création prompt. Pré-requis (enforce SERVICE) : l'artiste doit avoir
@@ -135,6 +143,11 @@ class PromptCreate(BaseModel):
 
     is_published absent (idem ADN : draft par défaut).
     pack_eligible absent : réservé Phase 10.
+
+    P1-F4 (2026-05-04) : 4 nouveaux champs OBLIGATOIRES + 1 optionnel
+    pour que le prompt soit reproductible côté acheteur (sans ces
+    réglages, l'acheteur tape le texte dans Suno mais obtient une
+    variante divergente — taux de conversion en chute).
     """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -152,12 +165,25 @@ class PromptCreate(BaseModel):
         ge=PROMPT_PRICE_MIN, le=PROMPT_PRICE_MAX
     )
 
+    # ── Réglages génération (4 obligatoires + 1 optionnel) ───────────────
+    prompt_platform: PromptPlatform
+    prompt_model_version: str | None = Field(
+        default=None, max_length=50
+    )
+    prompt_weirdness: str = Field(min_length=1, max_length=50)
+    prompt_style_influence: str = Field(min_length=1, max_length=500)
+    prompt_vocal_gender: PromptVocalGender
+
 
 class PromptUpdate(BaseModel):
     """
     PATCH prompt — option (b) : `prompt_text` figé après 1ère vente
     (cohérent avec lock ADN sur description). Métadonnées + prix +
     publication restent éditables.
+
+    Les 5 champs P1-F4 sont éditables tous le temps (l'artiste peut
+    corriger une plateforme erronée même après vente — l'acheteur en
+    bénéficie au prochain reload de /library).
     """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -176,6 +202,17 @@ class PromptUpdate(BaseModel):
     )
     is_published: bool | None = None
 
+    # ── Réglages génération (tous optionnels au PATCH) ───────────────────
+    prompt_platform: PromptPlatform | None = None
+    prompt_model_version: str | None = Field(default=None, max_length=50)
+    prompt_weirdness: str | None = Field(
+        default=None, min_length=1, max_length=50
+    )
+    prompt_style_influence: str | None = Field(
+        default=None, min_length=1, max_length=500
+    )
+    prompt_vocal_gender: PromptVocalGender | None = None
+
 
 class PromptRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -190,6 +227,12 @@ class PromptRead(BaseModel):
     pack_eligible: bool
     created_at: datetime
     updated_at: datetime
+    # ── P1-F4 — réglages génération (None pour les anciens prompts) ──────
+    prompt_platform: str | None = None
+    prompt_model_version: str | None = None
+    prompt_weirdness: str | None = None
+    prompt_style_influence: str | None = None
+    prompt_vocal_gender: str | None = None
 
 
 class PromptsListResponse(BaseModel):
