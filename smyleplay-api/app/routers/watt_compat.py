@@ -97,6 +97,13 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
 
     Flask track.to_dict() :
       {id, name, genre, streamUrl, r2Key, plays, uploadedAt, date}
+
+    Sprint 1 enrichi (2026-05-04) :
+      - coverUrl : URL R2 de la pochette (NULL = fallback couleur côté UI)
+      - promptId : lien vers le prompt vendable (NULL = track écoutable
+        seulement, pas achetable). Le détail du prompt (title, price,
+        platform, etc.) est récupéré via le payload artist.prompts —
+        promptId sert de pointeur pour matcher track ↔ prompt côté front.
     """
     public_id = track.legacy_id or str(track.id)
     uploaded_ms = int(track.created_at.timestamp() * 1000) if track.created_at else 0
@@ -111,6 +118,9 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         "plays":      track.plays or 0,
         "uploadedAt": uploaded_ms,
         "date":       date_fr,
+        # Sprint 1 — pivot écoute
+        "coverUrl":   track.cover_url or "",
+        "promptId":   str(track.prompt_id) if track.prompt_id else None,
     }
     if artist is not None:
         out["artistName"] = artist.artist_name or ""

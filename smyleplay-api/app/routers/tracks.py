@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,12 +10,14 @@ from app.schemas.track import (
     DNARead,
     TrackCreate,
     TrackRead,
+    TrackUpdate,
     TrackWithDNA,
 )
 from app.services.tracks import (
     create_track_with_dna,
     get_tracks,
     get_user_tracks,
+    patch_track,
 )
 
 router = APIRouter(prefix="/tracks", tags=["tracks"])
@@ -67,3 +71,31 @@ async def list_my_tracks(
     current_user: User = Depends(get_current_user),
 ):
     return await get_user_tracks(db, current_user)
+
+
+@router.patch("/{track_id}", response_model=TrackRead)
+async def update_track(
+    track_id: UUID,
+    payload: TrackUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Sprint 1 (2026-05-04) — PATCH partiel d'un track.
+
+    Cas d'usage principal : workflow dashboard où on crée le track puis
+    le prompt, puis on lie les 2 via PATCH { prompt_id }. Permet aussi
+    de mettre à jour cover_url ou title sans recréer le track.
+
+    Authz : track doit appartenir à l'utilisateur courant. 404
+    indistingable si track inexistant ou pas owner (anti-énumération).
+    """
+    track = await patch_track(
+        db, track_id=track_id, user=current_user, payload=payload
+    )
+    if track is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Track not found",
+        )
+    return TrackRead.model_validate(track)

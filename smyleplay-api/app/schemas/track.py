@@ -16,6 +16,23 @@ class TrackCreate(BaseModel):
     # Optionnel ; null = fallback brandColor. Validé par la longueur
     # VARCHAR(7) en base + la regex Pydantic pour garantir l'intégrité.
     color: str | None = Field(default=None, pattern=HEX_COLOR_RE)
+    # Sprint 1 (2026-05-04) — pivot écoute. cover_url R2 optionnel,
+    # prompt_id optionnel pour lier le track à un prompt vendable.
+    cover_url: str | None = Field(default=None, max_length=2048)
+    prompt_id: UUID | None = None
+
+
+class TrackUpdate(BaseModel):
+    """
+    PATCH partiel d'un track. Permet d'attacher un prompt_id après coup
+    (workflow dashboard : créer track → créer prompt → PATCH track avec
+    prompt_id obtenu) ou de mettre à jour la cover.
+    """
+
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    color: str | None = Field(default=None, pattern=HEX_COLOR_RE)
+    cover_url: str | None = Field(default=None, max_length=2048)
+    prompt_id: UUID | None = None
 
 
 class DNARead(BaseModel):
@@ -31,6 +48,8 @@ class TrackRead(BaseModel):
     title: str
     audio_url: str | None
     color: str | None
+    cover_url: str | None = None
+    prompt_id: UUID | None = None
     created_at: datetime
 
 
