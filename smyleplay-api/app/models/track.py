@@ -73,6 +73,18 @@ class Track(Base):
     # le format est validé côté Pydantic (regex) à la création/édition.
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
 
+    # --- Champs ajoutés migration 0025 (Sprint 1 pivot écoute, 2026-05-04) ---
+    # cover_url : URL R2 de la pochette du morceau. NULL = fallback couleur.
+    cover_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # prompt_id : lien track → prompt vendable. NULL = track sans prompt.
+    # ON DELETE SET NULL pour préserver l'audio si le prompt est supprimé.
+    prompt_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("prompts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
