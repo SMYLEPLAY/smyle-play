@@ -1186,8 +1186,10 @@ async function uploadTrack() {
         });
         dashToast(`💎 Recette IA "${name}" publiée sur la marketplace.`);
       } catch (e) {
-        const msg = (e && e.body && e.body.detail) || (e && e.message) || 'erreur inconnue';
-        dashToast(`⚠ Son publié, mais prompt refusé : ${msg}`);
+        // P1-B11 (2026-04-29) — Avant ce fix, e.body.detail pouvait être un
+        // array Pydantic ou un objet, qui s'affichaient comme [object Object]
+        // dans le toast. On parse maintenant les 3 formes possibles.
+        dashToast(`⚠ Son publié, mais prompt refusé : ${_humanizeApiError(e)}`);
       }
     }
   }
@@ -2721,6 +2723,48 @@ function dashToast(msg) {
   }, 2800);
 }
 
+// P1-B11 (2026-04-29) — Helper de parsing des erreurs API.
+//
+// FastAPI/Pydantic peut renvoyer e.body.detail sous 3 formes :
+//   1. string         → ex 404 "ADN not found"
+//   2. array d'objets → ex 422 [{"loc":[...], "msg":"...", "type":"..."}]
+//   3. objet          → ex 403 { code, message }
+//
+// Avant ce helper, le code faisait `${e.body.detail}` ce qui transformait
+// les array/objets en "[object Object]" — message inutilisable côté user.
+// Maintenant, on extrait un message lisible quel que soit le format, avec
+// fallback `e.message` puis "erreur inconnue".
+//
+// Exposé globalement parce qu'on l'utilise dans plusieurs endroits du
+// dashboard (publication prompt, ADN, voix, profil).
+function _humanizeApiError(e) {
+  if (!e) return 'erreur inconnue';
+  const detail = e.body && e.body.detail;
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail.trim();
+  }
+  if (Array.isArray(detail) && detail.length > 0) {
+    // Pydantic validation errors : on concatène les messages humains
+    return detail
+      .map((it) => {
+        if (it && typeof it === 'object') {
+          const loc = Array.isArray(it.loc) ? it.loc.filter((x) => x !== 'body').join('.') : '';
+          const msg = it.msg || it.message || JSON.stringify(it);
+          return loc ? `${loc} — ${msg}` : msg;
+        }
+        return String(it);
+      })
+      .join(' · ');
+  }
+  if (detail && typeof detail === 'object') {
+    return detail.message || detail.error || detail.msg || JSON.stringify(detail);
+  }
+  if (e.message && typeof e.message === 'string') {
+    return e.message;
+  }
+  return 'erreur inconnue';
+}
+
 // ── 14. UTILITAIRES ───────────────────────────────────────────────────────────
 
 function setTextById(id, val) {
@@ -3051,8 +3095,21 @@ async function saveAdn() {
 }
 
 async function toggleAdnPublish() {
-  if (_adnState.saving || !_adnState.adn) return;
+  if (_adnState.saving) return;
   if (typeof apiFetch !== 'function') return;
+
+  // P1-B12 (2026-04-29) — Avant ce fix, cette fonction était silencieuse si
+  // _adnState.adn était null (cas où l'utilisateur croit voir un ADN dans le
+  // dashboard mais en DB il n'y a rien). Tom passait donc 30 min à cliquer
+  // sans rien comprendre. On affiche maintenant un message explicite + on
+  // refetch côté DB pour resynchroniser au cas où le cache local mente.
+  if (!_adnState.adn) {
+    dashToast('⚠ Aucun ADN en base. Crée-le d\'abord en remplissant le formulaire ci-dessous puis Sauvegarder.');
+    // Tentative de re-sync : si l'ADN existe en DB mais n'avait pas été
+    // chargé (race condition au boot), on le récupère et on retente.
+    try { await loadMyAdn(); } catch (_) {}
+    if (!_adnState.adn) return;
+  }
 
   const nextState = !_adnState.adn.is_published;
   _adnState.saving = true;
@@ -3063,12 +3120,12 @@ async function toggleAdnPublish() {
     });
     _adnState.adn = adn;
     renderAdnSection();
-    _dashToast(nextState
+    dashToast(nextState
       ? 'ADN publié — visible sur ton profil 🎉'
       : 'ADN dépublié — invisible pour les fans');
   } catch (err) {
     console.error('[dashboard] toggleAdnPublish error', err);
-    _handleAdnError(err);
+    dashToast(`⚠ Bascule publication impossible : ${_humanizeApiError(err)}`);
   } finally {
     _adnState.saving = false;
   }
