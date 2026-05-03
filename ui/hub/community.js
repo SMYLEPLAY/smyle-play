@@ -50,42 +50,90 @@ async function fetchPlaylists() {
   });
 
   // Sprint D — Injecter les sons communautaires WATT dans le player
-  injectCommunityPlaylist();
+  // P1-F2 (2026-05-03) : injectCommunityPlaylist est async (appel API),
+  // on await pour que le compteur card communauté soit à jour avant
+  // le retour de fetchPlaylists.
+  await injectCommunityPlaylist();
 }
 
-// ── 2b. INJECTION PLAYLIST COMMUNAUTAIRE (Sprint D) ─────────────────────────
+// ── 2b. INJECTION PLAYLIST COMMUNAUTAIRE (P1-F2 — fix publication pipeline) ──
+//
+// AVANT (bug) : on lisait `smyle_watt_tracks` depuis localStorage. Cette
+// clé contient UNIQUEMENT les tracks que l'utilisateur courant a uploadés
+// dans cette session locale. Donc l'accueil de chaque user n'affichait
+// que SES propres sons — les sons publiés par d'autres artistes étaient
+// invisibles partout (sauf sur leur profil /u/<slug>).
+//
+// MAINTENANT : on tape /watt/tracks-recent qui retourne les 12 derniers
+// tracks de TOUS les artistes publics (filtre profile_public=TRUE côté
+// backend, voir watt_compat.py tracks_recent). La playlist communauté
+// devient vraiment communautaire.
+//
+// Fallback localStorage conservé en cas d'API down — affiche au moins
+// les sons de l'user courant (mieux que rien).
+async function injectCommunityPlaylist() {
+  let recent = [];
+  let usedFallback = false;
 
-function injectCommunityPlaylist() {
-  const wattTracks = JSON.parse(localStorage.getItem('smyle_watt_tracks') || '[]');
-  const profile    = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
-  if (!wattTracks.length) return;
+  // Source canonique : l'API. Si elle pète, fallback localStorage.
+  try {
+    if (typeof apiFetch === 'function') {
+      const data = await apiFetch('/watt/tracks-recent');
+      recent = Array.isArray(data && data.tracks) ? data.tracks : [];
+    } else {
+      throw new Error('apiFetch unavailable');
+    }
+  } catch (err) {
+    console.warn('[community] /watt/tracks-recent erreur, fallback localStorage:', err && err.message);
+    usedFallback = true;
+    const wattTracks = JSON.parse(localStorage.getItem('smyle_watt_tracks') || '[]');
+    const profile    = JSON.parse(localStorage.getItem('smyle_watt_profile') || 'null');
+    const artistName = (profile && profile.artistName) || 'Artiste WATT';
+    recent = wattTracks.map(t => ({
+      id:         t.id,
+      streamUrl:  t.streamUrl || null,
+      name:       t.name || 'Sans titre',
+      genre:      t.genre || '',
+      artistName: artistName,
+      artistSlug: (profile && profile.slug) || '',
+    }));
+  }
 
-  const artistName = profile?.artistName || 'Artiste WATT';
+  if (!recent.length) return;
 
-  // Convertir les tracks WATT au format PLAYLISTS compatible avec le player
-  const converted = wattTracks.map(t => ({
+  // Conversion vers le format consommé par le player (PLAYLISTS).
+  // L'API renvoie déjà streamUrl, name, artistName, artistSlug.
+  const converted = recent.map(t => ({
     id:       t.id,
     file:     t.file || '',
     name:     t.name || 'Sans titre',
     duration: 0,
-    url:      t.streamUrl || null,   // URL R2 pour streaming (null = pas streamable depuis l'accueil)
+    url:      t.streamUrl || null,
     genre:    t.genre || '',
-    artist:   artistName,
+    artist:   t.artistName || 'Artiste WATT',
+    artistSlug: t.artistSlug || '',
+    plays:    t.plays || 0,
     coverDataUrl: t.coverDataUrl || null,
-    watt:     true,                  // flag pour distinguer les tracks communautaires
+    watt:     true,
   }));
 
-  // N'ajouter que les tracks avec une URL streamable
+  // N'ajouter que les tracks avec une URL streamable.
   const streamable = converted.filter(t => t.url);
+  if (!streamable.length) return;
 
-  if (streamable.length) {
-    PLAYLISTS['watt-community'] = {
-      label:          'WATT Community',
-      folder:         'WATT',
-      theme:          'watt-community',
-      tracks:         streamable,
-      total_duration: 0,
-    };
+  PLAYLISTS['watt-community'] = {
+    label:          usedFallback ? 'WATT Community (offline)' : 'WATT Community',
+    folder:         'WATT',
+    theme:          'watt-community',
+    tracks:         streamable,
+    total_duration: 0,
+  };
+
+  // Met à jour le compteur sur la card communauté si présent.
+  const el = document.getElementById('count-watt-community');
+  if (el) {
+    const n = streamable.length;
+    el.textContent = `${n} titre${n > 1 ? 's' : ''}`;
   }
 }
 
