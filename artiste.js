@@ -171,7 +171,12 @@ async function loadArtist() {
       return;
     }
     state.artist = json.artist;
+    // P1-F9 — On charge les voix en parallèle / async sans bloquer le render
+    // initial. La cellule voix apparaît dès que le fetch retourne (∼100ms),
+    // pas besoin d'attendre pour render le reste du profil.
+    state.artist.voices = [];  // état initial → renderVoices cache la section
     renderProfile();
+    loadArtistVoices(state.artist.id);
     // Si le profil est vide ET l'utilisateur est owner, on active direct le
     // mode édition pour qu'il puisse remplir sans clic supplémentaire.
     maybePromptFirstEdit();
@@ -279,6 +284,7 @@ function renderProfile() {
   // voit un fan "pur". Cf. discussion vision / organisation.
   renderDna(artist);
   renderPrompts(artist);
+  renderVoices(artist);
   renderTracks(artist);
   _updateSaleDisclaimerVisibility(artist);
 
@@ -625,15 +631,16 @@ async function saveRolesPicker() {
 
 // ═══ Item 7 · Disclaimer fiche vente ════════════════════════════════════
 // Affiche le disclaimer UNIQUEMENT si l'artiste vend quelque chose.
-// Critère : au moins 1 ADN OU au moins 1 prompt publié.
-// (Les voix arriveront avec P1-F9 backend — le flag côté serveur manque
-// encore, donc pour l'instant on ne regarde que adn + prompts.)
+// Critère : au moins 1 ADN OU au moins 1 prompt OU au moins 1 voix publiée.
+// Voix ajoutées P1-F9 (2026-05-03) — chargées en async via loadArtistVoices,
+// donc cette fonction est rappelée par renderVoices une fois les voix prêtes.
 function _updateSaleDisclaimerVisibility(artist) {
   const el = document.getElementById('ap-sale-disclaimer');
   if (!el) return;
   const hasAdn     = !!(artist && artist.adn);
   const hasPrompts = Array.isArray(artist && artist.prompts) && artist.prompts.length > 0;
-  el.style.display = (hasAdn || hasPrompts) ? '' : 'none';
+  const hasVoices  = Array.isArray(artist && artist.voices)  && artist.voices.length  > 0;
+  el.style.display = (hasAdn || hasPrompts || hasVoices) ? '' : 'none';
 }
 
 function renderDna(artist) {
@@ -820,6 +827,143 @@ async function unlockPromptFromProfile(promptId, btn) {
     toast(msg);
     // Reload pour que l'UI reflète l'état "déjà débloqué" (Phase 10 : n/a ici).
     setTimeout(() => loadArtist(), 400);
+  } catch (err) {
+    handleUnlockError(err);
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ═══ P1-F9 — Voix (cellule profil public) ═══════════════════════════════
+//
+// Charge les voix publiées de l'artiste depuis GET /api/voices/by-artist/{id}
+// (endpoint dédié — voix ne sont pas dans le payload /watt/artists/<slug>
+// par design, voir la règle Tom project_voice_separation_rule).
+//
+// Le sample_url n'est JAMAIS retourné par cet endpoint public — on n'a que
+// des VoicePublicRead (gating strict). Le sample arrive uniquement après
+// /unlocks/voices/{id} dans le payload de réponse, et via /api/voices/me/unlocked
+// pour la page /library.
+async function loadArtistVoices(artistId) {
+  if (!artistId) return;
+  if (typeof apiFetch !== 'function') return;
+  try {
+    const list = await apiFetch(
+      `/api/voices/by-artist/${encodeURIComponent(artistId)}`,
+      { auth: false },  // endpoint public — pas besoin de JWT
+    );
+    state.artist.voices = Array.isArray(list) ? list : [];
+  } catch (err) {
+    // 404/500 → on cache la cellule, pas de message d'erreur user (la cellule
+    // voix est secondaire ; un échec ne doit pas dégrader le reste du profil).
+    console.warn('[artiste.js] loadArtistVoices error', err);
+    state.artist.voices = [];
+  }
+  renderVoices(state.artist);
+  // Recalcule la visibilité du disclaimer maintenant que voices est connu.
+  _updateSaleDisclaimerVisibility(state.artist);
+}
+
+// Libellés humains des licences (alignés sur le backend VoiceLicense).
+const VOICE_LICENSE_LBL = {
+  personnel:  'Personnel',
+  commercial: 'Commercial',
+  exclusif:   'Exclusif',
+};
+
+// Mapping des keys de genres vers leurs labels affichés.
+// (Source de vérité : DASH_VOICE_GENRES côté dashboard.js. On duplique ici
+// volontairement parce que artiste.js n'a pas accès au scope dashboard.js,
+// et la liste change rarement. À garder synchronisé si on ajoute un genre.)
+const VOICE_GENRES_LBL = {
+  rnb:    'RnB',     pop:    'Pop',     trap:   'Trap',     rap: 'Rap',
+  electro:'Electro', house:  'House',   afro:   'Afro',     jazz:'Jazz',
+  soul:   'Soul',    rock:   'Rock',    autre:  'Autre',
+};
+
+function _voiceGenresStr(keys) {
+  if (!Array.isArray(keys) || !keys.length) return '';
+  return keys.map(k => VOICE_GENRES_LBL[k] || k).join(' · ');
+}
+
+function renderVoices(artist) {
+  const section = $('ap-voices-section');
+  const list    = $('ap-voices-list');
+  if (!section || !list) return;
+
+  const voices = Array.isArray(artist && artist.voices) ? artist.voices : [];
+  if (voices.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  setText('ap-voices-count',
+    `${voices.length} voix`);
+
+  list.innerHTML = '';
+  voices.forEach(v => {
+    const card = document.createElement('article');
+    card.className = 'ap-voice-card';
+    const safeName  = (v.name  || '').replace(/</g, '&lt;');
+    const safeStyle = (v.style || '').replace(/</g, '&lt;');
+    const priceStr  = formatCount(v.price_credits);
+    const licenseLbl = VOICE_LICENSE_LBL[v.license] || v.license || '';
+    const licenseClass = (v.license === 'exclusif')
+      ? 'ap-voice-badge ap-voice-license-badge is-exclusif'
+      : 'ap-voice-badge ap-voice-license-badge';
+    const genresStr = _voiceGenresStr(v.genres);
+    const genresBadge = genresStr
+      ? `<span class="ap-voice-badge">${genresStr.replace(/</g, '&lt;')}</span>`
+      : '';
+    // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
+    const unlockBtn = artist.isSelf
+      ? '<span class="ap-voice-owner-note">Ta voix</span>'
+      : `<button type="button" class="ap-voice-unlock-btn"
+                 data-voice-id="${v.id}" data-price="${v.price_credits}">
+          🔓 Débloquer · ${priceStr} crédits
+        </button>`;
+    card.innerHTML = `
+      <div class="ap-voice-card-top">
+        <h3 class="ap-voice-card-title">${safeName}</h3>
+        <span class="${licenseClass}">${licenseLbl}</span>
+      </div>
+      ${safeStyle ? `<p class="ap-voice-card-style">${safeStyle}</p>` : ''}
+      <div class="ap-voice-card-meta">
+        ${genresBadge}
+      </div>
+      <div class="ap-voice-card-actions">${unlockBtn}</div>
+    `;
+    list.appendChild(card);
+  });
+
+  // Délégation click — un seul listener pour la liste re-rendue souvent.
+  list.onclick = (ev) => {
+    const btn = ev.target.closest('.ap-voice-unlock-btn');
+    if (!btn) return;
+    const id = btn.dataset.voiceId;
+    if (id) unlockVoiceFromProfile(id, btn);
+  };
+}
+
+// ── Unlock voix depuis le profil ───────────────────────────────────────
+async function unlockVoiceFromProfile(voiceId, btn) {
+  if (!voiceId) return;
+  if (btn) btn.disabled = true;
+  try {
+    const resp = await apiFetch(
+      `/unlocks/voices/${encodeURIComponent(voiceId)}`,
+      { method: 'POST' },
+    );
+    // resp.sample_url contient l'URL R2 du sample maintenant débloqué.
+    // Pour la 1re version on affiche un toast, et l'user retrouve sa voix
+    // dans /library (onglet Voix — autre PR). Pas de player inline ici pour
+    // garder la cellule compacte côté visuel.
+    toast('Voix débloquée 🎙 — retrouve-la dans ta bibliothèque');
+    // Pas besoin de reload du profil entier : la voix reste publique (les
+    // autres user peuvent toujours l'acheter). On laisse l'UI inchangée.
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '✓ Débloquée';
+    }
   } catch (err) {
     handleUnlockError(err);
     if (btn) btn.disabled = false;
