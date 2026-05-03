@@ -317,10 +317,20 @@ function renderVoices(items) {
   el.innerHTML = items.map((v, i) => {
     const license = VOICE_LICENSE_LBL_LIB[v.license] || v.license || '';
     const genres  = _libVoiceGenresStr(v.genres);
+    // Backend enrichi (feat/voices-enriched-payload) — v.artist contient
+    // { id, artist_name, slug, brand_color }. On affiche "par <Artiste>"
+    // avec lien /u/<slug> + bordure brand_color sur la card.
+    const artist = v.artist || null;
+    const artistName = (artist && artist.artist_name) || '';
+    const artistSlug = (artist && artist.slug) || '';
+    const brandColor = (artist && artist.brand_color) || '';
+    const artistBlock = artistName
+      ? (artistSlug
+          ? `<div class="lib-item-artist">par <a href="/u/${esc(artistSlug)}">${esc(artistName)}</a></div>`
+          : `<div class="lib-item-artist">par ${esc(artistName)}</div>`)
+      : '';
     // Téléchargement du sample : on pose un <a download> direct sur l'URL R2.
     // Pas d'auth header → l'URL R2 doit être publique (signed-URL ou public-read).
-    // Le backend renvoie l'URL telle quelle ; côté Cloudflare R2, le bucket
-    // smyle-play-audio est accessible via base public CLOUD_AUDIO_BASE_URL.
     const dlBtn = v.sample_url
       ? `<a href="${esc(v.sample_url)}" download class="lib-copy-btn">Télécharger le sample</a>`
       : `<span class="lib-copy-btn" style="opacity:.5">Sample indisponible</span>`;
@@ -335,8 +345,10 @@ function renderVoices(items) {
            </div>
          </div>`
       : '';
+    // Bordure brand_color sur la card si dispo (cohérent avec ADN cards).
+    const cardStyle = brandColor ? ` style="border-left: 3px solid ${esc(brandColor)}"` : '';
     return `
-      <div class="lib-item">
+      <div class="lib-item"${cardStyle}>
         <div class="lib-item-head">
           <div class="lib-item-title">
             🎙 ${esc(v.name || 'Voix')}
@@ -344,6 +356,7 @@ function renderVoices(items) {
           </div>
           <div class="lib-item-meta">Acquise le ${fmtDate(v.owned_at || v.updated_at || v.created_at)}</div>
         </div>
+        ${artistBlock}
         ${v.style ? `<div class="lib-item-desc">${esc(v.style)}</div>` : ''}
         ${genres ? `<div class="lib-item-artist">Genres : ${esc(genres)}</div>` : ''}
         ${audioBlock}

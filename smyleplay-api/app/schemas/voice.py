@@ -19,6 +19,13 @@ Validation :
   - `genres` : array de strings, max 10 entrées
   - `license` : enum 'personnel' / 'commercial' / 'exclusif'
   - `sample_url` : URL valide, max 500 chars
+
+Enrichissement artist (2026-05-03 — feat/voices-enriched-payload) :
+  - VoicePublicRead et VoiceFullRead exposent désormais un sous-objet
+    `artist` avec id + artist_name + slug + brand_color. Permet à
+    /library d'afficher "par <Artiste>" + lien /u/<slug> sans 2e fetch.
+  - artist est `None` uniquement si la query backend n'a pas pu joindre
+    le User (cas extrême, FK CASCADE devrait l'empêcher en pratique).
 """
 from datetime import datetime
 from typing import Literal
@@ -31,6 +38,33 @@ from app.schemas.credit import TransactionRead
 
 # Type literal aligné avec models.voice.VOICE_LICENSES et la CHECK constraint.
 VoiceLicense = Literal["personnel", "commercial", "exclusif"]
+
+
+# -----------------------------------------------------------------------------
+# Sous-objet artist embarqué dans Voice*Read
+# -----------------------------------------------------------------------------
+
+class VoiceArtistInfo(BaseModel):
+    """
+    Infos minimales sur l'artiste pour afficher correctement la voix côté
+    front (/library, page profil, etc.) sans 2e round-trip.
+
+    On limite volontairement aux champs nécessaires à l'affichage card :
+      - `id` pour clé React éventuelle / déduplication
+      - `artist_name` pour le nom affiché
+      - `slug` pour construire un lien /u/<slug>
+      - `brand_color` pour la coloration de la card
+
+    Pas de bio / avatar_url / socials ici — si le front en a besoin il
+    fait un fetch dédié /watt/artists/<slug>.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    artist_name: str | None = None
+    slug: str | None = None
+    brand_color: str | None = None
 
 
 # -----------------------------------------------------------------------------
@@ -75,12 +109,17 @@ class VoicePublicRead(BaseModel):
     """
     Vue publique d'une voix (visiteur non-acheteur, profil /u/<slug>).
     PAS de `sample_url` — gated jusqu'à l'unlock.
+
+    `artist` est optionnel pour rétrocompat — un client legacy qui ne
+    consomme pas ce champ ignore simplement la clé. Les nouveaux endpoints
+    le remplissent toujours (cf services.voices.enrich_voices_with_artist).
     """
 
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     artist_id: UUID
+    artist: VoiceArtistInfo | None = None
     name: str
     style: str
     genres: list[str]
