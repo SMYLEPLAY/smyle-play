@@ -248,7 +248,7 @@ async def enrich_voices_with_artist(
     db: AsyncSession,
     voices: list[Voice],
     *,
-    include_sample: bool = True,
+    include_sample: bool = True,  # noqa: ARG001 — gardé pour rétro-compat call sites
 ) -> list[dict]:
     """
     Transforme une liste de Voice en list[dict] sérialisables par les
@@ -257,8 +257,15 @@ async def enrich_voices_with_artist(
     Performance : 1 SELECT IN sur User (pas de N+1) même si la liste
     contient des voix de N artistes différents (cas /api/voices/me/unlocked).
 
-    `include_sample=False` retire `sample_url` et `updated_at` du dict —
-    utile pour les routes publiques qui veulent du VoicePublicRead strict.
+    Évolution 2026-05-03 (feat/voices-public-preview) : `sample_url` est
+    maintenant TOUJOURS inclus dans le dict, même pour les routes publiques
+    (pré-écoute avant achat). Pydantic filtre automatiquement les champs
+    excédentaires lors de model_validate(VoicePublicRead) — `updated_at`
+    sera ignoré pour les vues publiques qui ne le déclarent pas.
+
+    Le param `include_sample` est conservé pour rétro-compat des call
+    sites mais n'a plus d'effet (no-op). À retirer dans une PR de cleanup
+    ultérieure une fois les call sites simplifiés.
     """
     if not voices:
         return []
@@ -296,10 +303,11 @@ async def enrich_voices_with_artist(
             "price_credits": v.price_credits,
             "is_published": v.is_published,
             "created_at": v.created_at,
+            # P1-F9 enhancement (2026-05-03) : sample_url toujours public
+            # pour permettre la pré-écoute avant achat. Voir VoicePublicRead.
+            "sample_url": v.sample_url,
+            "updated_at": v.updated_at,  # ignoré par VoicePublicRead.model_validate
         }
-        if include_sample:
-            d["sample_url"] = v.sample_url
-            d["updated_at"] = v.updated_at
         out.append(d)
     return out
 

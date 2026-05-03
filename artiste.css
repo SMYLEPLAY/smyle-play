@@ -3209,6 +3209,16 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
   color: rgba(255,255,255,.5);
   font-style: italic;
 }
+/* Lecteur de pré-écoute publique (P1-F9 enhancement 2026-05-03).
+   Audio jouable avant achat — le bouton Télécharger n'apparaît qu'après
+   unlock dans /library. */
+.ap-voice-preview {
+  width: 100%;
+  height: 32px;
+  outline: none;
+  border-radius: 6px;
+  filter: invert(1) hue-rotate(180deg) brightness(.85);
+}
 
 /* Responsive */
 @media (max-width: 640px) {

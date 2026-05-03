@@ -108,7 +108,20 @@ class VoiceUpdate(BaseModel):
 class VoicePublicRead(BaseModel):
     """
     Vue publique d'une voix (visiteur non-acheteur, profil /u/<slug>).
-    PAS de `sample_url` — gated jusqu'à l'unlock.
+
+    Évolution 2026-05-03 (feat/voices-public-preview) : `sample_url` est
+    maintenant EXPOSÉ publiquement. La règle gating originale
+    (project_prompt_visibility_rule) bloquait l'audio par défaut, mais
+    pour une voix la valeur EST le son — sans pré-écoute, zéro conversion.
+    On accepte donc le compromis : l'audio est jouable en streaming public.
+
+    Le bouton "Télécharger le sample" reste GATED côté frontend — il
+    n'apparaît qu'après unlock dans /library. Pour un acheteur déterminé
+    qui veut ripper, c'est aussi possible sur Spotify/SoundCloud — c'est
+    un trade-off business standard.
+
+    `updated_at` reste owner-only (champ admin) → présent uniquement dans
+    VoiceFullRead.
 
     `artist` est optionnel pour rétrocompat — un client legacy qui ne
     consomme pas ce champ ignore simplement la clé. Les nouveaux endpoints
@@ -127,16 +140,16 @@ class VoicePublicRead(BaseModel):
     price_credits: int
     is_published: bool
     created_at: datetime
+    sample_url: str  # NEW (2026-05-03) — public pour pré-écoute avant achat
 
 
 class VoiceFullRead(VoicePublicRead):
     """
-    Vue complète : ajoute `sample_url`. Renvoyée à l'artiste sur ses propres
-    voix, ou à un acheteur après unlock (via /api/voices/me/unlocked et
-    /api/voices/{id} avec auth si owned).
+    Vue complète admin/owner : ajoute `updated_at` (champ technique non
+    pertinent en vue publique mais utile pour le dashboard de l'artiste
+    et /library côté acheteur — sait quand la voix a été modifiée).
     """
 
-    sample_url: str
     updated_at: datetime
 
 
