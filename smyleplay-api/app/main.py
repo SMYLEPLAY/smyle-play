@@ -24,6 +24,7 @@ from app.routers.tracks import router as tracks_router
 from app.routers.transactions import router as transactions_router
 from app.routers.unlocks import router as unlocks_router
 from app.routers.users import router as users_router
+from app.routers.voices import router as voices_router
 from app.routers.watt_compat import router as watt_compat_router
 
 
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(playlists_router)
     app.include_router(playlists_public_router)
     app.include_router(search_router)
+    app.include_router(voices_router)
 
     return app
 
