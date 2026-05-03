@@ -544,16 +544,29 @@ async def get_artist(
 
 
 @router.get("/tracks-recent")
-async def tracks_recent(db: AsyncSession = Depends(get_db)) -> dict:
+async def tracks_recent(
+    limit: int = 12,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     """
-    Équivalent de `GET /api/tracks/recent`.
-    Renvoie {'tracks': [...]} — les 12 derniers sons tous artistes confondus.
+    Équivalent de `GET /api/tracks/recent` — les N derniers sons tous
+    artistes confondus, pour la playlist communautaire de l'accueil.
+
+    Filtre P1-F2 (2026-05-03) : on n'inclut que les tracks d'artistes
+    avec `profile_public = TRUE`. Cohérent avec /watt/artists qui filtre
+    déjà ainsi. Sans ce filtre, un compte fraîchement créé dont le profil
+    n'est pas encore publié verrait ses sons fuités sur la home publique.
+
+    `limit` accepté en query (1-50). Default 12 pour conserver la shape
+    historique consommée par ui/hub/community.js et ui/panels/agent.js.
     """
+    safe_limit = max(1, min(int(limit or 12), 50))
     stmt = (
         select(Track, User)
         .join(User, User.id == Track.artist_id)
+        .where(User.profile_public.is_(True))
         .order_by(desc(Track.created_at))
-        .limit(12)
+        .limit(safe_limit)
     )
     rows = (await db.execute(stmt)).all()
     return {"tracks": [_track_to_flask_dict(t, a) for t, a in rows]}
