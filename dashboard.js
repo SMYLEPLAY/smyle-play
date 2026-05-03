@@ -765,8 +765,11 @@ async function deleteTrack(id) {
 
 // ── 7. UPLOAD DE SON ──────────────────────────────────────────────────────────
 
-let _pendingFile   = null;
-let _coverDataUrl  = null;
+let _pendingFile      = null;
+let _coverDataUrl     = null;
+// Sprint 1 PR2 (2026-05-04) — File de la cover en mémoire pour upload R2.
+// Distinct de _coverDataUrl (preview DataURL pour affichage local).
+let _pendingCoverFile = null;
 
 // Étape 2 — couleur choisie pour le son en cours d'upload. null = "hérite
 // de la brandColor du profil" (comportement par défaut, aucune valeur
@@ -995,7 +998,12 @@ function handleCoverDrop(e) {
 
 function handleCoverSelect(e) {
   const file = e.target.files[0];
-  if (file) loadCoverPreview(file);
+  if (file) {
+    // Sprint 1 PR2 — on garde le File en mémoire pour l'upload R2 réel
+    // au moment du Publier. _coverDataUrl reste pour la preview DOM.
+    _pendingCoverFile = file;
+    loadCoverPreview(file);
+  }
 }
 
 function loadCoverPreview(file) {
@@ -1012,12 +1020,65 @@ function loadCoverPreview(file) {
 
 function resetCoverPreview() {
   _coverDataUrl = null;
+  _pendingCoverFile = null;
   const img = document.getElementById('dashCoverPreview');
   const ph  = document.getElementById('dashCoverPlaceholder');
   if (img) { img.src = ''; img.style.display = 'none'; }
   if (ph)  { ph.style.display = ''; }
   const inp = document.getElementById('dashCoverInput');
   if (inp) inp.value = '';
+}
+
+// Sprint 1 PR2 (2026-05-04) — upload cover R2 via endpoint Flask
+// /api/watt/upload-image (existant, déjà utilisé pour avatar/banner profil).
+// Renvoie l'URL R2 publique, ou null si échec / pas de fichier.
+async function _uploadTrackCover(file, trackName) {
+  if (!file) return null;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('userId', (window.getCurrentUser && window.getCurrentUser() && window.getCurrentUser().id) || 'guest');
+    fd.append('kind', 'track-cover');  // namespace R2 distinct de avatar/banner
+    const res = await fetch('/api/watt/upload-image', { method: 'POST', body: fd });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.url || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Sprint 1 PR2 — crée/sync un miroir du track côté FastAPI tracks pour
+// que cover_url et prompt_id soient persistés en DB FastAPI (consommée
+// par /u/<slug>). Indépendant du POST Flask /api/watt/tracks qui crée
+// le row legacy watt_tracks. Retourne le track FastAPI créé (avec id)
+// ou null en cas d'échec.
+//
+// On envoie full_prompt comme placeholder (= title) car le service
+// FastAPI create_track_with_dna exige ce champ pour créer la DNA
+// associée. Le DNA per-track devient secondaire dans le nouveau
+// modèle (l'ADN par artiste reprend le rôle), mais le champ reste
+// obligatoire en DB tant qu'on n'a pas migré la contrainte.
+async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt }) {
+  if (typeof apiFetch !== 'function') return null;
+  try {
+    const result = await apiFetch('/tracks/', {
+      method: 'POST',
+      json: {
+        title,
+        full_prompt: full_prompt || title || '—',
+        color: color || null,
+        audio_url: audio_url || null,
+        r2_key: r2_key || null,
+        cover_url: cover_url || null,
+      },
+    });
+    // result = TrackWithDNA { track: TrackRead, dna: DNARead }
+    return (result && result.track) ? result.track : null;
+  } catch (e) {
+    console.warn('[dashboard] FastAPI track mirror failed:', e && e.message);
+    return null;
+  }
 }
 
 async function uploadTrack() {
@@ -1092,6 +1153,18 @@ async function uploadTrack() {
   } catch (_) { /* mode hors-ligne */ }
 
   await wait(300);
+  setProgress(80, 'Pochette…');
+
+  // ── 1.5 Sprint 1 PR2 — Upload cover R2 (si l'artiste en a sélectionné une)
+  // L'endpoint Flask /api/watt/upload-image est déjà en place pour
+  // avatar/banner profil ; on le réutilise avec kind=track-cover pour
+  // namespace dans le bucket. Échec gracieux : si l'upload cover rate,
+  // le track est quand même créé (juste sans pochette persistée R2).
+  let coverUrl = null;
+  if (_pendingCoverFile) {
+    coverUrl = await _uploadTrackCover(_pendingCoverFile, name);
+  }
+
   setProgress(85, 'Sauvegarde en base…');
 
   // ── 2. Enregistrer les métadonnées du track dans la DB ──────────────────
@@ -1121,6 +1194,22 @@ async function uploadTrack() {
       return;
     }
   } catch (_) { /* pas de DB connectée — localStorage prend le relais */ }
+
+  // ── 2.5 Sprint 1 PR2 — Miroir FastAPI tracks (cover_url + prompt_id)
+  // On crée un row dans la table FastAPI `tracks` (consommée par
+  // /u/<slug> via watt_compat) avec cover_url et les autres métadonnées.
+  // Le prompt_id sera lié plus bas après la création du prompt
+  // (cf. window._lastFastApiTrack récupéré ici puis utilisé dans le
+  // bloc with_prompt). Échec gracieux : si la création FastAPI rate,
+  // le track Flask existe quand même mais sans cover sur /u/<slug>.
+  window._lastFastApiTrack = await _createFastApiTrackMirror({
+    title:       name,
+    audio_url:   streamUrl,
+    r2_key:      r2Key,
+    color:       _pendingTrackColor,
+    cover_url:   coverUrl,
+    full_prompt: name,  // placeholder requis par TrackCreate (DNA per-track)
+  });
 
   await wait(300);
   setProgress(95, 'Finalisation…');
@@ -1192,7 +1281,7 @@ async function uploadTrack() {
       dashToast(`⚠ Son publié, prompt non créé — manque : ${promptErrs.join(', ')}`);
     } else {
       try {
-        await apiFetch('/artist/me/prompts', {
+        const promptResp = await apiFetch('/artist/me/prompts', {
           method: 'POST',
           json: {
             title:        name,                    // titre = même que la track
@@ -1210,6 +1299,23 @@ async function uploadTrack() {
           },
         });
         dashToast(`💎 Recette IA "${name}" publiée sur la marketplace.`);
+
+        // Sprint 1 PR2 — Lien track FastAPI ↔ prompt (PATCH).
+        // Si le miroir track FastAPI existe (créé plus haut) et qu'on
+        // vient de créer le prompt, on lie les 2 via PATCH /tracks/{id}.
+        // Permet à /u/<slug> d'afficher le bouton "Débloquer le prompt"
+        // sur la card du track.
+        const fastApiTrack = window._lastFastApiTrack;
+        if (fastApiTrack && fastApiTrack.id && promptResp && promptResp.id) {
+          try {
+            await apiFetch(`/tracks/${encodeURIComponent(fastApiTrack.id)}`, {
+              method: 'PATCH',
+              json: { prompt_id: promptResp.id },
+            });
+          } catch (e) {
+            console.warn('[dashboard] PATCH track prompt_id failed:', e && e.message);
+          }
+        }
       } catch (e) {
         // P1-B11 (2026-04-29) — Avant ce fix, e.body.detail pouvait être un
         // array Pydantic ou un objet, qui s'affichaient comme [object Object]

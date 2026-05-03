@@ -16,8 +16,13 @@ class TrackCreate(BaseModel):
     # Optionnel ; null = fallback brandColor. Validé par la longueur
     # VARCHAR(7) en base + la regex Pydantic pour garantir l'intégrité.
     color: str | None = Field(default=None, pattern=HEX_COLOR_RE)
-    # Sprint 1 (2026-05-04) — pivot écoute. cover_url R2 optionnel,
-    # prompt_id optionnel pour lier le track à un prompt vendable.
+    # Sprint 1 PR2 (2026-05-04) — migration POST track Flask → FastAPI.
+    # audio_url + r2_key sont les retours de l'upload R2 du fichier audio
+    # (endpoint Flask /api/watt/upload existant). On accepte aussi
+    # cover_url (endpoint Flask /api/watt/upload-image) pour la pochette,
+    # et prompt_id pour lier à un prompt préexistant si dispo.
+    audio_url: str | None = Field(default=None, max_length=2048)
+    r2_key: str | None = Field(default=None, max_length=500)
     cover_url: str | None = Field(default=None, max_length=2048)
     prompt_id: UUID | None = None
 
