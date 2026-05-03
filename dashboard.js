@@ -1944,7 +1944,22 @@ if (typeof window !== 'undefined') {
 
 // ───────────────────────────────────────────────────────────────
 // P1-F9 — Vendre une voix (bloc 1c, cellule Création)
-// Visual-only (aperçu). Persistance localStorage en attendant le backend.
+//
+// Câblage backend complet (PR feat/voices-frontend-dashboard) :
+//   - Le draft local (localStorage.wattVoiceDraft) reste utilisé pour
+//     préserver le formulaire en cours de saisie (genres + license + sample
+//     filename) tant que l'utilisateur n'a pas cliqué Enregistrer. Une fois
+//     enregistré, c'est /api/voices qui fait foi.
+//   - Le sample audio est uploadé via l'endpoint Flask /api/watt/upload
+//     existant (réutilisé tel quel — même pipeline R2 que les tracks).
+//     Le backend FastAPI /api/voices reçoit l'URL R2 résultante.
+//   - La liste des voix créées est chargée depuis GET /api/voices/me et
+//     rendue sous le formulaire avec les actions Publier / Modifier /
+//     Supprimer.
+//
+// IMPORTANT — règle Tom (project_voice_separation_rule) : les voix ne sont
+// JAMAIS dans le shuffle / playlists / DNA. Elles vivent dans leur propre
+// table et leurs propres endpoints.
 // ───────────────────────────────────────────────────────────────
 const DASH_VOICE_GENRES = [
   { key: 'rnb',     label: 'RnB' },
@@ -1959,6 +1974,19 @@ const DASH_VOICE_GENRES = [
   { key: 'rock',    label: 'Rock' },
   { key: 'autre',   label: 'Autre' },
 ];
+
+// État en mémoire des voix backend de l'utilisateur. Rempli par loadMyVoices().
+//   list      : list<VoiceFullRead> (renvoyé par GET /api/voices/me)
+//   loading   : un fetch /api/voices/me est en cours
+//   editingId : si non null, le formulaire est en mode édition de cette voix
+//   pendingFile : fichier audio en attente d'upload (capturé par
+//                 dashVoiceHandleSampleFile, consommé par dashVoiceSave)
+const _voicesState = {
+  list: [],
+  loading: false,
+  editingId: null,
+  pendingFile: null,
+};
 
 function _getVoiceDraft() {
   try { return JSON.parse(localStorage.getItem('wattVoiceDraft') || '{}'); }
@@ -2013,6 +2041,9 @@ function dashVoiceHandleSampleFile(ev) {
   const sizeLbl = sizeKb > 1024 ? (sizeKb / 1024).toFixed(1) + ' Mo' : sizeKb + ' Ko';
   info.innerHTML = `<strong>${file.name}</strong>${sizeLbl} · ${file.type || 'audio'}`;
   zone.classList.add('has-file');
+  // On garde le File en mémoire pour l'upload réel au moment du Save.
+  // localStorage ne peut pas stocker un File — on n'y met que le nom (UX).
+  _voicesState.pendingFile = file;
   const d = _getVoiceDraft();
   _saveVoiceDraft({ ...d, sampleName: file.name, sampleSize: file.size });
 }
@@ -2029,30 +2060,263 @@ function dashVoiceResetForm() {
   const info = document.getElementById('dashVoiceSampleInfo');
   if (zone) zone.classList.remove('has-file');
   if (info) info.innerHTML = `<strong>Aucun fichier</strong>.mp3, .wav, .m4a — 30s à 2min — a cappella de préférence`;
+  _voicesState.pendingFile = null;
+  _voicesState.editingId = null;
   _saveVoiceDraft({ genres: [], license: 'personnel' });
   renderVoiceGenresChips();
+  // Restaurer le label du bouton à "Enregistrer ma voix" (pas "Mettre à jour")
+  const lbl = document.getElementById('dashVoiceSaveLbl');
+  if (lbl) lbl.textContent = 'Enregistrer ma voix';
 }
 
-function dashVoiceSave() {
+// Upload du sample audio vers R2 via l'endpoint Flask existant.
+// Renvoie l'URL publique R2, ou null si échec / mode hors-ligne.
+async function _uploadVoiceSample(file, voiceName) {
+  if (!file) return null;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    // /api/watt/upload prend un "name" pour dériver la clé R2. On lui donne
+    // un préfixe "VOICE-<name>" pour distinguer les samples voix des tracks
+    // dans le bucket (debug / cleanup batch plus facile).
+    fd.append('name', `VOICE-${voiceName || 'sample'}`);
+    fd.append('userId', (window.getCurrentUser && window.getCurrentUser() && window.getCurrentUser().id) || 'guest');
+    const res = await fetch('/api/watt/upload', { method: 'POST', body: fd });
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Le mode dev sans R2 renvoie { mock: true, url: null, key }.
+    // Dans ce cas on ne peut pas créer la voix : le backend exige sample_url.
+    if (data.mock || !data.url) return null;
+    return data.url;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function dashVoiceSave() {
   const name   = (document.getElementById('dashVoiceName')  || {}).value || '';
   const style  = (document.getElementById('dashVoiceStyle') || {}).value || '';
   const price  = parseInt((document.getElementById('dashVoicePrice') || {}).value || '0', 10);
   const d = _getVoiceDraft();
   const genres = Array.isArray(d.genres) ? d.genres : [];
   const license = d.license || 'personnel';
-  const sample = d.sampleName || '';
+  const isEdit = Boolean(_voicesState.editingId);
   const errs = [];
   if (!name.trim())           errs.push('Nom de la voix');
   if (!style.trim())          errs.push('Style de voix');
   if (genres.length === 0)    errs.push('Au moins 1 genre');
-  if (!sample)                errs.push('Sample audio');
+  // En mode édition, le sample est optionnel (on garde celui en DB si pas
+  // de nouveau fichier). En création, il est obligatoire.
+  if (!isEdit && !_voicesState.pendingFile) errs.push('Sample audio');
   if (!price || price < 50 || price > 5000) errs.push('Prix (50-5000)');
   if (errs.length) {
     alert('Champs manquants ou invalides :\n• ' + errs.join('\n• '));
     return;
   }
-  _saveVoiceDraft({ ...d, name, style, price });
-  alert('Aperçu enregistré localement.\n\nLa persistance backend arrive avec P1-F9 — ta voix sera alors proposée sous tes morceaux publiés.');
+
+  if (typeof apiFetch !== 'function') {
+    alert('API indisponible. Recharge la page.');
+    return;
+  }
+
+  // ── Étape 1 : upload sample R2 si un nouveau fichier est attendu ────
+  let sample_url = null;
+  if (_voicesState.pendingFile) {
+    sample_url = await _uploadVoiceSample(_voicesState.pendingFile, name);
+    if (!sample_url) {
+      alert('Échec de l\'upload du sample audio. Réessaie ou vérifie ta connexion.');
+      return;
+    }
+  }
+
+  // ── Étape 2 : POST (création) ou PATCH (mise à jour) /api/voices ────
+  const payload = { name, style, genres, license, price_credits: price };
+  if (sample_url) payload.sample_url = sample_url;
+
+  const btn = document.getElementById('dashVoiceSaveBtn');
+  if (btn) btn.disabled = true;
+  try {
+    if (isEdit) {
+      await apiFetch(`/api/voices/${_voicesState.editingId}`, {
+        method: 'PATCH', json: payload,
+      });
+      if (typeof dashToast === 'function') dashToast('Voix mise à jour ✓');
+    } else {
+      await apiFetch('/api/voices', { method: 'POST', json: payload });
+      if (typeof dashToast === 'function') {
+        dashToast('Voix enregistrée — clique "Publier" pour la mettre en vente');
+      }
+    }
+    // Reset draft local + form + reload list
+    _saveVoiceDraft({ genres: [], license: 'personnel' });
+    dashVoiceResetForm();
+    await loadMyVoices();
+  } catch (e) {
+    const msg = (typeof _humanizeApiError === 'function')
+      ? _humanizeApiError(e)
+      : (e && e.message) || 'Erreur inconnue';
+    alert(`Échec de l'enregistrement : ${msg}`);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Liste des voix existantes (CRUD côté liste) ─────────────────────────
+
+async function loadMyVoices() {
+  if (typeof apiFetch !== 'function') return;
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    // Pas connecté : pas de voix à charger, on cache la liste.
+    _voicesState.list = [];
+    renderMyVoicesList();
+    return;
+  }
+  _voicesState.loading = true;
+  try {
+    const list = await apiFetch('/api/voices/me');
+    _voicesState.list = Array.isArray(list) ? list : [];
+  } catch (_) {
+    _voicesState.list = [];
+  } finally {
+    _voicesState.loading = false;
+    renderMyVoicesList();
+  }
+}
+
+function _voiceLicenseLabel(lic) {
+  if (lic === 'personnel') return 'Personnel';
+  if (lic === 'commercial') return 'Commercial';
+  if (lic === 'exclusif')  return 'Exclusif';
+  return lic || '';
+}
+
+function _voiceGenresLabel(keys) {
+  if (!Array.isArray(keys) || !keys.length) return '';
+  const labels = keys.map(k => {
+    const g = DASH_VOICE_GENRES.find(x => x.key === k);
+    return g ? g.label : k;
+  });
+  return labels.join(' · ');
+}
+
+function renderMyVoicesList() {
+  const wrap = document.getElementById('dashVoicesList');
+  if (!wrap) return;
+  const list = _voicesState.list || [];
+  if (_voicesState.loading) {
+    wrap.innerHTML = `<div class="dash-voices-empty">Chargement…</div>`;
+    return;
+  }
+  if (!list.length) {
+    wrap.innerHTML = `<div class="dash-voices-empty">Tu n'as pas encore de voix mise en vente. Remplis le formulaire ci-dessus et clique "Enregistrer ma voix".</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(v => {
+    const pubBtn = v.is_published
+      ? `<button type="button" class="dash-voice-card-btn" onclick="dashVoicePublishToggle('${v.id}', false)">Dépublier</button>`
+      : `<button type="button" class="dash-voice-card-btn" onclick="dashVoicePublishToggle('${v.id}', true)">Publier</button>`;
+    const statusClass = v.is_published ? 'is-published' : 'is-draft';
+    const statusLbl   = v.is_published ? 'Publié' : 'Brouillon';
+    const cardClass   = v.is_published ? 'dash-voice-card is-published' : 'dash-voice-card';
+    const genres = _voiceGenresLabel(v.genres);
+    const meta = [
+      `${v.price_credits} SMYLES`,
+      _voiceLicenseLabel(v.license),
+      genres,
+    ].filter(Boolean).join(' · ');
+    return `
+      <div class="${cardClass}">
+        <div class="dash-voice-card-main">
+          <div class="dash-voice-card-name">${_escapeHtml(v.name)} <span class="dash-voice-card-status ${statusClass}">${statusLbl}</span></div>
+          <div class="dash-voice-card-meta">${_escapeHtml(v.style)} — ${_escapeHtml(meta)}</div>
+        </div>
+        <div class="dash-voice-card-actions">
+          ${pubBtn}
+          <button type="button" class="dash-voice-card-btn" onclick="dashVoiceEditFromList('${v.id}')">Modifier</button>
+          <button type="button" class="dash-voice-card-btn is-danger" onclick="dashVoiceDeleteFromList('${v.id}')">Supprimer</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Helper local pour échapper les chaînes user dans le HTML — évite l'XSS
+// si un nom de voix contient < ou >. On reste minimal (pas de DOMPurify) car
+// le risque est limité (l'auteur ne peut s'auto-XSS) mais c'est cleaner.
+function _escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function dashVoicePublishToggle(voiceId, nextState) {
+  if (typeof apiFetch !== 'function') return;
+  try {
+    await apiFetch(`/api/voices/${voiceId}`, {
+      method: 'PATCH',
+      json: { is_published: Boolean(nextState) },
+    });
+    if (typeof dashToast === 'function') {
+      dashToast(nextState
+        ? 'Voix publiée — visible sur ton profil 🎉'
+        : 'Voix dépubliée — invisible pour les fans');
+    }
+    await loadMyVoices();
+  } catch (e) {
+    const msg = (typeof _humanizeApiError === 'function')
+      ? _humanizeApiError(e)
+      : (e && e.message) || 'Erreur inconnue';
+    alert(`Échec : ${msg}`);
+  }
+}
+
+function dashVoiceEditFromList(voiceId) {
+  const v = (_voicesState.list || []).find(x => x.id === voiceId);
+  if (!v) return;
+  _voicesState.editingId = voiceId;
+  // Pas de pendingFile : on ne re-upload pas le sample sauf si l'user
+  // resélectionne un fichier explicitement. Le PATCH n'enverra alors pas
+  // sample_url et le backend conservera l'URL existante.
+  _voicesState.pendingFile = null;
+  // Pré-remplit les champs.
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('dashVoiceName',  v.name);
+  set('dashVoiceStyle', v.style);
+  set('dashVoicePrice', v.price_credits);
+  // Genres + license dans le draft pour que les renderers les affichent
+  _saveVoiceDraft({ genres: Array.isArray(v.genres) ? v.genres : [], license: v.license || 'personnel' });
+  renderVoiceGenresChips();
+  const r = document.querySelector(`#dashVoiceLicenseGrid input[value="${v.license}"]`);
+  if (r) { r.checked = true; dashVoiceSelectLicense(r); }
+  // Affiche le nom du sample courant (pas de re-upload nécessaire)
+  const zone = document.getElementById('dashVoiceSampleZone');
+  const info = document.getElementById('dashVoiceSampleInfo');
+  if (zone) zone.classList.add('has-file');
+  if (info) info.innerHTML = `<strong>Sample existant conservé</strong>resélectionne un fichier pour le remplacer`;
+  // Change le label du bouton pour signaler le mode édition
+  const lbl = document.getElementById('dashVoiceSaveLbl');
+  if (lbl) lbl.textContent = 'Mettre à jour la voix';
+  // Scroll vers le formulaire pour que l'user voie les champs préremplis
+  const sec = document.getElementById('sec-voice-sale');
+  if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function dashVoiceDeleteFromList(voiceId) {
+  if (!confirm('Supprimer cette voix ? Les acheteurs précédents perdront aussi l\'accès au sample.')) return;
+  if (typeof apiFetch !== 'function') return;
+  try {
+    await apiFetch(`/api/voices/${voiceId}`, { method: 'DELETE' });
+    if (typeof dashToast === 'function') dashToast('Voix supprimée');
+    // Si on était en train d'éditer cette voix, reset le formulaire.
+    if (_voicesState.editingId === voiceId) dashVoiceResetForm();
+    await loadMyVoices();
+  } catch (e) {
+    const msg = (typeof _humanizeApiError === 'function')
+      ? _humanizeApiError(e)
+      : (e && e.message) || 'Erreur inconnue';
+    alert(`Échec suppression : ${msg}`);
+  }
 }
 
 function initDashVoiceSale() {
@@ -2069,16 +2333,22 @@ function initDashVoiceSale() {
     const zone = document.getElementById('dashVoiceSampleZone');
     const info = document.getElementById('dashVoiceSampleInfo');
     if (zone) zone.classList.add('has-file');
-    if (info) info.innerHTML = `<strong>${d.sampleName}</strong>fichier enregistré (aperçu local)`;
+    if (info) info.innerHTML = `<strong>${d.sampleName}</strong>fichier en attente d'enregistrement`;
   }
+  // Charge la liste backend et la rend.
+  loadMyVoices();
 }
 
 if (typeof window !== 'undefined') {
-  window.dashVoiceToggleGenre     = dashVoiceToggleGenre;
-  window.dashVoiceSelectLicense   = dashVoiceSelectLicense;
+  window.dashVoiceToggleGenre      = dashVoiceToggleGenre;
+  window.dashVoiceSelectLicense    = dashVoiceSelectLicense;
   window.dashVoiceHandleSampleFile = dashVoiceHandleSampleFile;
-  window.dashVoiceResetForm       = dashVoiceResetForm;
-  window.dashVoiceSave            = dashVoiceSave;
+  window.dashVoiceResetForm        = dashVoiceResetForm;
+  window.dashVoiceSave             = dashVoiceSave;
+  window.dashVoicePublishToggle    = dashVoicePublishToggle;
+  window.dashVoiceEditFromList     = dashVoiceEditFromList;
+  window.dashVoiceDeleteFromList   = dashVoiceDeleteFromList;
+  window.loadMyVoices              = loadMyVoices;
 }
 
 function initDashIdentity() {
