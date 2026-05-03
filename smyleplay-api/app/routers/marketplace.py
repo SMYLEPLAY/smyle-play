@@ -190,7 +190,15 @@ async def create_my_prompt(
             title=payload.title,
             description=payload.description,
             prompt_text=payload.prompt_text,
+            lyrics=payload.lyrics,
             price_credits=payload.price_credits,
+            is_published=payload.is_published,
+            # P1-F4 réglages génération (4 obligatoires + 1 optionnel)
+            prompt_platform=payload.prompt_platform,
+            prompt_model_version=payload.prompt_model_version,
+            prompt_weirdness=payload.prompt_weirdness,
+            prompt_style_influence=payload.prompt_style_influence,
+            prompt_vocal_gender=payload.prompt_vocal_gender,
         )
         await db.commit()
         await db.refresh(prompt)

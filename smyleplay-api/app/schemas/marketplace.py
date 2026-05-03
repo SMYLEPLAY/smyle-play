@@ -41,6 +41,14 @@ PROMPT_TEXT_MIN = 100
 PROMPT_TEXT_MAX = 1000
 PROMPT_DESCRIPTION_MAX = 2000
 
+# Paroles complètes du morceau (gated jusqu'à unlock côté backend, mais
+# acceptées dans le payload de création — le front dashboard les envoie
+# depuis longtemps mais Pydantic les rejetait silencieusement à cause de
+# extra="forbid". Bug détecté lors du 1er test bout-en-bout achat prompt
+# 2026-05-04). Plafond 4000 chars : largement assez pour un morceau
+# vocal complet (chanson moyenne ≈ 2000 chars).
+PROMPT_LYRICS_MAX = 4000
+
 
 # -----------------------------------------------------------------------------
 # ADN — Create / Update / Read
@@ -161,9 +169,15 @@ class PromptCreate(BaseModel):
     prompt_text: str = Field(
         min_length=PROMPT_TEXT_MIN, max_length=PROMPT_TEXT_MAX
     )
+    # Paroles complètes — optionnel (instrumental possible). Gated jusqu'à
+    # unlock côté response (jamais retourné par GET public).
+    lyrics: str | None = Field(default=None, max_length=PROMPT_LYRICS_MAX)
     price_credits: int = Field(
         ge=PROMPT_PRICE_MIN, le=PROMPT_PRICE_MAX
     )
+    # is_published acceptable au create — le front envoie true pour publier
+    # immédiatement après upload track. Default False si absent.
+    is_published: bool = False
 
     # ── Réglages génération (4 obligatoires + 1 optionnel) ───────────────
     prompt_platform: PromptPlatform
@@ -197,6 +211,8 @@ class PromptUpdate(BaseModel):
     prompt_text: str | None = Field(
         default=None, min_length=PROMPT_TEXT_MIN, max_length=PROMPT_TEXT_MAX
     )
+    # Paroles éditables au PATCH (l'artiste peut corriger une faute).
+    lyrics: str | None = Field(default=None, max_length=PROMPT_LYRICS_MAX)
     price_credits: int | None = Field(
         default=None, ge=PROMPT_PRICE_MIN, le=PROMPT_PRICE_MAX
     )
@@ -215,6 +231,15 @@ class PromptUpdate(BaseModel):
 
 
 class PromptRead(BaseModel):
+    """
+    Vue owner / library — le caller a le droit de voir lyrics.
+
+    Pour la vue publique (visiteurs marketplace), utiliser les schemas
+    de discovery.py (PromptPublicCard / PromptPublicDetail) qui
+    n'exposent JAMAIS lyrics ni prompt_text. Cf règle Tom
+    project_prompt_visibility_rule.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -222,6 +247,11 @@ class PromptRead(BaseModel):
     title: str
     description: str | None = None
     prompt_text: str
+    # Paroles complètes — exposées dans cette vue (owner ou acheteur après
+    # unlock). JAMAIS dans les vues publiques. Bug fix 2026-05-04 :
+    # le frontend envoyait `lyrics` au create mais Pydantic rejetait
+    # avec extra="forbid" — c'est ce qui bloquait le test bout-en-bout.
+    lyrics: str | None = None
     price_credits: int
     is_published: bool
     pack_eligible: bool
