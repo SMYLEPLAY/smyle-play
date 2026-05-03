@@ -914,6 +914,14 @@ function renderVoices(artist) {
     const genresBadge = genresStr
       ? `<span class="ap-voice-badge">${genresStr.replace(/</g, '&lt;')}</span>`
       : '';
+    // P1-F9 enhancement (2026-05-03) : pré-écoute publique du sample pour
+    // permettre à l'acheteur de juger la voix AVANT d'acheter. Sans ça,
+    // taux de conversion ≈ 0 (personne ne paye 200 SMYLES à l'aveugle).
+    // Le bouton télécharger reste gated jusqu'à l'unlock (côté /library).
+    const previewBlock = v.sample_url
+      ? `<audio controls preload="none" class="ap-voice-preview"
+                src="${(v.sample_url + '').replace(/"/g, '&quot;')}"></audio>`
+      : '';
     // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
     const unlockBtn = artist.isSelf
       ? '<span class="ap-voice-owner-note">Ta voix</span>'
@@ -930,6 +938,7 @@ function renderVoices(artist) {
       <div class="ap-voice-card-meta">
         ${genresBadge}
       </div>
+      ${previewBlock}
       <div class="ap-voice-card-actions">${unlockBtn}</div>
     `;
     list.appendChild(card);
