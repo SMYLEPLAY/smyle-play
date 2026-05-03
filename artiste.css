@@ -3095,10 +3095,126 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
   filter: invert(1) hue-rotate(180deg) brightness(.85);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   VOICES — cellule "Voix à vendre" (P1-F9 frontend public)
+   Calque .ap-prompts. Différences :
+   - badge licence (Personnel / Commercial / Exclusif) au lieu de "Avec paroles"
+   - sample_url JAMAIS dans cette cellule publique (gated jusqu'à unlock)
+   ═══════════════════════════════════════════════════════════════════════ */
+.ap-voices {
+  max-width: 920px;
+  margin: 24px auto;
+  padding: 0 32px;
+}
+.ap-voices-hdr {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.ap-voices-title {
+  font-size: 16px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.ap-voices-count {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .04em;
+}
+.ap-voices-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.ap-voice-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color .12s ease, background .12s ease;
+}
+.ap-voice-card:hover {
+  border-color: rgba(var(--brand-rgb), .35);
+  background: rgba(var(--brand-rgb), .05);
+}
+.ap-voice-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ap-voice-card-title {
+  font-size: 14px;
+  margin: 0;
+  color: #fff;
+  font-weight: 600;
+}
+.ap-voice-card-style {
+  font-size: 12.5px;
+  margin: 0;
+  color: rgba(255,255,255,.62);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ap-voice-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ap-voice-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.78);
+  border: 1px solid rgba(255,255,255,.12);
+  white-space: nowrap;
+}
+.ap-voice-license-badge {
+  background: rgba(255,215,0,.1);
+  color: #FFD700;
+  border-color: rgba(255,215,0,.25);
+}
+.ap-voice-license-badge.is-exclusif {
+  background: rgba(255,80,80,.12);
+  color: #ff8a8a;
+  border-color: rgba(255,80,80,.3);
+}
+.ap-voice-card-actions { margin-top: auto; }
+.ap-voice-unlock-btn {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--brand-rgb), .45);
+  background: rgba(var(--brand-rgb), .15);
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.ap-voice-unlock-btn:hover { background: rgba(var(--brand-rgb), .3); }
+.ap-voice-unlock-btn:disabled { opacity: .6; cursor: wait; }
+.ap-voice-owner-note {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  font-style: italic;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .ap-dna-card,
   .ap-prompts,
+  .ap-voices,
   .ap-tracks { padding: 0 18px; }
   .ap-dna-card-hdr {
     flex-wrap: wrap;
@@ -3112,5 +3228,6 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
     gap: 6px;
   }
   .ap-dna-price-unit { margin-top: 0; }
-  .ap-prompts-list { grid-template-columns: 1fr; }
+  .ap-prompts-list,
+  .ap-voices-list { grid-template-columns: 1fr; }
 }

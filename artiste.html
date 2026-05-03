@@ -283,6 +283,25 @@
     </div>
   </section>
 
+  <!-- ═══ Voix à vendre (P1-F9 frontend public — visibles ssi >= 1 voix publiée)
+       Données chargées en async via GET /api/voices/by-artist/{artist_id}
+       APRÈS le payload /watt/artists/<slug>. Pas dans le payload artist
+       lui-même : règle Tom (project_voice_separation_rule) — voix vivent
+       dans leur propre table et leurs propres endpoints, séparées du flux
+       musical. Le sample_url est gated publiquement (jamais exposé ici) ;
+       la vue publique ne révèle que les métadonnées (nom, style, genres,
+       licence, prix). Le sample arrive uniquement après /unlocks/voices/{id}. -->
+  <section class="ap-voices" id="ap-voices-section" style="display:none"
+           aria-label="Voix à vendre">
+    <div class="ap-voices-hdr">
+      <h2 class="ap-voices-title">Voix à vendre</h2>
+      <span class="ap-voices-count" id="ap-voices-count">0 voix</span>
+    </div>
+    <div class="ap-voices-list" id="ap-voices-list">
+      <!-- Cards rendues par renderVoices() -->
+    </div>
+  </section>
+
   <!-- ═══ Sons publiés (visibles ssi l'artiste a au moins 1 track) ═════════
        Liste compacte : pochette (initiale), titre, plays, date. Lecteur
        audio natif <audio controls> pour pré-écoute directe (le catalogue
