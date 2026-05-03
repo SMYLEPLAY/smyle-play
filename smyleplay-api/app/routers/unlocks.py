@@ -31,6 +31,7 @@ from app.schemas.unlock import (
     UnlockedPromptRead,
     UnlockPromptResponse,
 )
+from app.schemas.voice import OwnedVoiceRead, UnlockVoiceResponse
 from app.services.unlocks import (
     AdnNotPurchasable,
     AlreadyOwned,
@@ -41,6 +42,7 @@ from app.services.unlocks import (
     unlock_adn_atomic,
     unlock_prompt_atomic,
 )
+from app.services.voices import VoiceNotPurchasable, unlock_voice_atomic
 
 router = APIRouter(prefix="/unlocks", tags=["unlocks"])
 
@@ -61,7 +63,9 @@ def _raise_unlock_error(exc: ValueError) -> None:
                 "available": exc.available,
             },
         )
-    if isinstance(exc, (PromptNotPurchasable, AdnNotPurchasable)):
+    if isinstance(
+        exc, (PromptNotPurchasable, AdnNotPurchasable, VoiceNotPurchasable)
+    ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
     if isinstance(exc, (AlreadyUnlocked, AlreadyOwned)):
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
@@ -170,4 +174,58 @@ async def unlock_adn(
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to unlock ADN",
+        )
+
+
+# -----------------------------------------------------------------------------
+# POST /unlocks/voices/{voice_id}  (P1-F9 — vente de voix)
+# -----------------------------------------------------------------------------
+
+@router.post(
+    "/voices/{voice_id}",
+    response_model=UnlockVoiceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def unlock_voice(
+    voice_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Achète une voix (sample audio + licence). Pas de perk applicable
+    (le perk -30% est réservé aux prompts pour les détenteurs d'ADN).
+
+    Réponse enrichie avec `sample_url` pour permettre au front d'amorcer
+    le téléchargement immédiatement, sans 2e round-trip vers
+    /api/voices/{id}.
+    """
+    try:
+        result = await unlock_voice_atomic(
+            db=db,
+            buyer_id=current_user.id,
+            voice_id=voice_id,
+        )
+        await db.commit()
+        await db.refresh(result.owned_voice)
+        await db.refresh(result.transaction)
+        return UnlockVoiceResponse(
+            owned_voice=OwnedVoiceRead.model_validate(result.owned_voice),
+            transaction=result.transaction,
+            paid=result.paid,
+            sample_url=result.sample_url,
+        )
+    except ValueError as e:
+        await db.rollback()
+        _raise_unlock_error(e)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Concurrent unlock conflict, please retry",
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unlock voice",
         )
