@@ -32,6 +32,17 @@ class Settings(BaseSettings):
         "http://localhost:3000"
     )
 
+    # --- Cloudflare R2 (stockage audio) ---
+    # Toutes nullable pour rester dev-friendly : si aucune var n'est définie
+    # côté FastAPI, le service R2 dégrade gracieusement (les opérations de
+    # delete/upload deviennent des no-ops loggés). En prod (Railway), les 4
+    # vars doivent être définies sinon l'audit `services.r2.is_configured()`
+    # retourne False et on log un warning au startup.
+    R2_ACCESS_KEY_ID: str | None = None
+    R2_SECRET_ACCESS_KEY: str | None = None
+    R2_ENDPOINT_URL: str | None = None
+    R2_BUCKET: str = "smyle-play-audio"
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Retourne la liste des origines CORS, en nettoyant les espaces."""
