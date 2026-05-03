@@ -564,33 +564,55 @@ async def increment_plays(
     public_id: str, db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
-    Équivalent de `POST /api/watt/plays/<id>`.
+    Équivalent de `POST /api/watt/plays/<id>` (P1-F8).
 
     Incrémente le compteur de plays d'une track. `public_id` peut être :
     - un legacy_id (ex. 'sl-sw001amberdrivedriftwav')
     - un UUID (pour les tracks uploadées après migration)
-    """
-    stmt = select(Track).where(
-        (Track.legacy_id == public_id) | (func.cast(Track.id, type_=None) == public_id)
-    )
-    # CAST safer form :
-    stmt = select(Track).where(Track.legacy_id == public_id)
-    track = (await db.execute(stmt)).scalar_one_or_none()
 
+    Note : pas de plays_total agrégé sur User côté FastAPI — la somme est
+    calculée à la volée dans /watt/artists et build_artist_detail_payload
+    via func.sum(Track.plays). Donc on n'a qu'un seul compteur à toucher.
+
+    Pas d'auth : un play est anonyme par design (catalogue d'écoute public).
+    Le throttling éventuel est laissé à un middleware en aval (Cloudflare).
+
+    Atomicité : on évite la race "lecture +1 → écriture" en faisant un
+    UPDATE arithmétique direct via .update() — comme ça deux plays
+    simultanés finissent bien à +2 même si la transaction overlapping est
+    planifiée par Postgres.
+    """
+    # Lookup par legacy_id en priorité (cas majoritaire — tracks legacy WATT).
+    track = (await db.execute(
+        select(Track).where(Track.legacy_id == public_id)
+    )).scalar_one_or_none()
+
+    # Fallback UUID si pas trouvé via legacy_id (tracks uploadées post-migration)
     if track is None:
         try:
             import uuid
             uid = uuid.UUID(public_id)
-            track = (await db.execute(select(Track).where(Track.id == uid))).scalar_one_or_none()
+            track = (await db.execute(
+                select(Track).where(Track.id == uid)
+            )).scalar_one_or_none()
         except (ValueError, AttributeError):
             track = None
 
     if track is None:
         return {"ok": False, "plays": 0}
 
-    track.plays = (track.plays or 0) + 1
+    # Incrément arithmétique direct (anti-race) — équivalent à
+    # `UPDATE tracks SET plays = COALESCE(plays, 0) + 1 WHERE id = :id`.
+    # Le re-fetch ensuite renvoie la valeur committée fraîche.
+    from sqlalchemy import update
+    await db.execute(
+        update(Track)
+        .where(Track.id == track.id)
+        .values(plays=func.coalesce(Track.plays, 0) + 1)
+    )
     await db.commit()
-    return {"ok": True, "plays": track.plays}
+    await db.refresh(track)
+    return {"ok": True, "plays": int(track.plays or 0)}
 
 
 @router.get("/stats")
@@ -668,11 +690,23 @@ async def delete_track(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Équivalent de `DELETE /api/watt/tracks/<id>`.
+    Équivalent de `DELETE /api/watt/tracks/<id>` (P1-F5 — port complet).
 
-    Supprime une track. Si JWT fourni, on vérifie que l'appelant est bien
-    le propriétaire. Sans JWT (mode dev), on refuse : on ne veut pas qu'un
-    curl anonyme puisse tout effacer.
+    Supprime une track côté DB ET côté R2 (sample audio). L'auth est requise
+    (sinon un curl anonyme pourrait tout effacer) et l'appelant doit être
+    propriétaire de la track.
+
+    Ordre des opérations :
+      1. Lookup track (par legacy_id puis fallback UUID)
+      2. Authz : owner check
+      3. Capture la `r2_key` AVANT le delete DB (sinon Python perd la
+         référence à la row détachée)
+      4. Delete DB + commit
+      5. Delete R2 (best-effort — un échec R2 ne rollback pas la DB ; on
+         préfère une row supprimée + un orphelin R2 (cleanup batch)
+         qu'une track qui réapparaît mystérieusement après un échec
+         réseau côté R2). Cohérent avec le comportement Flask historique
+         (logger.warning + swallow).
     """
     if user is None:
         raise HTTPException(status_code=401, detail="Auth requise")
@@ -694,8 +728,18 @@ async def delete_track(
     if track.artist_id != user.id:
         raise HTTPException(status_code=403, detail="Pas ton son")
 
+    # Capture la r2_key avant que la row soit détachée par db.delete()
+    r2_key_to_purge = track.r2_key
+
     await db.delete(track)
     await db.commit()
+
+    # Delete R2 best-effort (P1-F5). Lazy import pour éviter de tirer
+    # boto3 dans tous les imports du router quand R2 n'est pas utilisé.
+    if r2_key_to_purge:
+        from app.services.r2 import delete_r2_object
+        await delete_r2_object(r2_key_to_purge)
+
     return {"ok": True}
 
 
