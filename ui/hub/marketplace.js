@@ -236,10 +236,17 @@
 
     el.innerHTML = top.map((t, i) => {
       const artistName = t.artist || '—';
+      const artistSlug = t.artistSlug || '';
       const plays      = _fmt(t.plays || 0);
       const title      = t.name || 'Sans titre';
+      // Pivot écoute (2026-05-05) — row cliquable vers le profil artiste
+      // (qui contient l'audio jouable + bouton débloquer recette).
+      const onclick = artistSlug
+        ? ` onclick="window.location.href='/u/${_esc(artistSlug)}#track-${_esc(t.id || '')}'"`
+        : '';
+      const cls = artistSlug ? 'mp-ranking-row mp-ranking-row-clickable' : 'mp-ranking-row';
       return (
-        `<li class="mp-ranking-row" data-track-id="${_esc(t.id || '')}">` +
+        `<li class="${cls}" data-track-id="${_esc(t.id || '')}"${onclick}>` +
           `<div class="mp-ranking-rank">${i + 1}</div>` +
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title">${_esc(title)}</div>` +
@@ -340,10 +347,20 @@
       const title = t.name || 'Sans titre';
       const name  = t.artist || '—';
       const plays = _fmt(t.plays || 0);
+      // Pivot écoute (2026-05-05) — chaque card embarque l'URL stream et
+      // le slug artiste pour click → profil. Audio toujours rendu (lecteur
+      // <audio> caché par défaut, joué via le bouton play).
+      const streamUrl  = t.streamUrl || '';
+      const artistSlug = t.artistSlug || '';
+      const coverUrl   = t.coverUrl || '';
+      const coverHTML  = coverUrl
+        ? `<img src="${_esc(coverUrl)}" alt="" class="mp-son-card-cover-img" />`
+        : '';
       return (
-        `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" style="--son-color:${_esc(color)}">` +
+        `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
           `<div class="mp-son-card-cover">` +
-            `<button class="mp-son-card-play" type="button" aria-label="Lire">` +
+            coverHTML +
+            `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +
               `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
             `</button>` +
           `</div>` +
@@ -352,6 +369,10 @@
             `<span class="mp-son-card-artist-name">${_esc(name)}</span>` +
           `</div>` +
           `<div class="mp-son-card-meta">${plays} écoutes</div>` +
+          (streamUrl
+            ? `<audio preload="none" class="mp-son-card-audio" src="${_esc(streamUrl)}"></audio>`
+            : ''
+          ) +
         `</div>`
       );
     }).join('');
@@ -490,6 +511,66 @@
     bus.on(bus.TYPES.TRACK_DELETED,       refreshTracks);
   }
 
+  // Pivot écoute (2026-05-05) — click sur cards de son :
+  //   - Click sur le bouton ▶/⏸ → toggle play/pause de l'audio inline
+  //     (un seul son joue à la fois — on stoppe les autres)
+  //   - Click sur le reste de la card (titre, artiste, cover) → redirect
+  //     vers /u/<slug> de l'artiste, ancré sur le track (vue détail)
+  // Délégation globale sur document — couvre les rows top + grille +
+  // futures sections sans avoir à rebrancher après chaque _renderAll().
+  function _bindTrackClicks() {
+    let _currentlyPlaying = null;
+
+    document.addEventListener('click', (ev) => {
+      const card = ev.target.closest('.mp-son-card');
+      if (!card) return;
+
+      // Click play button → toggle play sur l'audio inline
+      const playBtn = ev.target.closest('.mp-son-card-play');
+      if (playBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const audio = card.querySelector('audio.mp-son-card-audio');
+        if (!audio) {
+          if (window.showToast) window.showToast('Audio en cours de traitement, réessaie dans quelques secondes.');
+          return;
+        }
+        if (audio.paused) {
+          // Stoppe les autres lecteurs en cours
+          if (_currentlyPlaying && _currentlyPlaying !== audio) {
+            try { _currentlyPlaying.pause(); } catch (_) {}
+          }
+          audio.play().then(() => {
+            _currentlyPlaying = audio;
+            card.classList.add('is-playing');
+          }).catch(err => {
+            console.error('[marketplace] audio.play() rejected:', err);
+            if (window.showToast) window.showToast('Lecture impossible : ' + (err && err.message || 'erreur audio'));
+          });
+        } else {
+          audio.pause();
+          card.classList.remove('is-playing');
+        }
+        return;
+      }
+
+      // Click ailleurs sur la card → redirect vers profil artiste
+      const slug = card.dataset.artistSlug;
+      if (slug) {
+        window.location.href = '/u/' + encodeURIComponent(slug) + '#track-' + (card.dataset.trackId || '');
+      }
+    });
+
+    // Quand un audio se termine, on retire l'état playing visuel
+    document.addEventListener('ended', (ev) => {
+      const audio = ev.target;
+      if (!audio || !audio.matches || !audio.matches('audio.mp-son-card-audio')) return;
+      const card = audio.closest('.mp-son-card');
+      if (card) card.classList.remove('is-playing');
+      if (_currentlyPlaying === audio) _currentlyPlaying = null;
+    }, true);
+  }
+
 
   // ── Boot ─────────────────────────────────────────────────────────────────
 
@@ -498,6 +579,7 @@
     _resolveDom();
     _bindSearch();
     _bindBus();
+    _bindTrackClicks();
 
     // Trois fetches en parallèle — indépendants, pas de cascade.
     await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);
