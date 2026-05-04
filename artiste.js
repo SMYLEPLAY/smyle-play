@@ -729,10 +729,10 @@ function renderPrompts(artist) {
     const lyricsBadge = p.hasLyrics
       ? '<span class="ap-prompt-badge">🎤 Avec paroles</span>'
       : '';
-    // P1-F4 (2026-05-04) — badges réglages génération.
-    // Visibles publiquement pour donner confiance à l'acheteur (il sait
-    // qu'il a tout ce qu'il faut pour reproduire). Ne révèlent pas le
-    // prompt_text — juste les paramètres.
+    // P1-F4 publique partielle (révision 2026-05-04 PR3) — SEULS les
+    // réglages non-reproductibles seuls sont visibles. Weirdness +
+    // Style Influence sont gated jusqu'à l'unlock (le payload backend
+    // ne les renvoie même plus pour la vue publique).
     const platformBadge = p.promptPlatform
       ? `<span class="ap-prompt-badge">${_voicePromptPlatformLbl(p.promptPlatform)}</span>`
       : '';
@@ -742,12 +742,9 @@ function renderPrompts(artist) {
     const vocalBadge = p.promptVocalGender
       ? `<span class="ap-prompt-badge">${_promptVocalGenderLbl(p.promptVocalGender)}</span>`
       : '';
-    const settingsBlock = (p.promptWeirdness || p.promptStyleInfluence)
-      ? `<div class="ap-prompt-settings">
-           ${p.promptWeirdness ? `<div class="ap-prompt-setting"><span class="ap-prompt-setting-key">Weirdness</span> ${(p.promptWeirdness || '').replace(/</g, '&lt;')}</div>` : ''}
-           ${p.promptStyleInfluence ? `<div class="ap-prompt-setting"><span class="ap-prompt-setting-key">Influence</span> ${(p.promptStyleInfluence || '').replace(/</g, '&lt;')}</div>` : ''}
-         </div>`
-      : '';
+    // Bloc weirdness/style supprimé du rendu public — ces 2 infos
+    // apparaissent dans /library après achat (cf library.js renderPrompts).
+    const settingsBlock = '';
     // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
     const unlockBtn = artist.isSelf
       ? '<span class="ap-prompt-owner-note">Ton prompt</span>'
@@ -804,6 +801,15 @@ function renderTracks(artist) {
     autre:        'Autre',
   };
 
+  // Sprint 1 PR3 (2026-05-04) — pivot écoute. Le track devient le produit
+  // visible : cover + audio public + bouton "Débloquer le prompt" si
+  // un prompt est lié (track.promptId). Pour matcher le prompt avec
+  // ses metadonnées (prix, nom, etc), on indexe la liste artist.prompts
+  // par id.
+  const promptsById = {};
+  const allPrompts = Array.isArray(artist && artist.prompts) ? artist.prompts : [];
+  allPrompts.forEach(p => { if (p && p.id) promptsById[String(p.id)] = p; });
+
   list.innerHTML = '';
   tracks.forEach(t => {
     const card = document.createElement('article');
@@ -814,30 +820,72 @@ function renderTracks(artist) {
     const audio    = t.streamUrl
       ? `<audio controls preload="none" src="${t.streamUrl}" class="ap-track-audio"></audio>`
       : '';
-    // Item 1 — badge plateforme (si connu). Gracieusement absent tant que le
-    // backend ne renvoie pas le champ `platform` sur /api/artists/{slug}.
+    // Cover image (Sprint 1 PR1+PR2). Fallback sur la couleur si absent.
+    const coverHTML = t.coverUrl
+      ? `<img src="${t.coverUrl.replace(/"/g, '&quot;')}" alt="" class="ap-track-cover" />`
+      : `<div class="ap-track-cover ap-track-cover-fallback"
+              style="background:${t.color || '#FFD700'}"></div>`;
+    // Item 1 — badge plateforme
     const platformBadge = (t.platform && PLATFORM_LBL[t.platform])
       ? `<span class="ap-track-card-platform" title="Plateforme d'origine">
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
-               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
-          </svg>
           ${PLATFORM_LBL[t.platform]}
         </span>`
       : '';
+    // Bouton débloquer prompt — si ce track a un prompt vendable lié.
+    // On retrouve les métadonnées du prompt (prix, vocal, etc.) dans
+    // artist.prompts (déjà chargé pour la cellule ap-prompts-section).
+    let unlockBlock = '';
+    const linkedPrompt = t.promptId ? promptsById[String(t.promptId)] : null;
+    if (linkedPrompt && !artist.isSelf) {
+      const priceStr = formatCount(linkedPrompt.priceCredits);
+      const vocalLbl = linkedPrompt.promptVocalGender
+        ? _promptVocalGenderLbl(linkedPrompt.promptVocalGender)
+        : '';
+      const platformLbl = linkedPrompt.promptPlatform
+        ? _voicePromptPlatformLbl(linkedPrompt.promptPlatform)
+        : '';
+      const promptMetaLine = [vocalLbl, platformLbl, linkedPrompt.promptModelVersion]
+        .filter(Boolean).join(' · ');
+      unlockBlock = `
+        <div class="ap-track-prompt-block">
+          ${promptMetaLine ? `<div class="ap-track-prompt-meta">${promptMetaLine.replace(/</g, '&lt;')}</div>` : ''}
+          <button type="button" class="ap-track-unlock-btn"
+                  data-prompt-id="${linkedPrompt.id}"
+                  data-price="${linkedPrompt.priceCredits}">
+            🔓 Débloquer le prompt · ${priceStr} crédits
+          </button>
+        </div>`;
+    } else if (linkedPrompt && artist.isSelf) {
+      unlockBlock = '<span class="ap-prompt-owner-note">Prompt en vente</span>';
+    }
     card.innerHTML = `
-      <div class="ap-track-card-top">
-        <h3 class="ap-track-card-title">${safeName}</h3>
-        <div class="ap-track-card-meta">
-          <span>▶ ${plays}</span>
-          ${date ? `<span>· ${date}</span>` : ''}
-          ${platformBadge}
+      <div class="ap-track-card-inner">
+        ${coverHTML}
+        <div class="ap-track-card-body">
+          <div class="ap-track-card-top">
+            <h3 class="ap-track-card-title">${safeName}</h3>
+            <div class="ap-track-card-meta">
+              <span>▶ ${plays}</span>
+              ${date ? `<span>· ${date}</span>` : ''}
+              ${platformBadge}
+            </div>
+          </div>
+          ${audio}
+          ${unlockBlock}
         </div>
       </div>
-      ${audio}
     `;
     list.appendChild(card);
   });
+
+  // Délégation click — bouton unlock prompt (le bouton est dans la card track
+  // mais déclenche le même endpoint que celui de la cellule prompts).
+  list.onclick = (ev) => {
+    const btn = ev.target.closest('.ap-track-unlock-btn');
+    if (!btn) return;
+    const id = btn.dataset.promptId;
+    if (id) unlockPromptFromProfile(id, btn);
+  };
 }
 
 // ── Unlock ADN depuis le profil ────────────────────────────────────────

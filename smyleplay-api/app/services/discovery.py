@@ -334,6 +334,14 @@ async def list_user_library_prompts(
             "price_credits": p.price_credits,
             "created_at": p.created_at,
             "artist": _artist_card(u),
+            # Sprint 1 PR3 — réglages génération (P1-F4) exposés ici
+            # car library = possession. Weirdness + style_influence sont
+            # GATED ailleurs (retirés du payload public watt_compat).
+            "prompt_platform": p.prompt_platform,
+            "prompt_model_version": p.prompt_model_version,
+            "prompt_weirdness": p.prompt_weirdness,
+            "prompt_style_influence": p.prompt_style_influence,
+            "prompt_vocal_gender": p.prompt_vocal_gender,
         }
         for up, p, u in rows
     ]

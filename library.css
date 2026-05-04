@@ -397,6 +397,31 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 }
 
 
+/* Sprint 1 PR3 (2026-05-04) — badges réglages génération sur cards prompt
+   library (révèle weirdness + style_influence GATED côté public). */
+.lib-prompt-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+.lib-prompt-badge {
+  font-size: 10.5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 215, 0, .08);
+  color: #FFD700;
+  border: 1px solid rgba(255, 215, 0, .2);
+  white-space: nowrap;
+  font-weight: 600;
+}
+.lib-content-body-short {
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  padding: 8px 10px !important;
+}
+
+
 /* ── Voices tab (P1-F9) ──────────────────────────────────────────────────── */
 
 .lib-voice-audio-wrap {

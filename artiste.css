@@ -3240,6 +3240,67 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
   color: rgba(255, 215, 0, .82);
   margin-right: 6px;
 }
+
+/* Sprint 1 PR3 (2026-05-04) — pivot écoute : track card riche
+   (cover + audio + bouton débloquer prompt) */
+.ap-track-card-inner {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+.ap-track-cover {
+  flex: 0 0 80px;
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, .04);
+}
+.ap-track-cover-fallback {
+  display: block;
+  /* couleur fallback inline via style="background:..." */
+}
+.ap-track-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ap-track-prompt-block {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 215, 0, .06);
+  border: 1px solid rgba(255, 215, 0, .2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ap-track-prompt-meta {
+  font-size: 11.5px;
+  color: rgba(255, 215, 0, .82);
+  font-weight: 600;
+}
+.ap-track-unlock-btn {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 215, 0, .55);
+  background: rgba(255, 215, 0, .15);
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.ap-track-unlock-btn:hover { background: rgba(255, 215, 0, .3); }
+.ap-track-unlock-btn:disabled { opacity: .6; cursor: wait; }
+
+@media (max-width: 640px) {
+  .ap-track-card-inner { flex-direction: column; }
+  .ap-track-cover { width: 100%; height: 180px; flex-basis: auto; }
+}
 /* Lecteur de pré-écoute publique (P1-F9 enhancement 2026-05-03).
    Audio jouable avant achat — le bouton Télécharger n'apparaît qu'après
    unlock dans /library. */

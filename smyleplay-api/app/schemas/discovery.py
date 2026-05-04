@@ -141,7 +141,16 @@ class EffectivePricePreview(BaseModel):
 # -----------------------------------------------------------------------------
 
 class LibraryPromptItem(BaseModel):
-    """Un prompt débloqué possédé par l'utilisateur, contenu complet."""
+    """
+    Un prompt débloqué possédé par l'utilisateur, contenu complet.
+
+    Évolution Sprint 1 PR3 (2026-05-04) : on expose maintenant les
+    réglages de génération P1-F4 *gated* (weirdness + style_influence)
+    qui sont retirés de la vue publique. Le payload library devient
+    le seul endroit où l'acheteur les voit, après paiement.
+    Plateforme + modèle + vocal_gender restent dupliqués ici pour
+    tout regrouper dans la fiche library (UX cohérente).
+    """
 
     unlocked_id: UUID  # id du UnlockedPrompt (utile Phase 10 pour transferts)
     unlocked_at: datetime
@@ -153,6 +162,12 @@ class LibraryPromptItem(BaseModel):
     price_credits: int  # prix payé au moment du unlock (cohérence catalog)
     created_at: datetime  # date de création du prompt (cohérence catalog)
     artist: ArtistPublicCard
+    # P1-F4 — réglages génération (gated weirdness + style_influence)
+    prompt_platform: str | None = None
+    prompt_model_version: str | None = None
+    prompt_weirdness: str | None = None       # ← gated, révélé après unlock
+    prompt_style_influence: str | None = None  # ← gated, révélé après unlock
+    prompt_vocal_gender: str | None = None
 
 
 class LibraryPromptsResponse(BaseModel):
