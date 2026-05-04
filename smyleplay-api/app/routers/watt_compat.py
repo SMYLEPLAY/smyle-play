@@ -199,14 +199,41 @@ def _build_stream_url(track: Track) -> str:
     """
     Construit l'URL streamable côté frontend.
 
-    Sprint 1 fix audio (2026-05-05) — on passe par le proxy /watt/stream/
-    quand on a une r2_key, pour bypass tout problème CORS/CSP entre R2
-    et le domaine Railway. Les tracks legacy sans r2_key (import
-    tracks.json initial) gardent leur audio_url historique.
+    Stratégie 2026-05-05 (révisée) :
+
+      1. Si on a un audio_url valide → on le retourne tel quel (URL R2
+         publique pub-XXX.r2.dev qui marche déjà côté browser quand
+         configurée correctement). C'est le cas par défaut le plus
+         fréquent pour les nouveaux uploads.
+
+      2. Si pas d'audio_url mais on a une r2_key + le service R2
+         backend est configuré (secrets dispos) → on génère l'URL
+         proxy /watt/stream/<key> qui streame le fichier same-origin.
+
+      3. Si ni l'un ni l'autre → URL vide, le frontend affichera
+         "Audio en cours de traitement".
+
+    Le proxy en option 2 est un fallback pour les cas où l'URL R2
+    publique n'a pas été stockée correctement au moment de l'upload.
+    Il évite de servir une URL morte si la r2_key existe.
+
+    Avant ce fix : on retournait TOUJOURS le proxy si r2_key existait,
+    ce qui retournait 503 quand R2 n'était pas configuré côté Railway
+    → audio cassé partout. Maintenant on privilégie l'URL R2 directe
+    déjà connue.
     """
+    if track.audio_url:
+        return track.audio_url
     if track.r2_key:
-        return f"/watt/stream/{track.r2_key}"
-    return track.audio_url or ""
+        # Fallback proxy seulement si on a la clé sans URL — évite 503.
+        # Import local pour éviter de tirer boto3 si pas utilisé.
+        try:
+            from app.services.r2 import is_configured
+            if is_configured():
+                return f"/watt/stream/{track.r2_key}"
+        except Exception:
+            pass
+    return ""
 
 
 def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
