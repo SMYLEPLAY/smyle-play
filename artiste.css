@@ -3278,6 +3278,24 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
 .ap-track-card-inner audio {
   cursor: default;  /* mais l'audio garde son curseur natif */
 }
+.ap-track-delete-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 80, 80, .35);
+  color: #ff8080;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.ap-track-delete-btn:hover {
+  background: rgba(255, 80, 80, .1);
+  border-color: rgba(255, 80, 80, .6);
+}
+.ap-track-delete-btn:disabled {
+  opacity: .5;
+  cursor: wait;
+}
 .ap-track-cover-fallback {
   display: block;
   /* couleur fallback inline via style="background:..." */
