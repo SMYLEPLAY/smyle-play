@@ -239,15 +239,24 @@
       const artistSlug = t.artistSlug || '';
       const plays      = _fmt(t.plays || 0);
       const title      = t.name || 'Sans titre';
-      // Pivot écoute (2026-05-05) — row cliquable vers le profil artiste
-      // (qui contient l'audio jouable + bouton débloquer recette).
-      const onclick = artistSlug
-        ? ` onclick="window.location.href='/u/${_esc(artistSlug)}#track-${_esc(t.id || '')}'"`
+      const streamUrl  = t.streamUrl || '';
+      // Pivot écoute v2 (2026-05-05) — chaque row du Top Sons embarque
+      // un mini bouton play + audio cache. Click sur ▶ = toggle play
+      // de la track. Click ailleurs (titre/rang/écoutes) = redirect
+      // vers le profil ancré sur le track. Memes data-attributes que
+      // les cards de la grille pour reuse du _bindTrackClicks.
+      const playBtn = streamUrl
+        ? `<button class="mp-ranking-play" type="button" aria-label="Lire / Pause">` +
+            `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
+          `</button>`
         : '';
-      const cls = artistSlug ? 'mp-ranking-row mp-ranking-row-clickable' : 'mp-ranking-row';
+      const audioEl = streamUrl
+        ? `<audio preload="none" class="mp-ranking-audio" src="${_esc(streamUrl)}"></audio>`
+        : '';
       return (
-        `<li class="${cls}" data-track-id="${_esc(t.id || '')}"${onclick}>` +
+        `<li class="mp-ranking-row mp-ranking-row-clickable" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}">` +
           `<div class="mp-ranking-rank">${i + 1}</div>` +
+          playBtn +
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title">${_esc(title)}</div>` +
             `<div class="mp-ranking-sub">` +
@@ -255,6 +264,7 @@
             `</div>` +
           `</div>` +
           `<div class="mp-ranking-meta">${plays} écoutes</div>` +
+          audioEl +
         `</li>`
       );
     }).join('');
@@ -522,6 +532,44 @@
     let _currentlyPlaying = null;
 
     document.addEventListener('click', (ev) => {
+      // ── ROW TOP SONS (mp-ranking-row-clickable avec stream) ──────────
+      // Pivot écoute v2 — Top Sons jouable inline au lieu de juste rediriger.
+      const row = ev.target.closest('.mp-ranking-row-clickable');
+      if (row && row.dataset.streamUrl) {
+        const playBtnRow = ev.target.closest('.mp-ranking-play');
+        const audioRow = row.querySelector('audio.mp-ranking-audio');
+        if (playBtnRow && audioRow) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (audioRow.paused) {
+            if (_currentlyPlaying && _currentlyPlaying !== audioRow) {
+              try { _currentlyPlaying.pause(); } catch (_) {}
+            }
+            const p = audioRow.play();
+            if (p !== undefined) {
+              p.then(() => {
+                _currentlyPlaying = audioRow;
+                row.classList.add('is-playing');
+              }).catch(err => {
+                if (err && err.name === 'AbortError') return;
+                console.error('[marketplace] top-sons play rejected:', err);
+                if (window.showToast) window.showToast('Lecture impossible : ' + (err && err.message || 'erreur'));
+              });
+            }
+          } else {
+            audioRow.pause();
+            row.classList.remove('is-playing');
+          }
+          return;
+        }
+        // Click ailleurs sur la row → redirect vers profil
+        const slugRow = row.dataset.artistSlug;
+        if (slugRow) {
+          window.location.href = '/u/' + encodeURIComponent(slugRow) + '#track-' + (row.dataset.trackId || '');
+        }
+        return;
+      }
+
       const card = ev.target.closest('.mp-son-card');
       if (!card) return;
 
@@ -572,11 +620,19 @@
     });
 
     // Quand un audio se termine, on retire l'état playing visuel
+    // (autant pour les cards de la grille que pour les rows Top Sons)
     document.addEventListener('ended', (ev) => {
       const audio = ev.target;
-      if (!audio || !audio.matches || !audio.matches('audio.mp-son-card-audio')) return;
-      const card = audio.closest('.mp-son-card');
-      if (card) card.classList.remove('is-playing');
+      if (!audio || !audio.matches) return;
+      if (audio.matches('audio.mp-son-card-audio')) {
+        const card = audio.closest('.mp-son-card');
+        if (card) card.classList.remove('is-playing');
+      } else if (audio.matches('audio.mp-ranking-audio')) {
+        const row = audio.closest('.mp-ranking-row');
+        if (row) row.classList.remove('is-playing');
+      } else {
+        return;
+      }
       if (_currentlyPlaying === audio) _currentlyPlaying = null;
     }, true);
   }
