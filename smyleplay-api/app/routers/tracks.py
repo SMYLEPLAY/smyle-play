@@ -49,10 +49,17 @@ async def create(
         )
     try:
         track, dna = await create_track_with_dna(db, current_user, data)
-    except Exception:
+    except Exception as e:
+        # Debug temporaire 2026-05-05 — on expose le type d'exception et
+        # son message au lieu d'un détail générique. Permet de diagnostiquer
+        # un bug en prod (ex: migration manquante, contrainte DB, payload
+        # invalide). À retirer / remplacer par log structuré une fois le
+        # bug actuel résolu.
+        import logging
+        logging.exception("create_track_with_dna failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create track",
+            detail=f"Failed to create track: {type(e).__name__}: {str(e)[:300]}",
         )
     return TrackWithDNA(
         track=TrackRead.model_validate(track),
