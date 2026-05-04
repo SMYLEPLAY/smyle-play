@@ -3088,11 +3088,26 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
 }
 .ap-track-audio {
   width: 100%;
-  height: 36px;
+  height: 40px;
   outline: none;
   border-radius: 6px;
-  /* harmonie visuelle minimale — le skin du navigateur reste natif */
-  filter: invert(1) hue-rotate(180deg) brightness(.85);
+  display: block;
+  /* Sprint 1 PR3 fix audio (2026-05-05) — retire le filter invert qui
+     pouvait masquer les controls natifs sur certains thèmes Chrome. On
+     garde le skin natif tel quel, plus visible et plus fiable. */
+}
+.ap-track-audio-disabled {
+  width: 100%;
+  height: 40px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.45);
+  border: 1px dashed rgba(255,255,255,.1);
+  font-style: italic;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
