@@ -710,15 +710,19 @@ function renderPrompts(artist) {
   const list    = $('ap-prompts-list');
   if (!section || !list) return;
 
+  // Fusion totale (2026-05-05 v2) — la cellule "Recettes Suno" est
+  // TOUJOURS cachée. Toutes les recettes sont des tracks (cf
+  // project_track_is_recipe_unified). Un prompt sans track audio
+  // est un état dégénéré qu'on n'expose plus visuellement — il
+  // apparaîtra dès qu'un track est lié.
+  section.style.display = 'none';
+  return;
+
+  // ── Code legacy conservé pour rollback rapide si besoin ──────────
+  // (jamais exécuté tant que le return ci-dessus est là)
+  // eslint-disable-next-line no-unreachable
   const allPrompts = Array.isArray(artist && artist.prompts) ? artist.prompts : [];
   const tracks = Array.isArray(artist && artist.tracks) ? artist.tracks : [];
-
-  // Fusion track-recette (2026-05-05) — cf project_track_is_recipe_unified.
-  // Un prompt lié à un track apparaît déjà sur la card track avec le
-  // bouton "Débloquer la recette". On NE doit PAS le re-afficher ici
-  // (sinon doublon visuel + l'utilisateur ne sait plus où acheter).
-  // Cette cellule ne montre que les prompts ORPHELINS (sans track lié)
-  // — cas rare mais possible si l'artiste publie un prompt seul.
   const linkedPromptIds = new Set(
     tracks.filter(t => t && t.promptId).map(t => String(t.promptId))
   );
@@ -892,8 +896,18 @@ function renderTracks(artist) {
           </button>
         </div>`;
     } else if (linkedPrompt && artist.isSelf) {
-      unlockBlock = '<span class="ap-prompt-owner-note">Prompt en vente</span>';
+      unlockBlock = '<span class="ap-prompt-owner-note">Recette en vente</span>';
     }
+    // Bouton supprimer — visible uniquement quand l'owner regarde son
+    // propre profil. Le DELETE backend vérifie aussi l'owner (defense
+    // in depth), donc même si un visiteur arrive à invoquer le click,
+    // il aura un 403.
+    const deleteBtn = artist.isSelf
+      ? `<button type="button" class="ap-track-delete-btn"
+                 data-track-id="${t.id}"
+                 data-track-name="${(t.name || '').replace(/"/g, '&quot;')}"
+                 title="Supprimer ce son">🗑</button>`
+      : '';
     // data-stream-url permet au click handler de retrouver l'URL
     // pour le fallback play JS sur la card entière.
     const streamAttr = t.streamUrl ? ` data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"` : '';
@@ -907,6 +921,7 @@ function renderTracks(artist) {
               <span>▶ ${plays}</span>
               ${date ? `<span>· ${date}</span>` : ''}
               ${platformBadge}
+              ${deleteBtn}
             </div>
           </div>
           ${audio}
@@ -923,12 +938,26 @@ function renderTracks(artist) {
   // Une seule track joue à la fois sur la page (les autres se mettent
   // en pause automatiquement).
   list.onclick = (ev) => {
+    // Cas 1 : bouton supprimer track (owner uniquement)
+    const delBtn = ev.target.closest('.ap-track-delete-btn');
+    if (delBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const tid = delBtn.dataset.trackId;
+      const tname = delBtn.dataset.trackName || 'ce son';
+      if (tid && confirm(`Supprimer "${tname}" ?\n\nCette action est définitive (le fichier audio R2 + la recette liée seront aussi supprimés).`)) {
+        deleteTrackFromProfile(tid, delBtn);
+      }
+      return;
+    }
+    // Cas 2 : bouton unlock prompt
     const unlockBtn = ev.target.closest('.ap-track-unlock-btn');
     if (unlockBtn) {
       const id = unlockBtn.dataset.promptId;
       if (id) unlockPromptFromProfile(id, unlockBtn);
       return;
     }
+    // Cas 3 : click sur card pour play/pause
     const inner = ev.target.closest('.ap-track-card-inner');
     if (!inner) return;
     if (ev.target.closest('audio')) return;
@@ -986,6 +1015,45 @@ async function unlockDnaFromProfile() {
     setTimeout(() => loadArtist(), 400);
   } catch (err) {
     handleUnlockError(err);
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Suppression d'un track depuis le profil (owner uniquement) ────────
+// Utilise l'endpoint Flask DELETE /api/watt/tracks/{public_id} qui
+// purge aussi le fichier R2 + le row tracks FastAPI (CASCADE depuis la
+// PR Sprint 1 PR3 R2 cleanup). Le backend vérifie l'owner — un visiteur
+// qui invoquerait l'endpoint reçoit 403, le bouton est juste caché côté
+// front pour ne pas exposer une action qui ne marcherait pas.
+async function deleteTrackFromProfile(trackId, btn) {
+  if (!trackId) return;
+  if (btn) btn.disabled = true;
+  try {
+    if (typeof apiFetch === 'function') {
+      // L'endpoint principal côté FastAPI ne fait PAS encore la suppression
+      // R2 via le path /watt/tracks/<id>. On passe par l'endpoint Flask
+      // qui supprime à la fois en DB et en R2 (cf flask_app.py
+      // /api/watt/tracks/<int:track_id>).
+      // Note : l'ID public peut être un UUID FastAPI ou un int legacy.
+      // Le fetch direct gère les 2.
+      const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/watt/tracks/${encodeURIComponent(trackId)}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (!res.ok && res.status !== 204) {
+        let detail = `${res.status}`;
+        try { const j = await res.json(); detail = j.detail || j.message || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+    }
+    toast('Son supprimé');
+    setTimeout(() => loadArtist(), 400);
+  } catch (err) {
+    console.error('[artiste] delete track error', err);
+    toast('Suppression impossible : ' + (err && err.message || 'erreur'));
     if (btn) btn.disabled = false;
   }
 }
