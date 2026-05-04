@@ -18,11 +18,13 @@ import unicodedata
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import decode_access_token
+from app.config import settings
 from app.database import get_db
 from app.models.adn import Adn
 from app.models.prompt import Prompt
@@ -32,6 +34,108 @@ from app.models.user_follow import UserFollow
 
 
 router = APIRouter(prefix="/watt", tags=["watt-compat"])
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Stream proxy R2 — bypass CORS pour permettre le play des audio R2 depuis
+# le frontend Railway. Same-origin = aucun problème CORS / CSP / mixed
+# content. 2026-05-05 — fix audio injouable bout-en-bout.
+# ──────────────────────────────────────────────────────────────────────────
+
+_AUDIO_MIME_BY_EXT = {
+    "mp3":  "audio/mpeg",
+    "wav":  "audio/wav",
+    "m4a":  "audio/mp4",
+    "ogg":  "audio/ogg",
+    "flac": "audio/flac",
+    "aac":  "audio/aac",
+}
+
+
+@router.get("/stream/{key:path}")
+async def stream_r2_audio(key: str):
+    """
+    Proxy le fichier audio R2 par sa clé en streaming.
+
+    Pourquoi ce proxy : malgré que le bucket R2 soit en "public access"
+    et que l'URL R2 directe (pub-XXX.r2.dev) marche dans Chrome quand on
+    l'ouvre dans un onglet, le tag <audio> sur le profil Railway refusait
+    le play (CORS, CSP ou Content-Type incorrect côté R2). En passant
+    par cette route same-origin, on élimine toutes ces causes : Chrome
+    voit l'audio comme servi par smyleplay.com directement.
+
+    Trade-off : la bande passante est facturée par Railway (sortie) au
+    lieu de R2 direct. Acceptable pour alpha (volume faible). Si le
+    trafic explose, on pourra migrer vers une URL R2 publique propre
+    avec config CORS correcte côté Cloudflare.
+
+    Implementation note : on retourne un StreamingResponse qui itère
+    sur le body S3 en chunks (pas de chargement mémoire complet du
+    fichier). Pas de support HTTP Range pour l'instant — Chrome
+    fallback sur un GET complet, ce qui marche pour des samples de
+    quelques Mo. Si seek nécessaire (samples >10 Mo), ajouter Range
+    plus tard.
+    """
+    # Import local pour éviter de tirer boto3 dans tous les imports.
+    from app.services.r2 import get_r2_client, is_configured
+
+    if not is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+
+    client = get_r2_client()
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 client unavailable",
+        )
+
+    bucket = settings.R2_BUCKET
+
+    try:
+        # boto3 sync — get_object retourne immédiatement un dict avec
+        # Body (StreamingBody). Le streaming réel se fait à la lecture.
+        obj = client.get_object(Bucket=bucket, Key=key)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"R2 object not found: {type(e).__name__}",
+        )
+
+    # Détection MIME via extension. Le content-type R2 lui-même est
+    # parfois application/octet-stream — on l'ignore et on force le
+    # bon type, sinon Chrome refuse le play.
+    ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
+    mime = _AUDIO_MIME_BY_EXT.get(ext, "application/octet-stream")
+
+    # Iterator qui lit le body S3 par chunks de 64 KB. boto3 StreamingBody
+    # supporte iter_chunks() qui fait exactement ça.
+    def _iter_chunks():
+        try:
+            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
+                yield chunk
+        finally:
+            try:
+                obj["Body"].close()
+            except Exception:
+                pass
+
+    # Content-Length aide Chrome à afficher la durée totale dès le départ.
+    content_length = obj.get("ContentLength")
+    headers = {}
+    if content_length:
+        headers["Content-Length"] = str(content_length)
+    # Cache 1h côté browser (les samples R2 sont immuables tant que la
+    # clé ne change pas).
+    headers["Cache-Control"] = "public, max-age=3600"
+
+    return StreamingResponse(
+        _iter_chunks(),
+        media_type=mime,
+        headers=headers,
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -91,6 +195,20 @@ def _derive_artist_slug(user: User) -> str:
     return _slugify(user.email.split("@", 1)[0] if user.email else "artiste")
 
 
+def _build_stream_url(track: Track) -> str:
+    """
+    Construit l'URL streamable côté frontend.
+
+    Sprint 1 fix audio (2026-05-05) — on passe par le proxy /watt/stream/
+    quand on a une r2_key, pour bypass tout problème CORS/CSP entre R2
+    et le domaine Railway. Les tracks legacy sans r2_key (import
+    tracks.json initial) gardent leur audio_url historique.
+    """
+    if track.r2_key:
+        return f"/watt/stream/{track.r2_key}"
+    return track.audio_url or ""
+
+
 def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
     """
     Convertit un Track FastAPI vers la forme attendue par le JS Flask.
@@ -113,7 +231,7 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         "id":         public_id,
         "name":       track.title,
         "genre":      "",  # pas de genre par track dans le modèle FastAPI — vide pour compat
-        "streamUrl":  track.audio_url or "",
+        "streamUrl":  _build_stream_url(track),
         "r2Key":      track.r2_key or "",
         "plays":      track.plays or 0,
         "uploadedAt": uploaded_ms,
