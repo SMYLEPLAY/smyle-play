@@ -149,6 +149,20 @@ function renderPrompts(items) {
     return;
   }
 
+  // P1-F4 enrichi (Sprint 1 PR3 2026-05-04) — affichage des réglages
+  // génération révélés après achat. Plateforme + Modèle + Vocal sont
+  // visibles partout. Weirdness + Style Influence sont GATED (cachés
+  // sur la card publique, révélés ici dans /library après unlock).
+  const PROMPT_PLATFORM_LBL = {
+    suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion',
+    stable_audio: 'Stable Audio', autre: 'Autre',
+  };
+  const PROMPT_VOCAL_LBL = {
+    masculin: '🎙 Voix masculine',
+    feminin: '🎙 Voix féminine',
+    instrumental: '🎵 Instrumental',
+  };
+
   el.innerHTML = items.map((p, i) => {
     const artist   = p.artist || {};
     const hasLyrics= !!(p.lyrics && p.lyrics.trim());
@@ -167,6 +181,36 @@ function renderPrompts(items) {
       </div>
     ` : '';
 
+    // Réglages génération (P1-F4). Weirdness + style_influence sont
+    // RÉVÉLÉS ici (l'utilisateur a payé), invisibles sur la card publique.
+    const platformLbl = PROMPT_PLATFORM_LBL[p.prompt_platform] || p.prompt_platform || '';
+    const vocalLbl = PROMPT_VOCAL_LBL[p.prompt_vocal_gender] || '';
+    const settingsBadges = [
+      platformLbl,
+      p.prompt_model_version,
+      vocalLbl,
+    ].filter(Boolean).map(s => `<span class="lib-prompt-badge">${esc(s)}</span>`).join('');
+    const settingsBadgesBlock = settingsBadges
+      ? `<div class="lib-prompt-badges">${settingsBadges}</div>` : '';
+
+    const weirdnessBlock = p.prompt_weirdness ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">🎛 Weirdness</span>
+        </div>
+        <div class="lib-content-body lib-content-body-short">${esc(p.prompt_weirdness)}</div>
+      </div>
+    ` : '';
+
+    const styleInfluenceBlock = p.prompt_style_influence ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">✨ Style influence</span>
+        </div>
+        <div class="lib-content-body lib-content-body-short">${esc(p.prompt_style_influence)}</div>
+      </div>
+    ` : '';
+
     return `
       <div class="lib-item">
         <div class="lib-item-head">
@@ -175,6 +219,7 @@ function renderPrompts(items) {
         </div>
         <div class="lib-item-artist">par ${artistLink}</div>
         ${p.description ? `<div class="lib-item-desc">${esc(p.description)}</div>` : ''}
+        ${settingsBadgesBlock}
 
         <div class="lib-content-block">
           <div class="lib-content-header">
@@ -184,6 +229,8 @@ function renderPrompts(items) {
           <div class="lib-content-body" id="lib-prompt-${i}">${esc(p.prompt_text || '')}</div>
         </div>
 
+        ${weirdnessBlock}
+        ${styleInfluenceBlock}
         ${lyricsBlock}
       </div>`;
   }).join('');
