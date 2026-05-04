@@ -710,7 +710,22 @@ function renderPrompts(artist) {
   const list    = $('ap-prompts-list');
   if (!section || !list) return;
 
-  const prompts = Array.isArray(artist && artist.prompts) ? artist.prompts : [];
+  const allPrompts = Array.isArray(artist && artist.prompts) ? artist.prompts : [];
+  const tracks = Array.isArray(artist && artist.tracks) ? artist.tracks : [];
+
+  // Fusion track-recette (2026-05-05) — cf project_track_is_recipe_unified.
+  // Un prompt lié à un track apparaît déjà sur la card track avec le
+  // bouton "Débloquer la recette". On NE doit PAS le re-afficher ici
+  // (sinon doublon visuel + l'utilisateur ne sait plus où acheter).
+  // Cette cellule ne montre que les prompts ORPHELINS (sans track lié)
+  // — cas rare mais possible si l'artiste publie un prompt seul.
+  const linkedPromptIds = new Set(
+    tracks.filter(t => t && t.promptId).map(t => String(t.promptId))
+  );
+  const prompts = allPrompts.filter(
+    p => p && p.id && !linkedPromptIds.has(String(p.id))
+  );
+
   if (prompts.length === 0) {
     section.style.display = 'none';
     return;
@@ -873,7 +888,7 @@ function renderTracks(artist) {
           <button type="button" class="ap-track-unlock-btn"
                   data-prompt-id="${linkedPrompt.id}"
                   data-price="${linkedPrompt.priceCredits}">
-            🔓 Débloquer le prompt · ${priceStr} crédits
+            🔓 Débloquer la recette · ${priceStr} crédits
           </button>
         </div>`;
     } else if (linkedPrompt && artist.isSelf) {
