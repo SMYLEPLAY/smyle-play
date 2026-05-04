@@ -1048,11 +1048,14 @@ async function _uploadTrackCover(file, trackName) {
   }
 }
 
-// Sprint 1 PR2 — crée/sync un miroir du track côté FastAPI tracks pour
-// que cover_url et prompt_id soient persistés en DB FastAPI (consommée
-// par /u/<slug>). Indépendant du POST Flask /api/watt/tracks qui crée
-// le row legacy watt_tracks. Retourne le track FastAPI créé (avec id)
-// ou null en cas d'échec.
+// PR A (2026-05-05) — crée le track côté FastAPI tracks (table consommée
+// par /u/<slug>). Avant : c'était un "miroir" en complément du POST
+// Flask. Maintenant : c'est LE POST principal, le path Flask n'est plus
+// sollicité par le dashboard.
+//
+// Retourne le track FastAPI créé (avec id), ou propage l'erreur via
+// throw si quelque chose pète (auth, 409 profile_public, validation,
+// réseau). Le caller uploadTrack catch et affiche un toast clair.
 //
 // On envoie full_prompt comme placeholder (= title) car le service
 // FastAPI create_track_with_dna exige ce champ pour créer la DNA
@@ -1060,7 +1063,9 @@ async function _uploadTrackCover(file, trackName) {
 // modèle (l'ADN par artiste reprend le rôle), mais le champ reste
 // obligatoire en DB tant qu'on n'a pas migré la contrainte.
 async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt }) {
-  if (typeof apiFetch !== 'function') return null;
+  if (typeof apiFetch !== 'function') {
+    throw new Error('apiFetch indisponible');
+  }
   try {
     const result = await apiFetch('/tracks/', {
       method: 'POST',
@@ -1076,8 +1081,14 @@ async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cove
     // result = TrackWithDNA { track: TrackRead, dna: DNARead }
     return (result && result.track) ? result.track : null;
   } catch (e) {
-    console.warn('[dashboard] FastAPI track mirror failed:', e && e.message);
-    return null;
+    // PR A (2026-05-05) — on propage l'erreur au lieu de retourner null
+    // silencieusement. Le caller (uploadTrack) catch et affiche un toast
+    // explicite à l'utilisateur. Cas typiques :
+    //   - 409 profile_public=false → "Publie ton profil d'abord"
+    //   - 401 auth manquante      → "Reconnecte-toi"
+    //   - 422 validation          → détail Pydantic via _humanizeApiError
+    console.error('[dashboard] FastAPI track POST failed:', e && e.message);
+    throw e;
   }
 }
 
@@ -1167,49 +1178,79 @@ async function uploadTrack() {
 
   setProgress(85, 'Sauvegarde en base…');
 
-  // ── 2. Enregistrer les métadonnées du track dans la DB ──────────────────
+  // ── 2. PR A (2026-05-05) — POST track UNIQUEMENT côté FastAPI ──────────
+  //
+  // Avant : double POST (Flask /api/watt/tracks + FastAPI /tracks/) avec
+  // le miroir FastAPI en best-effort silencieux. Bug : si le miroir FastAPI
+  // ratait (auth manquante, payload invalide, etc.), le track existait
+  // dans watt_tracks Flask mais PAS dans tracks FastAPI → invisible sur
+  // /u/<slug> qui lit FastAPI uniquement. Tom a passé une session entière
+  // à essayer d'écouter ses morceaux sans succès.
+  //
+  // Maintenant : POST FastAPI uniquement. Si l'auth FastAPI manque (JWT
+  // sessionStorage absent ou invalide), on AFFICHE un toast d'erreur clair
+  // et on STOPPE — pas de track fantôme en localStorage qui mentirait à
+  // l'utilisateur sur l'état réel de son upload.
+  //
+  // Le path Flask `/api/watt/tracks` reste vivant côté serveur pour ne pas
+  // casser d'éventuels autres consommateurs, mais le frontend dashboard
+  // ne le sollicite plus.
   let dbTrackId = null;
-  try {
-    const res2 = await fetch('/api/watt/tracks', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // Étape 2 — on envoie color seulement si l'artiste a fait un choix.
-      // null/absent → le serveur laisse color=NULL → front retombe sur
-      // brandColor du profil à l'affichage.
-      body:    JSON.stringify({ name, genre, streamUrl, r2Key, color: _pendingTrackColor }),
-    });
-    if (res2.ok) {
-      const data2 = await res2.json();
-      dbTrackId   = data2.track?.id || null;
-    } else if (res2.status === 409) {
-      // Étape 1 — le serveur refuse parce que profile_public=false.
-      // On resynchronise l'état local depuis /users/me puis on affiche la
-      // gate pédagogique. On stoppe AVANT le localStorage pour ne pas laisser
-      // une track fantôme côté client.
-      setProgress(100, '⚠ Profil non publié');
-      await loadPublishStatus();
-      renderCreationGate();
-      dashToast('Publie d\'abord ton profil pour pouvoir poster un son.');
-      cancelUpload();
-      return;
-    }
-  } catch (_) { /* pas de DB connectée — localStorage prend le relais */ }
+  let fastApiTrack = null;
 
-  // ── 2.5 Sprint 1 PR2 — Miroir FastAPI tracks (cover_url + prompt_id)
-  // On crée un row dans la table FastAPI `tracks` (consommée par
-  // /u/<slug> via watt_compat) avec cover_url et les autres métadonnées.
-  // Le prompt_id sera lié plus bas après la création du prompt
-  // (cf. window._lastFastApiTrack récupéré ici puis utilisé dans le
-  // bloc with_prompt). Échec gracieux : si la création FastAPI rate,
-  // le track Flask existe quand même mais sans cover sur /u/<slug>.
-  window._lastFastApiTrack = await _createFastApiTrackMirror({
-    title:       name,
-    audio_url:   streamUrl,
-    r2_key:      r2Key,
-    color:       _pendingTrackColor,
-    cover_url:   coverUrl,
-    full_prompt: name,  // placeholder requis par TrackCreate (DNA per-track)
-  });
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    setProgress(100, '⚠ Connexion requise');
+    dashToast('⚠ Tu dois te reconnecter pour publier ton son. Ferme cette session et reconnecte-toi.');
+    cancelUpload();
+    return;
+  }
+
+  try {
+    fastApiTrack = await _createFastApiTrackMirror({
+      title:       name,
+      audio_url:   streamUrl,
+      r2_key:      r2Key,
+      color:       _pendingTrackColor,
+      cover_url:   coverUrl,
+      full_prompt: name,  // placeholder requis par TrackCreate (DNA per-track)
+    });
+  } catch (e) {
+    // PR A — gestion fine des erreurs FastAPI. Cas spéciaux :
+    //   - 409 = profile_public=false → gate pédagogique
+    //   - 401 = auth invalide → demander relogin
+    //   - autre = message générique avec détail Pydantic si dispo
+    const status = e && e.status;
+    if (status === 409) {
+      setProgress(100, '⚠ Profil non publié');
+      try { await loadPublishStatus(); } catch (_) {}
+      try { renderCreationGate(); } catch (_) {}
+      dashToast('Publie d\'abord ton profil pour pouvoir poster un son.');
+    } else if (status === 401) {
+      setProgress(100, '⚠ Connexion expirée');
+      dashToast('Ta session a expiré. Reconnecte-toi pour publier.');
+    } else {
+      setProgress(100, '⚠ Échec enregistrement');
+      const msg = (typeof _humanizeApiError === 'function')
+        ? _humanizeApiError(e)
+        : (e && e.message) || 'erreur inconnue';
+      dashToast('⚠ Enregistrement en base échoué : ' + msg);
+    }
+    cancelUpload();
+    return;
+  }
+
+  // PR A — si le POST FastAPI a "réussi" mais sans renvoyer de track id
+  // (cas dégénéré, ne devrait pas arriver), on STOPPE quand même. Pas de
+  // track fantôme. L'artiste voit un message clair et peut réessayer.
+  if (!fastApiTrack || !fastApiTrack.id) {
+    setProgress(100, '⚠ Échec enregistrement');
+    dashToast('⚠ Le son a été uploadé mais le serveur n\'a pas renvoyé d\'ID. Recharge la page et réessaie.');
+    cancelUpload();
+    return;
+  }
+
+  dbTrackId = fastApiTrack.id;
+  window._lastFastApiTrack = fastApiTrack;
 
   await wait(300);
   setProgress(95, 'Finalisation…');
