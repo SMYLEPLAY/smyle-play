@@ -536,17 +536,27 @@
           return;
         }
         if (audio.paused) {
-          // Stoppe les autres lecteurs en cours
           if (_currentlyPlaying && _currentlyPlaying !== audio) {
             try { _currentlyPlaying.pause(); } catch (_) {}
           }
-          audio.play().then(() => {
-            _currentlyPlaying = audio;
-            card.classList.add('is-playing');
-          }).catch(err => {
-            console.error('[marketplace] audio.play() rejected:', err);
-            if (window.showToast) window.showToast('Lecture impossible : ' + (err && err.message || 'erreur audio'));
-          });
+          // Logging détaillé pour diagnostic prod (à retirer une fois stable)
+          console.log('[marketplace] click play. src=', audio.src, 'readyState=', audio.readyState, 'error=', audio.error);
+          // Pattern Tom — on stocke la promesse pour gérer AbortError proprement
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              _currentlyPlaying = audio;
+              card.classList.add('is-playing');
+            }).catch(err => {
+              if (err && err.name === 'AbortError') return;
+              console.error('[marketplace] audio.play() rejected:', err);
+              const errMsg = err && (err.message || err.name) || 'erreur audio inconnue';
+              const audioErr = audio.error
+                ? ` (code ${audio.error.code}: ${audio.error.message || ''})`
+                : '';
+              if (window.showToast) window.showToast('Lecture impossible : ' + errMsg + audioErr);
+            });
+          }
         } else {
           audio.pause();
           card.classList.remove('is-playing');
