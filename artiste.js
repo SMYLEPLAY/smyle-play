@@ -710,25 +710,22 @@ function renderPrompts(artist) {
   const list    = $('ap-prompts-list');
   if (!section || !list) return;
 
-  // Fusion totale (2026-05-05 v2) — la cellule "Recettes Suno" est
-  // TOUJOURS cachée. Toutes les recettes sont des tracks (cf
-  // project_track_is_recipe_unified). Un prompt sans track audio
-  // est un état dégénéré qu'on n'expose plus visuellement — il
-  // apparaîtra dès qu'un track est lié.
+  // Décision Tom 2026-05-05 v3 (FINALE) : sur le profil public, UN SEUL
+  // format = la bande "Sons publiés" (renderTracks) qui contient tout
+  // (cover + audio + bouton "Débloquer la recette" + supprimer si owner).
+  // La cellule "Recettes Suno" est définitivement cachée — pas de
+  // doublon visuel, pas de melange.
+  // Le format card riche est conservé UNIQUEMENT dans /library (vue
+  // après achat — cf library.js renderPrompts).
   section.style.display = 'none';
   return;
-
-  // ── Code legacy conservé pour rollback rapide si besoin ──────────
-  // (jamais exécuté tant que le return ci-dessus est là)
   // eslint-disable-next-line no-unreachable
-  const allPrompts = Array.isArray(artist && artist.prompts) ? artist.prompts : [];
+  const prompts = Array.isArray(artist && artist.prompts) ? artist.prompts : [];
   const tracks = Array.isArray(artist && artist.tracks) ? artist.tracks : [];
-  const linkedPromptIds = new Set(
-    tracks.filter(t => t && t.promptId).map(t => String(t.promptId))
-  );
-  const prompts = allPrompts.filter(
-    p => p && p.id && !linkedPromptIds.has(String(p.id))
-  );
+  const trackByPromptId = {};
+  tracks.forEach(t => {
+    if (t && t.promptId) trackByPromptId[String(t.promptId)] = t;
+  });
 
   if (prompts.length === 0) {
     section.style.display = 'none';
@@ -771,6 +768,14 @@ function renderPrompts(artist) {
                  data-prompt-id="${p.id}" data-price="${p.priceCredits}">
           🔓 Débloquer · ${priceStr} crédits
         </button>`;
+    // Audio player du track lié (revert 2026-05-05) — pré-écoute avant
+    // achat pour augmenter la conversion. Si pas de track lié, pas
+    // d'audio (cas des prompts orphelins, rare).
+    const linkedTrack = trackByPromptId[String(p.id)] || null;
+    const linkedStreamUrl = (linkedTrack && linkedTrack.streamUrl) || '';
+    const audioBlock = linkedStreamUrl
+      ? `<audio controls preload="none" class="ap-prompt-audio" src="${linkedStreamUrl.replace(/"/g, '&quot;')}"></audio>`
+      : '';
     card.innerHTML = `
       <div class="ap-prompt-card-top">
         <h3 class="ap-prompt-card-title">${safeTitle}</h3>
@@ -783,6 +788,7 @@ function renderPrompts(artist) {
         ${vocalBadge}
       </div>
       ${settingsBlock}
+      ${audioBlock}
       <div class="ap-prompt-card-actions">${unlockBtn}</div>
     `;
     list.appendChild(card);
