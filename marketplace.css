@@ -532,10 +532,44 @@
   opacity: 1;
 }
 
+/* Pivot écoute (2026-05-05) — quand le track est en cours de lecture,
+   garder le bouton play visible et changer son icône via background */
+.mp-son-card.is-playing .mp-son-card-play {
+  opacity: 1;
+  background: rgba(124, 58, 237, 0.85);
+}
+
 .mp-son-card-play svg {
   width: 16px;
   height: 16px;
   fill: #fff;
+}
+
+/* Pivot écoute — image de cover (si uploadée). Sans cover, fallback
+   sur le gradient existant (.mp-son-card-cover background). */
+.mp-son-card-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Audio inline caché — la card propre fait office de player visuel
+   via le bouton .mp-son-card-play, on ne montre pas les controls
+   natifs du <audio>. */
+.mp-son-card-audio {
+  display: none;
+}
+
+/* Card cursor pointer (toute la zone est cliquable → profil) */
+.mp-son-card {
+  cursor: pointer;
+}
+
+/* Ranking row cliquable */
+.mp-ranking-row-clickable {
+  cursor: pointer;
 }
 
 .mp-son-card-title {
