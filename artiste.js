@@ -917,23 +917,20 @@ function renderTracks(artist) {
     list.appendChild(card);
   });
 
-  // Délégation click — 2 cibles :
-  //   1. Bouton unlock prompt (déjà existant)
-  //   2. Sprint 1 PR3 fix audio v2 (2026-05-05) — Click sur la cover ou
-  //      le titre force le play de l'audio via JS. Fallback si controls
-  //      natifs Chrome cassés. Affiche l'erreur si play() rejette.
+  // Délégation click + gestion robuste de play/pause via pattern promise
+  // (suggéré par Tom 2026-05-05 — évite AbortError quand play/pause
+  // s'enchaînent rapidement avant la résolution de la promesse de play).
+  // Une seule track joue à la fois sur la page (les autres se mettent
+  // en pause automatiquement).
   list.onclick = (ev) => {
-    // Cas 1 : bouton unlock prompt
     const unlockBtn = ev.target.closest('.ap-track-unlock-btn');
     if (unlockBtn) {
       const id = unlockBtn.dataset.promptId;
       if (id) unlockPromptFromProfile(id, unlockBtn);
       return;
     }
-    // Cas 2 : click sur cover ou titre → toggle play/pause
     const inner = ev.target.closest('.ap-track-card-inner');
     if (!inner) return;
-    // On ignore les clicks directement dans le player audio (laisser le natif gérer)
     if (ev.target.closest('audio')) return;
     const url = inner.dataset.streamUrl;
     if (!url) {
@@ -942,11 +939,32 @@ function renderTracks(artist) {
     }
     const audioEl = inner.querySelector('audio');
     if (!audioEl) return;
+
+    // Logging détaillé pour diagnostic prod (à retirer une fois stable).
+    console.log('[artiste] click play. url=', url, 'paused=', audioEl.paused, 'readyState=', audioEl.readyState, 'error=', audioEl.error);
+
     if (audioEl.paused) {
-      audioEl.play().catch(err => {
-        console.error('[artiste] audio.play() rejected:', err);
-        toast('Lecture impossible : ' + (err && err.message || 'erreur audio'));
+      // Stoppe les autres lecteurs en cours sur la page (un seul son
+      // joue à la fois — UX cohérente avec marketplace).
+      list.querySelectorAll('audio').forEach(a => {
+        if (a !== audioEl && !a.paused) {
+          try { a.pause(); } catch (_) {}
+        }
       });
+      // Pattern Tom — on stocke la promesse pour pouvoir l'await en pause
+      const playPromise = audioEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          if (err && err.name === 'AbortError') return;  // benign
+          console.error('[artiste] audio.play() rejected:', err);
+          // Message d'erreur le plus parlant possible pour Tom
+          const errMsg = err && (err.message || err.name) || 'erreur audio inconnue';
+          const audioErr = audioEl.error
+            ? ` (code ${audioEl.error.code}: ${audioEl.error.message || ''})`
+            : '';
+          toast('Lecture impossible : ' + errMsg + audioErr);
+        });
+      }
     } else {
       audioEl.pause();
     }
