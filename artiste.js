@@ -817,9 +817,18 @@ function renderTracks(artist) {
     const safeName = (t.name || 'Sans titre').replace(/</g, '&lt;');
     const plays    = formatCount(t.plays);
     const date     = t.date || '';
-    const audio    = t.streamUrl
-      ? `<audio controls preload="none" src="${t.streamUrl}" class="ap-track-audio"></audio>`
-      : '';
+    // Sprint 1 PR3 fix audio (2026-05-05) — audio TOUJOURS rendu, même
+    // si streamUrl manque on affiche un message clair. Plus de
+    // crossorigin (le bucket R2 est public anyway) et controlsList pour
+    // virer le menu "télécharger" qui ne sert à rien sur la fiche
+    // publique gated.
+    let audio = '';
+    if (t.streamUrl) {
+      const safeUrl = t.streamUrl.replace(/"/g, '&quot;');
+      audio = `<audio controls preload="metadata" src="${safeUrl}" class="ap-track-audio" controlsList="nodownload noplaybackrate"></audio>`;
+    } else {
+      audio = `<div class="ap-track-audio-disabled">Audio en cours de traitement…</div>`;
+    }
     // Cover image (Sprint 1 PR1+PR2). Fallback sur la couleur si absent.
     const coverHTML = t.coverUrl
       ? `<img src="${t.coverUrl.replace(/"/g, '&quot;')}" alt="" class="ap-track-cover" />`
