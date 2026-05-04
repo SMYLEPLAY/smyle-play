@@ -85,6 +85,14 @@ def _get_client() -> Any | None:
     )
 
 
+def get_r2_client():
+    """
+    Expose le client boto3 R2 pour les routes qui veulent streamer un objet.
+    Retourne None si non configuré — le caller doit gérer.
+    """
+    return _get_client()
+
+
 async def delete_r2_object(key: str) -> bool:
     """
     Supprime un objet R2 par clé (ex 'tracks/sl-foo.wav').
