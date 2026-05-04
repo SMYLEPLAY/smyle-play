@@ -3270,6 +3270,13 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
   border-radius: 10px;
   object-fit: cover;
   background: rgba(255, 255, 255, .04);
+  cursor: pointer;  /* indique que c'est cliquable pour play */
+}
+.ap-track-card-inner {
+  cursor: pointer;  /* toute la zone hors audio = play */
+}
+.ap-track-card-inner audio {
+  cursor: default;  /* mais l'audio garde son curseur natif */
 }
 .ap-track-cover-fallback {
   display: block;
