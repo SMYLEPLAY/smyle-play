@@ -817,15 +817,27 @@ function renderTracks(artist) {
     const safeName = (t.name || 'Sans titre').replace(/</g, '&lt;');
     const plays    = formatCount(t.plays);
     const date     = t.date || '';
-    // Sprint 1 PR3 fix audio (2026-05-05) — audio TOUJOURS rendu, même
-    // si streamUrl manque on affiche un message clair. Plus de
-    // crossorigin (le bucket R2 est public anyway) et controlsList pour
-    // virer le menu "télécharger" qui ne sert à rien sur la fiche
-    // publique gated.
+    // Sprint 1 PR3 fix audio v2 (2026-05-05) — robustesse maximale :
+    // 1. <source> avec type explicite (force le MIME pour Chrome qui
+    //    refuse parfois de jouer un fichier dont le content-type R2
+    //    serait application/octet-stream au lieu de audio/wav)
+    // 2. Pas de filter CSS (retiré dans v1, controls natifs visibles)
+    // 3. Click handler sur la card entière qui force le play via JS
+    //    (data-stream-url) — fallback si controls natifs cliquables
+    //    mais inactifs pour une raison (CSP, focus, autre)
     let audio = '';
     if (t.streamUrl) {
       const safeUrl = t.streamUrl.replace(/"/g, '&quot;');
-      audio = `<audio controls preload="metadata" src="${safeUrl}" class="ap-track-audio" controlsList="nodownload noplaybackrate"></audio>`;
+      // Détection MIME basique sur l'extension (R2 retourne parfois
+      // application/octet-stream qui empêche le play). On lui force
+      // un type audio/wav ou audio/mpeg.
+      const ext = (t.streamUrl.split('.').pop() || '').toLowerCase();
+      const mime = ext === 'mp3' ? 'audio/mpeg'
+                  : ext === 'm4a' ? 'audio/mp4'
+                  : 'audio/wav';  // .wav par défaut
+      audio = `<audio controls preload="metadata" class="ap-track-audio" controlsList="nodownload noplaybackrate">
+        <source src="${safeUrl}" type="${mime}" />
+      </audio>`;
     } else {
       audio = `<div class="ap-track-audio-disabled">Audio en cours de traitement…</div>`;
     }
@@ -867,8 +879,11 @@ function renderTracks(artist) {
     } else if (linkedPrompt && artist.isSelf) {
       unlockBlock = '<span class="ap-prompt-owner-note">Prompt en vente</span>';
     }
+    // data-stream-url permet au click handler de retrouver l'URL
+    // pour le fallback play JS sur la card entière.
+    const streamAttr = t.streamUrl ? ` data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"` : '';
     card.innerHTML = `
-      <div class="ap-track-card-inner">
+      <div class="ap-track-card-inner"${streamAttr}>
         ${coverHTML}
         <div class="ap-track-card-body">
           <div class="ap-track-card-top">
@@ -887,13 +902,39 @@ function renderTracks(artist) {
     list.appendChild(card);
   });
 
-  // Délégation click — bouton unlock prompt (le bouton est dans la card track
-  // mais déclenche le même endpoint que celui de la cellule prompts).
+  // Délégation click — 2 cibles :
+  //   1. Bouton unlock prompt (déjà existant)
+  //   2. Sprint 1 PR3 fix audio v2 (2026-05-05) — Click sur la cover ou
+  //      le titre force le play de l'audio via JS. Fallback si controls
+  //      natifs Chrome cassés. Affiche l'erreur si play() rejette.
   list.onclick = (ev) => {
-    const btn = ev.target.closest('.ap-track-unlock-btn');
-    if (!btn) return;
-    const id = btn.dataset.promptId;
-    if (id) unlockPromptFromProfile(id, btn);
+    // Cas 1 : bouton unlock prompt
+    const unlockBtn = ev.target.closest('.ap-track-unlock-btn');
+    if (unlockBtn) {
+      const id = unlockBtn.dataset.promptId;
+      if (id) unlockPromptFromProfile(id, unlockBtn);
+      return;
+    }
+    // Cas 2 : click sur cover ou titre → toggle play/pause
+    const inner = ev.target.closest('.ap-track-card-inner');
+    if (!inner) return;
+    // On ignore les clicks directement dans le player audio (laisser le natif gérer)
+    if (ev.target.closest('audio')) return;
+    const url = inner.dataset.streamUrl;
+    if (!url) {
+      toast('Audio en cours de traitement, réessaie dans quelques secondes.');
+      return;
+    }
+    const audioEl = inner.querySelector('audio');
+    if (!audioEl) return;
+    if (audioEl.paused) {
+      audioEl.play().catch(err => {
+        console.error('[artiste] audio.play() rejected:', err);
+        toast('Lecture impossible : ' + (err && err.message || 'erreur audio'));
+      });
+    } else {
+      audioEl.pause();
+    }
   };
 }
 
