@@ -572,6 +572,36 @@
   cursor: pointer;
 }
 
+/* Pivot écoute v2 (2026-05-05) — bouton play sur les rows Top Sons +
+   audio caché (joué via JS, controls natifs masqués). */
+.mp-ranking-play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.15);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .12s ease;
+}
+.mp-ranking-play:hover {
+  background: rgba(124, 58, 237, 0.35);
+}
+.mp-ranking-row.is-playing .mp-ranking-play {
+  background: rgba(124, 58, 237, 0.6);
+}
+.mp-ranking-play svg {
+  width: 14px;
+  height: 14px;
+  fill: #fff;
+}
+.mp-ranking-audio {
+  display: none;
+}
+
 .mp-son-card-title {
   font-size: 14px;
   font-weight: 700;
