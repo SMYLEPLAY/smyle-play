@@ -25,7 +25,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.adn import Adn
 from app.models.owned_adn import OwnedAdn
 from app.models.prompt import Prompt
-from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 
@@ -313,36 +312,8 @@ async def list_user_library_prompts(
     )).scalar() or 0
 
     offset = (page - 1) * per_page
-
-    # P1-B8 (2026-05-11) — Jointure track lié au prompt pour exposer l'audio.
-    # Un prompt peut avoir 0, 1 ou plusieurs tracks (tracks.prompt_id, ondelete SET NULL).
-    # On prend le PLUS RÉCENT via deux scalar_subquery corrélées (audio_url + cover_url).
-    # NULL si aucun track lié → frontend masque le player.
-    audio_url_subq = (
-        select(Track.audio_url)
-        .where(Track.prompt_id == Prompt.id)
-        .order_by(Track.created_at.desc())
-        .limit(1)
-        .correlate(Prompt)
-        .scalar_subquery()
-    )
-    cover_url_subq = (
-        select(Track.cover_url)
-        .where(Track.prompt_id == Prompt.id)
-        .order_by(Track.created_at.desc())
-        .limit(1)
-        .correlate(Prompt)
-        .scalar_subquery()
-    )
-
     items_q = (
-        select(
-            UnlockedPrompt,
-            Prompt,
-            User,
-            audio_url_subq.label("audio_url"),
-            cover_url_subq.label("cover_url"),
-        )
+        select(UnlockedPrompt, Prompt, User)
         .join(Prompt, Prompt.id == UnlockedPrompt.prompt_id)
         .join(User, User.id == Prompt.artist_id)
         .where(base_filter)
@@ -371,11 +342,8 @@ async def list_user_library_prompts(
             "prompt_weirdness": p.prompt_weirdness,
             "prompt_style_influence": p.prompt_style_influence,
             "prompt_vocal_gender": p.prompt_vocal_gender,
-            # P1-B8 — audio + cover du track lié (ou None si pas de track).
-            "audio_url": audio_url,
-            "cover_url": cover_url,
         }
-        for up, p, u, audio_url, cover_url in rows
+        for up, p, u in rows
     ]
     return items, int(total)
 
