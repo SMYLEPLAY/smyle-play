@@ -168,11 +168,6 @@ class LibraryPromptItem(BaseModel):
     prompt_weirdness: str | None = None       # ← gated, révélé après unlock
     prompt_style_influence: str | None = None  # ← gated, révélé après unlock
     prompt_vocal_gender: str | None = None
-    # P1-B8 (2026-05-11) — audio + cover du track lié au prompt.
-    # NULL si aucun track lié (ancien prompt sans audio attaché).
-    # Frontend : si audio_url présent → afficher player ; sinon masquer.
-    audio_url: str | None = None
-    cover_url: str | None = None
 
 
 class LibraryPromptsResponse(BaseModel):
