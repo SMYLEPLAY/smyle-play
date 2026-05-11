@@ -240,6 +240,16 @@
   z-index: 100;
 }
 
+/* P1-B11 (2026-05-11) — Force le masquage quand l'attribut HTML `hidden`
+   est présent. Sans cette règle, `display: flex` ci-dessus override le
+   comportement natif de [hidden], et le dropdown reste affiché en
+   permanence sur toutes les pages (bug visible sur /u/<slug>, /library,
+   /, etc.). Le toggle JS dans topbar.js set/unset l'attribut hidden au
+   clic — cette règle CSS rend l'attribut effectif. */
+.stb-user-drop[hidden] {
+  display: none;
+}
+
 .stb-drop-item {
   display: block;
   padding: 9px 12px;
