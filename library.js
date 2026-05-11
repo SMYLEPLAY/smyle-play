@@ -211,6 +211,21 @@ function renderPrompts(items) {
       </div>
     ` : '';
 
+    // P1-B8 (2026-05-11) — Lecteur audio du track lié au prompt débloqué.
+    // audio_url vient du backend (jointure tracks.prompt_id = prompts.id).
+    // NULL pour les anciens prompts sans track attaché → bloc masqué.
+    // Réutilise la classe lib-voice-audio-wrap (cohérence avec onglet Voix).
+    const audioBlock = p.audio_url ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">🔊 Morceau</span>
+        </div>
+        <div class="lib-content-body lib-voice-audio-wrap">
+          <audio controls preload="none" src="${esc(p.audio_url)}" class="lib-voice-audio"></audio>
+        </div>
+      </div>
+    ` : '';
+
     return `
       <div class="lib-item">
         <div class="lib-item-head">
@@ -220,6 +235,7 @@ function renderPrompts(items) {
         <div class="lib-item-artist">par ${artistLink}</div>
         ${p.description ? `<div class="lib-item-desc">${esc(p.description)}</div>` : ''}
         ${settingsBadgesBlock}
+        ${audioBlock}
 
         <div class="lib-content-block">
           <div class="lib-content-header">
