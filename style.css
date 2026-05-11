@@ -149,7 +149,9 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
   color: #ff6b7a;
 }
 .mix-toggle-btn { position: relative; background: none; border: 1px solid rgba(136,0,255,.2);
-  color: rgba(136,0,255,.5); font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+  /* P1-B12 (2026-05-11) : was rgba(136,0,255,.5) → ratio ~1.6:1 illisible.
+     Passé à rgba(204,136,255,.85) = ratio ~5.5:1 (AA). */
+  color: rgba(204,136,255,.85); font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
   padding: 7px 16px; border-radius: 2px; cursor: pointer; transition: all .25s; flex-shrink: 0; }
 .mix-toggle-btn:hover { border-color: rgba(136,0,255,.5); color: var(--violet-light); }
 .mix-count { position: absolute; top: -6px; right: -6px; background: var(--violet); color: #fff;
@@ -764,7 +766,10 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
 .support-btn {
   display: flex; align-items: center; gap: 6px;
   background: none; border: 1px solid rgba(136,0,255,.18);
-  color: rgba(200,160,255,.45); font-size: 9px; letter-spacing: .22em;
+  /* P1-B12 (2026-05-11) : was rgba(200,160,255,.45) → ratio ~2:1 illisible.
+     Opacity remontée à .85 pour passer AA (~5.5:1) tout en gardant
+     le style "discret" du bouton support. */
+  color: rgba(200,160,255,.85); font-size: 9px; letter-spacing: .22em;
   text-transform: uppercase; padding: 6px 13px; border-radius: 2px;
   cursor: pointer; transition: all .25s; flex-shrink: 0;
 }
