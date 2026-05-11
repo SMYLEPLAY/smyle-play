@@ -12,6 +12,11 @@
   --w-connect: #FF1744;
   --w-artist:  #FFD700;
   --w-violet:  #8800ff;
+  /* P1-B12 (2026-05-11) — Variante claire pour textes WCAG AA.
+     Le --w-violet #8800ff a un ratio ~3.2:1 sur fond noir = échec AA (4.5:1).
+     --w-violet-text #cc88ff = ratio ~8.2:1 = AAA. Utilisé en `color:` uniquement.
+     Backgrounds, borders et glows continuent d'utiliser --w-violet (cohérence ADN). */
+  --w-violet-text: #cc88ff;
   --w-electric:#0055ff;
   --w-gold:    #FFD700;
   --w-bg:      #050508;
@@ -135,8 +140,8 @@
 
 /* Tab active states — chaque cellule a sa couleur */
 .watt-tab-btn.active[data-tab="dna"] {
-  color: var(--w-violet);
-  border-bottom-color: var(--w-violet);
+  color: var(--w-violet-text);          /* P1-B12 : texte lisible AAA */
+  border-bottom-color: var(--w-violet); /* bordure garde la teinte signature */
 }
 .watt-tab-btn.active[data-tab="connect"] {
   color: var(--w-connect);
@@ -212,7 +217,7 @@
   background: rgba(136,0,255,.12);
   border: 1px solid rgba(136,0,255,.3);
   border-radius: 4px;
-  color: var(--w-violet);
+  color: var(--w-violet-text); /* P1-B12 : texte lisible AAA */
   font-family: inherit; font-size: 11px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase;
   padding: 10px 14px; cursor: pointer;
