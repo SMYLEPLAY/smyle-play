@@ -58,9 +58,19 @@ logs/
 # ── Graphify — code-graph build artifacts (rebuilt on demand) ─────────────
 graphify-out/
 
-# ── Vault Obsidian (notes perso, exclues du repo) ────────────────────────
+# ── Vault Obsidian — whitelist sélective (2026-05-11) ────────────────────
+# Tout OBSIDIAN/ est exclu par défaut, SAUF les sous-dossiers source de vérité.
+# Notes créatives WATT, archives et tarification restent local-only.
 Smyle-play/
-OBSIDIAN/
+OBSIDIAN/*
+!OBSIDIAN/00_INDEX.md
+!OBSIDIAN/01_PRODUIT/
+!OBSIDIAN/03_SESSIONS/
+!OBSIDIAN/04_TASKS/
+!OBSIDIAN/05_TECH/
+# Ré-exclusions ciblées (sensibles, restent local)
+OBSIDIAN/01_PRODUIT/Tarification_v1.md
+OBSIDIAN/05_TECH/Legacy/
 
 # ── data/exports/ — dumps DB et exports temporaires (jamais commit) ───────
 data/exports/*
