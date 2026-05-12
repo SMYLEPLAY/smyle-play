@@ -450,6 +450,81 @@ function renderHeader(artist) {
   // Pour les fans (non-self), on masque la section bio si elle est vide.
   // Pour l'owner, on la laisse visible avec son placeholder.
   toggleSectionForFans('ap-section-bio', artist.bio, artist.isSelf);
+  _setupFollowButton(artist).catch(e => console.warn('[follow]', e));
+}
+
+// ── Follow button logic (Phase A1) ────────────────────────────────────────
+async function _setupFollowButton(artist) {
+  const wrap = document.getElementById('ap-social-actions');
+  const btn = document.getElementById('ap-follow-btn');
+  const countEl = document.getElementById('ap-followers-count');
+  if (!wrap || !btn) return;
+  if (countEl) {
+    const n = Number(artist.followersCount || 0);
+    countEl.textContent = n + ' follower' + (n !== 1 ? 's' : '');
+  }
+  if (artist.isSelf) { wrap.style.display = 'none'; return; }
+  const isAuth = typeof getAuthToken === 'function' && !!getAuthToken();
+  if (!isAuth) { wrap.style.display = 'block'; btn.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  btn.style.display = '';
+  const slug = artist.slug || (window.location.pathname.match(/^\/u\/([^/?#]+)/) || [])[1];
+  if (!slug) { wrap.style.display = 'none'; return; }
+  function _hdr() {
+    const h = { 'Accept': 'application/json' };
+    if (typeof getAuthToken === 'function') {
+      const t = getAuthToken();
+      if (t) h['Authorization'] = 'Bearer ' + t;
+    }
+    return h;
+  }
+  let following = false;
+  try {
+    const r = await fetch('/me/following', { credentials: 'same-origin', headers: _hdr() });
+    if (r.ok) {
+      const list = await r.json();
+      following = Array.isArray(list) && list.some(f => f.slug === slug || f.artistSlug === slug);
+    }
+  } catch (_) {}
+  function _setBtnState(isFollowing) {
+    btn.textContent = isFollowing ? 'Suivi ✓' : 'Suivre';
+    btn.dataset.following = isFollowing ? '1' : '0';
+    if (isFollowing) {
+      btn.style.background = 'rgba(204,136,255,.06)';
+      btn.style.color = 'rgba(204,136,255,.7)';
+    } else {
+      btn.style.background = 'rgba(204,136,255,.14)';
+      btn.style.color = '#cc88ff';
+    }
+  }
+  _setBtnState(following);
+  btn.onclick = async () => {
+    const wasFollowing = btn.dataset.following === '1';
+    btn.disabled = true;
+    btn.style.opacity = '.6';
+    try {
+      const method = wasFollowing ? 'DELETE' : 'POST';
+      const r = await fetch('/artists/' + encodeURIComponent(slug) + '/follow', {
+        method: method, credentials: 'same-origin', headers: _hdr()
+      });
+      if (r.ok || r.status === 204) {
+        _setBtnState(!wasFollowing);
+        if (countEl) {
+          const cur = Number(artist.followersCount || 0);
+          const newN = wasFollowing ? Math.max(0, cur - 1) : cur + 1;
+          artist.followersCount = newN;
+          countEl.textContent = newN + ' follower' + (newN !== 1 ? 's' : '');
+        }
+      } else {
+        if (typeof showToast === 'function') showToast('Action impossible.');
+      }
+    } catch (e) {
+      if (typeof showToast === 'function') showToast('Erreur réseau.');
+    } finally {
+      btn.disabled = false;
+      btn.style.opacity = '';
+    }
+  };
 }
 
 // Masque une section entière pour les fans si la valeur est vide.
