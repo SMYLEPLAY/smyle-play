@@ -282,6 +282,21 @@
     </div>
   </section>
 
+  <!-- ═══ Sons publiés (visibles ssi l'artiste a au moins 1 track) ═════════
+       Liste compacte : pochette (initiale), titre, plays, date. Lecteur
+       audio natif <audio controls> pour pré-écoute directe (le catalogue
+       WATT principal reste le /watt avec lecteur flottant). -->
+  <section class="ap-tracks" id="ap-tracks-section" style="display:none"
+           aria-label="Sons publiés">
+    <div class="ap-tracks-hdr">
+      <h2 class="ap-tracks-title">Sons publiés</h2>
+      <span class="ap-tracks-count" id="ap-tracks-count">0 son</span>
+    </div>
+    <div class="ap-tracks-list" id="ap-tracks-list">
+      <!-- Cards rendues par renderTracks() -->
+    </div>
+  </section>
+
   <!-- ═══ Voix à vendre (P1-F9 frontend public — visibles ssi >= 1 voix publiée)
        Données chargées en async via GET /api/voices/by-artist/{artist_id}
        APRÈS le payload /watt/artists/<slug>. Pas dans le payload artist
@@ -298,21 +313,6 @@
     </div>
     <div class="ap-voices-list" id="ap-voices-list">
       <!-- Cards rendues par renderVoices() -->
-    </div>
-  </section>
-
-  <!-- ═══ Sons publiés (visibles ssi l'artiste a au moins 1 track) ═════════
-       Liste compacte : pochette (initiale), titre, plays, date. Lecteur
-       audio natif <audio controls> pour pré-écoute directe (le catalogue
-       WATT principal reste le /watt avec lecteur flottant). -->
-  <section class="ap-tracks" id="ap-tracks-section" style="display:none"
-           aria-label="Sons publiés">
-    <div class="ap-tracks-hdr">
-      <h2 class="ap-tracks-title">Sons publiés</h2>
-      <span class="ap-tracks-count" id="ap-tracks-count">0 son</span>
-    </div>
-    <div class="ap-tracks-list" id="ap-tracks-list">
-      <!-- Cards rendues par renderTracks() -->
     </div>
   </section>
 

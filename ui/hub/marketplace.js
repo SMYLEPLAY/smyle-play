@@ -256,13 +256,13 @@
       return (
         `<li class="mp-ranking-row mp-ranking-row-clickable" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}">` +
           `<div class="mp-ranking-rank">${i + 1}</div>` +
-          playBtn +
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title">${_esc(title)}</div>` +
             `<div class="mp-ranking-sub">` +
               `<span>${_esc(artistName)}</span>` +
             `</div>` +
           `</div>` +
+          playBtn +
           `<div class="mp-ranking-meta">${plays} écoutes</div>` +
           audioEl +
         `</li>`

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tarifs · WATT</title>
+  <meta name="theme-color" content="#050508" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    .tarifs-wrap { max-width: 980px; margin: 48px auto; padding: 0 20px; color: #e8e6f5; }
+    .tarifs-eyebrow { color: #cc88ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 12px; }
+    .tarifs-h1 { font-size: 38px; margin: 0 0 8px; letter-spacing: -.01em; }
+    .tarifs-sub { color: #a09cb8; font-size: 16px; margin: 0 0 40px; max-width: 620px; }
+    .tarifs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .tarifs-card {
+      background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.005));
+      border: 1px solid rgba(204,136,255,.18);
+      border-radius: 18px; padding: 28px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+      position: relative; overflow: hidden;
+    }
+    .tarifs-card-name { font-size: 18px; font-weight: 600; letter-spacing: .02em; }
+    .tarifs-card-credits { font-size: 36px; font-weight: 700; color: #ffffff; line-height: 1; }
+    .tarifs-card-credits small { font-size: 14px; color: #a09cb8; font-weight: 400; margin-left: 6px; }
+    .tarifs-card-price { color: #cc88ff; font-size: 15px; }
+    .tarifs-card-perks { list-style: none; padding: 0; margin: 0; font-size: 14px; color: #c7c4d8; }
+    .tarifs-card-perks li { padding: 6px 0; border-top: 1px dashed rgba(255,255,255,.06); }
+    .tarifs-card-perks li:first-child { border-top: none; }
+    .tarifs-btn {
+      margin-top: auto;
+      background: rgba(204,136,255,.12);
+      color: #cc88ff;
+      border: 1px solid rgba(204,136,255,.35);
+      padding: 12px 16px; border-radius: 12px;
+      font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: 13px;
+      cursor: not-allowed; opacity: .55;
+    }
+    .tarifs-card-badge {
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(0,200,255,.12); color: #8bd9ff;
+      border: 1px solid rgba(0,200,255,.3);
+      padding: 4px 10px; border-radius: 999px; font-size: 11px;
+      letter-spacing: .1em; text-transform: uppercase;
+    }
+    .tarifs-footnote { color: #6b677f; font-size: 13px; margin-top: 28px; }
+    .tarifs-back { display: inline-block; margin-bottom: 24px; color: #cc88ff; text-decoration: none; font-size: 14px; }
+    .tarifs-back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="tarifs-wrap">
+    <a href="/" class="tarifs-back">← Retour à la marketplace</a>
+    <div class="tarifs-eyebrow">Crédits Smyles · packs</div>
+    <h1 class="tarifs-h1">Tarifs</h1>
+    <p class="tarifs-sub">
+      Les packs de crédits Smyles ouvriront bientôt. En attendant, la bêta reste
+      gratuite : tu peux publier, écouter et explorer sans aucun pack.
+    </p>
+
+    <div class="tarifs-grid">
+      <div class="tarifs-card">
+        <span class="tarifs-card-badge">Bientôt</span>
+        <div class="tarifs-card-name">Découverte</div>
+        <div class="tarifs-card-credits">500<small>crédits</small></div>
+        <div class="tarifs-card-price">— €</div>
+        <ul class="tarifs-card-perks">
+          <li>De quoi débloquer plusieurs sons</li>
+          <li>Test de la marketplace</li>
+        </ul>
+        <button class="tarifs-btn" disabled>Bientôt disponible</button>
+      </div>
+
+      <div class="tarifs-card">
+        <span class="tarifs-card-badge">Bientôt</span>
+        <div class="tarifs-card-name">Créateur</div>
+        <div class="tarifs-card-credits">2 500<small>crédits</small></div>
+        <div class="tarifs-card-price">— €</div>
+        <ul class="tarifs-card-perks">
+          <li>Volume de débloquage régulier</li>
+          <li>Accès aux ADN signature</li>
+        </ul>
+        <button class="tarifs-btn" disabled>Bientôt disponible</button>
+      </div>
+
+      <div class="tarifs-card">
+        <span class="tarifs-card-badge">Bientôt</span>
+        <div class="tarifs-card-name">Studio</div>
+        <div class="tarifs-card-credits">10 000<small>crédits</small></div>
+        <div class="tarifs-card-price">— €</div>
+        <ul class="tarifs-card-perks">
+          <li>Pour usage intensif</li>
+          <li>Réserve longue durée</li>
+        </ul>
+        <button class="tarifs-btn" disabled>Bientôt disponible</button>
+      </div>
+    </div>
+
+    <p class="tarifs-footnote">
+      Les prix exacts et la composition finale des packs seront publiés à
+      l'ouverture du paiement. Cette page est un placeholder UI — aucun
+      paiement n'est actif pour le moment.
+    </p>
+  </div>
+</body>
+</html>
