@@ -68,6 +68,32 @@ function incrementPlay(id) {
   return local;
 }
 
+// ── 4b. GLOBAL PLAY LISTENER — sync DB pour TOUT <audio> inline ─────────────
+// Marketplace (Top Sons + cards .mp-son-card) et fiche artiste
+// (.ap-track-card-inner) utilisent des <audio> inline câblés à la main, sans
+// passer par audio.js → loadTrack() qui était le seul à appeler incrementPlay.
+// On capte ici l'événement 'play' au niveau document (capture phase, car
+// l'event 'play' ne bubble pas), et on incrémente automatiquement le compteur
+// si l'<audio> a un ancêtre porteur de data-track-id. Couvre tous les players
+// inline actuels + futurs sans avoir à les recâbler un par un.
+// Pas de double comptage : le player principal (audio.js) appelle déjà
+// incrementPlay() explicitement, et son <audio> racine n'a pas de parent
+// data-track-id. Le throttle 5 s de incrementPlay absorbe les pause/replay.
+
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('play', (ev) => {
+    const audio = ev && ev.target;
+    if (!audio || typeof audio.matches !== 'function') return;
+    if (!audio.matches('audio')) return;
+    const host = audio.closest('[data-track-id]');
+    if (!host) return;
+    const trackId = host.dataset.trackId;
+    if (trackId && typeof incrementPlay === 'function') {
+      incrementPlay(trackId);
+    }
+  }, true);
+}
+
 // ── 5. AUTH ─────────────────────────────────────────────────────────────────
 
 function getUsers()        { return JSON.parse(localStorage.getItem('smyle_users') || '[]'); }
