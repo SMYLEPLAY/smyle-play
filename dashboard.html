@@ -9,6 +9,34 @@
   <title>Dashboard Artiste · WATT</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="dashboard.css" />
+
+<style>
+/* SLIDER PROMPT SETTINGS */
+.dash-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px;
+  background: linear-gradient(to right, rgba(204,136,255,.3), rgba(204,136,255,.6));
+  border-radius: 999px; outline: none; cursor: pointer;
+  margin: 12px 0 6px;
+}
+.dash-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #cc88ff; cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(204,136,255,.4);
+  transition: transform .12s ease;
+}
+.dash-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.dash-slider::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #cc88ff; cursor: pointer; border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(204,136,255,.4);
+}
+.dash-slider-val {
+  font-weight: 700; color: #cc88ff; font-variant-numeric: tabular-nums;
+}
+</style>
 </head>
 <body class="dash-page">
 
@@ -718,16 +746,28 @@
                      placeholder="Suno v4, Udio 1.5, ..." maxlength="50" />
               <div class="dash-help">Optionnel. Si tu connais la version exacte, plus l'acheteur reproduit fidèlement.</div>
 
-              <label class="dash-label">Weirdness <span class="dash-req">*</span></label>
-              <input class="dash-input" id="dashPromptWeirdness"
-                     placeholder="40, très varié, 0-100..." maxlength="50" />
-              <div class="dash-help">Réglage Suno (curseur "Weirdness & Variety"). Une valeur ou un mot-clé.</div>
+              <label class="dash-label">
+                Weirdness <span class="dash-req">*</span>
+                · <span class="dash-slider-val" id="dashPromptWeirdnessVal">50</span>/100
+              </label>
+              <input type="range" class="dash-slider" id="dashPromptWeirdness"
+                     min="0" max="100" value="50" step="1"
+                     oninput="document.getElementById('dashPromptWeirdnessVal').textContent = this.value" />
+              <div class="dash-help">Curseur Suno « Weirdness & Variety » — 0 = très contrôlé, 100 = très varié.</div>
 
-              <label class="dash-label">Style influence <span class="dash-req">*</span></label>
-              <textarea class="dash-textarea" id="dashPromptStyleInfluence" rows="2"
+              <label class="dash-label">
+                Style influence <span class="dash-req">*</span>
+                · <span class="dash-slider-val" id="dashPromptStyleInfluenceVal">50</span>/100
+              </label>
+              <input type="range" class="dash-slider" id="dashPromptStyleInfluence"
+                     min="0" max="100" value="50" step="1"
+                     oninput="document.getElementById('dashPromptStyleInfluenceVal').textContent = this.value" />
+              <div class="dash-help">Curseur Suno « Style Influence » — 0 = très libre, 100 = très fidèle à la référence.</div>
+              <label class="dash-label" style="margin-top: 12px;">Références stylistiques</label>
+              <textarea class="dash-textarea" id="dashPromptStyleRefs" rows="2"
                         maxlength="500"
                         placeholder="D'Angelo + James Blake, soul ralentie 70s..."></textarea>
-              <div class="dash-help">Artistes/genres de référence. Court — 1 à 3 lignes max.</div>
+              <div class="dash-help">Artistes/genres de référence (optionnel). Court — 1 à 3 lignes max.</div>
 
               <label class="dash-label">Voix <span class="dash-req">*</span></label>
               <select class="dash-input" id="dashPromptVocalGender">
