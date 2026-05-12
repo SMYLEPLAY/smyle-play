@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.middleware import SecurityHeadersMiddleware
 from app.routers.achievements import (
     me_router as achievements_me_router,
     public_router as achievements_public_router,
@@ -43,6 +44,12 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # ── Security Headers ───────────────────────────────────────────────────
+    # Ajoute CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc.
+    # Ferme les risques OWASP A05 (Misconfiguration) et mitige A03 (XSS).
+    # Audit OBSIDIAN/05_TECH/Runbooks/2026-05-12_audit-owasp-smyleplay.md
+    app.add_middleware(SecurityHeadersMiddleware)
 
     @app.get("/health")
     async def health():
