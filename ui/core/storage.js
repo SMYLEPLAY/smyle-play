@@ -5,7 +5,7 @@
    et avant les consommateurs (modals, player, hub, app).
    ───────────────────────────────────────────────────────────────────────── */
 
-// ── 4. PLAY COUNTER — cache local + sync DB via POST /api/watt/plays/<id> ───
+// ── 4. PLAY COUNTER — cache local + sync DB via POST /watt/plays/<id> ───
 // Stratégie :
 //   1. Incrément immédiat du cache localStorage (UX instantanée, +1 visible
 //      avant tout aller-retour réseau).
@@ -50,7 +50,7 @@ function incrementPlay(id) {
   // valide, on l'utilise comme source de vérité.
   if (typeof fetch !== 'function') return local;
 
-  fetch(`/api/watt/plays/${encodeURIComponent(id)}`, {
+  fetch(`/watt/plays/${encodeURIComponent(id)}`, {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Accept': 'application/json' },
