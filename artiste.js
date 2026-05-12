@@ -480,7 +480,7 @@ async function _setupFollowButton(artist) {
   }
   let following = false;
   try {
-    const r = await fetch('/me/following', { credentials: 'same-origin', headers: _hdr() });
+    const r = await fetch('/watt/me/following', { credentials: 'same-origin', headers: _hdr() });
     if (r.ok) {
       const list = await r.json();
       following = Array.isArray(list) && list.some(f => f.slug === slug || f.artistSlug === slug);
@@ -504,7 +504,7 @@ async function _setupFollowButton(artist) {
     btn.style.opacity = '.6';
     try {
       const method = wasFollowing ? 'DELETE' : 'POST';
-      const r = await fetch('/artists/' + encodeURIComponent(slug) + '/follow', {
+      const r = await fetch('/watt/artists/' + encodeURIComponent(slug) + '/follow', {
         method: method, credentials: 'same-origin', headers: _hdr()
       });
       if (r.ok || r.status === 204) {
@@ -942,8 +942,9 @@ function renderTracks(artist) {
       audio = `<div class="ap-track-audio-disabled">Audio en cours de traitement…</div>`;
     }
     // Cover image (Sprint 1 PR1+PR2). Fallback sur la couleur si absent.
-    const coverHTML = t.coverUrl
-      ? `<img src="${t.coverUrl.replace(/"/g, '&quot;')}" alt="" class="ap-track-cover" />`
+    const _coverU = t.coverUrl || t.cover_url || '';
+    const coverHTML = _coverU
+      ? `<img src="${_coverU.replace(/"/g, '&quot;')}" alt="" class="ap-track-cover" />`
       : `<div class="ap-track-cover ap-track-cover-fallback"
               style="background:${t.color || '#FFD700'}"></div>`;
     // Item 1 — badge plateforme

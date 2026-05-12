@@ -364,7 +364,7 @@
       // <audio> caché par défaut, joué via le bouton play).
       const streamUrl  = t.streamUrl || '';
       const artistSlug = t.artistSlug || '';
-      const coverUrl   = t.coverUrl || '';
+      const coverUrl   = t.coverUrl || t.cover_url || '';
       const coverHTML  = coverUrl
         ? `<img src="${_esc(coverUrl)}" alt="" class="mp-son-card-cover-img" />`
         : '';
