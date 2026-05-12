@@ -914,8 +914,8 @@ def create_app(config_class=None):
 
         if not user_id:
             return jsonify({'error': 'userId manquant'}), 400
-        if kind not in ('avatar', 'cover'):
-            return jsonify({'error': 'kind doit être "avatar" ou "cover"'}), 400
+        if kind not in ('avatar', 'cover', 'track-cover'):
+            return jsonify({'error': 'kind doit être "avatar", "cover" ou "track-cover"'}), 400
         if 'file' not in request.files:
             return jsonify({'error': 'Aucun fichier fourni'}), 400
 
@@ -950,7 +950,10 @@ def create_app(config_class=None):
         # ── Clé R2 ─────────────────────────────────────────────────────────
         safe_uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id)[:60]
         ts       = int(time.time())
-        key      = f'PROFILE/{safe_uid}/{kind}-{ts}.{ext}'
+        if kind == 'track-cover':
+            key  = f'TRACKS/{safe_uid}/cover-{ts}.{ext}'
+        else:
+            key  = f'PROFILE/{safe_uid}/{kind}-{ts}.{ext}'
 
         if app.r2_client:
             try:
