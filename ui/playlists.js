@@ -599,14 +599,50 @@
               const url = t.audio_url || t.stream_url || t.streamUrl || '';
               const safeUrl = url.replace(/"/g, '&quot;');
               return '<li class="pl-view-row" data-track-id="' + t.id + '">' +
-                '<div class="pl-view-row-info">' +
+                '<div class="pl-view-row-top">' +
                   '<div class="pl-view-row-title">' + safe + '</div>' +
+                  '<button type="button" class="pl-view-row-remove" data-track-remove="' + t.id + '" title="Retirer de la playlist" aria-label="Retirer">✕</button>' +
                 '</div>' +
                 (safeUrl ? '<audio controls preload="none" class="pl-view-audio" src="' + safeUrl + '"></audio>' : '<span class="pl-empty">Audio indisponible</span>') +
               '</li>';
             }).join('') + '</ul>'
         )
       );
+      content.addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('.pl-view-row-remove');
+        if (!btn) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const tid = btn.getAttribute('data-track-remove');
+        if (!tid) return;
+        if (!confirm('Retirer ce son de la playlist ?')) return;
+        btn.disabled = true;
+        btn.style.opacity = '.5';
+        try {
+          const r = await fetch('/playlists/' + encodeURIComponent(playlist.id) + '/tracks/' + encodeURIComponent(tid), {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: (typeof getAuthToken === 'function' && getAuthToken()) ? { 'Authorization': 'Bearer ' + getAuthToken() } : {}
+          });
+          if (r.ok || r.status === 204) {
+            const row = btn.closest('.pl-view-row');
+            if (row) row.remove();
+            _showToast('Retiré de la playlist.');
+            if (typeof window.SmylePlaylists !== 'undefined' && typeof window.SmylePlaylists.loadLikedTrackIds === 'function') {
+              try { await window.SmylePlaylists.loadLikedTrackIds(); } catch (_) {}
+            }
+          } else {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            _showToast('Suppression impossible (HTTP ' + r.status + ').');
+          }
+        } catch (e) {
+          btn.disabled = false;
+          btn.style.opacity = '';
+          _showToast('Erreur réseau : ' + (e && e.message || 'inconnue'));
+        }
+      });
+
       const loadBtn = overlay.querySelector('.pl-load-mix-btn');
       if (loadBtn) {
         loadBtn.onclick = async () => {
