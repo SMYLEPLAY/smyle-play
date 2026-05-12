@@ -380,8 +380,8 @@
           `<div class="mp-son-card-artist">` +
             `<span class="mp-son-card-artist-name">${_esc(name)}</span>` +
           `</div>` +
-          `<div class="mp-son-card-meta">${plays} écoutes</div>` +
-          `<div class="mp-son-card-actions">` +
+          `<div class="mp-son-card-meta">` +
+            `<span class="mp-son-card-meta-plays">${plays} écoutes</span>` +
             `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
             `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
           `</div>` +
