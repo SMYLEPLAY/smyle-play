@@ -98,6 +98,14 @@ def create_app(config_class=None):
     def dashboard_page():
         return send_from_directory(BASE_DIR, 'dashboard.html')
 
+    @app.route('/tarifs')
+    def tarifs_page():
+        # Page placeholder tarifs (chantier #12 backlog v3) — aucun
+        # paiement actif, juste une grille visuelle de packs avec
+        # boutons désactivés. À remplacer quand Stripe Checkout sera
+        # branché (chantier hors sprint actuel — voir Tarification_v1).
+        return send_from_directory(BASE_DIR, 'tarifs.html')
+
     @app.route('/u/<slug>')
     def user_page(slug):
         # La page /u/<slug> est l'unique endroit où vit le profil membre :
