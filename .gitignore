@@ -10,7 +10,9 @@
 *.asd
 
 # ── Dossier Claude local (config + worktrees) ────────────────────────────
-.claude/
+.claude/*
+# Exception : skills versionnées (utilisables par Claude Code / Cursor / agents)
+!.claude/skills/
 
 # ── Assets audio (2+ Go, hébergés sur Cloudflare R2, pas dans Git) ───────
 assets_audio/
