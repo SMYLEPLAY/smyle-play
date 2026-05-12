@@ -595,8 +595,8 @@
         (tracks.length === 0
           ? '<p class="pl-empty">Aucune track. Ajoute des sons depuis la marketplace via le bouton +.</p>'
           : '<ul class="pl-view-list">' + tracks.map(t => {
-              const safe = String(t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-              const url = t.stream_url || t.streamUrl || '';
+              const safe = String(t.title || t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+              const url = t.audio_url || t.stream_url || t.streamUrl || '';
               const safeUrl = url.replace(/"/g, '&quot;');
               return '<li class="pl-view-row" data-track-id="' + t.id + '">' +
                 '<div class="pl-view-row-info">' +
