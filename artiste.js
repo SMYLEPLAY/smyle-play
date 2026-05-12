@@ -928,6 +928,7 @@ function renderTracks(artist) {
               ${date ? `<span>· ${date}</span>` : ''}
               ${platformBadge}
               <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
+              <button class="like-btn ap-track-like" type="button" data-like-btn="${t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
               ${deleteBtn}
             </div>
           </div>

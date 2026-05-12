@@ -684,3 +684,239 @@
   window.SmylePlaylists.openAddToPlaylistModal = openAddToPlaylistModal;
   window.SmylePlaylists.openPlaylistViewModal  = openPlaylistViewModal;
 })();
+
+// ── 12. LIKES (via wishlist) + CSS COMPACT UNIFIÉ ──────────────────────────
+// Like = ajout du track à la wishlist personnelle (playlist privée auto-créée).
+// Réutilise les endpoints playlists existants : POST/DELETE /tracks.
+// + Reset CSS minimaliste pour AUSSI corriger les .add-to-pl-btn déjà en prod
+//   (qui faisaient une "barre blanche" sur les cards marketplace).
+
+(function(){
+  'use strict';
+
+  const LIKES_KEY = 'smyle_liked_tracks';
+  let _wishlistId = null;
+
+  function _isAuth() {
+    if (typeof getAuthToken === 'function') return !!getAuthToken();
+    if (typeof getCurrentUser === 'function') {
+      const u = getCurrentUser();
+      return !!(u && u.id);
+    }
+    return false;
+  }
+
+  function _authHeaders() {
+    const h = { 'Accept': 'application/json' };
+    if (typeof getAuthToken === 'function') {
+      const t = getAuthToken();
+      if (t) h['Authorization'] = 'Bearer ' + t;
+    }
+    return h;
+  }
+
+  function _showToast(msg) {
+    if (typeof showToast === 'function') return showToast(msg);
+    if (window.showToast)               return window.showToast(msg);
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a24;color:#fff;padding:12px 18px;border-radius:10px;border:1px solid rgba(204,136,255,.3);z-index:99999;font-size:14px';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  function _readLiked() {
+    try { return new Set(JSON.parse(localStorage.getItem(LIKES_KEY) || '[]')); }
+    catch (_) { return new Set(); }
+  }
+  function _writeLiked(set) {
+    try { localStorage.setItem(LIKES_KEY, JSON.stringify(Array.from(set))); }
+    catch (_) {}
+  }
+
+  async function _ensureWishlistId() {
+    if (_wishlistId) return _wishlistId;
+    if (!_isAuth()) return null;
+    try {
+      const resp = await fetch('/api/playlists/wishlist', {
+        credentials: 'same-origin', headers: _authHeaders()
+      });
+      if (!resp.ok) return null;
+      const wl = await resp.json();
+      _wishlistId = wl.id;
+      return _wishlistId;
+    } catch (_) { return null; }
+  }
+
+  async function loadLikedTrackIds() {
+    if (!_isAuth()) return new Set();
+    const wid = await _ensureWishlistId();
+    if (!wid) return new Set();
+    try {
+      const resp = await fetch('/api/playlists/' + encodeURIComponent(wid), {
+        credentials: 'same-origin', headers: _authHeaders()
+      });
+      if (!resp.ok) return new Set();
+      const data = await resp.json();
+      const set = new Set((data.tracks || []).map(t => String(t.id)));
+      _writeLiked(set);
+      return set;
+    } catch (_) { return _readLiked(); }
+  }
+
+  function _applyLikedClass(set) {
+    document.querySelectorAll('[data-like-btn]').forEach(btn => {
+      const tid = btn.getAttribute('data-like-btn');
+      if (tid && set.has(String(tid))) btn.classList.add('liked');
+      else btn.classList.remove('liked');
+    });
+  }
+
+  async function toggleLike(trackId) {
+    if (!_isAuth()) {
+      _showToast('Connecte-toi pour aimer.');
+      return;
+    }
+    const wid = await _ensureWishlistId();
+    if (!wid) {
+      _showToast('Wishlist indisponible.');
+      return;
+    }
+    const cur = _readLiked();
+    const sTid = String(trackId);
+    const wasLiked = cur.has(sTid);
+
+    if (wasLiked) cur.delete(sTid);
+    else cur.add(sTid);
+    _writeLiked(cur);
+    _applyLikedClass(cur);
+
+    try {
+      if (wasLiked) {
+        const r = await fetch('/api/playlists/' + encodeURIComponent(wid) + '/tracks/' + encodeURIComponent(trackId), {
+          method: 'DELETE', credentials: 'same-origin', headers: _authHeaders()
+        });
+        if (!r.ok && r.status !== 204 && r.status !== 404) throw new Error('HTTP ' + r.status);
+      } else {
+        const r = await fetch('/api/playlists/' + encodeURIComponent(wid) + '/tracks', {
+          method: 'POST', credentials: 'same-origin',
+          headers: Object.assign(_authHeaders(), { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ track_id: trackId })
+        });
+        if (!r.ok && r.status !== 409) throw new Error('HTTP ' + r.status);
+      }
+    } catch (e) {
+      if (wasLiked) cur.add(sTid);
+      else cur.delete(sTid);
+      _writeLiked(cur);
+      _applyLikedClass(cur);
+      _showToast('Like impossible : ' + (e && e.message || 'erreur'));
+    }
+  }
+
+  function _wireLikeClicks() {
+    if (window.__pl_like_wired) return;
+    window.__pl_like_wired = true;
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-like-btn]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const tid = btn.getAttribute('data-like-btn');
+      if (tid) toggleLike(tid);
+    });
+  }
+
+  // ── CSS COMPACT UNIFIÉ — override les anciens styles .add-to-pl-btn
+  // pour avoir un design minimaliste cohérent sur Top Sons + cards + profil.
+  function _injectCompactStyles() {
+    if (document.getElementById('pl-compact-styles')) return;
+    const css = `
+/* ── Boutons d'action sur cellules track (PR fix UI) ──────────────────────
+   Design unifié minimaliste : icône carrée 26px, bordure très discrète,
+   couleur de base gris doux, hover coloré subtil. Même look sur les 3
+   emplacements : Top Sons row, mp-son-card marketplace, ap-track-card profil. */
+.add-to-pl-btn, .like-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 26px !important;
+  height: 26px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  color: #a09cb8 !important;
+  border-radius: 7px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+  vertical-align: middle;
+  flex: 0 0 auto !important;
+}
+.add-to-pl-btn:hover {
+  color: #cc88ff !important;
+  border-color: rgba(204,136,255,.4) !important;
+  background: rgba(204,136,255,.08) !important;
+}
+.like-btn::before { content: "\\2661"; font-size: 14px; }
+.like-btn:hover {
+  color: #ff7799 !important;
+  border-color: rgba(255,119,153,.35) !important;
+  background: rgba(255,119,153,.06) !important;
+}
+.like-btn.liked::before { content: "\\2665"; }
+.like-btn.liked {
+  color: #ff5577 !important;
+  border-color: rgba(255,85,119,.45) !important;
+  background: rgba(255,85,119,.1) !important;
+}
+
+/* Wrapper d'actions sur les cards marketplace : layout horizontal compact */
+.mp-son-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px 10px;
+}
+
+/* Top Sons row : aligner les boutons (déjà flex sur la row) */
+.mp-ranking-row .add-to-pl-btn,
+.mp-ranking-row .like-btn { margin-left: 4px; }
+
+/* Cellule profil artiste : la zone meta est déjà flex */
+.ap-track-card-meta .add-to-pl-btn,
+.ap-track-card-meta .like-btn { margin-left: 4px; }
+`;
+    const s = document.createElement('style');
+    s.id = 'pl-compact-styles';
+    s.textContent = css;
+    document.head.appendChild(s);
+  }
+
+  async function _boot() {
+    _injectCompactStyles();
+    _wireLikeClicks();
+    _applyLikedClass(_readLiked());
+    if (_isAuth()) {
+      try {
+        const set = await loadLikedTrackIds();
+        _applyLikedClass(set);
+      } catch (_) {}
+    }
+    setTimeout(() => _applyLikedClass(_readLiked()), 1500);
+    setTimeout(() => _applyLikedClass(_readLiked()), 4000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _boot);
+  } else {
+    _boot();
+  }
+
+  if (window.SmylePlaylists) {
+    window.SmylePlaylists.toggleLike = toggleLike;
+    window.SmylePlaylists.loadLikedTrackIds = loadLikedTrackIds;
+  }
+})();
+
