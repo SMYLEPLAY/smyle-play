@@ -98,10 +98,23 @@ function renderMixPanel() {
   renderSavedPlaylists();
 }
 
-// ── SAVED PLAYLISTS (localStorage) ──────────────────────────────────────────
-// Affichées sous le mix courant. Cliquer → charge dans MY MIX. Bouton ✕ → supprime.
+// ── SAVED PLAYLISTS (DB-backed avec fallback localStorage) ─────────────────
+// Charge depuis l'API /playlists/me si l'user est authentifié, sinon depuis
+// localStorage (legacy). Wishlist (♥ Mes Likes) toujours affichée en
+// première position (auto-créée backend, regroupe les tracks likés).
+// Cliquer une playlist → fetch ses tracks + load dans MY MIX (via virtual
+// PLAYLISTS entry pour que le player principal puisse les jouer).
 
-function renderSavedPlaylists() {
+function _mixAuthHeaders() {
+  const h = { 'Accept': 'application/json' };
+  if (typeof getAuthToken === 'function') {
+    const t = getAuthToken();
+    if (t) h['Authorization'] = 'Bearer ' + t;
+  }
+  return h;
+}
+
+async function renderSavedPlaylists() {
   const wrap  = document.getElementById('mix-saved-wrap');
   const listEl = document.getElementById('mix-saved-list');
   const countEl = document.getElementById('mix-saved-count');
@@ -109,60 +122,173 @@ function renderSavedPlaylists() {
 
   const user = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
   if (!user) {
-    // Non connecté → on cache la section (les playlists sont liées à un user)
     wrap.style.display = 'none';
     return;
   }
   wrap.style.display = '';
+  listEl.innerHTML = `<div class="mix-saved-empty">Chargement…</div>`;
 
-  const saved = (typeof getUserPlaylists === 'function') ? getUserPlaylists() : [];
-  if (countEl) countEl.textContent = saved.length;
+  // 1) Récup wishlist (♥ Mes Likes) — toujours en tête
+  let wishlist = null;
+  try {
+    const r = await fetch('/playlists/wishlist', { credentials: 'same-origin', headers: _mixAuthHeaders() });
+    if (r.ok) wishlist = await r.json();
+  } catch (_) {}
 
-  if (!saved.length) {
+  // 2) Récup mes playlists DB
+  let mine = [];
+  try {
+    const r = await fetch('/playlists/me', { credentials: 'same-origin', headers: _mixAuthHeaders() });
+    if (r.ok) mine = await r.json();
+  } catch (_) {}
+
+  // 3) Fallback localStorage pour les sauvegardes legacy (pre-migration)
+  const legacy = (typeof getUserPlaylists === 'function') ? getUserPlaylists() : [];
+
+  // 4) Combiner : wishlist en tête, puis playlists DB (en excluant la wishlist
+  //    pour éviter doublon), puis legacy localStorage
+  const dbList = mine.filter(p => !wishlist || p.id !== wishlist.id);
+  const totalCount = (wishlist ? 1 : 0) + dbList.length + legacy.length;
+  if (countEl) countEl.textContent = totalCount;
+
+  if (totalCount === 0) {
     listEl.innerHTML = `<div class="mix-saved-empty">Aucune playlist sauvegardée pour le moment.</div>`;
     return;
   }
 
-  // Tri par date de mise à jour décroissante
-  const sorted = [...saved].sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+  // Sort DB par date desc (created_at vient au format ISO)
+  dbList.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
-  listEl.innerHTML = sorted.map(p => {
-    const n = (p.tracks || []).length;
-    const safeName = _mixEsc(p.name || 'Sans nom');
-    return `
+  const html = [];
+
+  // Wishlist row (toujours en premier)
+  if (wishlist) {
+    html.push(`
+      <div class="mix-saved-item mix-saved-wishlist" onclick="loadSavedPlaylist('${_mixEsc(wishlist.id)}')" title="Mes Likes (wishlist)">
+        <div class="mix-saved-item-info">
+          <div class="mix-saved-item-name">♥ Mes Likes</div>
+          <div class="mix-saved-item-meta">Auto · tracks aimés</div>
+        </div>
+      </div>
+    `);
+  }
+
+  // DB playlists
+  for (const p of dbList) {
+    const badge = p.visibility === 'public' ? '🌐' : '🔒';
+    html.push(`
       <div class="mix-saved-item" onclick="loadSavedPlaylist('${_mixEsc(p.id)}')" title="Charger dans MY MIX">
         <div class="mix-saved-item-info">
-          <div class="mix-saved-item-name">${safeName}</div>
-          <div class="mix-saved-item-meta">${n} titre${n > 1 ? 's' : ''}</div>
+          <div class="mix-saved-item-name">${_mixEsc(p.title || 'Sans nom')}</div>
+          <div class="mix-saved-item-meta">${badge} ${p.visibility === 'public' ? 'Publique' : 'Privée'}</div>
         </div>
         <button class="mix-saved-del" onclick="deleteSavedPlaylist(event, '${_mixEsc(p.id)}')" title="Supprimer">✕</button>
-      </div>`;
-  }).join('');
+      </div>
+    `);
+  }
+
+  // Legacy localStorage
+  const sortedLegacy = [...legacy].sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+  for (const p of sortedLegacy) {
+    const n = (p.tracks || []).length;
+    html.push(`
+      <div class="mix-saved-item mix-saved-legacy" onclick="loadSavedPlaylist('${_mixEsc(p.id)}', true)" title="Charger dans MY MIX (legacy)">
+        <div class="mix-saved-item-info">
+          <div class="mix-saved-item-name">${_mixEsc(p.name || 'Sans nom')}</div>
+          <div class="mix-saved-item-meta">${n} titre${n > 1 ? 's' : ''} · local</div>
+        </div>
+        <button class="mix-saved-del" onclick="deleteSavedPlaylist(event, '${_mixEsc(p.id)}', true)" title="Supprimer">✕</button>
+      </div>
+    `);
+  }
+
+  listEl.innerHTML = html.join('');
 }
 
-function loadSavedPlaylist(id) {
-  const saved = (typeof getUserPlaylists === 'function') ? getUserPlaylists() : [];
-  const p = saved.find(x => x.id === id);
-  if (!p) { showToast('Playlist introuvable.'); return; }
-  if (!p.tracks || !p.tracks.length) { showToast('Cette playlist est vide.'); return; }
+async function loadSavedPlaylist(id, isLegacy) {
+  // Legacy localStorage : reprend l'ancien comportement
+  if (isLegacy === true) {
+    const saved = (typeof getUserPlaylists === 'function') ? getUserPlaylists() : [];
+    const p = saved.find(x => x.id === id);
+    if (!p) { showToast('Playlist introuvable.'); return; }
+    if (!p.tracks || !p.tracks.length) { showToast('Cette playlist est vide.'); return; }
+    myMixTracks = p.tracks.map(t => ({ ...t }));
+    mixPlaying = false;
+    mixIdx = 0;
+    renderMixPanel();
+    showToast(`« ${p.name} » chargée dans MY MIX`);
+    return;
+  }
 
-  // Remplacement complet du mix courant
-  myMixTracks = p.tracks.map(t => ({ ...t }));
-  mixPlaying = false;
-  mixIdx = 0;
-  renderMixPanel();
-  showToast(`« ${p.name} » chargée dans MY MIX`);
+  // DB playlist : fetch détail puis register virtual PLAYLISTS entry
+  try {
+    const r = await fetch('/playlists/' + encodeURIComponent(id), {
+      credentials: 'same-origin', headers: _mixAuthHeaders()
+    });
+    if (!r.ok) { showToast('Playlist introuvable.'); return; }
+    const pl = await r.json();
+    const tracks = pl.tracks || [];
+    if (!tracks.length) { showToast('Cette playlist est vide.'); return; }
+
+    // Register virtual PLAYLISTS entry pour que le player principal sache lire
+    const virtualKey = 'db_' + pl.id;
+    if (typeof PLAYLISTS !== 'undefined') {
+      PLAYLISTS[virtualKey] = {
+        theme: 'mix',
+        label: pl.title || 'Playlist',
+        folder: '',
+        tracks: tracks.map(t => ({
+          id: t.id,
+          name: t.name || 'Sans titre',
+          url: t.stream_url || t.streamUrl || '',
+          file: (t.name || 'track') + '.wav'
+        }))
+      };
+    }
+    myMixTracks = tracks.map((t, idx) => ({
+      playlistKey: virtualKey,
+      trackIdx: idx,
+      id: t.id,
+      name: t.name,
+      url: t.stream_url || t.streamUrl || ''
+    }));
+    mixPlaying = false;
+    mixIdx = 0;
+    renderMixPanel();
+    showToast(`« ${pl.title} » chargée dans MY MIX`);
+  } catch (e) {
+    showToast('Erreur de chargement : ' + (e && e.message || 'inconnue'));
+  }
 }
 
-function deleteSavedPlaylist(e, id) {
+async function deleteSavedPlaylist(e, id, isLegacy) {
   if (e) e.stopPropagation();
-  if (typeof deleteUserPlaylist !== 'function') return;
-  const ok = deleteUserPlaylist(id);
-  if (ok) {
-    showToast('Playlist supprimée.');
-    renderSavedPlaylists();
-  } else {
-    showToast('Impossible de supprimer cette playlist.');
+
+  if (isLegacy === true) {
+    if (typeof deleteUserPlaylist !== 'function') return;
+    const ok = deleteUserPlaylist(id);
+    if (ok) {
+      showToast('Playlist supprimée.');
+      renderSavedPlaylists();
+    } else {
+      showToast('Impossible de supprimer cette playlist.');
+    }
+    return;
+  }
+
+  if (!confirm('Supprimer cette playlist ? Action irréversible.')) return;
+  try {
+    const r = await fetch('/playlists/' + encodeURIComponent(id), {
+      method: 'DELETE', credentials: 'same-origin', headers: _mixAuthHeaders()
+    });
+    if (r.ok || r.status === 204) {
+      showToast('Playlist supprimée.');
+      await renderSavedPlaylists();
+    } else {
+      showToast('Suppression impossible.');
+    }
+  } catch (_) {
+    showToast('Erreur réseau.');
   }
 }
 
