@@ -239,9 +239,9 @@ async function loadSavedPlaylist(id, isLegacy) {
         folder: '',
         tracks: tracks.map(t => ({
           id: t.id,
-          name: t.name || 'Sans titre',
-          url: t.stream_url || t.streamUrl || '',
-          file: (t.name || 'track') + '.wav'
+          name: t.title || t.name || 'Sans titre',
+          url: t.audio_url || t.stream_url || t.streamUrl || '',
+          file: (t.title || t.name || 'track') + '.wav'
         }))
       };
     }
@@ -249,8 +249,8 @@ async function loadSavedPlaylist(id, isLegacy) {
       playlistKey: virtualKey,
       trackIdx: idx,
       id: t.id,
-      name: t.name,
-      url: t.stream_url || t.streamUrl || ''
+      name: t.title || t.name,
+      url: t.audio_url || t.stream_url || t.streamUrl || ''
     }));
     mixPlaying = false;
     mixIdx = 0;
