@@ -609,9 +609,11 @@
           : '<ul class="pl-view-list">' + tracks.map(t => {
               const safe = String(t.title || t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
               const url = t.audio_url || t.stream_url || t.streamUrl || '';
+              const cover = t.cover_url || t.coverUrl || '';
               const safeUrl = url.replace(/"/g, '&quot;');
               return '<li class="pl-view-row" data-track-id="' + t.id + '">' +
                 '<div class="pl-view-row-top">' +
+                  (cover ? '<img class="pl-view-row-cover" src="' + cover.replace(/"/g, '&quot;') + '" alt="" />' : '') +
                   '<div class="pl-view-row-title">' + safe + '</div>' +
                   '<button type="button" class="pl-view-row-remove" data-track-remove="' + t.id + '" title="Retirer de la playlist" aria-label="Retirer">✕</button>' +
                 '</div>' +
@@ -996,3 +998,18 @@ button.add-to-pl-btn, button.like-btn, .mp-son-card button.add-to-pl-btn, .mp-so
   }
 })();
 
+
+// ── 14. CSS cover thumbnail modale view ────────────────────────────────
+(function(){
+  if (document.getElementById('pl-cover-thumb-styles')) return;
+  function _inj() {
+    if (document.getElementById('pl-cover-thumb-styles')) return;
+    var css = '.pl-view-row-cover { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex: 0 0 36px; margin-right: 8px; }';
+    var st = document.createElement('style');
+    st.id = 'pl-cover-thumb-styles';
+    st.textContent = css;
+    document.head.appendChild(st);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _inj);
+  else _inj();
+})();
