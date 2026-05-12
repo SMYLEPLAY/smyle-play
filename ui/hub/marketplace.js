@@ -270,6 +270,20 @@
         `</li>`
       );
     }).join('');
+
+    // Register virtual PLAYLIST pour le player principal (queue Top Sons)
+    if (typeof window !== 'undefined') {
+      window.PLAYLISTS = window.PLAYLISTS || {};
+      window.PLAYLISTS['mp_top_sons'] = {
+        theme: 'mix', label: 'Top Sons', folder: '',
+        tracks: top.filter(t => t.streamUrl).map((t, i) => ({
+          id:   t.id || ('mptop_' + i),
+          name: t.name || 'Sans titre',
+          url:  t.streamUrl,
+          file: (t.name || 'track') + '.wav'
+        }))
+      };
+    }
   }
 
   function _renderTopArtists() {
@@ -392,6 +406,20 @@
         `</div>`
       );
     }).join('');
+
+    // Register virtual PLAYLIST pour le player principal (queue Tous les sons)
+    if (typeof window !== 'undefined') {
+      window.PLAYLISTS = window.PLAYLISTS || {};
+      window.PLAYLISTS['mp_all_sons'] = {
+        theme: 'mix', label: 'Tous les sons', folder: '',
+        tracks: items.filter(t => t.streamUrl).map((t, i) => ({
+          id:   t.id || ('mpall_' + i),
+          name: t.name || 'Sans titre',
+          url:  t.streamUrl,
+          file: (t.name || 'track') + '.wav'
+        }))
+      };
+    }
   }
 
   function _renderGridArtists(filter = '') {
@@ -543,28 +571,19 @@
       const row = ev.target.closest('.mp-ranking-row-clickable');
       if (row && row.dataset.streamUrl) {
         const playBtnRow = ev.target.closest('.mp-ranking-play');
-        const audioRow = row.querySelector('audio.mp-ranking-audio');
-        if (playBtnRow && audioRow) {
+        if (playBtnRow) {
           ev.preventDefault();
           ev.stopPropagation();
-          if (audioRow.paused) {
-            if (_currentlyPlaying && _currentlyPlaying !== audioRow) {
-              try { _currentlyPlaying.pause(); } catch (_) {}
-            }
-            const p = audioRow.play();
-            if (p !== undefined) {
-              p.then(() => {
-                _currentlyPlaying = audioRow;
-                row.classList.add('is-playing');
-              }).catch(err => {
-                if (err && err.name === 'AbortError') return;
-                console.error('[marketplace] top-sons play rejected:', err);
-                if (window.showToast) window.showToast('Lecture impossible : ' + (err && err.message || 'erreur'));
-              });
-            }
-          } else {
-            audioRow.pause();
-            row.classList.remove('is-playing');
+          const tid = row.dataset.trackId;
+          if (typeof loadTrack === 'function' && window.PLAYLISTS && window.PLAYLISTS['mp_top_sons']) {
+            const pl = window.PLAYLISTS['mp_top_sons'];
+            const idx = pl.tracks.findIndex(t => String(t.id) === String(tid));
+            if (idx >= 0) { loadTrack('mp_top_sons', idx); return; }
+          }
+          const audioRow = row.querySelector('audio.mp-ranking-audio');
+          if (audioRow) {
+            if (audioRow.paused) audioRow.play().catch(()=>{});
+            else audioRow.pause();
           }
           return;
         }
@@ -575,42 +594,24 @@
       const card = ev.target.closest('.mp-son-card');
       if (!card) return;
 
-      // Click play button → toggle play sur l'audio inline
+      // Click play button → joue dans le player principal (queue auto)
       const playBtn = ev.target.closest('.mp-son-card-play');
       if (playBtn) {
         ev.preventDefault();
         ev.stopPropagation();
+        const tid = card.dataset.trackId;
+        if (typeof loadTrack === 'function' && window.PLAYLISTS && window.PLAYLISTS['mp_all_sons']) {
+          const pl = window.PLAYLISTS['mp_all_sons'];
+          const idx = pl.tracks.findIndex(t => String(t.id) === String(tid));
+          if (idx >= 0) { loadTrack('mp_all_sons', idx); return; }
+        }
         const audio = card.querySelector('audio.mp-son-card-audio');
         if (!audio) {
-          if (window.showToast) window.showToast('Audio en cours de traitement, réessaie dans quelques secondes.');
+          if (window.showToast) window.showToast('Audio indisponible.');
           return;
         }
-        if (audio.paused) {
-          if (_currentlyPlaying && _currentlyPlaying !== audio) {
-            try { _currentlyPlaying.pause(); } catch (_) {}
-          }
-          // Logging détaillé pour diagnostic prod (à retirer une fois stable)
-          console.log('[marketplace] click play. src=', audio.src, 'readyState=', audio.readyState, 'error=', audio.error);
-          // Pattern Tom — on stocke la promesse pour gérer AbortError proprement
-          const playPromise = audio.play();
-          if (playPromise !== undefined) {
-            playPromise.then(() => {
-              _currentlyPlaying = audio;
-              card.classList.add('is-playing');
-            }).catch(err => {
-              if (err && err.name === 'AbortError') return;
-              console.error('[marketplace] audio.play() rejected:', err);
-              const errMsg = err && (err.message || err.name) || 'erreur audio inconnue';
-              const audioErr = audio.error
-                ? ` (code ${audio.error.code}: ${audio.error.message || ''})`
-                : '';
-              if (window.showToast) window.showToast('Lecture impossible : ' + errMsg + audioErr);
-            });
-          }
-        } else {
-          audio.pause();
-          card.classList.remove('is-playing');
-        }
+        if (audio.paused) audio.play().catch(()=>{});
+        else audio.pause();
         return;
       }
 
