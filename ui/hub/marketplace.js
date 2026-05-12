@@ -574,15 +574,29 @@
         if (playBtnRow) {
           ev.preventDefault();
           ev.stopPropagation();
-          const tid = row.dataset.trackId;
-          if (typeof loadTrack === 'function' && window.PLAYLISTS && window.PLAYLISTS['mp_top_sons']) {
-            const pl = window.PLAYLISTS['mp_top_sons'];
-            const idx = pl.tracks.findIndex(t => String(t.id) === String(tid));
-            if (idx >= 0) { loadTrack('mp_top_sons', idx); return; }
+          const allRows = document.querySelectorAll('.mp-ranking-row-clickable[data-stream-url]');
+          const dynTracks = Array.from(allRows).map(r => ({
+            id:   r.dataset.trackId || '',
+            name: r.querySelector('.mp-ranking-title')?.textContent || 'Track',
+            url:  r.dataset.streamUrl || '',
+            file: 'track.wav'
+          })).filter(t => t.url);
+          if (typeof loadTrack === 'function' && dynTracks.length > 0) {
+            window.PLAYLISTS = window.PLAYLISTS || {};
+            window.PLAYLISTS['mp_top_sons'] = {
+              theme: 'mix', label: 'Top Sons', folder: '', tracks: dynTracks
+            };
+            const tid = row.dataset.trackId;
+            const idx = dynTracks.findIndex(t => t.id === tid);
+            const safeIdx = idx >= 0 ? idx : 0;
+            console.log('[marketplace] play Top Sons idx=', safeIdx, '/', dynTracks.length);
+            loadTrack('mp_top_sons', safeIdx);
+            return;
           }
           const audioRow = row.querySelector('audio.mp-ranking-audio');
           if (audioRow) {
-            if (audioRow.paused) audioRow.play().catch(()=>{});
+            console.log('[marketplace] fallback audio inline (Top Sons)');
+            if (audioRow.paused) audioRow.play().catch(e => console.error('audio inline:', e));
             else audioRow.pause();
           }
           return;
@@ -599,18 +613,32 @@
       if (playBtn) {
         ev.preventDefault();
         ev.stopPropagation();
-        const tid = card.dataset.trackId;
-        if (typeof loadTrack === 'function' && window.PLAYLISTS && window.PLAYLISTS['mp_all_sons']) {
-          const pl = window.PLAYLISTS['mp_all_sons'];
-          const idx = pl.tracks.findIndex(t => String(t.id) === String(tid));
-          if (idx >= 0) { loadTrack('mp_all_sons', idx); return; }
+        const allCards = document.querySelectorAll('.mp-son-card[data-stream-url]');
+        const dynTracks = Array.from(allCards).map(c => ({
+          id:   c.dataset.trackId || '',
+          name: c.querySelector('.mp-son-card-title')?.textContent || 'Track',
+          url:  c.dataset.streamUrl || '',
+          file: 'track.wav'
+        })).filter(t => t.url);
+        if (typeof loadTrack === 'function' && dynTracks.length > 0) {
+          window.PLAYLISTS = window.PLAYLISTS || {};
+          window.PLAYLISTS['mp_all_sons'] = {
+            theme: 'mix', label: 'Tous les sons', folder: '', tracks: dynTracks
+          };
+          const tid = card.dataset.trackId;
+          const idx = dynTracks.findIndex(t => t.id === tid);
+          const safeIdx = idx >= 0 ? idx : 0;
+          console.log('[marketplace] play Card idx=', safeIdx, '/', dynTracks.length);
+          loadTrack('mp_all_sons', safeIdx);
+          return;
         }
         const audio = card.querySelector('audio.mp-son-card-audio');
         if (!audio) {
           if (window.showToast) window.showToast('Audio indisponible.');
           return;
         }
-        if (audio.paused) audio.play().catch(()=>{});
+        console.log('[marketplace] fallback audio inline card');
+        if (audio.paused) audio.play().catch(e => console.error('audio inline card:', e));
         else audio.pause();
         return;
       }
