@@ -1281,6 +1281,13 @@
          2b  Statistiques         (écoutes, abonnés, courbe)
          2c  Classement + Réseau  (rang WATT + ranking global + canvas — ex sec-ranking, fusionné en continu visuel)
        ────────────────────────────────────────────────────────────────────────── -->
+  <!-- ═══ Playlists user (chantier #2 — câblage frontend) ═════════════
+       Container vide rempli par ui/playlists.js au DOMContentLoaded.
+       Si l'user n'est pas connecté, affiche un empty state. ═══ -->
+  <section class="dash-section" id="sec-playlists" aria-label="Mes playlists">
+    <div id="dash-playlists-root"></div>
+  </section>
+
   <section class="dash-section" id="sec-stats">
     <div class="dash-section-hdr">
       <div class="dash-section-num">03</div>
@@ -1468,6 +1475,7 @@
 <script src="ui/core/api.js"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
+<script src="/ui/playlists.js" defer></script>
 <script src="dashboard.js"></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>

@@ -297,6 +297,12 @@
     </div>
   </section>
 
+  <!-- ═══ Playlists publiques (chantier #2 — câblage frontend) ═══
+       Container vide rempli par ui/playlists.js au DOMContentLoaded.
+       Si l'artiste n'a aucune playlist publique, le container reste
+       caché (display:none) — pas de pollution du profil. ═══ -->
+  <div id="ap-playlists-root" style="display:none"></div>
+
   <!-- ═══ Voix à vendre (P1-F9 frontend public — visibles ssi >= 1 voix publiée)
        Données chargées en async via GET /api/voices/by-artist/{artist_id}
        APRÈS le payload /watt/artists/<slug>. Pas dans le payload artist
@@ -499,6 +505,7 @@
 <!-- Phase 4 refonte : topbar partagée. Chargée après events.js pour que le
      bus SmyleEvents soit dispo quand le composant s'abonne aux events. -->
 <script src="/ui/topbar/topbar.js" defer></script>
+<script src="/ui/playlists.js" defer></script>
 <script src="/artiste.js"></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
