@@ -53,30 +53,30 @@
   }
 
   async function loadMyPlaylists() {
-    return _req('/api/playlists/me');
+    return _req('/playlists/me');
   }
 
   async function createPlaylist(title, visibility) {
-    return _req('/api/playlists', {
+    return _req('/playlists', {
       method: 'POST',
       body: { title: title, visibility: visibility || 'private' }
     });
   }
 
   async function deletePlaylist(id) {
-    return _req('/api/playlists/' + encodeURIComponent(id), { method: 'DELETE' });
+    return _req('/playlists/' + encodeURIComponent(id), { method: 'DELETE' });
   }
 
   async function togglePlaylistVisibility(id, currentVis) {
     const next = currentVis === 'public' ? 'private' : 'public';
-    return _req('/api/playlists/' + encodeURIComponent(id), {
+    return _req('/playlists/' + encodeURIComponent(id), {
       method: 'PATCH',
       body: { visibility: next }
     });
   }
 
   async function loadArtistPublicPlaylists(slug) {
-    return _req('/api/users/' + encodeURIComponent(slug) + '/playlists');
+    return _req('/watt/users/' + encodeURIComponent(slug) + '/playlists');
   }
 
   // ── 2. MODALE CRÉATION ────────────────────────────────────────────────────
@@ -407,14 +407,14 @@
 //   1. Si user pas connecté → toast "Connecte-toi pour utiliser les playlists".
 //      (la modale login existante peut être déclenchée si exposée globalement)
 //   2. Sinon → charge mes playlists, affiche liste cliquable + bouton "Créer".
-//   3. Click sur une playlist → POST /api/playlists/{id}/tracks {track_id}.
+//   3. Click sur une playlist → POST /playlists/{id}/tracks {track_id}.
 //   4. Toast de confirmation, fermeture modale.
 
 (function(){
   'use strict';
 
   async function _addTrackToPlaylist(playlistId, trackId) {
-    const resp = await fetch('/api/playlists/' + encodeURIComponent(playlistId) + '/tracks', {
+    const resp = await fetch('/playlists/' + encodeURIComponent(playlistId) + '/tracks', {
       method: 'POST',
       credentials: 'same-origin',
       headers: Object.assign(
@@ -549,7 +549,7 @@
   }
 
   // ── 9. VIEW PLAYLIST MODAL ──────────────────────────────────────────────
-  // Modale "Lecture de la playlist" — fetch /api/playlists/{id}, render tracks
+  // Modale "Lecture de la playlist" — fetch /playlists/{id}, render tracks
   // avec <audio> inline (reuse du listener global play counter de storage.js).
 
   async function openPlaylistViewModal(playlistId) {
@@ -576,7 +576,7 @@
         (typeof getAuthToken === 'function' && getAuthToken())
           ? { 'Authorization': 'Bearer ' + getAuthToken() } : {}
       );
-      const resp = await fetch('/api/playlists/' + encodeURIComponent(playlistId), {
+      const resp = await fetch('/playlists/' + encodeURIComponent(playlistId), {
         credentials: 'same-origin', headers
       });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -738,7 +738,7 @@
     if (_wishlistId) return _wishlistId;
     if (!_isAuth()) return null;
     try {
-      const resp = await fetch('/api/playlists/wishlist', {
+      const resp = await fetch('/playlists/wishlist', {
         credentials: 'same-origin', headers: _authHeaders()
       });
       if (!resp.ok) return null;
@@ -753,7 +753,7 @@
     const wid = await _ensureWishlistId();
     if (!wid) return new Set();
     try {
-      const resp = await fetch('/api/playlists/' + encodeURIComponent(wid), {
+      const resp = await fetch('/playlists/' + encodeURIComponent(wid), {
         credentials: 'same-origin', headers: _authHeaders()
       });
       if (!resp.ok) return new Set();
@@ -793,12 +793,12 @@
 
     try {
       if (wasLiked) {
-        const r = await fetch('/api/playlists/' + encodeURIComponent(wid) + '/tracks/' + encodeURIComponent(trackId), {
+        const r = await fetch('/playlists/' + encodeURIComponent(wid) + '/tracks/' + encodeURIComponent(trackId), {
           method: 'DELETE', credentials: 'same-origin', headers: _authHeaders()
         });
         if (!r.ok && r.status !== 204 && r.status !== 404) throw new Error('HTTP ' + r.status);
       } else {
-        const r = await fetch('/api/playlists/' + encodeURIComponent(wid) + '/tracks', {
+        const r = await fetch('/playlists/' + encodeURIComponent(wid) + '/tracks', {
           method: 'POST', credentials: 'same-origin',
           headers: Object.assign(_authHeaders(), { 'Content-Type': 'application/json' }),
           body: JSON.stringify({ track_id: trackId })
