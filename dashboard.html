@@ -1481,5 +1481,51 @@
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/search.js" defer></script>
 <script src="/ui/session-guard.js" defer></script>
+
+<!-- DASH_SECTIONS_COLLAPSIBLE -->
+<style>
+  .dash-section .dash-section-hdr {
+    cursor: pointer; user-select: none; position: relative;
+  }
+  .dash-section .dash-section-hdr::after {
+    content: "▾"; position: absolute; right: 0; top: 50%;
+    transform: translateY(-50%); opacity: .55; font-size: 14px;
+    transition: transform .2s ease; pointer-events: none;
+  }
+  .dash-section.is-collapsed .dash-section-hdr::after {
+    transform: translateY(-50%) rotate(-90deg);
+  }
+  .dash-section.is-collapsed > *:not(.dash-section-hdr):not(style) {
+    display: none !important;
+  }
+  .dash-section .dash-subhdr {
+    cursor: pointer; user-select: none; position: relative;
+  }
+  .dash-section .dash-subhdr::after {
+    content: "▾"; position: absolute; right: 0; top: 50%;
+    transform: translateY(-50%); opacity: .55; font-size: 13px;
+    transition: transform .2s ease; pointer-events: none;
+  }
+  .dash-section.is-collapsed-sub .dash-subhdr::after {
+    transform: translateY(-50%) rotate(-90deg);
+  }
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.dash-section').forEach(function(sec) {
+      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists') return;
+      var hdr = sec.querySelector(':scope > .dash-section-hdr');
+      var subhdr = sec.querySelector(':scope > .dash-subhdr');
+      var target = hdr || subhdr;
+      if (!target) return;
+      target.addEventListener('click', function(e) {
+        if (e.target.closest('button, a, input, select, textarea')) return;
+        if (hdr) sec.classList.toggle('is-collapsed');
+        else if (subhdr) sec.classList.toggle('is-collapsed-sub');
+      });
+    });
+  });
+</script>
+
 </body>
 </html>
