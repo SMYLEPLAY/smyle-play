@@ -1558,6 +1558,9 @@
       var subhdr = sec.querySelector(':scope > .dash-subhdr');
       var target = hdr || subhdr;
       if (!target) return;
+      // Plier par défaut : Tom déplie uniquement ce qu'il veut créer/poster.
+      if (hdr) sec.classList.add('is-collapsed');
+      else if (subhdr) sec.classList.add('is-collapsed-sub');
       target.addEventListener('click', function(e) {
         if (e.target.closest('button, a, input, select, textarea')) return;
         if (hdr) sec.classList.toggle('is-collapsed');
