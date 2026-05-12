@@ -591,6 +591,7 @@
           '<span class="pl-badge pl-badge-' + (playlist.visibility === 'public' ? 'public' : 'private') + '">' + badge + '</span>' +
         '</div>' +
         '<p class="pl-view-sub">' + tracks.length + ' titre' + (tracks.length > 1 ? 's' : '') + '</p>' +
+        (tracks.length > 0 ? '<button class="pl-btn pl-btn-primary pl-load-mix-btn" type="button" data-pl-id="' + playlist.id + '" style="margin-bottom:14px">▶ Charger dans MY MIX</button>' : '') +
         (tracks.length === 0
           ? '<p class="pl-empty">Aucune track. Ajoute des sons depuis la marketplace via le bouton +.</p>'
           : '<ul class="pl-view-list">' + tracks.map(t => {
@@ -606,6 +607,29 @@
             }).join('') + '</ul>'
         )
       );
+      const loadBtn = overlay.querySelector('.pl-load-mix-btn');
+      if (loadBtn) {
+        loadBtn.onclick = async () => {
+          loadBtn.disabled = true;
+          loadBtn.textContent = 'Chargement…';
+          try {
+            if (typeof loadSavedPlaylist === 'function') {
+              await loadSavedPlaylist(playlist.id);
+              close();
+              if (typeof toggleMixPanel === 'function') {
+                const panel = document.getElementById('mixPanel');
+                if (panel && !panel.classList.contains('open')) toggleMixPanel();
+              }
+            } else {
+              _showToast('MY MIX indisponible.');
+            }
+          } catch (e) {
+            _showToast('Chargement impossible : ' + (e && e.message || 'erreur'));
+            loadBtn.disabled = false;
+            loadBtn.textContent = '▶ Charger dans MY MIX';
+          }
+        };
+      }
     } catch (e) {
       overlay.querySelector('#pl-view-content').innerHTML = '<p class="pl-empty">Chargement impossible.</p>';
     }
@@ -832,6 +856,7 @@
   function _injectCompactStyles() {
     if (document.getElementById('pl-compact-styles')) return;
     const css = `
+button.add-to-pl-btn, button.like-btn, .mp-son-card button.add-to-pl-btn, .mp-son-card button.like-btn, .mp-son-card-actions button.add-to-pl-btn, .mp-son-card-actions button.like-btn, .mp-ranking-row button.add-to-pl-btn, .mp-ranking-row button.like-btn, .ap-track-card button.add-to-pl-btn, .ap-track-card button.like-btn { width: 28px !important; min-width: 28px !important; max-width: 28px !important; height: 28px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; background: transparent !important; border: 1px solid rgba(255,255,255,.1) !important; color: #a09cb8 !important; border-radius: 7px !important; font-size: 13px !important; line-height: 1 !important; cursor: pointer !important; flex: 0 0 28px !important; box-sizing: border-box !important; vertical-align: middle !important; }
 /* ── Boutons d'action sur cellules track (PR fix UI) ──────────────────────
    Design unifié minimaliste : icône carrée 26px, bordure très discrète,
    couleur de base gris doux, hover coloré subtil. Même look sur les 3

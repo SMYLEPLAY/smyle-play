@@ -579,6 +579,16 @@
     <button class="modal-close" onclick="closeSaveMix()">✕</button>
     <div class="modal-title">Sauvegarder My Mix</div>
     <input class="modal-input" id="mix-save-name" type="text" placeholder="Nom de ta playlist…" />
+    <div class="mix-save-vis" style="margin: 14px 0; display: flex; flex-direction: column; gap: 8px; color: #c7c4d8; font-size: 13px;">
+      <label style="display: flex; gap: 8px; cursor: pointer; align-items: flex-start;">
+        <input type="radio" name="mix-save-vis" value="private" checked style="margin-top: 3px;" />
+        <span><strong style="color:#fff">Privée</strong> · uniquement toi peux la voir</span>
+      </label>
+      <label style="display: flex; gap: 8px; cursor: pointer; align-items: flex-start;">
+        <input type="radio" name="mix-save-vis" value="public" style="margin-top: 3px;" />
+        <span><strong style="color:#fff">Publique</strong> · visible sur ton profil /u/&lt;slug&gt;</span>
+      </label>
+    </div>
     <button class="modal-submit" onclick="confirmSaveMix()">Sauvegarder</button>
     <p class="modal-msg" id="saveMixMsg"></p>
   </div>

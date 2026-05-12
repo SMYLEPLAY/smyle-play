@@ -27,34 +27,74 @@ function closeSaveMix() {
   document.getElementById('saveMixModal').classList.remove('open');
 }
 
-function confirmSaveMix() {
+function _saveMixAuthHeaders() {
+  const h = { 'Accept': 'application/json' };
+  if (typeof getAuthToken === 'function') {
+    const t = getAuthToken();
+    if (t) h['Authorization'] = 'Bearer ' + t;
+  }
+  return h;
+}
+
+async function confirmSaveMix() {
   const name = document.getElementById('mix-save-name').value.trim();
   const msgEl = document.getElementById('saveMixMsg');
   if (!name) { if (msgEl) msgEl.textContent = 'Entre un nom.'; return; }
 
-  // Si une playlist de ce nom existe déjà → on demande confirmation (overwrite)
-  const existing = (typeof getUserPlaylists === 'function')
-    ? getUserPlaylists().find(p => p.name === name)
-    : null;
-  if (existing && !window.confirm(`Une playlist « ${name} » existe déjà. La remplacer ?`)) {
-    if (msgEl) msgEl.textContent = 'Choisis un autre nom.';
+  // Visibilité — lu depuis le radio toggle injecté dans la modale
+  let visibility = 'private';
+  const visRadio = document.querySelector('input[name="mix-save-vis"]:checked');
+  if (visRadio) visibility = visRadio.value;
+
+  if (!getCurrentUser()) {
+    if (msgEl) msgEl.textContent = 'Connecte-toi pour sauvegarder.';
     return;
   }
 
-  const ok = saveUserPlaylist(name, myMixTracks.map(m => ({ ...m })));
-  if (ok) {
-    // Toast global (si dispo) ou fallback local
+  // POST /playlists (DB) puis POST tracks un par un
+  try {
+    const createResp = await fetch('/playlists', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: Object.assign(_saveMixAuthHeaders(), { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ title: name, visibility: visibility })
+    });
+    if (!createResp.ok) {
+      const status = createResp.status;
+      if (msgEl) msgEl.textContent = 'Création impossible (HTTP ' + status + ').';
+      return;
+    }
+    const playlist = await createResp.json();
+
+    // POST chaque track. Un track sans ID DB (ex: legacy hardcoded) est skip.
+    let added = 0;
+    let skipped = 0;
+    for (const m of myMixTracks) {
+      if (!m.id) { skipped++; continue; }
+      try {
+        const r = await fetch('/playlists/' + encodeURIComponent(playlist.id) + '/tracks', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: Object.assign(_saveMixAuthHeaders(), { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ track_id: m.id })
+        });
+        if (r.ok || r.status === 409) added++;
+        else skipped++;
+      } catch (_) { skipped++; }
+    }
+
+    // Toast feedback
+    const msg = skipped > 0
+      ? `« ${name} » sauvegardée (${added} sons ajoutés, ${skipped} ignorés).`
+      : `« ${name} » sauvegardée (${added} sons).`;
     if (typeof window.smyleToast === 'function') {
-      window.smyleToast(`« ${name} » sauvegardée`, { type: 'success', duration: 2800 });
+      window.smyleToast(msg, { type: 'success', duration: 3200 });
     } else {
-      showToast(`Playlist « ${name} » sauvegardée !`);
+      showToast(msg);
     }
     closeSaveMix();
-    // Re-rendre le mix panel pour faire apparaître la nouvelle playlist
-    if (typeof renderMixPanel === 'function') renderMixPanel();
-  } else {
-    if (msgEl) {
-      msgEl.textContent = 'Erreur lors de la sauvegarde. Connecte-toi puis réessaie.';
-    }
+    if (typeof renderMixPanel === 'function') await renderMixPanel();
+  } catch (e) {
+    if (msgEl) msgEl.textContent = 'Erreur réseau : ' + (e && e.message || 'inconnue');
   }
 }
