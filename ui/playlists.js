@@ -325,7 +325,7 @@
           '</div>' +
           '<ul class="ap-playlists-list">' +
             playlists.map(p => (
-              '<li class="ap-playlist-card">' +
+              '<li class="ap-playlist-card" data-pl-id="' + p.id + '">' +
                 '<div class="ap-playlist-card-title">' + _esc(p.title) + '</div>' +
                 '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
               '</li>'
@@ -400,4 +400,287 @@
   } else {
     boot();
   }
+})();
+
+// ── 8. ADD TO PLAYLIST MODAL ───────────────────────────────────────────────
+// Modale "Choisir une playlist" pour ajouter un track. Au click :
+//   1. Si user pas connecté → toast "Connecte-toi pour utiliser les playlists".
+//      (la modale login existante peut être déclenchée si exposée globalement)
+//   2. Sinon → charge mes playlists, affiche liste cliquable + bouton "Créer".
+//   3. Click sur une playlist → POST /api/playlists/{id}/tracks {track_id}.
+//   4. Toast de confirmation, fermeture modale.
+
+(function(){
+  'use strict';
+
+  async function _addTrackToPlaylist(playlistId, trackId) {
+    const resp = await fetch('/api/playlists/' + encodeURIComponent(playlistId) + '/tracks', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: Object.assign(
+        { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        (typeof getAuthToken === 'function' && getAuthToken())
+          ? { 'Authorization': 'Bearer ' + getAuthToken() } : {}
+      ),
+      body: JSON.stringify({ track_id: trackId })
+    });
+    if (!resp.ok) {
+      const status = resp.status;
+      let detail = '';
+      try { detail = (await resp.json()).detail || ''; } catch (_) {}
+      const err = new Error('HTTP ' + status + (detail ? ' — ' + detail : ''));
+      err.status = status;
+      throw err;
+    }
+    return resp.status === 204 ? null : await resp.json();
+  }
+
+  function _showToast(msg) {
+    if (typeof showToast === 'function') return showToast(msg);
+    if (window.showToast)               return window.showToast(msg);
+    // Fallback minimal
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a24;color:#fff;padding:12px 18px;border-radius:10px;border:1px solid rgba(204,136,255,.3);z-index:99999;font-size:14px';
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  function _isAuth() {
+    if (typeof getAuthToken === 'function') return !!getAuthToken();
+    if (typeof getCurrentUser === 'function') {
+      const u = getCurrentUser();
+      return !!(u && u.id);
+    }
+    return false;
+  }
+
+  async function openAddToPlaylistModal(trackId) {
+    if (!trackId) return;
+    if (!_isAuth()) {
+      _showToast('Connecte-toi pour ajouter à une playlist.');
+      return;
+    }
+    if (document.getElementById('pl-add-modal')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pl-add-modal';
+    overlay.className = 'pl-modal-overlay';
+    overlay.innerHTML = (
+      '<div class="pl-modal" role="dialog">' +
+        '<button type="button" class="pl-modal-close" aria-label="Fermer">✕</button>' +
+        '<h3 class="pl-modal-title">Ajouter à une playlist</h3>' +
+        '<div id="pl-add-list" class="pl-add-list">Chargement…</div>' +
+        '<div class="pl-modal-actions">' +
+          '<button type="button" class="pl-btn pl-btn-ghost" id="pl-add-cancel">Annuler</button>' +
+          '<button type="button" class="pl-btn pl-btn-primary" id="pl-add-new">+ Nouvelle playlist</button>' +
+        '</div>' +
+      '</div>'
+    );
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector('.pl-modal-close').onclick = close;
+    overlay.querySelector('#pl-add-cancel').onclick = close;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    overlay.querySelector('#pl-add-new').onclick = () => {
+      close();
+      window.SmylePlaylists.openCreatePlaylistModal(async (created) => {
+        if (created && created.id) {
+          try {
+            await _addTrackToPlaylist(created.id, trackId);
+            _showToast('Ajouté à « ' + created.title + ' » ✓');
+          } catch (e) {
+            _showToast('Ajout impossible : ' + (e && e.message || 'erreur'));
+          }
+        }
+      });
+    };
+
+    try {
+      const playlists = await window.SmylePlaylists.loadMyPlaylists();
+      const listEl = overlay.querySelector('#pl-add-list');
+      if (!playlists || playlists.length === 0) {
+        listEl.innerHTML = '<p class="pl-empty">Aucune playlist. Clique « + Nouvelle playlist » ci-dessous.</p>';
+        return;
+      }
+      listEl.innerHTML = '<ul class="pl-picker-list">' + playlists.map(p => {
+        const badge = p.visibility === 'public' ? 'Publique' : 'Privée';
+        const safeTitle = String(p.title || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        return '<li><button type="button" class="pl-picker-row" data-pl-id="' + p.id + '" data-pl-title="' + safeTitle.replace(/"/g, '&quot;') + '">' +
+          '<span>' + safeTitle + '</span>' +
+          '<span class="pl-picker-vis">' + badge + '</span>' +
+        '</button></li>';
+      }).join('') + '</ul>';
+
+      listEl.addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('.pl-picker-row');
+        if (!btn) return;
+        const id = btn.dataset.plId;
+        const title = btn.dataset.plTitle || '';
+        btn.disabled = true;
+        btn.style.opacity = '.6';
+        try {
+          await _addTrackToPlaylist(id, trackId);
+          _showToast('Ajouté à « ' + title + ' » ✓');
+          close();
+        } catch (e) {
+          btn.disabled = false;
+          btn.style.opacity = '';
+          if (e && e.status === 409) {
+            _showToast('Déjà dans cette playlist.');
+            close();
+          } else if (e && e.status === 403) {
+            _showToast('Tu ne peux pas modifier cette playlist.');
+          } else {
+            _showToast('Ajout impossible (' + (e && e.message || 'erreur') + ').');
+          }
+        }
+      });
+    } catch (e) {
+      const listEl = overlay.querySelector('#pl-add-list');
+      if (e && e.status === 401) {
+        listEl.innerHTML = '<p class="pl-empty">Session expirée. Reconnecte-toi.</p>';
+      } else {
+        listEl.innerHTML = '<p class="pl-empty">Chargement impossible.</p>';
+      }
+    }
+  }
+
+  // ── 9. VIEW PLAYLIST MODAL ──────────────────────────────────────────────
+  // Modale "Lecture de la playlist" — fetch /api/playlists/{id}, render tracks
+  // avec <audio> inline (reuse du listener global play counter de storage.js).
+
+  async function openPlaylistViewModal(playlistId) {
+    if (!playlistId) return;
+    if (document.getElementById('pl-view-modal')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pl-view-modal';
+    overlay.className = 'pl-modal-overlay';
+    overlay.innerHTML = (
+      '<div class="pl-modal pl-modal-wide" role="dialog">' +
+        '<button type="button" class="pl-modal-close" aria-label="Fermer">✕</button>' +
+        '<div id="pl-view-content">Chargement…</div>' +
+      '</div>'
+    );
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('.pl-modal-close').onclick = close;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    try {
+      const headers = Object.assign(
+        { 'Accept': 'application/json' },
+        (typeof getAuthToken === 'function' && getAuthToken())
+          ? { 'Authorization': 'Bearer ' + getAuthToken() } : {}
+      );
+      const resp = await fetch('/api/playlists/' + encodeURIComponent(playlistId), {
+        credentials: 'same-origin', headers
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const playlist = await resp.json();
+      const content = overlay.querySelector('#pl-view-content');
+      const tracks = playlist.tracks || [];
+      const badge = playlist.visibility === 'public' ? 'Publique' : 'Privée';
+      const safeTitle = String(playlist.title || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      content.innerHTML = (
+        '<div class="pl-view-hdr">' +
+          '<h3 class="pl-modal-title" style="margin:0">' + safeTitle + '</h3>' +
+          '<span class="pl-badge pl-badge-' + (playlist.visibility === 'public' ? 'public' : 'private') + '">' + badge + '</span>' +
+        '</div>' +
+        '<p class="pl-view-sub">' + tracks.length + ' titre' + (tracks.length > 1 ? 's' : '') + '</p>' +
+        (tracks.length === 0
+          ? '<p class="pl-empty">Aucune track. Ajoute des sons depuis la marketplace via le bouton +.</p>'
+          : '<ul class="pl-view-list">' + tracks.map(t => {
+              const safe = String(t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+              const url = t.stream_url || t.streamUrl || '';
+              const safeUrl = url.replace(/"/g, '&quot;');
+              return '<li class="pl-view-row" data-track-id="' + t.id + '">' +
+                '<div class="pl-view-row-info">' +
+                  '<div class="pl-view-row-title">' + safe + '</div>' +
+                '</div>' +
+                (safeUrl ? '<audio controls preload="none" class="pl-view-audio" src="' + safeUrl + '"></audio>' : '<span class="pl-empty">Audio indisponible</span>') +
+              '</li>';
+            }).join('') + '</ul>'
+        )
+      );
+    } catch (e) {
+      overlay.querySelector('#pl-view-content').innerHTML = '<p class="pl-empty">Chargement impossible.</p>';
+    }
+  }
+
+  // ── 10. ADDITIONAL STYLES ─────────────────────────────────────────────
+  function _injectExtraStyles() {
+    if (document.getElementById('pl-extra-styles')) return;
+    const css = (
+      '.pl-modal-wide { max-width: 640px; max-height: 80vh; overflow-y: auto; }' +
+      '.pl-add-list { margin: 12px 0 18px; min-height: 80px; }' +
+      '.pl-picker-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }' +
+      '.pl-picker-row { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; color: #fff; cursor: pointer; text-align: left; font-size: 14px; }' +
+      '.pl-picker-row:hover { background: rgba(204,136,255,.1); border-color: rgba(204,136,255,.3); }' +
+      '.pl-picker-vis { font-size: 11px; color: #a09cb8; letter-spacing: .04em; text-transform: uppercase; }' +
+      '.pl-view-hdr { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }' +
+      '.pl-view-sub { color: #a09cb8; font-size: 12px; margin: 0 0 16px; }' +
+      '.pl-view-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }' +
+      '.pl-view-row { display: flex; flex-direction: column; gap: 6px; padding: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; }' +
+      '.pl-view-row-title { color: #fff; font-size: 14px; font-weight: 500; }' +
+      '.pl-view-audio { width: 100%; max-width: 100%; }' +
+      '.ap-playlist-card { cursor: pointer; transition: border-color .15s ease; }' +
+      '.ap-playlist-card:hover { border-color: rgba(204,136,255,.4); }' +
+      '.pl-row { cursor: pointer; }' +
+      '.add-to-pl-btn { background: rgba(204,136,255,.1); color: #cc88ff; border: 1px solid rgba(204,136,255,.3); padding: 4px 9px; border-radius: 8px; cursor: pointer; font-size: 14px; line-height: 1; }' +
+      '.add-to-pl-btn:hover { background: rgba(204,136,255,.2); }'
+    );
+    const s = document.createElement('style');
+    s.id = 'pl-extra-styles';
+    s.textContent = css;
+    document.head.appendChild(s);
+  }
+
+  // ── 11. CLICK DELEGATION ──────────────────────────────────────────────
+  // - data-add-to-playlist="<track-id>" → openAddToPlaylistModal
+  // - .pl-row[data-id] (dashboard playlist row) → openPlaylistViewModal
+  // - .ap-playlist-card[data-pl-id] (profil public playlist card) → idem
+
+  function _wireGlobalClicks() {
+    if (window.__pl_clicks_wired) return;
+    window.__pl_clicks_wired = true;
+    document.addEventListener('click', (ev) => {
+      const addBtn = ev.target.closest('[data-add-to-playlist]');
+      if (addBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const tid = addBtn.getAttribute('data-add-to-playlist');
+        if (tid) openAddToPlaylistModal(tid);
+        return;
+      }
+      // Open playlist view from dashboard row (avoid action buttons)
+      const dashRow = ev.target.closest('.pl-row');
+      if (dashRow && !ev.target.closest('.pl-row-actions')) {
+        const id = dashRow.dataset.id;
+        if (id) openPlaylistViewModal(id);
+        return;
+      }
+      // Open playlist view from profil public card
+      const apCard = ev.target.closest('.ap-playlist-card[data-pl-id]');
+      if (apCard) {
+        const id = apCard.dataset.plId;
+        if (id) openPlaylistViewModal(id);
+      }
+    });
+  }
+
+  // Boot styles + delegation on DOMContentLoaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { _injectExtraStyles(); _wireGlobalClicks(); });
+  } else {
+    _injectExtraStyles();
+    _wireGlobalClicks();
+  }
+
+  // Expose
+  window.SmylePlaylists.openAddToPlaylistModal = openAddToPlaylistModal;
+  window.SmylePlaylists.openPlaylistViewModal  = openPlaylistViewModal;
 })();

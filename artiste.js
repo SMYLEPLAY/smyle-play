@@ -927,6 +927,7 @@ function renderTracks(artist) {
               <span>▶ ${plays}</span>
               ${date ? `<span>· ${date}</span>` : ''}
               ${platformBadge}
+              <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
               ${deleteBtn}
             </div>
           </div>
