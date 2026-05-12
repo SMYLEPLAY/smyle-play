@@ -264,6 +264,7 @@
           `</div>` +
           playBtn +
           `<div class="mp-ranking-meta">${plays} écoutes</div>` +
+          `<button class="add-to-pl-btn mp-ranking-add" type="button" data-add-to-playlist="${_esc(t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
           audioEl +
         `</li>`
       );
@@ -379,6 +380,7 @@
             `<span class="mp-son-card-artist-name">${_esc(name)}</span>` +
           `</div>` +
           `<div class="mp-son-card-meta">${plays} écoutes</div>` +
+          `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
           (streamUrl
             ? `<audio preload="none" class="mp-son-card-audio" src="${_esc(streamUrl)}"></audio>`
             : ''
