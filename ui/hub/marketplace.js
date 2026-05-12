@@ -259,7 +259,7 @@
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title">${_esc(title)}</div>` +
             `<div class="mp-ranking-sub">` +
-              `<span>${_esc(artistName)}</span>` +
+              `<a href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();" style="color:inherit;text-decoration:none">${_esc(artistName)}</a>` +
             `</div>` +
           `</div>` +
           playBtn +
@@ -378,7 +378,7 @@
           `</div>` +
           `<div class="mp-son-card-title">${_esc(title)}</div>` +
           `<div class="mp-son-card-artist">` +
-            `<span class="mp-son-card-artist-name">${_esc(name)}</span>` +
+            `<a class="mp-son-card-artist-name" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
           `</div>` +
           `<div class="mp-son-card-meta">` +
             `<span class="mp-son-card-meta-plays">${plays} écoutes</span>` +
@@ -568,11 +568,7 @@
           }
           return;
         }
-        // Click ailleurs sur la row → redirect vers profil
-        const slugRow = row.dataset.artistSlug;
-        if (slugRow) {
-          window.location.href = '/u/' + encodeURIComponent(slugRow) + '#track-' + (row.dataset.trackId || '');
-        }
+        // Click ailleurs sur la row → ne fait rien (navigation libre).
         return;
       }
 
@@ -618,11 +614,7 @@
         return;
       }
 
-      // Click ailleurs sur la card → redirect vers profil artiste
-      const slug = card.dataset.artistSlug;
-      if (slug) {
-        window.location.href = '/u/' + encodeURIComponent(slug) + '#track-' + (card.dataset.trackId || '');
-      }
+      // Click ailleurs sur la card → ne fait rien (navigation libre).
     });
 
     // Quand un audio se termine, on retire l'état playing visuel
