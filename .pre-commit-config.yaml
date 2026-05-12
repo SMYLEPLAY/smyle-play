@@ -1,0 +1,31 @@
+# Pre-commit hooks Smyleplay
+# Anti-leak secrets — bloque tout commit qui contient un token, clé API, password.
+#
+# Setup (1 fois par machine) :
+#   brew install gitleaks pre-commit
+#   pre-commit install
+#
+# Pour tester un fichier sans commit :
+#   gitleaks detect --source . --no-banner
+#
+# Pour ignorer FAUX positif sur 1 ligne (ex: doc/example) :
+#   <ligne avec faux positif> # gitleaks:allow
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        name: Détecter les secrets (gitleaks)
+        description: Bloque commit si token / API key / password détecté
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key
+        name: Détecter clés privées (SSH, RSA, OpenSSL)
+      - id: check-added-large-files
+        args: ['--maxkb=2000']
+        name: Bloquer fichiers > 2 Mo (oublis assets / dumps)
+      - id: check-merge-conflict
+        name: Bloquer marqueurs <<<<<<< HEAD oubliés
