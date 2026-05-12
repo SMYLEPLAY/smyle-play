@@ -671,11 +671,13 @@
   function _wireGlobalClicks() {
     if (window.__pl_clicks_wired) return;
     window.__pl_clicks_wired = true;
+    // capture:true → intercepte AVANT marketplace.js (qui fait redirect profil)
     document.addEventListener('click', (ev) => {
       const addBtn = ev.target.closest('[data-add-to-playlist]');
       if (addBtn) {
         ev.preventDefault();
         ev.stopPropagation();
+        ev.stopImmediatePropagation();
         const tid = addBtn.getAttribute('data-add-to-playlist');
         if (tid) openAddToPlaylistModal(tid);
         return;
@@ -693,7 +695,7 @@
         const id = apCard.dataset.plId;
         if (id) openPlaylistViewModal(id);
       }
-    });
+    }, true);
   }
 
   // Boot styles + delegation on DOMContentLoaded
@@ -846,9 +848,10 @@
       if (!btn) return;
       ev.preventDefault();
       ev.stopPropagation();
+      ev.stopImmediatePropagation();
       const tid = btn.getAttribute('data-like-btn');
       if (tid) toggleLike(tid);
-    });
+    }, true);
   }
 
   // ── CSS COMPACT UNIFIÉ — override les anciens styles .add-to-pl-btn
@@ -945,3 +948,30 @@ button.add-to-pl-btn, button.like-btn, .mp-son-card button.add-to-pl-btn, .mp-so
   }
 })();
 
+
+// ── 14. MARKETPLACE CARD COMPACT — fix barre blanche + design cohérent ─────
+(function(){
+  if (document.getElementById('pl-mkt-compact-styles')) return;
+  function _ilj() {
+    if (document.getElementById('pl-mkt-compact-styles')) return;
+    var css = ''
+      + '.mp-son-card { max-width: 340px !important; }'
+      + '.mp-son-card-meta { display: flex !important; align-items: center !important; gap: 8px !important; padding: 8px 12px 12px !important; font-size: 12px !important; color: #a09cb8 !important; }'
+      + '.mp-son-card-meta-plays, .mp-son-card-meta > span:first-child { flex: 1 1 auto !important; white-space: nowrap !important; }'
+      + 'button.add-to-pl-btn, button.like-btn, .mp-ranking-row button.add-to-pl-btn, .mp-ranking-row button.like-btn, .mp-son-card-meta button { width: 26px !important; height: 26px !important; min-width: 26px !important; max-width: 26px !important; padding: 0 !important; flex: 0 0 26px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: transparent !important; border: 1px solid rgba(255,255,255,.12) !important; color: #a09cb8 !important; border-radius: 7px !important; font-size: 13px !important; line-height: 1 !important; cursor: pointer !important; box-sizing: border-box !important; vertical-align: middle !important; white-space: nowrap !important; }'
+      + 'button.add-to-pl-btn:hover { color: #cc88ff !important; border-color: rgba(204,136,255,.4) !important; background: rgba(204,136,255,.08) !important; }'
+      + 'button.like-btn:hover { color: #ff7799 !important; border-color: rgba(255,119,153,.35) !important; background: rgba(255,119,153,.06) !important; }'
+      + '.mp-son-card-actions { display: none !important; }'
+      + '.mp-ranking-row { gap: 8px; align-items: center; }'
+      + '.mp-ranking-add, .mp-ranking-like { margin-left: 4px !important; }';
+    var st = document.createElement('style');
+    st.id = 'pl-mkt-compact-styles';
+    st.textContent = css;
+    document.head.appendChild(st);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _ilj);
+  } else {
+    _ilj();
+  }
+})();

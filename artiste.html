@@ -209,6 +209,12 @@
          spellcheck="true"></div>
   </section>
 
+  <!-- ═══ Playlists publiques (chantier #2 — câblage frontend) ═══
+       Container vide rempli par ui/playlists.js au DOMContentLoaded.
+       Si l'artiste n'a aucune playlist publique, le container reste
+       caché (display:none) — pas de pollution du profil. ═══ -->
+  <div id="ap-playlists-root" style="display:none"></div>
+
   <!-- ═══ Réseaux sociaux (#43) — visibles pour les fans, éditables owner ═══ -->
   <section class="ap-socials" id="ap-socials" aria-label="Réseaux sociaux">
     <!-- Rendu par renderSocials() :
@@ -296,12 +302,6 @@
       <!-- Cards rendues par renderTracks() -->
     </div>
   </section>
-
-  <!-- ═══ Playlists publiques (chantier #2 — câblage frontend) ═══
-       Container vide rempli par ui/playlists.js au DOMContentLoaded.
-       Si l'artiste n'a aucune playlist publique, le container reste
-       caché (display:none) — pas de pollution du profil. ═══ -->
-  <div id="ap-playlists-root" style="display:none"></div>
 
   <!-- ═══ Voix à vendre (P1-F9 frontend public — visibles ssi >= 1 voix publiée)
        Données chargées en async via GET /api/voices/by-artist/{artist_id}
