@@ -109,23 +109,12 @@ class VoicePublicRead(BaseModel):
     """
     Vue publique d'une voix (visiteur non-acheteur, profil /u/<slug>).
 
-    Évolution 2026-05-03 (feat/voices-public-preview) : `sample_url` est
-    maintenant EXPOSÉ publiquement. La règle gating originale
-    (project_prompt_visibility_rule) bloquait l'audio par défaut, mais
-    pour une voix la valeur EST le son — sans pré-écoute, zéro conversion.
-    On accepte donc le compromis : l'audio est jouable en streaming public.
-
-    Le bouton "Télécharger le sample" reste GATED côté frontend — il
-    n'apparaît qu'après unlock dans /library. Pour un acheteur déterminé
-    qui veut ripper, c'est aussi possible sur Spotify/SoundCloud — c'est
-    un trade-off business standard.
-
-    `updated_at` reste owner-only (champ admin) → présent uniquement dans
-    VoiceFullRead.
+    Révision 2026-05-13 (fix faille Tom) : sample_url RETIRÉ du payload
+    public. L'URL R2 directe permettait de télécharger la voix sans achat.
+    Conforme à project_prompt_visibility_rule : voix verrouillées avant achat.
 
     `artist` est optionnel pour rétrocompat — un client legacy qui ne
-    consomme pas ce champ ignore simplement la clé. Les nouveaux endpoints
-    le remplissent toujours (cf services.voices.enrich_voices_with_artist).
+    consomme pas ce champ ignore simplement la clé.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -140,16 +129,16 @@ class VoicePublicRead(BaseModel):
     price_credits: int
     is_published: bool
     created_at: datetime
-    sample_url: str  # NEW (2026-05-03) — public pour pré-écoute avant achat
 
 
 class VoiceFullRead(VoicePublicRead):
     """
-    Vue complète admin/owner : ajoute `updated_at` (champ technique non
-    pertinent en vue publique mais utile pour le dashboard de l'artiste
-    et /library côté acheteur — sait quand la voix a été modifiée).
+    Vue complète admin/owner/unlocked : sample_url + updated_at.
+    Servi UNIQUEMENT à l'owner (/voices/me) ou aux acheteurs ayant
+    unlock (/voices/me/unlocked + /unlocks/voices/{id} response).
     """
 
+    sample_url: str
     updated_at: datetime
 
 

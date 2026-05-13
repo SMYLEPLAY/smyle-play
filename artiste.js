@@ -1254,14 +1254,16 @@ function renderVoices(artist) {
     const genresBadge = genresStr
       ? `<span class="ap-voice-badge">${genresStr.replace(/</g, '&lt;')}</span>`
       : '';
-    // P1-F9 enhancement (2026-05-03) : pré-écoute publique du sample pour
-    // permettre à l'acheteur de juger la voix AVANT d'acheter. Sans ça,
-    // taux de conversion ≈ 0 (personne ne paye 200 SMYLES à l'aveugle).
-    // Le bouton télécharger reste gated jusqu'à l'unlock (côté /library).
+    // Fix faille voix (2026-05-13) : sample_url retiré du payload public.
+    // Owner/unlocked reçoit VoiceFullRead avec sample_url → lecteur audio.
+    // Visiteur reçoit VoicePublicRead sans sample_url → placeholder verrouillé.
     const previewBlock = v.sample_url
       ? `<audio controls preload="none" class="ap-voice-preview"
                 src="${(v.sample_url + '').replace(/"/g, '&quot;')}"></audio>`
-      : '';
+      : `<div class="ap-voice-locked"
+              style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed rgba(204,136,255,.3);border-radius:8px;color:#a09cb8;font-size:12px;font-style:italic">
+           🔒 Pré-écoute après achat
+         </div>`;
     // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
     const unlockBtn = artist.isSelf
       ? '<span class="ap-voice-owner-note">Ta voix</span>'
