@@ -1560,25 +1560,21 @@
   .dash-section.is-collapsed-sub > *:not(.dash-subhdr):not(style) {
     display: none !important;
   }
-  .dash-section.is-collapsed .dash-section-hdr::before,
-  .dash-section.is-collapsed-sub .dash-subhdr::before {
-    content: "Cliquer pour déplier";
-    position: absolute; right: 42px; top: 50%;
-    transform: translateY(-50%);
-    color: rgba(204, 136, 255, 0.55);
-    font-size: 11px; font-weight: 500;
-    letter-spacing: .02em;
-    pointer-events: none; white-space: nowrap;
+  /* Chevron seul suffit pour indiquer dépliable (pas de texte verbeux) */
+  .dash-section .dash-section-hdr::after,
+  .dash-section .dash-subhdr::after {
+    opacity: .35;
   }
-  .dash-section.is-collapsed .dash-section-hdr:hover::before,
-  .dash-section.is-collapsed-sub .dash-subhdr:hover::before {
-    color: #cc88ff;
+  .dash-section .dash-section-hdr:hover::after,
+  .dash-section .dash-subhdr:hover::after {
+    opacity: .8;
   }
 </style>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.dash-section').forEach(function(sec) {
-      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists') return;
+      // Jamais pliées : identité, playlists, création (02 = formulaire Poster un son)
+      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists' || sec.id === 'sec-upload') return;
       var hdr = sec.querySelector(':scope > .dash-section-hdr');
       var subhdr = sec.querySelector(':scope > .dash-subhdr');
       var target = hdr || subhdr;
