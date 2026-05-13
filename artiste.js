@@ -1273,6 +1273,82 @@ function _voiceGenresStr(keys) {
   return keys.map(k => VOICE_GENRES_LBL[k] || k).join(' · ');
 }
 
+// ── Voice player engine ────────────────────────────────────────────────────
+// Un seul Audio partagé pour toutes les cartes voix. Stoppe automatiquement
+// la voix précédente quand une nouvelle démarre.
+
+let _voiceAudio    = null;   // instance Audio courante
+let _voicePlayerEl = null;   // card .ap-voice-player active
+
+function _fmtTime(sec) {
+  if (!isFinite(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function _resetPlayer(playerEl) {
+  if (!playerEl) return;
+  const btn  = playerEl.querySelector('.ap-voice-play-btn');
+  const fill = playerEl.querySelector('.ap-voice-progress-fill');
+  const time = playerEl.querySelector('.ap-voice-time');
+  if (btn)  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>';
+  if (fill) fill.style.width = '0%';
+  if (time) time.textContent = '0:00';
+  playerEl.classList.remove('is-playing');
+}
+
+function _toggleVoicePlayer(playerEl) {
+  const src = playerEl.dataset.src;
+  if (!src) return;
+
+  // Même carte → toggle play/pause
+  if (_voicePlayerEl === playerEl && _voiceAudio) {
+    if (_voiceAudio.paused) {
+      _voiceAudio.play().catch(() => {});
+      playerEl.classList.add('is-playing');
+      playerEl.querySelector('.ap-voice-play-btn').innerHTML =
+        '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+    } else {
+      _voiceAudio.pause();
+      playerEl.classList.remove('is-playing');
+      playerEl.querySelector('.ap-voice-play-btn').innerHTML =
+        '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>';
+    }
+    return;
+  }
+
+  // Nouvelle carte → stoppe l'ancienne
+  if (_voiceAudio) {
+    _voiceAudio.pause();
+    _voiceAudio.src = '';
+    _resetPlayer(_voicePlayerEl);
+  }
+
+  // Crée le nouvel Audio
+  _voiceAudio    = new Audio(src);
+  _voicePlayerEl = playerEl;
+  playerEl.classList.add('is-playing');
+  playerEl.querySelector('.ap-voice-play-btn').innerHTML =
+    '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+
+  _voiceAudio.addEventListener('timeupdate', () => {
+    const fill = playerEl.querySelector('.ap-voice-progress-fill');
+    const time = playerEl.querySelector('.ap-voice-time');
+    const dur  = _voiceAudio.duration || 0;
+    const cur  = _voiceAudio.currentTime || 0;
+    if (fill) fill.style.width = dur ? `${(cur / dur) * 100}%` : '0%';
+    if (time) time.textContent = _fmtTime(cur);
+  });
+
+  _voiceAudio.addEventListener('ended', () => {
+    _resetPlayer(playerEl);
+    playerEl.classList.remove('is-playing');
+  });
+
+  _voiceAudio.play().catch(() => {});
+}
+
 function renderVoices(artist) {
   const section = $('ap-voices-section');
   const list    = $('ap-voices-list');
@@ -1302,20 +1378,24 @@ function renderVoices(artist) {
     const genresBadge = genresStr
       ? `<span class="ap-voice-badge">${genresStr.replace(/</g, '&lt;')}</span>`
       : '';
-    // 2026-05-13 — chantier preview 30s :
-    //   - owner/unlocked reçoit sample_url (full) → player full
-    //   - visiteur reçoit preview_url (30s) → player preview
-    //   - voix legacy sans preview → placeholder verrouillé
     const audioSrc = v.sample_url || v.preview_url || null;
-    const audioLbl = v.sample_url ? '' : (v.preview_url ? ' · 30s preview' : '');
+    const isOwned  = !!v.sample_url;
     const previewBlock = audioSrc
-      ? `<audio controls preload="none" controlsList="nodownload noremoteplayback"
-                oncontextmenu="return false" class="ap-voice-preview"
-                src="${(audioSrc + '').replace(/"/g, '&quot;')}"></audio>
-         <div class="ap-voice-preview-label" style="font-size:11px;color:#a09cb8;margin-top:4px;">${audioLbl ? '🎧 Pré-écoute' + audioLbl : ''}</div>`
-      : `<div class="ap-voice-locked"
-              style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed rgba(204,136,255,.3);border-radius:8px;color:#a09cb8;font-size:12px;font-style:italic">
-           🔒 Pré-écoute après achat
+      ? `<div class="ap-voice-player" data-src="${(audioSrc + '').replace(/"/g, '&quot;')}">
+           <button class="ap-voice-play-btn" type="button" aria-label="Écouter">
+             <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>
+           </button>
+           <div class="ap-voice-progress-wrap">
+             <div class="ap-voice-progress-bar">
+               <div class="ap-voice-progress-fill"></div>
+             </div>
+             <span class="ap-voice-time">0:00</span>
+           </div>
+           ${!isOwned ? '<span class="ap-voice-preview-tag">Pré-écoute</span>' : ''}
+         </div>`
+      : `<div class="ap-voice-locked">
+           <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+           Pré-écoute après achat
          </div>`;
     // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
     const unlockBtn = artist.isSelf
@@ -1356,11 +1436,29 @@ function renderVoices(artist) {
 
   // Délégation click — un seul listener pour la liste re-rendue souvent.
   list.onclick = (ev) => {
-    const btn = ev.target.closest('.ap-voice-unlock-btn');
-    if (!btn) return;
-    const id = btn.dataset.voiceId;
-    if (id) unlockVoiceFromProfile(id, btn);
+    // Unlock
+    const unlockBtn = ev.target.closest('.ap-voice-unlock-btn');
+    if (unlockBtn) {
+      const id = unlockBtn.dataset.voiceId;
+      if (id) unlockVoiceFromProfile(id, unlockBtn);
+      return;
+    }
+    // Play / pause
+    const playBtn = ev.target.closest('.ap-voice-play-btn');
+    if (playBtn) {
+      const playerEl = playBtn.closest('.ap-voice-player');
+      if (playerEl) _toggleVoicePlayer(playerEl);
+    }
   };
+
+  // Délégation progress bar — clic pour seek
+  list.addEventListener('click', (ev) => {
+    const bar = ev.target.closest('.ap-voice-progress-bar');
+    if (!bar || !_voiceAudio) return;
+    const rect = bar.getBoundingClientRect();
+    const ratio = (ev.clientX - rect.left) / rect.width;
+    if (_voiceAudio.duration) _voiceAudio.currentTime = ratio * _voiceAudio.duration;
+  });
 }
 
 // ── Unlock voix depuis le profil ───────────────────────────────────────
