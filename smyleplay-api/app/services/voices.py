@@ -303,10 +303,12 @@ async def enrich_voices_with_artist(
             "price_credits": v.price_credits,
             "is_published": v.is_published,
             "created_at": v.created_at,
-            # 2026-05-13 — sample_url PRIVÉ (filtré côté router selon
-            # autorisation). preview_url toujours inclus (clip 30s public).
+            # sample_url PRIVÉ (filtré côté router selon autorisation).
+            # preview_url = clip 30s dédié si disponible, sinon fallback
+            # sur sample_url (voix legacy sans preview généré). Le frontend
+            # applique un cap 30s JS côté player public.
             "sample_url": v.sample_url,  # filtré côté router pour vues publiques
-            "preview_url": v.preview_url,
+            "preview_url": v.preview_url or v.sample_url,
             "voice_origin": v.voice_origin,
             "linked_track_id": v.linked_track_id,
             "updated_at": v.updated_at,  # ignoré par VoicePublicRead.model_validate
