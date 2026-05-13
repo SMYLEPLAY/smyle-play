@@ -38,6 +38,7 @@ from app.schemas.credit import TransactionRead
 
 # Type literal aligné avec models.voice.VOICE_LICENSES et la CHECK constraint.
 VoiceLicense = Literal["personnel", "commercial", "exclusif"]
+VoiceOrigin = Literal["personal", "ai", "known_artist"]
 
 
 # -----------------------------------------------------------------------------
@@ -82,6 +83,8 @@ class VoiceCreate(BaseModel):
     style: str = Field(min_length=1, max_length=80)
     genres: list[str] = Field(default_factory=list, max_length=10)
     sample_url: HttpUrl = Field(max_length=500)
+    voice_origin: VoiceOrigin | None = None
+    linked_track_id: UUID | None = None
     license: VoiceLicense
     price_credits: int = Field(ge=50, le=5000)
 
@@ -96,6 +99,8 @@ class VoiceUpdate(BaseModel):
     style: str | None = Field(default=None, min_length=1, max_length=80)
     genres: list[str] | None = Field(default=None, max_length=10)
     sample_url: HttpUrl | None = Field(default=None, max_length=500)
+    voice_origin: VoiceOrigin | None = None
+    linked_track_id: UUID | None = None
     license: VoiceLicense | None = None
     price_credits: int | None = Field(default=None, ge=50, le=5000)
     is_published: bool | None = None
@@ -129,6 +134,9 @@ class VoicePublicRead(BaseModel):
     price_credits: int
     is_published: bool
     created_at: datetime
+    voice_origin: VoiceOrigin | None = None
+    linked_track_id: UUID | None = None
+    sample_url: str  # streaming public (pré-écoute autorisée, bloque DL via UI)
 
 
 class VoiceFullRead(VoicePublicRead):

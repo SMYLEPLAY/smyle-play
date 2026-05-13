@@ -2301,9 +2301,17 @@ async function dashVoiceSave() {
     }
   }
 
+  // Phase B metadata 2026-05-13 : origine + lien track (optionnels visibles avant achat)
+  const voiceOriginEl = document.getElementById('dashVoiceOrigin');
+  const linkedTrackEl = document.getElementById('dashVoiceLinkedTrack');
+  const voice_origin = voiceOriginEl ? (voiceOriginEl.value || null) : null;
+  const linked_track_id = linkedTrackEl && linkedTrackEl.value ? linkedTrackEl.value : null;
+
   // ── Étape 2 : POST (création) ou PATCH (mise à jour) /api/voices ────
   const payload = { name, style, genres, license, price_credits: price };
   if (sample_url) payload.sample_url = sample_url;
+  if (voice_origin) payload.voice_origin = voice_origin;
+  if (linked_track_id) payload.linked_track_id = linked_track_id;
 
   const btn = document.getElementById('dashVoiceSaveBtn');
   if (btn) btn.disabled = true;
@@ -2352,6 +2360,37 @@ async function loadMyVoices() {
   } finally {
     _voicesState.loading = false;
     renderMyVoicesList();
+  }
+}
+
+// Phase B metadata 2026-05-13 : remplir le dropdown #dashVoiceLinkedTrack
+// avec la liste des tracks de l'artiste (pour associer une voix à un morceau).
+async function dashVoiceLoadLinkedTrackOptions() {
+  const select = document.getElementById('dashVoiceLinkedTrack');
+  if (!select || typeof apiFetch !== 'function') return;
+  if (typeof getAuthToken === 'function' && !getAuthToken()) return;
+  try {
+    // Réutilise l'endpoint qui retourne les tracks de l'user (Flask legacy)
+    const data = await apiFetch('/api/watt/tracks');
+    const tracks = (data && data.tracks) || [];
+    // Garder la 1ère option "Aucun" + injecter les tracks
+    const baseOpt = select.querySelector('option[value=""]');
+    select.innerHTML = '';
+    if (baseOpt) select.appendChild(baseOpt);
+    else {
+      const o = document.createElement('option');
+      o.value = '';
+      o.textContent = '— Aucun (voix autonome) —';
+      select.appendChild(o);
+    }
+    tracks.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name || 'Sans titre';
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    console.warn('[dashVoiceLoadLinkedTrackOptions]', e);
   }
 }
 

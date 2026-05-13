@@ -1244,6 +1244,26 @@
       <div class="dash-help">Sélectionne tous les genres où ta voix fonctionne (au moins 1).</div>
 
       <label class="dash-label">
+        Origine de la voix <span class="dash-req">*</span>
+      </label>
+      <select class="dash-input" id="dashVoiceOrigin">
+        <option value="">— Sélectionne —</option>
+        <option value="personal">Personnelle (ma propre voix)</option>
+        <option value="ai">Créée par IA</option>
+        <option value="known_artist">Voix d'un artiste connu</option>
+      </select>
+      <div class="dash-help">Info utile à l'acheteur — visible avant l'achat. Distingue voix humaine perso, voix IA et voix d'artiste référencé.</div>
+
+      <label class="dash-label">
+        Morceau associé (optionnel)
+      </label>
+      <select class="dash-input" id="dashVoiceLinkedTrack">
+        <option value="">— Aucun (voix autonome) —</option>
+        <!-- options injectées par dashVoiceLoadLinkedTrackOptions() au boot -->
+      </select>
+      <div class="dash-help">Si tu démontres cette voix dans un de tes morceaux, sélectionne-le ici. L'acheteur pourra l'écouter pour juger en contexte.</div>
+
+      <label class="dash-label">
         Sample audio <span class="dash-req">*</span>
       </label>
       <div class="dash-voice-sample-zone" id="dashVoiceSampleZone">

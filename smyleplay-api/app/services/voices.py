@@ -306,6 +306,8 @@ async def enrich_voices_with_artist(
             # P1-F9 enhancement (2026-05-03) : sample_url toujours public
             # pour permettre la pré-écoute avant achat. Voir VoicePublicRead.
             "sample_url": v.sample_url,
+            "voice_origin": v.voice_origin,
+            "linked_track_id": v.linked_track_id,
             "updated_at": v.updated_at,  # ignoré par VoicePublicRead.model_validate
         }
         out.append(d)
