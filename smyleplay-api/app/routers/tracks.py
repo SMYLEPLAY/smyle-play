@@ -15,6 +15,7 @@ from app.schemas.track import (
 )
 from app.services.tracks import (
     create_track_with_dna,
+    delete_track,
     get_tracks,
     get_user_tracks,
     patch_track,
@@ -106,3 +107,26 @@ async def update_track(
             detail="Track not found",
         )
     return TrackRead.model_validate(track)
+
+
+@router.delete("/{track_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_track(
+    track_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Soft-delete d'un track appartenant à l'artiste connecté.
+
+    - Le track disparaît des listings publics et du dashboard.
+    - 404 si track inexistant, déjà supprimé, ou n'appartient pas à l'artiste.
+    - Retourne 204 No Content (succès sans body).
+    """
+    track = await delete_track(
+        db, track_id=track_id, user=current_user
+    )
+    if track is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Track not found",
+        )

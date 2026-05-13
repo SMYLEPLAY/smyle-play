@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -82,6 +83,16 @@ class Track(Base):
         UUID(as_uuid=True),
         ForeignKey("prompts.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
+    )
+
+    # Soft-delete (migration 0028) : TRUE = artiste a retiré ce track.
+    # Le track disparaît des listings publics.
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
         index=True,
     )
 

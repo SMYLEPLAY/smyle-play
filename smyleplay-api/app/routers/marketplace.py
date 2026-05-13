@@ -10,6 +10,7 @@ Routes (toutes scope `/artist/me`, JWT requis) :
   POST   /artist/me/prompts              → créer un prompt (404 si pas d'ADN)
   GET    /artist/me/prompts/{id}         → un de mes prompts (404 si pas mien)
   PATCH  /artist/me/prompts/{id}         → maj un prompt (lock prompt_text après vente)
+  DELETE /artist/me/prompts/{id}         → soft-delete (acheteurs gardent accès library)
 
   PATCH  /artist/me/brand-color          → ma couleur signature (#RRGGBB, normalisée MAJ)
 
@@ -46,6 +47,7 @@ from app.services.marketplace import (
     PromptNotFound,
     create_adn,
     create_prompt,
+    delete_prompt,
     get_adn_by_artist,
     get_prompt_for_artist,
     list_prompts_for_artist,
@@ -256,6 +258,39 @@ async def update_my_prompt(
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update prompt",
+        )
+
+
+@router.delete(
+    "/prompts/{prompt_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_my_prompt(
+    prompt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Soft-delete d'un prompt appartenant à l'artiste connecté.
+
+    - Le prompt disparaît du marketplace et du dashboard artiste.
+    - Les acheteurs (UnlockedPrompt) gardent leur accès en library.
+    - 404 si prompt inexistant, déjà supprimé, ou n'appartient pas à l'artiste.
+    - Retourne 204 No Content (succès sans body).
+    """
+    try:
+        await delete_prompt(
+            db=db, artist_id=current_user.id, prompt_id=prompt_id
+        )
+        await db.commit()
+    except ValueError as e:
+        await db.rollback()
+        _raise_marketplace_error(e)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete prompt",
         )
 
 
