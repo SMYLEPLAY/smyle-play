@@ -3518,20 +3518,14 @@ function openAdnEditor() {
   document.getElementById('dashAdnUsageGuide').value      = adn ? (adn.usage_guide || '') : '';
   document.getElementById('dashAdnExampleOutputs').value  = adn ? (adn.example_outputs || '') : '';
   document.getElementById('dashAdnPrice').value           = adn ? String(adn.price_credits) : '80';
-  // 2026-05-13 — préselection IA + édition
+  // 2026-05-13 v2 — préselection IA + éditions (1 seul input libre)
   const aiSel = document.getElementById('dashAdnAiReference');
   if (aiSel) aiSel.value = (adn && adn.ai_reference) ? adn.ai_reference : '';
-  const edSel = document.getElementById('dashAdnEditionType');
   const supInp = document.getElementById('dashAdnMaxSupply');
-  if (edSel) {
-    if (!adn || adn.max_supply == null)      edSel.value = 'unlimited';
-    else if (adn.max_supply === 1)           edSel.value = 'exclusive';
-    else                                     edSel.value = 'limited';
-    if (supInp) {
-      supInp.value = (adn && adn.max_supply && adn.max_supply > 1) ? String(adn.max_supply) : '10';
-      supInp.style.display = (edSel.value === 'limited') ? '' : 'none';
-    }
+  if (supInp) {
+    supInp.value = (adn && adn.max_supply) ? String(adn.max_supply) : '';
   }
+  if (typeof dashAdnUpdateRarityPreview === 'function') dashAdnUpdateRarityPreview();
 
   editor.style.display = '';
   editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3544,12 +3538,32 @@ function closeAdnEditor() {
   if (editor) editor.style.display = 'none';
 }
 
-// 2026-05-13 — Affiche/masque l'input max_supply selon le type d'édition.
-function dashAdnToggleSupplyInput() {
-  const sel = document.getElementById('dashAdnEditionType');
+// 2026-05-13 v2 — Live preview du tier de rareté pendant la saisie.
+// Mirror exact de compute_rarity_tier() côté backend pour cohérence.
+function dashAdnUpdateRarityPreview() {
   const inp = document.getElementById('dashAdnMaxSupply');
-  if (!sel || !inp) return;
-  inp.style.display = (sel.value === 'limited') ? '' : 'none';
+  const out = document.getElementById('dashAdnRarityPreview');
+  if (!inp || !out) return;
+  const raw = (inp.value || '').trim();
+  if (raw === '') {
+    out.innerHTML = '<span style="color:#a09cb8;">Édition illimitée (pas de rareté affichée)</span>';
+    return;
+  }
+  const n = parseInt(raw, 10);
+  if (!Number.isInteger(n) || n < 1) {
+    out.innerHTML = '<span style="color:#f87171;">Nombre invalide</span>';
+    return;
+  }
+  if (n > 100000) {
+    out.innerHTML = '<span style="color:#f87171;">Maximum 100 000 éditions</span>';
+    return;
+  }
+  let tier, emoji, label, color;
+  if (n === 1)        { tier='Mythic';    emoji='👑'; label='Pièce unique (1/1)';     color='#FFD700'; }
+  else if (n <= 10)   { tier='Legendary'; emoji='⭐'; label=`Drop VIP (${n} exemplaires)`; color='#FBBF24'; }
+  else if (n <= 1000) { tier='Limited';   emoji='💎'; label=`Édition limitée (${n} exemplaires)`; color='#A78BFA'; }
+  else                { tier='Open';      emoji='🟢'; label=`Édition ouverte (${n} exemplaires)`; color='#4ADE80'; }
+  out.innerHTML = `<span style="color:${color};">${emoji} <strong>${tier}</strong> — ${label}</span>`;
 }
 
 async function saveAdn() {
@@ -3576,18 +3590,17 @@ async function saveAdn() {
     return;
   }
 
-  // 2026-05-13 — Rareté + IA source
+  // 2026-05-13 v2 — Rareté simplifiée : 1 seul input libre, tier auto.
   const aiRef = (document.getElementById('dashAdnAiReference')||{}).value || '';
-  const editionType = (document.getElementById('dashAdnEditionType')||{}).value || 'unlimited';
+  const supRaw = (document.getElementById('dashAdnMaxSupply')||{}).value || '';
   let maxSupplyVal = null;
-  if (editionType === 'exclusive') maxSupplyVal = 1;
-  else if (editionType === 'limited') {
-    const raw = parseInt((document.getElementById('dashAdnMaxSupply')||{}).value, 10);
-    if (!Number.isInteger(raw) || raw < 2 || raw > 1000) {
-      _dashToast('Édition limitée : indique un nombre entre 2 et 1000.');
+  if (supRaw.trim() !== '') {
+    const n = parseInt(supRaw, 10);
+    if (!Number.isInteger(n) || n < 1 || n > 100000) {
+      _dashToast('Éditions : indique un nombre entre 1 et 100 000, ou laisse vide pour illimité.');
       return;
     }
-    maxSupplyVal = raw;
+    maxSupplyVal = n;
   }
 
   const payload = {
@@ -3712,7 +3725,7 @@ if (typeof window !== 'undefined') {
   window.openAdnEditor        = openAdnEditor;
   window.closeAdnEditor       = closeAdnEditor;
   window.saveAdn              = saveAdn;
-  window.dashAdnToggleSupplyInput = dashAdnToggleSupplyInput;
+  window.dashAdnUpdateRarityPreview = dashAdnUpdateRarityPreview;
   window.toggleAdnPublish     = toggleAdnPublish;
   // Ma Musique — mode switcher + widgets live
   window.setUploadMode        = setUploadMode;

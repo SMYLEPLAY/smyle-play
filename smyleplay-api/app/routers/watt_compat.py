@@ -555,7 +555,9 @@ async def build_artist_detail_payload(
     published_adn = (await db.execute(adn_stmt)).scalar_one_or_none()
     adn_payload: dict | None = None
     if published_adn is not None:
-        # 2026-05-13 — Stock vendu = COUNT(OwnedAdn) si édition limitée.
+        # 2026-05-13 — Calcul rareté (4 tiers) + stock vendu si édition limitée.
+        from app.services.marketplace import compute_rarity_tier
+        rarity_tier = compute_rarity_tier(published_adn.max_supply)
         sold_count = 0
         if published_adn.max_supply is not None:
             from app.models.owned_adn import OwnedAdn  # noqa: WPS433
@@ -581,6 +583,8 @@ async def build_artist_detail_payload(
             "isExclusive":      max_sup == 1,
             "isLimited":        max_sup is not None and max_sup > 1,
             "isSoldOut":        max_sup is not None and sold_count >= max_sup,
+            # 2026-05-13 — Tier de rareté (Mythic/Legendary/Limited/Open/Unlimited)
+            "rarityTier":       rarity_tier,
         }
 
     # Prompts publiés de l'artiste (meta seulement — prompt_text/lyrics gated).

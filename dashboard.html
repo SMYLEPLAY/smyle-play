@@ -1054,16 +1054,23 @@
           </select>
           <div class="dash-help">Affiché publiquement comme badge sur ta card ADN.</div>
 
-          <!-- 2026-05-13 — Rareté : illimité / exclusif / édition limitée -->
-          <label class="dash-label">Édition</label>
-          <select class="dash-input" id="dashAdnEditionType" onchange="dashAdnToggleSupplyInput()">
-            <option value="unlimited">Illimitée (default)</option>
-            <option value="exclusive">Exclusive (1 seul acheteur)</option>
-            <option value="limited">Édition limitée (2 à 1000)</option>
-          </select>
+          <!-- 2026-05-13 — Rareté : 1 seul input + tier auto calculé -->
+          <label class="dash-label">Combien d'éditions à vendre ?</label>
           <input type="number" class="dash-input" id="dashAdnMaxSupply"
-                 min="2" max="1000" value="10" style="display:none;margin-top:8px;" />
-          <div class="dash-help">Exclusive = ne peut être acheté que par 1 personne. Édition limitée = nombre max d'acheteurs.</div>
+                 min="1" max="100000"
+                 placeholder="Laisser vide = illimité"
+                 oninput="dashAdnUpdateRarityPreview()" />
+          <div class="dash-help" id="dashAdnRarityPreview" style="margin-top:8px;font-weight:500;">
+            Tape un nombre pour voir le tier de rareté.
+          </div>
+          <div class="dash-help" style="margin-top:8px;line-height:1.6;font-size:11px;opacity:0.75;">
+            <strong>Grille rareté :</strong><br>
+            👑 <strong>1</strong> = Mythic (pièce unique 1/1)<br>
+            ⭐ <strong>2 à 10</strong> = Legendary (drop VIP)<br>
+            💎 <strong>11 à 1 000</strong> = Limited (édition limitée)<br>
+            🟢 <strong>1 001 à 100 000</strong> = Open (édition ouverte)<br>
+            <em>Vide</em> = illimité (pas de badge rareté)
+          </div>
         </div>
 
         <div class="dash-adn-editor-actions">
