@@ -1008,6 +1008,133 @@ def create_app(config_class=None):
             'preview_key': preview_key,
         })
 
+    # ── API ADMIN — Backfill preview 30s pour voix existantes ──────────
+    #
+    # Tom 2026-05-14 — One-shot pour générer les preview_url des voix legacy
+    # qui n'ont pas eu de preview généré au moment de l'upload (uploadées
+    # avant le chantier preview 30s du 2026-05-13).
+    #
+    # Auth : header X-Admin-Token doit matcher env ADMIN_BACKFILL_TOKEN.
+    #
+    # Usage :
+    #   curl -X POST -H "X-Admin-Token: <token>" \
+    #     https://web-production-xxx.up.railway.app/api/admin/backfill-voice-previews
+    #
+    # Réponse : { ok: true, total, done, skipped, errors: [...] }
+    @app.route('/api/admin/backfill-voice-previews', methods=['POST'])
+    def admin_backfill_voice_previews():
+        import os, io, urllib.request
+        from sqlalchemy import text
+        try:
+            from pydub import AudioSegment
+        except Exception as e:
+            return jsonify({'error': f'pydub indisponible: {e}'}), 500
+
+        # Auth
+        token = request.headers.get('X-Admin-Token', '')
+        expected = os.environ.get('ADMIN_BACKFILL_TOKEN', '').strip()
+        if not expected:
+            return jsonify({'error': 'ADMIN_BACKFILL_TOKEN non configuré côté serveur'}), 503
+        if token != expected:
+            return jsonify({'error': 'Forbidden'}), 403
+
+        if not app.r2_client:
+            return jsonify({'error': 'R2 client not configured'}), 500
+
+        bucket = app.config.get('R2_BUCKET', 'smyle-play-audio')
+        base_url = app.config.get('CLOUD_AUDIO_BASE_URL', '').rstrip('/')
+
+        # Liste les voix avec preview_url IS NULL
+        rows = db.session.execute(
+            text(
+                "SELECT id::text, sample_url FROM voices_for_sale "
+                "WHERE preview_url IS NULL AND sample_url IS NOT NULL"
+            )
+        ).fetchall()
+
+        total = len(rows)
+        done = 0
+        skipped = 0
+        errors = []
+
+        for row in rows:
+            voice_id = row[0]
+            sample_url = row[1]
+            try:
+                # Download sample
+                if sample_url.startswith('http'):
+                    fetch_url = sample_url
+                else:
+                    # Path interne /api/watt/stream/KEY → on construit l'URL absolue
+                    # à partir de la requête courante (host + path)
+                    fetch_url = request.host_url.rstrip('/') + sample_url
+                req = urllib.request.Request(fetch_url, headers={'User-Agent': 'smyle-backfill/1.0'})
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    raw = resp.read()
+
+                # Couper à 30s via pydub
+                audio = AudioSegment.from_file(io.BytesIO(raw))
+                preview = audio[:30000]
+                out_buf = io.BytesIO()
+                preview.export(out_buf, format='mp3', bitrate='192k')
+                out_buf.seek(0)
+
+                # Dériver la R2 key depuis sample_url
+                if base_url and sample_url.startswith(base_url):
+                    key = sample_url[len(base_url):].lstrip('/')
+                elif sample_url.startswith('/api/watt/stream/'):
+                    key = sample_url.replace('/api/watt/stream/', '', 1)
+                else:
+                    errors.append({
+                        'id': voice_id,
+                        'error': 'cannot derive R2 key from sample_url'
+                    })
+                    skipped += 1
+                    continue
+
+                # Generate preview key : strip extension + suffix _preview.mp3
+                if '.' in key:
+                    stem = key.rsplit('.', 1)[0]
+                else:
+                    stem = key
+                preview_key = stem + '_preview.mp3'
+
+                # Upload preview to R2
+                app.r2_client.upload_fileobj(
+                    out_buf, bucket, preview_key,
+                    ExtraArgs={'ContentType': 'audio/mpeg'}
+                )
+                preview_url = (
+                    f'{base_url}/{preview_key}' if base_url
+                    else f'/api/watt/stream/{preview_key}'
+                )
+
+                # Update DB
+                db.session.execute(
+                    text(
+                        "UPDATE voices_for_sale SET preview_url = :pu "
+                        "WHERE id = :id"
+                    ),
+                    {'pu': preview_url, 'id': voice_id}
+                )
+                db.session.commit()
+                done += 1
+                logger.info(f'[BACKFILL] voice {voice_id} → preview généré')
+
+            except Exception as e:
+                db.session.rollback()
+                errors.append({'id': voice_id, 'error': str(e)})
+                skipped += 1
+                logger.warning(f'[BACKFILL] voice {voice_id} échec: {e}')
+
+        return jsonify({
+            'ok': True,
+            'total': total,
+            'done': done,
+            'skipped': skipped,
+            'errors': errors,
+        })
+
     @app.route('/api/watt/upload-image', methods=['POST'])
     def watt_upload_image():
         """Upload d'une image de profil (avatar ou cover) vers R2."""
