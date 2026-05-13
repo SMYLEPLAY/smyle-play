@@ -1037,6 +1037,31 @@
           <input type="number" class="dash-input" id="dashAdnPrice"
                  min="30" max="500" value="80" />
           <div class="dash-help">Entre 30 et 500 crédits. Achat unique par utilisateur.</div>
+
+          <!-- 2026-05-13 — IA source du contenu ADN -->
+          <label class="dash-label">IA utilisée (optionnel)</label>
+          <select class="dash-input" id="dashAdnAiReference">
+            <option value="">— Aucune / non précisé —</option>
+            <option value="chatgpt">ChatGPT</option>
+            <option value="claude">Claude</option>
+            <option value="grok">Grok</option>
+            <option value="gemini">Gemini</option>
+            <option value="mistral">Mistral</option>
+            <option value="perplexity">Perplexity</option>
+            <option value="autre">Autre</option>
+          </select>
+          <div class="dash-help">Affiché publiquement comme badge sur ta card ADN.</div>
+
+          <!-- 2026-05-13 — Rareté : illimité / exclusif / édition limitée -->
+          <label class="dash-label">Édition</label>
+          <select class="dash-input" id="dashAdnEditionType" onchange="dashAdnToggleSupplyInput()">
+            <option value="unlimited">Illimitée (default)</option>
+            <option value="exclusive">Exclusive (1 seul acheteur)</option>
+            <option value="limited">Édition limitée (2 à 1000)</option>
+          </select>
+          <input type="number" class="dash-input" id="dashAdnMaxSupply"
+                 min="2" max="1000" value="10" style="display:none;margin-top:8px;" />
+          <div class="dash-help">Exclusive = ne peut être acheté que par 1 personne. Édition limitée = nombre max d'acheteurs.</div>
         </div>
 
         <div class="dash-adn-editor-actions">

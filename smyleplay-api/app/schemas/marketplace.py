@@ -21,12 +21,21 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # Limites partagées (source unique pour Pydantic + tests)
 # -----------------------------------------------------------------------------
 
+# 2026-05-13 — IA déclarée par l'artiste comme source du contenu ADN.
+# Aligné avec ck_adns_ai_reference_enum côté DB.
+AiReference = Literal[
+    "chatgpt", "claude", "grok", "gemini", "mistral", "perplexity", "autre"
+]
+
 ADN_PRICE_MIN = 30
 ADN_PRICE_MAX = 500
 ADN_DESCRIPTION_MIN = 200       # Cohérent avec ck_adns_description_min_length
 ADN_DESCRIPTION_MAX = 5000      # Plafond applicatif (DB n'a pas de max)
 ADN_USAGE_GUIDE_MAX = 3000
 ADN_EXAMPLE_OUTPUTS_MAX = 5000
+# 2026-05-13 — Rareté ADN : min 1 (exclusif), max 1000 (édition limitée).
+ADN_MAX_SUPPLY_MIN = 1
+ADN_MAX_SUPPLY_MAX = 1000
 
 PROMPT_PRICE_MIN = 3
 PROMPT_PRICE_MAX = 500          # Cohérent avec ADN (économique)
@@ -81,6 +90,14 @@ class AdnCreate(BaseModel):
         le=ADN_PRICE_MAX,
         description=f"Prix en crédits ({ADN_PRICE_MIN}..{ADN_PRICE_MAX}).",
     )
+    # 2026-05-13 — Provenance IA (badge public sur la card).
+    ai_reference: AiReference | None = None
+    # 2026-05-13 — Rareté : None=illimité, 1=exclusif, N=édition limitée.
+    max_supply: int | None = Field(
+        default=None,
+        ge=ADN_MAX_SUPPLY_MIN,
+        le=ADN_MAX_SUPPLY_MAX,
+    )
 
 
 class AdnUpdate(BaseModel):
@@ -115,6 +132,13 @@ class AdnUpdate(BaseModel):
         default=None, ge=ADN_PRICE_MIN, le=ADN_PRICE_MAX
     )
     is_published: bool | None = None
+    # 2026-05-13 — Provenance IA + rareté éditables au PATCH.
+    ai_reference: AiReference | None = None
+    max_supply: int | None = Field(
+        default=None,
+        ge=ADN_MAX_SUPPLY_MIN,
+        le=ADN_MAX_SUPPLY_MAX,
+    )
 
 
 class AdnRead(BaseModel):
@@ -127,6 +151,8 @@ class AdnRead(BaseModel):
     example_outputs: str | None = None
     price_credits: int
     is_published: bool
+    ai_reference: str | None = None
+    max_supply: int | None = None
     created_at: datetime
     updated_at: datetime
     last_updated_by_artist_at: datetime | None = None

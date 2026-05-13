@@ -3518,6 +3518,20 @@ function openAdnEditor() {
   document.getElementById('dashAdnUsageGuide').value      = adn ? (adn.usage_guide || '') : '';
   document.getElementById('dashAdnExampleOutputs').value  = adn ? (adn.example_outputs || '') : '';
   document.getElementById('dashAdnPrice').value           = adn ? String(adn.price_credits) : '80';
+  // 2026-05-13 — préselection IA + édition
+  const aiSel = document.getElementById('dashAdnAiReference');
+  if (aiSel) aiSel.value = (adn && adn.ai_reference) ? adn.ai_reference : '';
+  const edSel = document.getElementById('dashAdnEditionType');
+  const supInp = document.getElementById('dashAdnMaxSupply');
+  if (edSel) {
+    if (!adn || adn.max_supply == null)      edSel.value = 'unlimited';
+    else if (adn.max_supply === 1)           edSel.value = 'exclusive';
+    else                                     edSel.value = 'limited';
+    if (supInp) {
+      supInp.value = (adn && adn.max_supply && adn.max_supply > 1) ? String(adn.max_supply) : '10';
+      supInp.style.display = (edSel.value === 'limited') ? '' : 'none';
+    }
+  }
 
   editor.style.display = '';
   editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3528,6 +3542,14 @@ function openAdnEditor() {
 function closeAdnEditor() {
   const editor = document.getElementById('dashAdnEditor');
   if (editor) editor.style.display = 'none';
+}
+
+// 2026-05-13 — Affiche/masque l'input max_supply selon le type d'édition.
+function dashAdnToggleSupplyInput() {
+  const sel = document.getElementById('dashAdnEditionType');
+  const inp = document.getElementById('dashAdnMaxSupply');
+  if (!sel || !inp) return;
+  inp.style.display = (sel.value === 'limited') ? '' : 'none';
 }
 
 async function saveAdn() {
@@ -3554,6 +3576,20 @@ async function saveAdn() {
     return;
   }
 
+  // 2026-05-13 — Rareté + IA source
+  const aiRef = (document.getElementById('dashAdnAiReference')||{}).value || '';
+  const editionType = (document.getElementById('dashAdnEditionType')||{}).value || 'unlimited';
+  let maxSupplyVal = null;
+  if (editionType === 'exclusive') maxSupplyVal = 1;
+  else if (editionType === 'limited') {
+    const raw = parseInt((document.getElementById('dashAdnMaxSupply')||{}).value, 10);
+    if (!Number.isInteger(raw) || raw < 2 || raw > 1000) {
+      _dashToast('Édition limitée : indique un nombre entre 2 et 1000.');
+      return;
+    }
+    maxSupplyVal = raw;
+  }
+
   const payload = {
     description,
     price_credits: priceCredits,
@@ -3562,6 +3598,8 @@ async function saveAdn() {
   // (évite d'effacer par inadvertance côté PATCH partiel).
   if (usageGuide)     payload.usage_guide     = usageGuide;
   if (exampleOutputs) payload.example_outputs = exampleOutputs;
+  if (aiRef)          payload.ai_reference    = aiRef;
+  if (maxSupplyVal !== null) payload.max_supply = maxSupplyVal;
 
   const isCreate = !_adnState.adn;
   const method   = isCreate ? 'POST' : 'PATCH';
@@ -3674,6 +3712,7 @@ if (typeof window !== 'undefined') {
   window.openAdnEditor        = openAdnEditor;
   window.closeAdnEditor       = closeAdnEditor;
   window.saveAdn              = saveAdn;
+  window.dashAdnToggleSupplyInput = dashAdnToggleSupplyInput;
   window.toggleAdnPublish     = toggleAdnPublish;
   // Ma Musique — mode switcher + widgets live
   window.setUploadMode        = setUploadMode;
