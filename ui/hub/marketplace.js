@@ -273,8 +273,8 @@
 
     // Register virtual PLAYLIST pour le player principal (queue Top Sons)
     if (typeof window !== 'undefined') {
-      window.PLAYLISTS = window.PLAYLISTS || {};
-      window.PLAYLISTS['mp_top_sons'] = {
+      /* PLAYLISTS init dans state.js */
+      PLAYLISTS['mp_top_sons'] = {
         theme: 'mix', label: 'Top Sons', folder: '',
         tracks: top.filter(t => t.streamUrl).map((t, i) => ({
           id:   t.id || ('mptop_' + i),
@@ -409,8 +409,8 @@
 
     // Register virtual PLAYLIST pour le player principal (queue Tous les sons)
     if (typeof window !== 'undefined') {
-      window.PLAYLISTS = window.PLAYLISTS || {};
-      window.PLAYLISTS['mp_all_sons'] = {
+      /* PLAYLISTS init dans state.js */
+      PLAYLISTS['mp_all_sons'] = {
         theme: 'mix', label: 'Tous les sons', folder: '',
         tracks: items.filter(t => t.streamUrl).map((t, i) => ({
           id:   t.id || ('mpall_' + i),
@@ -582,8 +582,8 @@
             file: 'track.wav'
           })).filter(t => t.url);
           if (typeof loadTrack === 'function' && dynTracks.length > 0) {
-            window.PLAYLISTS = window.PLAYLISTS || {};
-            window.PLAYLISTS['mp_top_sons'] = {
+            /* PLAYLISTS init dans state.js */
+            PLAYLISTS['mp_top_sons'] = {
               theme: 'mix', label: 'Top Sons', folder: '', tracks: dynTracks
             };
             const tid = row.dataset.trackId;
@@ -621,8 +621,8 @@
           file: 'track.wav'
         })).filter(t => t.url);
         if (typeof loadTrack === 'function' && dynTracks.length > 0) {
-          window.PLAYLISTS = window.PLAYLISTS || {};
-          window.PLAYLISTS['mp_all_sons'] = {
+          /* PLAYLISTS init dans state.js */
+          PLAYLISTS['mp_all_sons'] = {
             theme: 'mix', label: 'Tous les sons', folder: '', tracks: dynTracks
           };
           const tid = card.dataset.trackId;
