@@ -555,10 +555,10 @@ async def build_artist_detail_payload(
     published_adn = (await db.execute(adn_stmt)).scalar_one_or_none()
     adn_payload: dict | None = None
     if published_adn is not None:
-        teaser = (published_adn.description or "")[:240]
+        # Pas de teaser exposé : on donne longueur + prix + meta booléens.
         adn_payload = {
             "id":              str(published_adn.id),
-            "descriptionTeaser": teaser,
+            "characterCount":  len(published_adn.description or ""),
             "priceCredits":    published_adn.price_credits,
             "hasUsageGuide":   bool(published_adn.usage_guide),
             "hasExampleOutputs": bool(published_adn.example_outputs),
