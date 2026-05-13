@@ -1153,7 +1153,7 @@ async function uploadTrack() {
     fd.append('name',   name);
     fd.append('userId', user ? String(user.id) : 'guest');
 
-    const res  = await fetch('/api/watt/upload', { method: 'POST', body: fd });
+    const res  = await fetch('/api/watt/upload-voice', { method: 'POST', body: fd });
     if (res.ok) {
       const data = await res.json();
       uploaded  = !data.mock;
@@ -2241,8 +2241,9 @@ function dashVoiceResetForm() {
   if (lbl) lbl.textContent = 'Enregistrer ma voix';
 }
 
-// Upload du sample audio vers R2 via l'endpoint Flask existant.
-// Renvoie l'URL publique R2, ou null si échec / mode hors-ligne.
+// Upload du sample audio vers R2 via le nouvel endpoint Flask qui
+// génère AUSSI le preview 30s (chantier 2026-05-13).
+// Renvoie { sample_url, preview_url } ou null si échec / mode hors-ligne.
 async function _uploadVoiceSample(file, voiceName) {
   if (!file) return null;
   try {
@@ -2258,8 +2259,10 @@ async function _uploadVoiceSample(file, voiceName) {
     const data = await res.json();
     // Le mode dev sans R2 renvoie { mock: true, url: null, key }.
     // Dans ce cas on ne peut pas créer la voix : le backend exige sample_url.
-    if (data.mock || !data.url) return null;
-    return data.url;
+    // Nouvel endpoint upload-voice renvoie { sample_url, preview_url }.
+    // Si data.mock, on est en mode dev sans R2 — null pour signaler échec.
+    if (data.mock || !data.sample_url) return null;
+    return { sample_url: data.sample_url, preview_url: data.preview_url || null };
   } catch (_) {
     return null;
   }
@@ -2293,11 +2296,16 @@ async function dashVoiceSave() {
 
   // ── Étape 1 : upload sample R2 si un nouveau fichier est attendu ────
   let sample_url = null;
+  let preview_url = null;
   if (_voicesState.pendingFile) {
-    sample_url = await _uploadVoiceSample(_voicesState.pendingFile, name);
-    if (!sample_url) {
+    const uploaded = await _uploadVoiceSample(_voicesState.pendingFile, name);
+    if (!uploaded) {
       alert('Échec de l\'upload du sample audio. Réessaie ou vérifie ta connexion.');
       return;
+    }
+    sample_url  = uploaded.sample_url;
+    preview_url = uploaded.preview_url;
+    if (false) {  // garde structure existante
     }
   }
 
@@ -2309,7 +2317,8 @@ async function dashVoiceSave() {
 
   // ── Étape 2 : POST (création) ou PATCH (mise à jour) /api/voices ────
   const payload = { name, style, genres, license, price_credits: price };
-  if (sample_url) payload.sample_url = sample_url;
+  if (sample_url)  payload.sample_url  = sample_url;
+  if (preview_url) payload.preview_url = preview_url;
   if (voice_origin) payload.voice_origin = voice_origin;
   if (linked_track_id) payload.linked_track_id = linked_track_id;
 

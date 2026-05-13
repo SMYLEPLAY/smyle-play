@@ -101,6 +101,11 @@ class Voice(Base):
         server_default="'[]'::jsonb",
     )
     sample_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    # 2026-05-13 — clip 30s exposé publiquement (preview). sample_url
+    # devient PRIVÉ (gated derrière achat voix ou track lié).
+    preview_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
     license: Mapped[str] = mapped_column(String(16), nullable=False)
     price_credits: Mapped[int] = mapped_column(Integer, nullable=False)
     is_published: Mapped[bool] = mapped_column(

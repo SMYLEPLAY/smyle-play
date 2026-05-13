@@ -83,6 +83,7 @@ class VoiceCreate(BaseModel):
     style: str = Field(min_length=1, max_length=80)
     genres: list[str] = Field(default_factory=list, max_length=10)
     sample_url: HttpUrl = Field(max_length=500)
+    preview_url: HttpUrl | None = Field(default=None, max_length=500)
     voice_origin: VoiceOrigin | None = None
     linked_track_id: UUID | None = None
     license: VoiceLicense
@@ -99,6 +100,7 @@ class VoiceUpdate(BaseModel):
     style: str | None = Field(default=None, min_length=1, max_length=80)
     genres: list[str] | None = Field(default=None, max_length=10)
     sample_url: HttpUrl | None = Field(default=None, max_length=500)
+    preview_url: HttpUrl | None = Field(default=None, max_length=500)
     voice_origin: VoiceOrigin | None = None
     linked_track_id: UUID | None = None
     license: VoiceLicense | None = None
@@ -114,9 +116,11 @@ class VoicePublicRead(BaseModel):
     """
     Vue publique d'une voix (visiteur non-acheteur, profil /u/<slug>).
 
-    Révision 2026-05-13 (fix faille Tom) : sample_url RETIRÉ du payload
-    public. L'URL R2 directe permettait de télécharger la voix sans achat.
-    Conforme à project_prompt_visibility_rule : voix verrouillées avant achat.
+    Chantier preview 30s 2026-05-13 :
+      - sample_url retiré du payload public (faille DL fermée).
+      - preview_url ajouté (clip 30s extrait à l'upload), public.
+      - Voix legacy sans preview : preview_url=None → front affiche
+        placeholder verrouillé jusqu'au backfill ops.
 
     `artist` est optionnel pour rétrocompat — un client legacy qui ne
     consomme pas ce champ ignore simplement la clé.
@@ -136,14 +140,19 @@ class VoicePublicRead(BaseModel):
     created_at: datetime
     voice_origin: VoiceOrigin | None = None
     linked_track_id: UUID | None = None
-    sample_url: str  # streaming public (pré-écoute autorisée, bloque DL via UI)
+    # 2026-05-13 — clip 30s public (preview). sample_url DÉFINITIVEMENT
+    # retiré du payload public (faille DL — règle Tom no DL sans achat).
+    preview_url: str | None = None
 
 
 class VoiceFullRead(VoicePublicRead):
     """
     Vue complète admin/owner/unlocked : sample_url + updated_at.
-    Servi UNIQUEMENT à l'owner (/voices/me) ou aux acheteurs ayant
-    unlock (/voices/me/unlocked + /unlocks/voices/{id} response).
+    Servi à :
+      - l'owner de la voix (artist_id == user.id)
+      - les acheteurs ayant unlock voix (OwnedVoice)
+      - les acheteurs ayant unlock le track lié (voice.linked_track_id
+        ∈ UnlockedPrompt.prompt.track) — règle Tom 2026-05-13
     """
 
     sample_url: str

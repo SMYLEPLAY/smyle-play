@@ -904,6 +904,110 @@ def create_app(config_class=None):
     # Le frontend enchaîne avec PATCH /users/me { avatar_url / cover_photo_url }
     # pour persister l'URL dans la DB.
 
+    # ── API WATT — Upload d'une voix avec génération preview 30s ────────
+    #
+    # Endpoint dédié vente voix (recette B Tom 2026-05-13) :
+    #   1. Upload full sample sur R2 (key: VOICES/{user}/{ts}-{name}.{ext})
+    #   2. Génère un clip 30s via pydub (fallback ffmpeg système)
+    #   3. Upload le clip 30s sur R2 (key: VOICES/{user}/{ts}-{name}_preview.mp3)
+    #   4. Renvoie { ok, sample_url (full, gated), preview_url (30s, public) }
+    #
+    # Si pydub échoue (ffmpeg manquant, audio corrompu, etc.) on log et
+    # on renvoie preview_url=None — le frontend affichera placeholder
+    # "Pré-écoute non disponible" mais le full reste correctement uploadé.
+    #
+    # Règle Tom : le full sample N'EST JAMAIS exposé publiquement.
+    # Seul preview_url est dans VoicePublicRead. Le full passe par
+    # VoiceFullRead servi uniquement à l'owner / acheteur / acheteur track lié.
+    @app.route('/api/watt/upload-voice', methods=['POST'])
+    def watt_upload_voice():
+        import time, re, mimetypes, io
+        try:
+            from pydub import AudioSegment
+            _PYDUB_OK = True
+        except Exception as _imp_err:
+            _PYDUB_OK = False
+            logger.warning(f'[VOICE] pydub indisponible: {_imp_err}')
+
+        user_id    = request.form.get('userId', 'guest')
+        voice_name = request.form.get('name', '').strip()
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'Aucun fichier fourni'}), 400
+
+        f = request.files['file']
+        if not f.filename:
+            return jsonify({'error': 'Fichier vide'}), 400
+
+        # On lit le contenu une seule fois en mémoire (limite 50 Mo en pratique).
+        raw = f.read()
+        if not raw:
+            return jsonify({'error': 'Fichier vide'}), 400
+
+        ext  = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'wav'
+        safe = re.sub(r'[^a-z0-9_-]', '_', voice_name.lower())[:40] or 'voice'
+        ts   = int(time.time())
+        full_key    = f'VOICES/{user_id}/{ts}-{safe}.{ext}'
+        preview_key = f'VOICES/{user_id}/{ts}-{safe}_preview.mp3'
+
+        mime, _ = mimetypes.guess_type(f.filename)
+        ct_full    = mime or 'audio/wav'
+        ct_preview = 'audio/mpeg'
+
+        if not app.r2_client:
+            logger.info(f'[VOICE] Mode sans R2 — full={full_key} preview={preview_key}')
+            return jsonify({
+                'ok': True, 'mock': True,
+                'sample_url': None, 'preview_url': None,
+                'sample_key': full_key, 'preview_key': preview_key,
+            })
+
+        bucket = app.config.get('R2_BUCKET', 'smyle-play-audio')
+        base_url = app.config.get('CLOUD_AUDIO_BASE_URL', '').rstrip('/')
+
+        # 1. Upload full
+        try:
+            app.r2_client.upload_fileobj(
+                io.BytesIO(raw), bucket, full_key,
+                ExtraArgs={'ContentType': ct_full},
+            )
+        except Exception as e:
+            logger.error(f'[VOICE] Erreur upload full R2: {e}')
+            return jsonify({'error': str(e)}), 500
+
+        sample_url = f'{base_url}/{full_key}' if base_url else f'/api/watt/stream/{full_key}'
+        preview_url = None
+
+        # 2. Génération preview 30s (best-effort)
+        if _PYDUB_OK:
+            try:
+                audio = AudioSegment.from_file(io.BytesIO(raw))
+                # Couper à 30s max
+                preview_audio = audio[:30000]
+                # Export en MP3 192kbps (équilibre qualité/poids preview)
+                out_buf = io.BytesIO()
+                preview_audio.export(out_buf, format='mp3', bitrate='192k')
+                out_buf.seek(0)
+                try:
+                    app.r2_client.upload_fileobj(
+                        out_buf, bucket, preview_key,
+                        ExtraArgs={'ContentType': ct_preview},
+                    )
+                    preview_url = f'{base_url}/{preview_key}' if base_url else f'/api/watt/stream/{preview_key}'
+                    logger.info(f'[VOICE] Preview 30s uploadée: {preview_key}')
+                except Exception as e:
+                    logger.error(f'[VOICE] Erreur upload preview R2: {e}')
+            except Exception as e:
+                logger.error(f'[VOICE] Erreur génération preview pydub: {e}')
+
+        return jsonify({
+            'ok': True,
+            'sample_url': sample_url,
+            'preview_url': preview_url,
+            'sample_key': full_key,
+            'preview_key': preview_key,
+        })
+
     @app.route('/api/watt/upload-image', methods=['POST'])
     def watt_upload_image():
         """Upload d'une image de profil (avatar ou cover) vers R2."""

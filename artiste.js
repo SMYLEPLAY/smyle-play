@@ -1254,12 +1254,17 @@ function renderVoices(artist) {
     const genresBadge = genresStr
       ? `<span class="ap-voice-badge">${genresStr.replace(/</g, '&lt;')}</span>`
       : '';
-    // Fix faille voix (2026-05-13) : sample_url retiré du payload public.
-    // Owner/unlocked reçoit VoiceFullRead avec sample_url → lecteur audio.
-    // Visiteur reçoit VoicePublicRead sans sample_url → placeholder verrouillé.
-    const previewBlock = v.sample_url
-      ? `<audio controls preload="none" class="ap-voice-preview"
-                src="${(v.sample_url + '').replace(/"/g, '&quot;')}"></audio>`
+    // 2026-05-13 — chantier preview 30s :
+    //   - owner/unlocked reçoit sample_url (full) → player full
+    //   - visiteur reçoit preview_url (30s) → player preview
+    //   - voix legacy sans preview → placeholder verrouillé
+    const audioSrc = v.sample_url || v.preview_url || null;
+    const audioLbl = v.sample_url ? '' : (v.preview_url ? ' · 30s preview' : '');
+    const previewBlock = audioSrc
+      ? `<audio controls preload="none" controlsList="nodownload noremoteplayback"
+                oncontextmenu="return false" class="ap-voice-preview"
+                src="${(audioSrc + '').replace(/"/g, '&quot;')}"></audio>
+         <div class="ap-voice-preview-label" style="font-size:11px;color:#a09cb8;margin-top:4px;">${audioLbl ? '🎧 Pré-écoute' + audioLbl : ''}</div>`
       : `<div class="ap-voice-locked"
               style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed rgba(204,136,255,.3);border-radius:8px;color:#a09cb8;font-size:12px;font-style:italic">
            🔒 Pré-écoute après achat

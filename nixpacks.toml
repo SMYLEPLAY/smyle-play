@@ -1,0 +1,9 @@
+# Railway build — ffmpeg requis pour pydub (preview 30s voix)
+# Cf chantier preview 30s 2026-05-13.
+
+[phases.setup]
+nixPkgs = ["...", "ffmpeg"]
+
+# Le reste reste géré par nixpacks par défaut :
+#   - python3.12 + venv via requirements.txt
+#   - uvicorn lancé via railway.toml startCommand

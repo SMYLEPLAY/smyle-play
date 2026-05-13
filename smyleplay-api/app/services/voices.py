@@ -303,9 +303,10 @@ async def enrich_voices_with_artist(
             "price_credits": v.price_credits,
             "is_published": v.is_published,
             "created_at": v.created_at,
-            # P1-F9 enhancement (2026-05-03) : sample_url toujours public
-            # pour permettre la pré-écoute avant achat. Voir VoicePublicRead.
-            "sample_url": v.sample_url,
+            # 2026-05-13 — sample_url PRIVÉ (filtré côté router selon
+            # autorisation). preview_url toujours inclus (clip 30s public).
+            "sample_url": v.sample_url,  # filtré côté router pour vues publiques
+            "preview_url": v.preview_url,
             "voice_origin": v.voice_origin,
             "linked_track_id": v.linked_track_id,
             "updated_at": v.updated_at,  # ignoré par VoicePublicRead.model_validate
@@ -325,3 +326,70 @@ async def voice_to_full_dict(
     """
     enriched = await enrich_voices_with_artist(db, [voice], include_sample=True)
     return enriched[0] if enriched else {}
+
+
+# -----------------------------------------------------------------------------
+# Access control sample full (2026-05-13)
+# Règle Tom : full sample accessible UNIQUEMENT si :
+#   1. owner (artist_id == user.id)
+#   2. has OwnedVoice (a acheté la voix)
+#   3. has UnlockedPrompt sur le track lié (voice.linked_track_id)
+# -----------------------------------------------------------------------------
+
+async def user_can_access_full_sample(
+    db: AsyncSession,
+    *,
+    user_id: "UUID | None",
+    voice: Voice,
+) -> bool:
+    """
+    True si user_id a le droit de voir voice.sample_url (full file).
+    None user_id (visiteur anonyme) → toujours False.
+    """
+    if user_id is None:
+        return False
+
+    # 1. owner
+    if voice.artist_id == user_id:
+        return True
+
+    # 2. OwnedVoice
+    from app.models.voice import OwnedVoice
+    owned = (await db.execute(
+        select(OwnedVoice.voice_id).where(
+            (OwnedVoice.user_id == user_id) & (OwnedVoice.voice_id == voice.id)
+        )
+    )).first()
+    if owned is not None:
+        return True
+
+    # 3. UnlockedPrompt sur le track lié
+    if voice.linked_track_id is not None:
+        from app.models.track import Track
+        from app.models.unlocked_prompt import UnlockedPrompt
+        # Track a un prompt_id ; UnlockedPrompt a prompt_id + user_id
+        prompt_row = (await db.execute(
+            select(Track.prompt_id).where(Track.id == voice.linked_track_id)
+        )).first()
+        if prompt_row is not None and prompt_row[0] is not None:
+            unlocked = (await db.execute(
+                select(UnlockedPrompt.prompt_id).where(
+                    (UnlockedPrompt.user_id == user_id)
+                    & (UnlockedPrompt.prompt_id == prompt_row[0])
+                )
+            )).first()
+            if unlocked is not None:
+                return True
+
+    return False
+
+
+def strip_sample_url_for_public(d: dict) -> dict:
+    """
+    Retire sample_url + updated_at d'un dict pour le présenter en VoicePublicRead.
+    Garde preview_url, voice_origin, linked_track_id et le reste.
+    """
+    out = dict(d)
+    out.pop("sample_url", None)
+    out.pop("updated_at", None)
+    return out
