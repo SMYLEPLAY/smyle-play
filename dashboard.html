@@ -1551,7 +1551,8 @@
     opacity: 1;
   }
   .dash-section.is-collapsed .dash-section-hdr::after,
-  .dash-section.is-collapsed-sub .dash-subhdr::after {
+  .dash-section.is-collapsed-sub .dash-subhdr::after,
+  .dash-subhdr.is-1a-collapsed::after {
     transform: translateY(-50%) rotate(-90deg);
   }
   .dash-section.is-collapsed > *:not(.dash-section-hdr):not(style) {
@@ -1572,9 +1573,43 @@
 </style>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Étape 1 : rendre le subhdr 1a (Poster un morceau) PLIABLE
+    (function makeSubhdr1aCollapsible() {
+      var creation = document.getElementById('sec-upload');
+      if (!creation) return;
+      var subhdr1a = creation.querySelector(':scope > .dash-subhdr');
+      if (!subhdr1a) return;
+      if (creation.querySelector(':scope > .dash-subhdr1a-content')) return;
+      var wrapper = document.createElement('div');
+      wrapper.className = 'dash-subhdr1a-content';
+      var next = subhdr1a.nextElementSibling;
+      while (next) {
+        var after = next.nextElementSibling;
+        wrapper.appendChild(next);
+        next = after;
+      }
+      creation.appendChild(wrapper);
+      subhdr1a.addEventListener('click', function(e) {
+        if (e.target.closest('button, a, input, select, textarea')) return;
+        subhdr1a.classList.toggle('is-1a-collapsed');
+        wrapper.style.display = subhdr1a.classList.contains('is-1a-collapsed') ? 'none' : '';
+      });
+      subhdr1a.classList.add('is-1a-collapsed');
+      wrapper.style.display = 'none';
+    })();
+
+    // Étape 2 : déplacer Mon ADN + Vendre une voix DANS Création
+    (function regroup() {
+      var creation = document.getElementById('sec-upload');
+      var dna = document.getElementById('sec-dna');
+      var voice = document.getElementById('sec-voice-sale');
+      if (creation && dna && dna.parentNode !== creation) creation.appendChild(dna);
+      if (creation && voice && voice.parentNode !== creation) creation.appendChild(voice);
+    })();
+
     document.querySelectorAll('.dash-section').forEach(function(sec) {
-      // Jamais pliées : identité, playlists, création (02 = formulaire Poster un son)
-      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists' || sec.id === 'sec-upload') return;
+      // Jamais pliées par défaut : identité (gérée par <details>) + container playlists
+      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists') return;
       var hdr = sec.querySelector(':scope > .dash-section-hdr');
       var subhdr = sec.querySelector(':scope > .dash-subhdr');
       var target = hdr || subhdr;
