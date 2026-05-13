@@ -801,7 +801,9 @@ function renderDna(artist) {
       btn.style.opacity = '';
       btn.style.cursor = '';
       setText('ap-dna-unlock-label',
-        `Débloquer · ${formatCount(adn.priceCredits)} crédits`);
+        `Débloquer · ${formatCount(adn.priceCredits)} crédits` +
+        (typeof window.formatEurApprox === 'function'
+          ? ` (${window.formatEurApprox(adn.priceCredits)})` : ''));
     }
   }
 }
@@ -890,7 +892,10 @@ function renderPrompts(artist) {
       ? '<span class="ap-prompt-owner-note">Ton prompt</span>'
       : `<button type="button" class="ap-prompt-unlock-btn"
                  data-prompt-id="${p.id}" data-price="${p.priceCredits}">
-          🔓 Débloquer · ${priceStr} crédits
+          🔓 Débloquer · ${priceStr} crédits${
+            typeof window.formatEurApprox === 'function'
+              ? ` (${window.formatEurApprox(p.priceCredits)})` : ''
+          }
         </button>`;
     // Audio player du track lié (revert 2026-05-05) — pré-écoute avant
     // achat pour augmenter la conversion. Si pas de track lié, pas
@@ -1023,7 +1028,10 @@ function renderTracks(artist) {
           <button type="button" class="ap-track-unlock-btn"
                   data-prompt-id="${linkedPrompt.id}"
                   data-price="${linkedPrompt.priceCredits}">
-            🔓 Débloquer la recette · ${priceStr} crédits
+            🔓 Débloquer la recette · ${priceStr} crédits${
+              typeof window.formatEurApprox === 'function'
+                ? ` (${window.formatEurApprox(linkedPrompt.priceCredits)})` : ''
+            }
           </button>
         </div>`;
     } else if (linkedPrompt && artist.isSelf) {
