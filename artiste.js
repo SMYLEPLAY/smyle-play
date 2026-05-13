@@ -761,19 +761,27 @@ function renderDna(artist) {
       meta.insertAdjacentHTML('beforeend',
         '<span class="ap-dna-badge">' + AI_LBL[adn.aiReference] + '</span>');
     }
-    // 2026-05-13 — Rareté
+    // 2026-05-13 v2 — Rareté 4 tiers (mythic/legendary/limited/open)
+    const tier = adn.rarityTier || 'unlimited';
+    const left = (adn.availableCount != null) ? adn.availableCount : '?';
+    const tot  = (adn.maxSupply != null) ? adn.maxSupply : '?';
     if (adn.isSoldOut) {
       meta.insertAdjacentHTML('beforeend',
         '<span class="ap-dna-badge" style="background:#7f1d1d;color:#fff;">SOLD OUT</span>');
-    } else if (adn.isExclusive) {
+    } else if (tier === 'mythic') {
       meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#fbbf24;color:#000;">⭐ Exclusif (1/1)</span>');
-    } else if (adn.isLimited) {
-      const left = (adn.availableCount != null) ? adn.availableCount : '?';
-      const tot  = (adn.maxSupply != null) ? adn.maxSupply : '?';
+        '<span class="ap-dna-badge" style="background:#FFD700;color:#000;font-weight:600;">👑 Mythic · Pièce unique (1/1)</span>');
+    } else if (tier === 'legendary') {
       meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#a78bfa;color:#000;">💎 Édition limitée · ' + left + '/' + tot + ' restants</span>');
+        '<span class="ap-dna-badge" style="background:#FBBF24;color:#000;font-weight:600;">⭐ Legendary · Drop VIP ' + left + '/' + tot + '</span>');
+    } else if (tier === 'limited') {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge" style="background:#A78BFA;color:#000;font-weight:600;">💎 Limited · ' + left + '/' + tot + ' restants</span>');
+    } else if (tier === 'open') {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge" style="background:#4ADE80;color:#000;font-weight:600;">🟢 Open · ' + left + '/' + tot + '</span>');
     }
+    // tier === 'unlimited' → pas de badge rareté affiché
   }
 
   // Masque le bouton unlock pour l'owner (pas d'auto-achat).
