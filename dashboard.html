@@ -1572,9 +1572,19 @@
 </style>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Regrouper Mon ADN + Vendre une voix DANS 02 Création (sec-upload)
+    // pour que le pli de Création cache aussi ces sous-blocs.
+    (function regroup() {
+      var creation = document.getElementById('sec-upload');
+      var dna = document.getElementById('sec-dna');
+      var voice = document.getElementById('sec-voice-sale');
+      if (creation && dna && dna.parentNode !== creation) creation.appendChild(dna);
+      if (creation && voice && voice.parentNode !== creation) creation.appendChild(voice);
+    })();
+
     document.querySelectorAll('.dash-section').forEach(function(sec) {
-      // Jamais pliées : identité, playlists, création (02 = formulaire Poster un son)
-      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists' || sec.id === 'sec-upload') return;
+      // Jamais pliées par défaut : identité (gérée par <details>) + container playlists
+      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists') return;
       var hdr = sec.querySelector(':scope > .dash-section-hdr');
       var subhdr = sec.querySelector(':scope > .dash-subhdr');
       var target = hdr || subhdr;
