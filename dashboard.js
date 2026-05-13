@@ -3554,14 +3554,11 @@ function dashAdnUpdateRarityPreview() {
     out.innerHTML = '<span style="color:#f87171;">Nombre invalide</span>';
     return;
   }
-  if (n > 100000) {
-    out.innerHTML = '<span style="color:#f87171;">Maximum 100 000 éditions</span>';
-    return;
-  }
+  // Pas de plafond ressenti — INT32 PostgreSQL couvre tout.
   let tier, emoji, label, color;
   if (n === 1)        { tier='Mythic';    emoji='👑'; label='Pièce unique (1/1)';     color='#FFD700'; }
   else if (n <= 10)   { tier='Legendary'; emoji='⭐'; label=`Drop VIP (${n} exemplaires)`; color='#FBBF24'; }
-  else if (n <= 1000) { tier='Limited';   emoji='💎'; label=`Édition limitée (${n} exemplaires)`; color='#A78BFA'; }
+  else if (n <= 10000) { tier='Limited';  emoji='💎'; label=`Édition limitée (${n} exemplaires)`; color='#A78BFA'; }
   else                { tier='Open';      emoji='🟢'; label=`Édition ouverte (${n} exemplaires)`; color='#4ADE80'; }
   out.innerHTML = `<span style="color:${color};">${emoji} <strong>${tier}</strong> — ${label}</span>`;
 }
@@ -3596,8 +3593,8 @@ async function saveAdn() {
   let maxSupplyVal = null;
   if (supRaw.trim() !== '') {
     const n = parseInt(supRaw, 10);
-    if (!Number.isInteger(n) || n < 1 || n > 100000) {
-      _dashToast('Éditions : indique un nombre entre 1 et 100 000, ou laisse vide pour illimité.');
+    if (!Number.isInteger(n) || n < 1) {
+      _dashToast('Éditions : nombre invalide. Tape un entier positif ou laisse vide pour illimité.');
       return;
     }
     maxSupplyVal = n;
