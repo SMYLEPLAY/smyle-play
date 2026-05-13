@@ -304,11 +304,12 @@ async def enrich_voices_with_artist(
             "is_published": v.is_published,
             "created_at": v.created_at,
             # sample_url PRIVÉ (filtré côté router selon autorisation).
-            # preview_url = clip 30s dédié si disponible, sinon fallback
-            # sur sample_url (voix legacy sans preview généré). Le frontend
-            # applique un cap 30s JS côté player public.
+            # preview_url = clip 30s public dédié (NULL si pas encore généré).
+            # Tom 2026-05-14 : fallback OR sample_url RETIRÉ — il rouvrait la
+            # faille DL pour les voix legacy. Backfill via
+            # POST /api/admin/backfill-voice-previews à la place.
             "sample_url": v.sample_url,  # filtré côté router pour vues publiques
-            "preview_url": v.preview_url or v.sample_url,
+            "preview_url": v.preview_url,
             "voice_origin": v.voice_origin,
             "linked_track_id": v.linked_track_id,
             "updated_at": v.updated_at,  # ignoré par VoicePublicRead.model_validate
