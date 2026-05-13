@@ -106,6 +106,8 @@ async def create_my_adn(
             usage_guide=payload.usage_guide,
             example_outputs=payload.example_outputs,
             price_credits=payload.price_credits,
+            ai_reference=payload.ai_reference,
+            max_supply=payload.max_supply,
         )
         await db.commit()
         await db.refresh(adn)

@@ -318,6 +318,20 @@ async def unlock_adn_atomic(
     if adn_row is None or not adn_row.is_published:
         raise AdnNotPurchasable("ADN not found or not published")
 
+    # 2026-05-13 — Stock-out : si max_supply défini, on vérifie le nombre
+    # d'OwnedAdn déjà créés. Race condition résolue par UNIQUE(buyer,adn)
+    # + le begin_nested plus bas. Premier rempart = ce check ici.
+    if adn_row.max_supply is not None:
+        sold_count = (await db.execute(
+            select(func.count(OwnedAdn.adn_id)).where(
+                OwnedAdn.adn_id == adn_id
+            )
+        )).scalar_one()
+        if int(sold_count) >= int(adn_row.max_supply):
+            raise AdnNotPurchasable(
+                f"ADN sold out ({sold_count}/{adn_row.max_supply})"
+            )
+
     artist_id = adn_row.artist_id
     paid = adn_row.price_credits
 

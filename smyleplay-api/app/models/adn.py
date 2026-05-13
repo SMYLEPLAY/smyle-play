@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    String,
     Text,
     UniqueConstraint,
     func,
@@ -56,6 +57,17 @@ class Adn(Base):
     usage_guide: Mapped[str | None] = mapped_column(Text, nullable=True)
     example_outputs: Mapped[str | None] = mapped_column(Text, nullable=True)
     price_credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 2026-05-13 — IA utilisée pour générer le contenu ADN (display badge
+    # côté card publique). Nullable car ADN legacy ne savent pas.
+    ai_reference: Mapped[str | None] = mapped_column(
+        String(30), nullable=True
+    )
+    # 2026-05-13 — Rareté : NULL = illimité, 1 = exclusif, N = édition
+    # limitée. Stock-out enforcé côté unlock_adn_atomic (sold_count vs
+    # max_supply via OwnedAdn).
+    max_supply: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     is_published: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

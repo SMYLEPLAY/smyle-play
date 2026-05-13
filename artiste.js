@@ -739,7 +739,7 @@ function renderDna(artist) {
     teaserEl.style.opacity = '0.7';
   }
 
-  // Badges "Guide d'usage" / "Exemples" si fournis
+  // Badges "Guide d'usage" / "Exemples" / IA / rareté
   const meta = $('ap-dna-meta');
   if (meta) {
     meta.innerHTML = '';
@@ -751,6 +751,29 @@ function renderDna(artist) {
       meta.insertAdjacentHTML('beforeend',
         '<span class="ap-dna-badge">🎧 Exemples</span>');
     }
+    // 2026-05-13 — IA source (badge informatif)
+    const AI_LBL = {
+      chatgpt: '🤖 ChatGPT', claude: '🤖 Claude', grok: '🤖 Grok',
+      gemini: '🤖 Gemini', mistral: '🤖 Mistral',
+      perplexity: '🤖 Perplexity', autre: '🤖 IA'
+    };
+    if (adn.aiReference && AI_LBL[adn.aiReference]) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge">' + AI_LBL[adn.aiReference] + '</span>');
+    }
+    // 2026-05-13 — Rareté
+    if (adn.isSoldOut) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge" style="background:#7f1d1d;color:#fff;">SOLD OUT</span>');
+    } else if (adn.isExclusive) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge" style="background:#fbbf24;color:#000;">⭐ Exclusif (1/1)</span>');
+    } else if (adn.isLimited) {
+      const left = (adn.availableCount != null) ? adn.availableCount : '?';
+      const tot  = (adn.maxSupply != null) ? adn.maxSupply : '?';
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge" style="background:#a78bfa;color:#000;">💎 Édition limitée · ' + left + '/' + tot + ' restants</span>');
+    }
   }
 
   // Masque le bouton unlock pour l'owner (pas d'auto-achat).
@@ -758,8 +781,17 @@ function renderDna(artist) {
   if (btn) {
     if (artist.isSelf) {
       btn.style.display = 'none';
+    } else if (adn.isSoldOut) {
+      btn.style.display = '';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+      setText('ap-dna-unlock-label', 'Sold out');
     } else {
       btn.style.display = '';
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
       setText('ap-dna-unlock-label',
         `Débloquer · ${formatCount(adn.priceCredits)} crédits`);
     }

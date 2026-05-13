@@ -555,14 +555,32 @@ async def build_artist_detail_payload(
     published_adn = (await db.execute(adn_stmt)).scalar_one_or_none()
     adn_payload: dict | None = None
     if published_adn is not None:
-        # Pas de teaser exposé : on donne longueur + prix + meta booléens.
+        # 2026-05-13 — Stock vendu = COUNT(OwnedAdn) si édition limitée.
+        sold_count = 0
+        if published_adn.max_supply is not None:
+            from app.models.owned_adn import OwnedAdn  # noqa: WPS433
+            sold_count = int((await db.execute(
+                select(func.count(OwnedAdn.adn_id)).where(
+                    OwnedAdn.adn_id == published_adn.id
+                )
+            )).scalar_one() or 0)
+        # Pas de teaser exposé : longueur + prix + meta booléens + rareté.
+        max_sup = published_adn.max_supply
         adn_payload = {
-            "id":              str(published_adn.id),
-            "characterCount":  len(published_adn.description or ""),
-            "priceCredits":    published_adn.price_credits,
-            "hasUsageGuide":   bool(published_adn.usage_guide),
+            "id":               str(published_adn.id),
+            "characterCount":   len(published_adn.description or ""),
+            "priceCredits":     published_adn.price_credits,
+            "hasUsageGuide":    bool(published_adn.usage_guide),
             "hasExampleOutputs": bool(published_adn.example_outputs),
-            "createdAt":       published_adn.created_at.isoformat() if published_adn.created_at else None,
+            "createdAt":        published_adn.created_at.isoformat() if published_adn.created_at else None,
+            # 2026-05-13 — Rareté + IA pour badges UI publique.
+            "aiReference":      published_adn.ai_reference,
+            "maxSupply":        max_sup,
+            "soldCount":        sold_count if max_sup is not None else None,
+            "availableCount":   (max_sup - sold_count) if max_sup is not None else None,
+            "isExclusive":      max_sup == 1,
+            "isLimited":        max_sup is not None and max_sup > 1,
+            "isSoldOut":        max_sup is not None and sold_count >= max_sup,
         }
 
     # Prompts publiés de l'artiste (meta seulement — prompt_text/lyrics gated).
