@@ -35,7 +35,7 @@ ADN_USAGE_GUIDE_MAX = 3000
 ADN_EXAMPLE_OUTPUTS_MAX = 5000
 # 2026-05-13 — Rareté ADN : min 1 (exclusif), max 1000 (édition limitée).
 ADN_MAX_SUPPLY_MIN = 1
-ADN_MAX_SUPPLY_MAX = 100000
+ADN_MAX_SUPPLY_MAX = 2147483647  # INT32 max PostgreSQL — pas de plafond ressenti
 
 PROMPT_PRICE_MIN = 3
 PROMPT_PRICE_MAX = 500          # Cohérent avec ADN (économique)

@@ -1057,7 +1057,7 @@
           <!-- 2026-05-13 — Rareté : 1 seul input + tier auto calculé -->
           <label class="dash-label">Combien d'éditions à vendre ?</label>
           <input type="number" class="dash-input" id="dashAdnMaxSupply"
-                 min="1" max="100000"
+                 min="1"
                  placeholder="Laisser vide = illimité"
                  oninput="dashAdnUpdateRarityPreview()" />
           <div class="dash-help" id="dashAdnRarityPreview" style="margin-top:8px;font-weight:500;">
@@ -1067,8 +1067,8 @@
             <strong>Grille rareté :</strong><br>
             👑 <strong>1</strong> = Mythic (pièce unique 1/1)<br>
             ⭐ <strong>2 à 10</strong> = Legendary (drop VIP)<br>
-            💎 <strong>11 à 1 000</strong> = Limited (édition limitée)<br>
-            🟢 <strong>1 001 à 100 000</strong> = Open (édition ouverte)<br>
+            💎 <strong>11 à 10 000</strong> = Limited (édition limitée)<br>
+            🟢 <strong>10 001 et plus</strong> = Open (édition ouverte)<br>
             <em>Vide</em> = illimité (pas de badge rareté)
           </div>
         </div>

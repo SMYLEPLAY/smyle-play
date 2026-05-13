@@ -364,8 +364,8 @@ async def update_prompt(
 # Paliers validés Tom 2026-05-13 :
 #   1           → mythic     (👑 Pièce unique 1/1, fond doré)
 #   2-10        → legendary  (⭐ VIP, fond or pâle)
-#   11-1000     → limited    (💎 Édition limitée, fond mauve)
-#   1001-100000 → open       (🟢 Édition ouverte, fond vert)
+#   11-10000    → limited    (💎 Édition limitée, fond mauve)
+#   10001+      → open       (🟢 Édition ouverte, fond vert)
 #   NULL        → unlimited  (pas de badge)
 
 def compute_rarity_tier(max_supply: int | None) -> str:
@@ -379,6 +379,6 @@ def compute_rarity_tier(max_supply: int | None) -> str:
         return "mythic"
     if max_supply <= 10:
         return "legendary"
-    if max_supply <= 1000:
+    if max_supply <= 10000:
         return "limited"
     return "open"
