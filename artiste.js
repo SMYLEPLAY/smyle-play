@@ -728,7 +728,16 @@ function renderDna(artist) {
   }
   card.style.display = '';
   setText('ap-dna-price', formatCount(adn.priceCredits));
-  setText('ap-dna-teaser', adn.descriptionTeaser || '');
+  // Pas de teaser textuel — afficher uniquement longueur (ordre complexité).
+  var charCount = adn.characterCount || 0;
+  var teaserEl = document.getElementById('ap-dna-teaser');
+  if (teaserEl) {
+    teaserEl.textContent = charCount > 0
+      ? charCount.toLocaleString('fr-FR') + ' caractères · contenu verrouillé'
+      : 'Contenu verrouillé';
+    teaserEl.style.fontStyle = 'italic';
+    teaserEl.style.opacity = '0.7';
+  }
 
   // Badges "Guide d'usage" / "Exemples" si fournis
   const meta = $('ap-dna-meta');
