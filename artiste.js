@@ -1271,12 +1271,27 @@ function renderVoices(artist) {
                  data-voice-id="${v.id}" data-price="${v.price_credits}">
           🔓 Débloquer · ${priceStr} crédits
         </button>`;
+    // Phase B metadata 2026-05-13 : badges origine + lien track
+    const _originLabel = (function(o) {
+      if (o === 'personal') return '🎙️ Voix personnelle';
+      if (o === 'ai') return '🤖 Créée par IA';
+      if (o === 'known_artist') return '🌟 Voix d\'artiste connu';
+      return '';
+    })(v.voice_origin);
+    const originBadge = _originLabel
+      ? `<span class="ap-voice-origin" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(204,136,255,.1);color:#cc88ff;font-size:11px;letter-spacing:.02em;margin-right:6px">${_originLabel}</span>`
+      : '';
+    const linkedTrackBadge = v.linked_track_id
+      ? `<span class="ap-voice-linked" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(255,215,0,.1);color:#FFD700;font-size:11px;letter-spacing:.02em">🎵 Démo dans un morceau</span>`
+      : '';
+
     card.innerHTML = `
       <div class="ap-voice-card-top">
         <h3 class="ap-voice-card-title">${safeName}</h3>
         <span class="${licenseClass}">${licenseLbl}</span>
       </div>
       ${safeStyle ? `<p class="ap-voice-card-style">${safeStyle}</p>` : ''}
+      ${(originBadge || linkedTrackBadge) ? `<div class="ap-voice-card-badges" style="margin-bottom:6px">${originBadge}${linkedTrackBadge}</div>` : ''}
       <div class="ap-voice-card-meta">
         ${genresBadge}
       </div>

@@ -99,6 +99,8 @@ async def create_voice(
         license=payload.license,
         price_credits=payload.price_credits,
         is_published=False,
+        voice_origin=payload.voice_origin,
+        linked_track_id=payload.linked_track_id,
     )
     db.add(voice)
     try:
