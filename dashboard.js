@@ -3723,6 +3723,7 @@ if (typeof window !== 'undefined') {
   window.closeAdnEditor       = closeAdnEditor;
   window.saveAdn              = saveAdn;
   window.dashAdnUpdateRarityPreview = dashAdnUpdateRarityPreview;
+  window.dashUpdateEurPreview       = dashUpdateEurPreview;
   window.toggleAdnPublish     = toggleAdnPublish;
   // Ma Musique — mode switcher + widgets live
   window.setUploadMode        = setUploadMode;
@@ -3736,3 +3737,34 @@ if (typeof window !== 'undefined') {
   window.resetTrackColor      = resetTrackColor;
   window.onTrackColorPick     = onTrackColorPick;
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2026-05-13 — Live preview équivalent euros à côté des inputs prix crédits.
+// Utilisé par dashAdnPrice, dashPromptPrice, dashVoicePrice via oninput.
+// Affiche "≈ X€" en dessous de l'input. Mise à jour temps réel.
+// ─────────────────────────────────────────────────────────────────────────────
+function dashUpdateEurPreview(inputId, outputId) {
+  const input = document.getElementById(inputId);
+  const output = document.getElementById(outputId);
+  if (!input || !output) return;
+  const credits = parseInt(input.value, 10);
+  if (typeof window.formatEurApprox !== 'function') {
+    output.textContent = '';
+    return;
+  }
+  if (!Number.isInteger(credits) || credits <= 0) {
+    output.textContent = '';
+    return;
+  }
+  output.textContent = window.formatEurApprox(credits) + ' (ordre d\'idée)';
+}
+
+// Init au boot : pour pré-remplir si les inputs ont déjà une valeur (édition).
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    dashUpdateEurPreview('dashAdnPrice', 'dashAdnPriceEur');
+    dashUpdateEurPreview('dashPromptPrice', 'dashPromptPriceEur');
+    dashUpdateEurPreview('dashVoicePrice', 'dashVoicePriceEur');
+  }, 100);
+});

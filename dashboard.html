@@ -39,6 +39,7 @@
   font-weight: 700; color: #cc88ff; font-variant-numeric: tabular-nums;
 }
 </style>
+  <script src="/ui/core/credits-format.js" defer></script>
 </head>
 <body class="dash-page">
 
@@ -730,6 +731,7 @@
             <input class="dash-input" id="dashPromptPrice" type="number"
                    min="3" max="500" value="80"
                    oninput="updateCreditGrid()" />
+          <div class="dash-help" id="dashPromptPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
             <div class="dash-help">Min. 3 · Max. 500 crédits. Si l'acheteur possède ton ADN il a -30&nbsp;% automatique.</div>
 
             <!-- ──────────────────────────────────────────────────────────────
@@ -1037,7 +1039,9 @@
             Prix en crédits <span class="dash-req">*</span>
           </label>
           <input type="number" class="dash-input" id="dashAdnPrice"
-                 min="30" value="80" />
+                 min="30" value="80"
+                 oninput="dashUpdateEurPreview('dashAdnPrice','dashAdnPriceEur')" />
+          <div class="dash-help" id="dashAdnPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
           <div class="dash-help">Min 30 crédits. Plus le prix est élevé, plus la rareté doit le justifier.</div>
 
           <!-- 2026-05-13 — IA source du contenu ADN -->
@@ -1345,7 +1349,9 @@
       </label>
       <div class="dash-voice-price-row">
         <input type="number" class="dash-input" id="dashVoicePrice"
-               min="50" max="5000" value="200" />
+               min="50" max="5000" value="200"
+                 oninput="dashUpdateEurPreview('dashVoicePrice','dashVoicePriceEur')" />
+          <div class="dash-help" id="dashVoicePriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
         <span class="dash-voice-price-suffix">SMYLES</span>
       </div>
       <div class="dash-help">Entre 50 et 5000 SMYLES. Les licences exclusives se vendent plus cher (× 3 à × 10 le tarif commercial).</div>

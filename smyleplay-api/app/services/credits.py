@@ -31,6 +31,12 @@ from app.models.transaction import (
 # Packs (source of truth)
 # -----------------------------------------------------------------------------
 
+# 2026-05-13 — Taux moyen crédit ↔ euro pour affichage ordre d'idée
+# (utilisé côté UI pour montrer l'équivalent euro à côté des prix crédits).
+# Valeur = pack_50 médian = 35€/50 = 0.70€/crédit.
+EUR_PER_CREDIT: float = 0.70
+
+
 CREDIT_PACKS: list[dict] = [
     {"id": "pack_10", "credits": 10, "price_eur_cents": 800},
     {"id": "pack_50", "credits": 50, "price_eur_cents": 3500},
