@@ -22,7 +22,7 @@ import sqlalchemy as sa
 
 
 revision = "0028_soft_delete_prompts_tracks"
-down_revision = "0027_voice_origin_and_linked_track"
+down_revision = "0027_voice_meta"
 branch_labels = None
 depends_on = None
 
