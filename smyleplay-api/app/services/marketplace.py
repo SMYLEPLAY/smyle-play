@@ -287,17 +287,16 @@ async def list_prompts_for_artist(
     page: int = 1,
     per_page: int = 20,
 ) -> tuple[list[Prompt], int]:
-    """Liste paginée des prompts de l'artiste (publiés + drafts)."""
+    """Liste paginée des prompts de l'artiste (publiés + drafts, hors supprimés)."""
     offset = (page - 1) * per_page
+    base = [Prompt.artist_id == artist_id, Prompt.is_deleted.is_(False)]
 
-    count_q = select(func.count(Prompt.id)).where(
-        Prompt.artist_id == artist_id
-    )
+    count_q = select(func.count(Prompt.id)).where(*base)
     total = (await db.execute(count_q)).scalar() or 0
 
     items_q = (
         select(Prompt)
-        .where(Prompt.artist_id == artist_id)
+        .where(*base)
         .order_by(Prompt.created_at.desc(), Prompt.id.desc())
         .offset(offset)
         .limit(per_page)
@@ -315,6 +314,34 @@ async def _prompt_has_been_sold(db: AsyncSession, prompt_id: UUID) -> bool:
     )
     count = result.scalar() or 0
     return int(count) > 0
+
+
+async def delete_prompt(
+    db: AsyncSession,
+    *,
+    artist_id: UUID,
+    prompt_id: UUID,
+) -> Prompt:
+    """
+    Soft-delete d'un prompt (migration 0028).
+
+    Règle métier :
+      - is_deleted=True  → disparaît du marketplace et du dashboard artiste
+      - is_published=False → plus visible dans aucune vue publique
+      - Les UnlockedPrompt des acheteurs sont préservés (accès library intact)
+      - Idempotent : supprimer un prompt déjà supprimé = 404 (cohérent avec
+        le principe anti-énumération)
+    """
+    prompt = await get_prompt_for_artist(
+        db, artist_id=artist_id, prompt_id=prompt_id
+    )
+    if prompt is None or prompt.is_deleted:
+        raise PromptNotFound("Prompt not found")
+
+    prompt.is_deleted = True
+    prompt.is_published = False
+    await db.flush()
+    return prompt
 
 
 async def update_prompt(

@@ -85,6 +85,16 @@ class Prompt(Base):
         server_default="false",
         index=True,
     )
+    # Soft-delete (migration 0028) : TRUE = artiste a retiré ce prompt.
+    # Disparaît du marketplace et du dashboard artiste.
+    # Les acheteurs (UnlockedPrompt) gardent leur accès en library.
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        index=True,
+    )
     pack_eligible: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

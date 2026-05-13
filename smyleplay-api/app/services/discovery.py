@@ -63,7 +63,11 @@ def _has_published_content_subquery(user_id_col):
     )
     prompt_exists = (
         select(Prompt.id)
-        .where(Prompt.artist_id == user_id_col, Prompt.is_published.is_(True))
+        .where(
+            Prompt.artist_id == user_id_col,
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+        )
         .exists()
     )
     return or_(adn_exists, prompt_exists)
@@ -129,7 +133,9 @@ async def get_public_artist_profile(
     has_adn = bool((await db.execute(has_adn_q)).scalar())
 
     prompts_count_q = select(func.count(Prompt.id)).where(
-        Prompt.artist_id == artist_id, Prompt.is_published.is_(True)
+        Prompt.artist_id == artist_id,
+        Prompt.is_published.is_(True),
+        Prompt.is_deleted.is_(False),
     )
     prompts_count = int((await db.execute(prompts_count_q)).scalar() or 0)
 
@@ -166,7 +172,7 @@ async def list_public_prompts(
     Retourne des dicts {prompt fields + artist sub-dict} prêts pour
     PromptPublicCard, sans le champ prompt_text (gated).
     """
-    base_filter = [Prompt.is_published.is_(True)]
+    base_filter = [Prompt.is_published.is_(True), Prompt.is_deleted.is_(False)]
     if artist_id is not None:
         base_filter.append(Prompt.artist_id == artist_id)
 
@@ -205,7 +211,11 @@ async def get_public_prompt(
     q = (
         select(Prompt, User)
         .join(User, User.id == Prompt.artist_id)
-        .where(Prompt.id == prompt_id, Prompt.is_published.is_(True))
+        .where(
+            Prompt.id == prompt_id,
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+        )
     )
     row = (await db.execute(q)).first()
     if row is None:
@@ -320,7 +330,7 @@ async def list_user_library_prompts(
     # NULL si aucun track lié → frontend masque le player.
     audio_url_subq = (
         select(Track.audio_url)
-        .where(Track.prompt_id == Prompt.id)
+        .where(Track.prompt_id == Prompt.id, Track.is_deleted.is_(False))
         .order_by(Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)
@@ -328,7 +338,7 @@ async def list_user_library_prompts(
     )
     cover_url_subq = (
         select(Track.cover_url)
-        .where(Track.prompt_id == Prompt.id)
+        .where(Track.prompt_id == Prompt.id, Track.is_deleted.is_(False))
         .order_by(Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)

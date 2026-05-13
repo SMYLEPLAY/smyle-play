@@ -94,15 +94,49 @@ async def patch_track(
     return track
 
 
+async def delete_track(
+    db: AsyncSession,
+    *,
+    track_id,
+    user: User,
+) -> Track | None:
+    """
+    Soft-delete d'un track (migration 0028).
+
+    - is_deleted=True → disparaît des listings publics et du dashboard.
+    - Idempotent : déjà supprimé → None (le router retourne 404).
+    - Le DNA associé reste en DB (archivage).
+    """
+    result = await db.execute(
+        select(Track).where(
+            Track.id == track_id,
+            Track.artist_id == user.id,
+            Track.is_deleted.is_(False),
+        )
+    )
+    track = result.scalar_one_or_none()
+    if track is None:
+        return None
+
+    track.is_deleted = True
+    await db.commit()
+    await db.refresh(track)
+    return track
+
+
 async def get_tracks(db: AsyncSession) -> list[Track]:
-    result = await db.execute(select(Track).order_by(Track.created_at.desc()))
+    result = await db.execute(
+        select(Track)
+        .where(Track.is_deleted.is_(False))
+        .order_by(Track.created_at.desc())
+    )
     return list(result.scalars().all())
 
 
 async def get_user_tracks(db: AsyncSession, user: User) -> list[Track]:
     result = await db.execute(
         select(Track)
-        .where(Track.artist_id == user.id)
+        .where(Track.artist_id == user.id, Track.is_deleted.is_(False))
         .order_by(Track.created_at.desc())
     )
     return list(result.scalars().all())
