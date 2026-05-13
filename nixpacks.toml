@@ -1,9 +1,12 @@
-# Railway build — ffmpeg requis pour pydub (preview 30s voix)
-# Cf chantier preview 30s 2026-05-13.
+# Railway build configuration.
+#
+# Note 2026-05-13 : nixpacks détecte pydub dans requirements.txt et installe
+# automatiquement ffmpeg-headless dans le container. On NE doit PAS le redemander
+# explicitement ici (sinon collision /bin/ffmpeg entre ffmpeg-headless et
+# ffmpeg full, build échoue).
+#
+# Si à terme on a besoin d'ffmpeg full (audio + vidéo) il faudra retirer
+# pydub OU passer à un autre lib audio qui n'auto-trigger pas ffmpeg-headless.
 
 [phases.setup]
-nixPkgs = ["...", "ffmpeg"]
-
-# Le reste reste géré par nixpacks par défaut :
-#   - python3.12 + venv via requirements.txt
-#   - uvicorn lancé via railway.toml startCommand
+# nixPkgs explicite VIDE — laisse nixpacks auto-détecter via les deps Python.
