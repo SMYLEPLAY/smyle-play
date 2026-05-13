@@ -3582,8 +3582,8 @@ async function saveAdn() {
     _dashToast('Description trop longue (5000 chars max).');
     return;
   }
-  if (!Number.isInteger(priceCredits) || priceCredits < 30 || priceCredits > 500) {
-    _dashToast('Prix invalide — entre 30 et 500 crédits.');
+  if (!Number.isInteger(priceCredits) || priceCredits < 30) {
+    _dashToast('Prix invalide — minimum 30 crédits.');
     return;
   }
 
