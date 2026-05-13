@@ -4,19 +4,9 @@ Revision ID: 0027_voice_origin_and_linked_track
 Revises: 0026_create_dna_table
 Create Date: 2026-05-13
 
-Validé Tom 2026-05-13 (project_visibility_rule_revised).
-
-Pour les voix vendables, l'acheteur a le droit de voir avant achat :
-  - Le sample audio (pré-écoute streaming)
-  - L'origine de la voix : personnelle / IA / artiste connu
-  - Si la voix est associée à un morceau du vendeur (FK Track)
-  - Prix + métadonnées (nom, style, genres, license)
-
-Cette migration ajoute :
-  • voice_origin : enum string (personal/ai/known_artist), nullable car
-    legacy voices peuvent ne pas avoir cette info (à compléter par l'owner)
-  • linked_track_id : FK Track NULL, set si la voix démontre un track
-    spécifique de l'artiste
+Fix 2026-05-13 : séparer op.add_column et op.create_foreign_key
+(la syntaxe inline FK dans add_column ne créait pas la contrainte
+côté PostgreSQL via Alembic → pre-deploy failed).
 """
 from alembic import op
 import sqlalchemy as sa
@@ -45,9 +35,16 @@ def upgrade() -> None:
         sa.Column(
             "linked_track_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("tracks.id", ondelete="SET NULL"),
             nullable=True,
         ),
+    )
+    op.create_foreign_key(
+        "fk_voices_linked_track_id_tracks",
+        "voices",
+        "tracks",
+        ["linked_track_id"],
+        ["id"],
+        ondelete="SET NULL",
     )
     op.create_index(
         "ix_voices_linked_track_id",
@@ -58,6 +55,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("ix_voices_linked_track_id", table_name="voices")
+    op.drop_constraint(
+        "fk_voices_linked_track_id_tracks", "voices", type_="foreignkey"
+    )
     op.drop_column("voices", "linked_track_id")
     op.drop_constraint("ck_voices_voice_origin_enum", "voices", type_="check")
     op.drop_column("voices", "voice_origin")
