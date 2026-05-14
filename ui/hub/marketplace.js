@@ -743,6 +743,12 @@
     const overlay = document.createElement('div');
     overlay.id        = 'mp-track-detail-drawer';
     overlay.className = 'mp-td-overlay';
+    const tuuid = _esc(t.trackUuid || t.id || '');
+    const socialHTML = tuuid ? `
+      <div class="mp-td-social-row">
+        <button class="like-btn mp-td-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist">❤️ Wishlist</button>
+        <button class="add-to-pl-btn mp-td-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">＋ Playlist</button>
+      </div>` : '';
     overlay.innerHTML = `
       <aside class="mp-td-drawer" style="--td-color:${_esc(color)}"
              role="dialog" aria-modal="true" aria-label="Détail du son">
@@ -755,6 +761,7 @@
           <a class="mp-td-artist" href="/u/${_esc(artistSlug)}">${_esc(artistName)}</a>
           <div class="mp-td-plays">${plays} écoutes</div>
           ${audioHTML}
+          ${socialHTML}
           ${recipeHTML}
         </div>
       </aside>`;

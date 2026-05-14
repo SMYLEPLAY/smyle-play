@@ -842,6 +842,13 @@ function openBoutiqueDrawer(type, dataStr) {
                src="${(data.audioUrl + '').replace(/"/g,'&quot;')}"></audio>
       </div>`;
     }
+    const tuuid = (data.trackUuid || data.trackId || '').replace(/"/g,'&quot;');
+    if (tuuid) {
+      html += `<div class="bd-social-row">
+        <button class="like-btn bd-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist">❤️ Wishlist</button>
+        <button class="add-to-pl-btn bd-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">＋ Playlist</button>
+      </div>`;
+    }
 
   } else if (type === 'voix') {
     const lic = LICENSE_LBL[data.license] || data.license || '';
@@ -1256,6 +1263,7 @@ function renderTracks(artist) {
     _trackDetailCache[t.id] = {
       id:           linkedPrompt ? linkedPrompt.id : null,
       trackId:      t.id,
+      trackUuid:    t.trackUuid || t.id,
       title:        t.name || t.title || '',
       priceCredits: linkedPrompt ? linkedPrompt.priceCredits : null,
       color:        t.color || '',
@@ -1277,8 +1285,8 @@ function renderTracks(artist) {
               <span>▶ ${plays}</span>
               ${date ? `<span>· ${date}</span>` : ''}
               ${platformBadge}
-              <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
-              <button class="like-btn ap-track-like" type="button" data-like-btn="${t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
+              <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
+              <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
               ${deleteBtn}
             </div>
           </div>

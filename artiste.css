@@ -3791,6 +3791,43 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   padding: 10px;
 }
 
+/* ── Boutons Wishlist / Playlist dans le drawer ──────────────────────────── */
+.bd-social-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+.bd-like-btn,
+.bd-addpl-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04);
+  color: rgba(255, 255, 255, .65);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color .14s, border-color .14s, background .14s;
+  font-family: inherit;
+  letter-spacing: .01em;
+}
+.bd-like-btn:hover {
+  color: #ff7799;
+  border-color: rgba(255, 119, 153, .35);
+  background: rgba(255, 119, 153, .06);
+}
+.bd-like-btn.liked {
+  color: #ff5577;
+  border-color: rgba(255, 85, 119, .5);
+  background: rgba(255, 85, 119, .08);
+}
+.bd-addpl-btn:hover {
+  color: #cc88ff;
+  border-color: rgba(204, 136, 255, .4);
+  background: rgba(204, 136, 255, .07);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .ap-boutique { padding: 0 14px; }
