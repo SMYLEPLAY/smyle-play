@@ -261,7 +261,7 @@
         `<li class="mp-ranking-row mp-ranking-row-clickable" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}">` +
           `<div class="mp-ranking-rank">${i + 1}</div>` +
           `<div class="mp-ranking-main">` +
-            `<div class="mp-ranking-title">${_esc(title)}</div>` +
+            `<div class="mp-ranking-title" style="cursor:pointer" title="Voir les détails">${_esc(title)}</div>` +
             `<div class="mp-ranking-sub">` +
               `<a href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();" style="color:inherit;text-decoration:none">${_esc(artistName)}</a>` +
             `</div>` +
@@ -614,7 +614,12 @@
           }
           return;
         }
-        // Click ailleurs sur la row → ne fait rien (navigation libre).
+        // Click sur le titre de la row → ouvre le drawer de détail
+        if (ev.target.closest('.mp-ranking-title')) {
+          const trackId = row.dataset.trackId;
+          const track   = _state.tracks.find(t => String(t.id) === String(trackId));
+          if (track) { _openTrackDetailDrawer(track); return; }
+        }
         return;
       }
 

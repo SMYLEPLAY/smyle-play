@@ -1137,18 +1137,23 @@
               const cover = t.cover_url || t.coverUrl || '';
               const color = t.color || '#cc88ff';
               // Pas de player inline — clic sur la row ouvre le drawer de détail
-              return '<li class="pl-view-row pl-view-row-clickable" data-track-id="' + t.id + '" data-track-idx="' + idx + '">' +
+              return '<li class="pl-view-row" data-track-id="' + t.id + '" data-track-idx="' + idx + '">' +
                 '<div class="pl-view-row-inner">' +
-                  (cover
-                    ? '<img class="pl-view-row-cover" src="' + cover.replace(/"/g, '&quot;') + '" alt="" />'
-                    : '<div class="pl-view-row-cover-fallback" style="background:' + color + '"></div>'
-                  ) +
-                  '<div class="pl-view-row-info">' +
+                  // Zone gauche = PLAY au clic
+                  '<div class="pl-view-row-play-zone">' +
+                    (cover
+                      ? '<img class="pl-view-row-cover" src="' + cover.replace(/"/g, '&quot;') + '" alt="" />'
+                      : '<div class="pl-view-row-cover-fallback" style="background:' + color + '"></div>'
+                    ) +
+                    '<div class="pl-view-row-play-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg></div>' +
+                  '</div>' +
+                  // Zone info = DRAWER au clic
+                  '<div class="pl-view-row-info pl-view-row-detail-trigger">' +
                     '<div class="pl-view-row-title">' + safe + '</div>' +
-                    '<div class="pl-view-row-hint">Appuie pour écouter</div>' +
+                    '<div class="pl-view-row-hint">▶ Écouter  ·  › Voir détails</div>' +
                   '</div>' +
                   '<div class="pl-view-row-actions">' +
-                    '<span class="pl-view-row-arrow">›</span>' +
+                    '<span class="pl-view-row-arrow pl-view-row-detail-trigger" title="Voir les détails">›</span>' +
                     '<button type="button" class="pl-view-row-remove" data-track-remove="' + t.id + '" title="Retirer de la playlist" aria-label="Retirer">✕</button>' +
                   '</div>' +
                 '</div>' +
@@ -1156,14 +1161,46 @@
             }).join('') + '</ul>'
         )
       );
-      // ── Click sur une row → drawer de détail du track ─────────────────
+      // ── Pré-charge la playlist dans PLAYLISTS pour le player principal ────
+      const _plKey = 'user-pl-' + playlist.id;
+      if (typeof PLAYLISTS !== 'undefined') {
+        PLAYLISTS[_plKey] = {
+          label: playlist.title || 'Playlist',
+          theme: playlist.color || 'custom',
+          folder: '',
+          tracks: tracks.map(function(t) {
+            var url = t.audio_url || t.stream_url || t.streamUrl || (t.r2_key ? '/watt/stream/' + t.r2_key : null);
+            return { id: t.id, name: t.title || t.name || 'Sans titre', url: url, file: 'track.wav' };
+          }).filter(function(t) { return !!t.url; })
+        };
+      }
+
+      // ── Click sur la zone play (cover) → lecture ──────────────────────
+      // ── Click sur titre / flèche → drawer de détail ───────────────────
       content.addEventListener('click', (ev) => {
-        if (ev.target.closest('.pl-view-row-remove')) return; // handled below
-        const row = ev.target.closest('.pl-view-row-clickable');
+        if (ev.target.closest('.pl-view-row-remove')) return;
+        const row = ev.target.closest('[data-track-id]');
         if (!row) return;
-        const trackId = row.dataset.trackId;
-        const track = tracks.find(t => String(t.id) === String(trackId));
-        if (track) _openPlaylistTrackDrawer(track);
+        const trackId  = row.dataset.trackId;
+        const trackIdx = parseInt(row.dataset.trackIdx, 10) || 0;
+        const track    = tracks.find(t => String(t.id) === String(trackId));
+
+        // Zone couvre → play
+        if (ev.target.closest('.pl-view-row-play-zone')) {
+          ev.stopPropagation();
+          if (typeof loadTrack === 'function' && typeof PLAYLISTS !== 'undefined' && PLAYLISTS[_plKey] && PLAYLISTS[_plKey].tracks.length) {
+            loadTrack(_plKey, trackIdx);
+          } else if (typeof showToast === 'function') {
+            showToast('Audio indisponible pour ce son.');
+          }
+          return;
+        }
+
+        // Titre ou flèche → drawer
+        if (ev.target.closest('.pl-view-row-detail-trigger')) {
+          if (track) _openPlaylistTrackDrawer(track);
+          return;
+        }
       });
 
       content.addEventListener('click', async (ev) => {
@@ -1352,7 +1389,10 @@
       '.pl-view-row-clickable { cursor: pointer; }' +
       '.pl-view-row-inner { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; transition: background .15s, border-color .15s; }' +
       '.pl-view-row-clickable .pl-view-row-inner:hover { background: rgba(204,136,255,.08); border-color: rgba(204,136,255,.25); }' +
-      '.pl-view-row-cover { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }' +
+      '.pl-view-row-play-zone { position:relative; width:38px; height:38px; flex-shrink:0; cursor:pointer; border-radius:6px; overflow:hidden; }' +
+      '.pl-view-row-play-zone:hover .pl-view-row-play-icon { opacity:1; }' +
+      '.pl-view-row-play-icon { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.5); color:#fff; opacity:0; transition:opacity .15s; border-radius:6px; }' +
+      '.pl-view-row-cover { width:38px; height:38px; object-fit:cover; border-radius:6px; display:block; }' +
       '.pl-view-row-cover-fallback { width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0; }' +
       '.pl-view-row-info { flex: 1; min-width: 0; }' +
       '.pl-view-row-title { color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
