@@ -1008,7 +1008,7 @@
           ? '<p class="pl-empty">Aucune track. Ajoute des sons depuis la marketplace via le bouton +.</p>'
           : '<ul class="pl-view-list">' + tracks.map(t => {
               const safe = String(t.title || t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-              const url = t.audio_url || t.stream_url || t.streamUrl || '';
+              const url = t.audio_url || t.stream_url || t.streamUrl || (t.r2_key ? '/watt/stream/' + t.r2_key : '') || '';
               const cover = t.cover_url || t.coverUrl || '';
               const safeUrl = url.replace(/"/g, '&quot;');
               return '<li class="pl-view-row" data-track-id="' + t.id + '">' +
