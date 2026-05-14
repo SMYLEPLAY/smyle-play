@@ -1153,7 +1153,7 @@ def create_app(config_class=None):
         import time, re, mimetypes
 
         ALLOWED_EXTS    = {'mp4', 'webm', 'mov', 'm4v'}
-        MAX_BYTES       = 8 * 1024 * 1024  # 8 Mo
+        MAX_BYTES       = 10 * 1024 * 1024  # 8 Mo
 
         user_id  = request.form.get('userId', 'guest').strip()
         pl_name  = request.form.get('name', 'cover').strip()
@@ -1172,7 +1172,7 @@ def create_app(config_class=None):
         raw = f.read()
         if len(raw) > MAX_BYTES:
             mb = len(raw) / 1024 / 1024
-            return jsonify({'error': f'Fichier trop lourd ({mb:.1f} Mo). Limite : 8 Mo.'}), 400
+            return jsonify({'error': f'Fichier trop lourd ({mb:.1f} Mo). Limite : 10 Mo.'}), 400
         if not raw:
             return jsonify({'error': 'Fichier vide'}), 400
 

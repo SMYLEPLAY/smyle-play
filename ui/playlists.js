@@ -271,7 +271,7 @@
                 '<div class="pl-row-meta">' + badge + '</div>' +
               '</div>' +
               '<div class="pl-row-actions">' +
-                '<label class="pl-icon-btn-cover" title="Ajouter une cover vidéo (mp4 ≤3s)">📎' +
+                '<label class="pl-icon-btn-cover" title="Ajouter une cover vidéo (mp4 ≤5s)">📎' +
                   '<input type="file" class="pl-cover-input pl-act-cover" accept="video/mp4,video/webm,video/quicktime" />' +
                 '</label>' +
                 '<button type="button" class="pl-icon-btn pl-act-vis" title="Changer visibilité">' +
@@ -333,7 +333,7 @@
           vid.preload = 'metadata';
           vid.onloadedmetadata = () => {
             URL.revokeObjectURL(vid.src);
-            if (vid.duration > 3.5) reject(new Error('La vidéo dépasse 3 secondes (' + vid.duration.toFixed(1) + 's). Raccourcis-la avant.'));
+            if (vid.duration > 5.5) reject(new Error('La vidéo dépasse 5 secondes (' + vid.duration.toFixed(1) + 's). Raccourcis-la avant.'));
             else resolve();
           };
           vid.onerror = () => reject(new Error('Impossible de lire la vidéo.'));
