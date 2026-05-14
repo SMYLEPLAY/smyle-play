@@ -42,6 +42,7 @@ from app.schemas.playlist import (
 )
 from app.schemas.track import TrackRead
 from app.services import playlists as svc
+from app.services.marketplace import user_owns_playlist_adn
 
 
 router = APIRouter(prefix="/playlists", tags=["playlists"])
@@ -287,3 +288,23 @@ async def get_public_playlist_with_tracks(
         created_at=playlist.created_at,
         tracks=[TrackRead.model_validate(t) for t in tracks],
     )
+
+
+# -----------------------------------------------------------------------------
+# GET /playlists/{playlist_id}/adn-owned  (auth requise)
+# -----------------------------------------------------------------------------
+
+@router.get("/{playlist_id}/adn-owned")
+async def check_adn_owned(
+    playlist_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Vérifie si l'utilisateur connecté possède l'ADN de la playlist.
+    Utilisé par le front pour afficher le bon état du badge 🧬.
+    """
+    owned = await user_owns_playlist_adn(
+        db, user_id=current_user.id, playlist_id=playlist_id
+    )
+    return {"owned": owned}
