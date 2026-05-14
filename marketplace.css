@@ -1019,3 +1019,151 @@
   color: rgba(255,255,255,.3);
   margin: 0;
 }
+
+/* ── Badge Recette sur track cards ─────────────────────────────────────── */
+.mp-recipe-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,200,80,.45);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffc850;
+  letter-spacing: .02em;
+  cursor: pointer;
+  z-index: 8;
+  transition: background .15s, border-color .15s;
+  pointer-events: auto;
+}
+.mp-recipe-badge:hover {
+  background: rgba(255,200,80,.18);
+  border-color: rgba(255,200,80,.85);
+}
+.mp-recipe-badge.is-owned {
+  border-color: rgba(100,220,100,.5);
+  color: #88dd88;
+  cursor: default;
+}
+.mp-recipe-badge.is-owned:hover {
+  background: rgba(0,0,0,.72);
+  border-color: rgba(100,220,100,.5);
+}
+
+/* ── Modale achat recette ────────────────────────────────────────────────── */
+.mp-recipe-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: mpFadeIn .18s ease;
+}
+.mp-recipe-modal-box {
+  position: relative;
+  background: #130a1e;
+  border: 1px solid rgba(255,200,80,.3);
+  border-radius: 18px;
+  padding: 32px 28px 28px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  animation: mpSlideUp .2s ease;
+}
+.mp-recipe-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.4);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color .15s;
+}
+.mp-recipe-modal-close:hover { color: #fff; }
+.mp-recipe-modal-icon { font-size: 36px; margin-bottom: 12px; }
+.mp-recipe-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 10px;
+}
+.mp-recipe-modal-desc {
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+.mp-recipe-modal-desc strong { color: #ffc850; }
+.mp-recipe-modal-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  background: rgba(255,200,80,.1);
+  border: 1px solid rgba(255,200,80,.3);
+  border-radius: 999px;
+  padding: 6px 16px;
+  margin-bottom: 22px;
+}
+.mp-recipe-modal-price-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffc850;
+}
+.mp-recipe-modal-price-unit {
+  font-size: 12px;
+  color: rgba(255,200,80,.7);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.mp-recipe-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.mp-recipe-modal-cancel {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: transparent;
+  color: rgba(255,255,255,.6);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.mp-recipe-modal-cancel:hover { border-color: rgba(255,255,255,.3); color: #fff; }
+.mp-recipe-modal-confirm {
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #b8860b, #ffc850);
+  color: #0a0a12;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: opacity .15s, transform .1s;
+}
+.mp-recipe-modal-confirm:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+.mp-recipe-modal-confirm:disabled { opacity: .45; cursor: not-allowed; }
+.mp-recipe-modal-note {
+  font-size: 11px;
+  color: rgba(255,255,255,.3);
+  margin: 0;
+}
