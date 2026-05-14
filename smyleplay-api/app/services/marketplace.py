@@ -28,6 +28,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.adn import Adn
 from app.models.owned_adn import OwnedAdn
+from app.models.owned_playlist_adn import OwnedPlaylistAdn
+from app.models.playlist import Playlist, PlaylistTrack
 from app.models.prompt import Prompt
 from app.models.unlocked_prompt import UnlockedPrompt
 
@@ -138,6 +140,51 @@ async def user_owns_artist_adn(
         .limit(1)
     )
     return result.first() is not None
+
+
+async def user_owns_playlist_adn(
+    db: AsyncSession, *, user_id: UUID, playlist_id: UUID
+) -> bool:
+    """
+    True si user_id possède l'ADN de la playlist → éligible perk -20%
+    sur les ADN Track contenus dans cette playlist.
+    """
+    result = await db.execute(
+        select(OwnedPlaylistAdn.playlist_id)
+        .where(
+            OwnedPlaylistAdn.user_id == user_id,
+            OwnedPlaylistAdn.playlist_id == playlist_id,
+        )
+        .limit(1)
+    )
+    return result.first() is not None
+
+
+async def get_playlist_containing_adn_track(
+    db: AsyncSession, *, user_id: UUID, adn_id: UUID
+) -> UUID | None:
+    """
+    Retourne le playlist_id d'une playlist dont l'ADN est possédé par user_id
+    ET qui contient un track lié à cet adn_id.
+    Utilisé dans unlock_adn_atomic pour appliquer le perk -20%.
+    Retourne None si aucun perk applicable.
+    """
+    from app.models.track import Track
+    result = await db.execute(
+        select(OwnedPlaylistAdn.playlist_id)
+        .join(
+            PlaylistTrack,
+            PlaylistTrack.playlist_id == OwnedPlaylistAdn.playlist_id,
+        )
+        .join(Track, Track.id == PlaylistTrack.track_id)
+        .where(
+            OwnedPlaylistAdn.user_id == user_id,
+            Track.adn_id == adn_id,
+        )
+        .limit(1)
+    )
+    row = result.first()
+    return row[0] if row else None
 
 
 async def _adn_has_been_sold(db: AsyncSession, adn_id: UUID) -> bool:
@@ -360,7 +407,6 @@ async def delete_adn(db: AsyncSession, artist_id: UUID) -> None:
     adn.is_deleted = True
     adn.is_published = False
     await db.flush()
-    return prompt
 
 
 async def update_prompt(

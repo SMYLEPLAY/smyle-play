@@ -58,10 +58,13 @@ def get_pack_by_id(pack_id: str) -> dict | None:
 # vendeur) — d'où le param `artist_pct`.
 PRIMARY_MARKET_ARTIST_PCT = 80
 
-# Coefficient du perk -30% pour les détenteurs d'ADN (sur le prix d'un
-# prompt du même artiste). Multiplicatif entier : prix * 7 // 10.
+# Coefficient du perk -30% pour les détenteurs d'ADN artiste (sur prompt).
 PERK_NUMERATOR = 7
 PERK_DENOMINATOR = 10
+
+# Coefficient du perk -20% pour les détenteurs d'ADN Playlist (sur ADN Track).
+PLAYLIST_PERK_NUMERATOR = 8
+PLAYLIST_PERK_DENOMINATOR = 10
 
 
 def compute_effective_price(base_price: int, has_perk: bool) -> int:
@@ -85,6 +88,22 @@ def compute_effective_price(base_price: int, has_perk: bool) -> int:
         raise ValueError("base_price must be positive")
     if has_perk:
         return max(1, (base_price * PERK_NUMERATOR) // PERK_DENOMINATOR)
+    return base_price
+
+
+def compute_adn_price_with_playlist_perk(base_price: int, has_perk: bool) -> int:
+    """
+    Prix d'un ADN Track après perk -20% (détenteur de l'ADN Playlist qui
+    contient ce track). Distinct du perk -30% sur les prompts.
+
+    Exemples:
+        compute_adn_price_with_playlist_perk(10, True) == 8   # 10*8//10
+        compute_adn_price_with_playlist_perk(50, True) == 40  # 50*8//10
+    """
+    if base_price <= 0:
+        raise ValueError("base_price must be positive")
+    if has_perk:
+        return max(1, (base_price * PLAYLIST_PERK_NUMERATOR) // PLAYLIST_PERK_DENOMINATOR)
     return base_price
 
 

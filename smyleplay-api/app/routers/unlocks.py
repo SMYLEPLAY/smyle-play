@@ -40,6 +40,7 @@ from app.services.unlocks import (
     PromptNotPurchasable,
     SelfPurchaseForbidden,
     unlock_adn_atomic,
+    unlock_playlist_adn_atomic,
     unlock_prompt_atomic,
 )
 from app.services.voices import VoiceNotPurchasable, unlock_voice_atomic
@@ -228,4 +229,52 @@ async def unlock_voice(
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to unlock voice",
+        )
+
+
+# -----------------------------------------------------------------------------
+# POST /unlocks/playlist-adn/{playlist_id}
+# -----------------------------------------------------------------------------
+
+@router.post(
+    "/playlist-adn/{playlist_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Achète l'ADN d'une playlist publique",
+)
+async def unlock_playlist_adn(
+    playlist_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Achète l'ADN d'une playlist publique avec des Smyles.
+    Donne ensuite droit au perk -20% sur les ADN Track de cette playlist.
+    """
+    try:
+        result = await unlock_playlist_adn_atomic(
+            db=db,
+            buyer_id=current_user.id,
+            playlist_id=playlist_id,
+        )
+        await db.commit()
+        return {
+            "ok": True,
+            "playlist_id": str(playlist_id),
+            "paid": result.paid,
+            "message": "ADN playlist débloqué — réduction -20% sur les ADN Track de cette playlist",
+        }
+    except ValueError as e:
+        await db.rollback()
+        _raise_unlock_error(e)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Tu possèdes déjà l'ADN de cette playlist",
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Échec de l'achat",
         )
