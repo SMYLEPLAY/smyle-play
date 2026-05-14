@@ -891,6 +891,7 @@
     loadArtistPublicPlaylists,
     openCreatePlaylistModal,
     openEditPlaylistAdnModal,
+    openAdnPurchaseModal: _openAdnPurchaseModal,
     renderDashboardPlaylists,
     renderArtistPlaylists,
     injectModalStyles: _injectModalStyles
@@ -1268,13 +1269,15 @@
       const adnBadgeEl = ev.target.closest('.ap-pl-adn-badge[data-playlist-id]');
       if (adnBadgeEl) {
         ev.stopPropagation();
-        _openAdnPurchaseModal(adnBadgeEl);
+        const fn = window.SmylePlaylists && window.SmylePlaylists.openAdnPurchaseModal;
+        if (fn) fn(adnBadgeEl);
         return;
       }
 
       // Open playlist view from profil public card
+      // Exclure le bouton quick-play et le badge ADN pour ne pas intercepter leurs clicks
       const apCard = ev.target.closest('.ap-playlist-card[data-pl-id]');
-      if (apCard) {
+      if (apCard && !ev.target.closest('.ap-pl-qp') && !ev.target.closest('.ap-pl-adn-badge')) {
         const id = apCard.dataset.plId;
         if (id) openPlaylistViewModal(id);
       }
