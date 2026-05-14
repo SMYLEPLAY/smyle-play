@@ -282,7 +282,7 @@ function renderProfile() {
   // Règle produit : si l'user ne vend rien et n'a pas de son, RIEN ne
   // s'affiche côté marketplace (pas de placeholder vide) — c'est ce que
   // voit un fan "pur". Cf. discussion vision / organisation.
-  renderBoutique(artist);
+  renderPlaylistsAdn(artist);
   renderDna(artist);
   renderPrompts(artist);
   renderVoices(artist);
@@ -722,93 +722,48 @@ function _updateSaleDisclaimerVisibility(artist) {
 // ═══════════════════════════════════════════════════════════════════════════
 // BOUTIQUE v2 — Cards compactes + Drawer de détail
 // Clic sur une card → openBoutiqueDrawer(type, data)
-// 4 types : adn-artist · son · voix · playlist
+// 2 types dans la grille boutique : son · voix
+// ADN Artiste → ap-dna-card (compact, sous hero)
+// ADN Playlists → ap-playlists-adn (accordéon, sous dna-card)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Données de l'artiste courantes — mémorisées pour le drawer.
 var _boutiqueArtist = null;
 
-function renderBoutique(artist) {
-  _boutiqueArtist = artist;
-  const section = $('ap-boutique');
-  const grid    = $('ap-boutique-grid');
-  if (!section || !grid) return;
+// ── Accordéon Playlists ADN — sous la card ADN ──────────────────────────────
 
-  const adn           = artist && artist.adn;
-  const tracksWithPmt = (Array.isArray(artist && artist.tracks) ? artist.tracks : [])
-                          .filter(t => t.promptId && t.promptPriceCredits);
-  const voices        = Array.isArray(artist && artist.voices)           ? artist.voices           : [];
-  const playlists     = Array.isArray(artist && artist.playlistsForSale) ? artist.playlistsForSale : [];
+function renderPlaylistsAdn(artist) {
+  const section = $('ap-playlists-adn');
+  const list    = $('ap-playlists-adn-list');
+  if (!section || !list) return;
 
-  const total = (adn ? 1 : 0) + tracksWithPmt.length + voices.length + playlists.length;
-  if (total === 0) { section.style.display = 'none'; return; }
-
-  section.style.display = '';
-  setText('ap-boutique-count', total + ' article' + (total > 1 ? 's' : ''));
-
+  const playlists  = Array.isArray(artist && artist.playlistsForSale) ? artist.playlistsForSale : [];
   const brandColor = (artist && artist.brandColor) || '#cc88ff';
+  const slug       = (artist && artist.slug) || '';
 
-  function compactCard(icon, type, name, price, color, dataItem) {
-    const safe = (name || '').replace(/</g, '&lt;');
-    const encoded = (dataItem || '').replace(/'/g, '&#39;');
+  if (playlists.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  setText('ap-playlists-adn-count', playlists.length + ' playlist' + (playlists.length > 1 ? 's' : ''));
+
+  list.innerHTML = playlists.map(pl => {
+    const safeTitle = (pl.title || '').replace(/</g, '&lt;');
+    const color     = pl.color || brandColor;
+    const price     = formatCount(pl.adnPrice || 0);
+    // Lien vers la page playlist (unlock se fait depuis le slug playlist)
+    const href = `/u/${encodeURIComponent(slug)}`;
     return `
-      <article class="ap-shop-card" style="border-left-color:${color}"
-               role="button" tabindex="0"
-               onclick="openBoutiqueDrawer('${type}', '${encoded}')">
-        <div class="ap-shop-card-top">
-          <div class="ap-shop-card-icon">${icon}</div>
-          <div class="ap-shop-card-info">
-            <div class="ap-shop-card-type">${type === 'adn-artist' ? 'ADN Artiste'
-              : type === 'son' ? 'Son · Recette'
-              : type === 'voix' ? 'Voix'
-              : 'ADN Playlist'}</div>
-            <div class="ap-shop-card-name">${safe}</div>
-          </div>
+      <details class="ap-pl-adn-item" style="--pl-color:${color}">
+        <summary class="ap-pl-adn-summary">
+          <span class="ap-pl-adn-icon">🎚</span>
+          <span class="ap-pl-adn-name">${safeTitle}</span>
+          <span class="ap-pl-adn-badge">🧬 ADN · ${price} crédits</span>
+          <span class="ap-pl-adn-chevron">▾</span>
+        </summary>
+        <div class="ap-pl-adn-body">
+          <p class="ap-pl-adn-desc">Le code génératif de cette playlist — reproduis son univers musical.</p>
+          <a href="${href}" class="ap-pl-adn-goto">→ Voir la playlist</a>
         </div>
-        <div class="ap-shop-card-price">
-          ${price} crédits
-          <span class="ap-shop-card-price-arrow">→</span>
-        </div>
-      </article>`;
-  }
-
-  const cards = [];
-
-  if (adn) {
-    cards.push(compactCard('🧬', 'adn-artist', 'Signature créative',
-      formatCount(adn.priceCredits), brandColor,
-      JSON.stringify({ id: adn.id, priceCredits: adn.priceCredits,
-        descriptionTeaser: adn.descriptionTeaser || '', color: brandColor,
-        hasUsageGuide: !!adn.hasUsageGuide, hasExampleOutputs: !!adn.hasExampleOutputs,
-        isSoldOut: !!adn.isSoldOut })));
-  }
-
-  tracksWithPmt.forEach(t => {
-    cards.push(compactCard('🎵', 'son', t.title,
-      formatCount(t.promptPriceCredits), t.color || brandColor,
-      JSON.stringify({ id: t.promptId, title: t.title || '',
-        priceCredits: t.promptPriceCredits, color: t.color || brandColor,
-        platform: t.platform || '', audioUrl: t.audioUrl || '',
-        coverUrl: t.coverUrl || '' })));
-  });
-
-  voices.forEach(v => {
-    cards.push(compactCard('🎙', 'voix', v.name,
-      formatCount(v.priceCredits || v.price_credits || 0), brandColor,
-      JSON.stringify({ id: v.id, name: v.name || '', style: v.style || '',
-        priceCredits: v.priceCredits || v.price_credits || 0,
-        license: v.license || '', genres: v.genres || [],
-        previewUrl: v.previewUrl || v.preview_url || '' })));
-  });
-
-  playlists.forEach(pl => {
-    cards.push(compactCard('🎚', 'playlist', pl.title,
-      formatCount(pl.adnPrice || 0), pl.color || brandColor,
-      JSON.stringify({ id: pl.id, title: pl.title || '',
-        adnPrice: pl.adnPrice || 0, color: pl.color || brandColor })));
-  });
-
-  grid.innerHTML = cards.join('');
+      </details>`;
+  }).join('');
 }
 
 // ── Drawer — ouvre le panneau de détail ──────────────────────────────────
@@ -886,25 +841,28 @@ function openBoutiqueDrawer(type, dataStr) {
     html += `<p class="bd-desc">Accède au code génératif de cette playlist — reproduis son univers musical avec les mêmes outils IA.</p>`;
   }
 
-  // ── Prix + unlock ────────────────────────────────────────────────────────
-  html += `<div class="bd-price-row">
-    <div>
-      <span class="bd-price-amount">${formatCount(price)}</span>
-      <span class="bd-price-unit">crédits</span>
-    </div>
-    ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur toutes les recettes</span>' : ''}
-  </div>`;
+  // ── Prix + unlock — masqués si pas d'id (track sans recette) ──────────────
+  const hasPurchasable = data.id && (price !== null && price !== undefined);
+  if (hasPurchasable) {
+    html += `<div class="bd-price-row">
+      <div>
+        <span class="bd-price-amount">${formatCount(price)}</span>
+        <span class="bd-price-unit">crédits</span>
+      </div>
+      ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur toutes les recettes</span>' : ''}
+    </div>`;
 
-  if (isSelf) {
-    html += `<p class="bd-self-note">C'est ton contenu — tu ne peux pas l'acheter.</p>`;
-  } else {
-    const unlockLabel = type === 'adn-artist' ? '🧬 Débloquer l\'ADN'
-      : type === 'son'      ? '🧬 Débloquer la recette'
-      : type === 'voix'     ? '🎙 Débloquer la voix'
-      : '🎚 Débloquer l\'ADN Playlist';
-    html += `<button type="button" class="bd-unlock-btn"
-                     id="boutique-drawer-unlock-btn"
-                     onclick="boutiqueDrawerUnlock('${type}','${data.id}')">${unlockLabel}</button>`;
+    if (isSelf) {
+      html += `<p class="bd-self-note">C'est ton contenu — tu ne peux pas l'acheter.</p>`;
+    } else {
+      const unlockLabel = type === 'adn-artist' ? '🧬 Débloquer l\'ADN'
+        : type === 'son'      ? '🧬 Débloquer la recette'
+        : type === 'voix'     ? '🎙 Débloquer la voix'
+        : '🎚 Débloquer l\'ADN Playlist';
+      html += `<button type="button" class="bd-unlock-btn"
+                       id="boutique-drawer-unlock-btn"
+                       onclick="boutiqueDrawerUnlock('${type}','${data.id}')">${unlockLabel}</button>`;
+    }
   }
 
   body.innerHTML = html;
@@ -1273,12 +1231,28 @@ function renderTracks(artist) {
     // data-stream-url permet au click handler de retrouver l'URL
     // pour le fallback play JS sur la card entière.
     const streamAttr = t.streamUrl ? ` data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"` : '';
+    // Data JSON sérialisée pour le drawer (titre, audio, prompt éventuel)
+    const _drawerData = JSON.stringify({
+      id:           linkedPrompt ? linkedPrompt.id : null,
+      trackId:      t.id,
+      title:        t.name || t.title || '',
+      priceCredits: linkedPrompt ? linkedPrompt.priceCredits : null,
+      color:        t.color || '',
+      platform:     t.platform || '',
+      audioUrl:     t.streamUrl || t.audioUrl || '',
+      coverUrl:     t.coverUrl || t.cover_url || '',
+      hasPrompt:    !!linkedPrompt,
+    });
+    const _drawerEncoded = _drawerData.replace(/'/g, '&#39;');
+
     card.innerHTML = `
       <div class="ap-track-card-inner"${streamAttr}>
         ${coverHTML}
         <div class="ap-track-card-body">
           <div class="ap-track-card-top">
-            <h3 class="ap-track-card-title">${safeName}</h3>
+            <h3 class="ap-track-card-title ap-track-detail-trigger"
+                style="cursor:pointer"
+                onclick="openBoutiqueDrawer('son','${_drawerEncoded}')">${safeName}</h3>
             <div class="ap-track-card-meta">
               <span>▶ ${plays}</span>
               ${date ? `<span>· ${date}</span>` : ''}
@@ -1561,8 +1535,20 @@ function renderVoices(artist) {
       ? `<span class="ap-voice-linked" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(255,215,0,.1);color:#FFD700;font-size:11px;letter-spacing:.02em">🎵 Démo dans un morceau</span>`
       : '';
 
+    const _vDrawerData = JSON.stringify({
+      id:           v.id,
+      name:         v.name || '',
+      style:        v.style || '',
+      priceCredits: v.price_credits || v.priceCredits || 0,
+      license:      v.license || '',
+      genres:       v.genres || [],
+      previewUrl:   v.preview_url || v.previewUrl || '',
+    });
+    const _vDrawerEncoded = _vDrawerData.replace(/'/g, '&#39;');
+
     card.innerHTML = `
-      <div class="ap-voice-card-top">
+      <div class="ap-voice-card-top" style="cursor:pointer"
+           onclick="openBoutiqueDrawer('voix','${_vDrawerEncoded}')">
         <h3 class="ap-voice-card-title">${safeName}</h3>
         <span class="${licenseClass}">${licenseLbl}</span>
       </div>

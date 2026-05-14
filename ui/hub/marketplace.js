@@ -664,7 +664,19 @@
         return;
       }
 
-      // Click ailleurs sur la card → ne fait rien (navigation libre).
+      // Click sur titre ou cover → ouvre le drawer de détail
+      const isTitleClick = !!ev.target.closest('.mp-son-card-title');
+      const isCoverClick = !!ev.target.closest('.mp-son-card-cover') &&
+                           !ev.target.closest('.mp-son-card-play') &&
+                           !ev.target.closest('.mp-recipe-badge');
+      if (isTitleClick || isCoverClick) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const trackId = card.dataset.trackId;
+        const track   = _state.tracks.find(t => String(t.id) === String(trackId));
+        if (track) _openTrackDetailDrawer(track);
+        return;
+      }
     });
 
     // Quand un audio se termine, on retire l'état playing visuel
@@ -685,6 +697,100 @@
     }, true);
   }
 
+
+  // ── Drawer détail track (clic sur titre ou cover d'une card son) ─────────
+  function _openTrackDetailDrawer(t) {
+    const existing = document.getElementById('mp-track-detail-drawer');
+    if (existing) existing.parentNode.removeChild(existing);
+
+    const color      = t.color || '#7C3AED';
+    const title      = t.name || 'Sans titre';
+    const artistName = t.artist || '—';
+    const artistSlug = t.artistSlug || '';
+    const plays      = _fmt(t.plays || 0);
+    const streamUrl  = t.streamUrl || '';
+    const coverUrl   = t.coverUrl  || t.cover_url || '';
+    const promptId   = t.promptId  || null;
+    const promptPrice = (t.promptPriceCredits != null) ? t.promptPriceCredits : null;
+
+    const coverHTML = coverUrl
+      ? `<img src="${_esc(coverUrl)}" alt="" class="mp-td-cover-img" />`
+      : `<div class="mp-td-cover-fallback" style="background:${_esc(color)}"></div>`;
+
+    const audioHTML = streamUrl
+      ? `<div class="mp-td-audio-wrap">
+           <div class="mp-td-audio-label">Pré-écoute</div>
+           <audio controls preload="none" controlsList="nodownload noremoteplayback"
+                  oncontextmenu="return false" class="mp-td-audio"
+                  src="${_esc(streamUrl)}"></audio>
+         </div>`
+      : '';
+
+    const recipeHTML = (promptId && promptPrice != null)
+      ? `<div class="mp-td-recipe">
+           <div class="mp-td-recipe-row">
+             <div>
+               <div class="mp-td-recipe-label">Recette Suno</div>
+               <div class="mp-td-recipe-price">${promptPrice} <span class="mp-td-recipe-unit">Smyles</span></div>
+             </div>
+             <button class="mp-td-recipe-btn" id="mp-td-recipe-btn"
+                     data-prompt-id="${_esc(promptId)}"
+                     data-prompt-price="${promptPrice}"
+                     data-track-name="${_esc(title)}">
+               🧬 Débloquer
+             </button>
+           </div>
+         </div>`
+      : '';
+
+    const overlay = document.createElement('div');
+    overlay.id        = 'mp-track-detail-drawer';
+    overlay.className = 'mp-td-overlay';
+    overlay.innerHTML = `
+      <aside class="mp-td-drawer" style="--td-color:${_esc(color)}"
+             role="dialog" aria-modal="true" aria-label="Détail du son">
+        <button class="mp-td-close" aria-label="Fermer">✕</button>
+        <div class="mp-td-cover">${coverHTML}</div>
+        <div class="mp-td-body">
+          <div class="mp-td-color-bar" style="background:${_esc(color)}"></div>
+          <div class="mp-td-type">Son</div>
+          <h2 class="mp-td-title">${_esc(title)}</h2>
+          <a class="mp-td-artist" href="/u/${_esc(artistSlug)}">${_esc(artistName)}</a>
+          <div class="mp-td-plays">${plays} écoutes</div>
+          ${audioHTML}
+          ${recipeHTML}
+        </div>
+      </aside>`;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => {
+      overlay.classList.add('is-open');
+      overlay.querySelector('.mp-td-drawer').classList.add('is-open');
+    });
+
+    function _close() {
+      overlay.classList.remove('is-open');
+      const drawer = overlay.querySelector('.mp-td-drawer');
+      if (drawer) drawer.classList.remove('is-open');
+      const audio = overlay.querySelector('audio');
+      if (audio) { try { audio.pause(); } catch(_) {} }
+      setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300);
+    }
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) _close(); });
+    overlay.querySelector('.mp-td-close').addEventListener('click', _close);
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', onEsc); }
+    });
+
+    const recipeBtn = overlay.querySelector('#mp-td-recipe-btn');
+    if (recipeBtn) {
+      recipeBtn.addEventListener('click', () => {
+        _close();
+        _openRecipeUnlockModal(recipeBtn);
+      });
+    }
+  }
 
   // ── Modale achat recette (depuis badge Recette sur une track card) ────────
   // badgeEl a : data-prompt-id, data-prompt-price, data-track-name

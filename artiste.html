@@ -201,6 +201,61 @@
        gratuitement ce qui doit passer par un achat crédits côté DNA.
        — Cf. vision fan/artiste + WATT BOARD/DNA marketplace.            -->
 
+  <!-- ═══ ADN Artiste compact — juste sous le nom, achat visible dès l'arrivée
+       Fusionné avec la boutique : plus de doublon. C'est le seul endroit
+       où l'ADN artiste est proposé à l'achat.
+       Rendu par renderDna(artist). Masqué si l'artiste n'a pas d'ADN publié. -->
+  <section class="ap-dna-card" id="ap-dna-card" style="display:none"
+           aria-label="ADN de l'artiste">
+    <div class="ap-dna-card-inner">
+      <div class="ap-dna-card-hdr">
+        <div class="ap-dna-card-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
+            <path d="M7 7h10M7 17h10M9 11h6M9 13h6"/>
+          </svg>
+        </div>
+        <div class="ap-dna-card-titles">
+          <div class="ap-dna-card-eyebrow">Signature créative</div>
+          <h3 class="ap-dna-card-title">ADN Artiste</h3>
+        </div>
+        <div class="ap-dna-card-price">
+          <span id="ap-dna-price">—</span>
+          <span class="ap-dna-price-unit">crédits</span>
+        </div>
+      </div>
+      <p class="ap-dna-card-teaser" id="ap-dna-teaser"></p>
+      <div class="ap-dna-card-meta" id="ap-dna-meta"></div>
+      <div class="ap-dna-card-actions">
+        <button type="button" class="ap-dna-unlock-btn"
+                id="ap-dna-unlock-btn" onclick="unlockDnaFromProfile()">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+          </svg>
+          <span id="ap-dna-unlock-label">Débloquer l'ADN</span>
+        </button>
+        <span class="ap-dna-perk-hint">-30&nbsp;% sur toutes les recettes de l'artiste</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ Playlists ADN — accordéon juste sous la card ADN ═════════════════
+       Chaque playlist avec adn_for_sale=True est affichée ici comme item
+       dépliant. Le clic sur "Voir la playlist" redirige vers /u/<slug>.
+       L'unlock ADN playlist se fait depuis la page de la playlist.
+       Rendu par renderPlaylistsAdn(artist) dans artiste.js. ════════════════ -->
+  <section class="ap-playlists-adn" id="ap-playlists-adn" style="display:none"
+           aria-label="Playlists ADN en vente">
+    <div class="ap-playlists-adn-hdr">
+      <span class="ap-playlists-adn-title">ADN Playlists</span>
+      <span class="ap-playlists-adn-count" id="ap-playlists-adn-count"></span>
+    </div>
+    <div class="ap-playlists-adn-list" id="ap-playlists-adn-list">
+      <!-- Items rendus par renderPlaylistsAdn() -->
+    </div>
+  </section>
+
   <!-- ─ Biographie (champ DB : bio, max 2000 chars) ─────────────────────── -->
   <section class="ap-section ap-section-bio" id="ap-section-bio" aria-labelledby="ap-section-bio-title">
     <h2 class="ap-section-title" id="ap-section-bio-title">Biographie</h2>
@@ -242,28 +297,7 @@
        self-purchase refusé, déjà acheté → 409 silencieux (message toast).
        La description complète + usage_guide + example_outputs sont
        exposés APRÈS achat uniquement (/artist/me/owned-adns côté compte). -->
-  <!-- ═══ BOUTIQUE — shop cards pour tous les éléments mis en vente ══════
-       Affiché dès que l'artiste a AU MOINS 1 item vendable parmi :
-         • ADN Artiste publié        → 1 card type "adn-artist"
-         • Track avec recette (promptId) → N cards type "son"
-         • Voix publiées             → N cards type "voix"
-         • Playlists ADN en vente    → N cards type "playlist"
-       Rendu par renderBoutique(artist) dans artiste.js.
-       Les données voices + playlistsForSale viennent du payload artist
-       (watt_compat.py _build_voices_payload + _build_playlists_for_sale_payload).
-       Les tracks avec recette filtrent artist.tracks sur promptId != null. -->
-  <section class="ap-boutique" id="ap-boutique" style="display:none"
-           aria-label="Boutique de l'artiste">
-    <div class="ap-boutique-hdr">
-      <h2 class="ap-boutique-title">Boutique</h2>
-      <span class="ap-boutique-count" id="ap-boutique-count"></span>
-    </div>
-    <div class="ap-boutique-grid" id="ap-boutique-grid">
-      <!-- Cards injectées par renderBoutique() -->
-    </div>
-  </section>
-
-  <!-- ═══ DRAWER BOUTIQUE — panneau de détail (clic sur une card) ══════════
+  <!-- ═══ DRAWER DÉTAIL — panneau qui s'ouvre au clic sur un item ══════════
        Masqué par défaut. Ouvert par openBoutiqueDrawer(type, data) dans
        artiste.js. Contient le détail complet + player preview + bouton unlock.
        L'overlay `#boutique-overlay` ferme le drawer au clic. ══════════════ -->
@@ -274,47 +308,6 @@
       <!-- Rempli dynamiquement par openBoutiqueDrawer() -->
     </div>
   </aside>
-
-  <section class="ap-dna-card" id="ap-dna-card" style="display:none"
-           aria-label="ADN de l'artiste">
-    <div class="ap-dna-card-inner">
-      <div class="ap-dna-card-hdr">
-        <div class="ap-dna-card-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
-            <path d="M7 7h10M7 17h10M9 11h6M9 13h6"/>
-          </svg>
-        </div>
-        <div class="ap-dna-card-titles">
-          <div class="ap-dna-card-eyebrow">Signature créative</div>
-          <h3 class="ap-dna-card-title">Débloquer l'ADN</h3>
-        </div>
-        <div class="ap-dna-card-price">
-          <span id="ap-dna-price">—</span>
-          <span class="ap-dna-price-unit">crédits</span>
-        </div>
-      </div>
-      <p class="ap-dna-card-teaser" id="ap-dna-teaser">
-        <!-- Rempli par renderDna() — 240 chars max côté backend -->
-      </p>
-      <div class="ap-dna-card-meta" id="ap-dna-meta">
-        <!-- Badges éventuels : "📘 Guide d'usage", "🎧 Exemples" -->
-      </div>
-      <div class="ap-dna-card-actions">
-        <button type="button" class="ap-dna-unlock-btn"
-                id="ap-dna-unlock-btn" onclick="unlockDnaFromProfile()">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="10" rx="2"/>
-            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-          </svg>
-          <span id="ap-dna-unlock-label">Débloquer l'ADN</span>
-        </button>
-        <span class="ap-dna-perk-hint">
-          Possession = -30&nbsp;% sur toutes les recettes Suno de l'artiste
-        </span>
-      </div>
-    </div>
-  </section>
 
   <!-- ═══ Recettes Suno — cellule conservée (revert fusion 2026-05-05)
        Tom préfère garder cette cellule au même titre que "Voix à vendre",
