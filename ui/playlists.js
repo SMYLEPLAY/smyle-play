@@ -56,11 +56,11 @@
     return _req('/playlists/me');
   }
 
-  async function createPlaylist(title, visibility) {
-    return _req('/playlists', {
-      method: 'POST',
-      body: { title: title, visibility: visibility || 'private' }
-    });
+  async function createPlaylist(title, visibility, color, seedPrompt) {
+    const body = { title: title, visibility: visibility || 'private' };
+    if (color)      body.color       = color;
+    if (seedPrompt) body.seed_prompt = seedPrompt;
+    return _req('/playlists', { method: 'POST', body: body });
   }
 
   async function deletePlaylist(id) {
@@ -88,13 +88,36 @@
     const overlay = document.createElement('div');
     overlay.id = 'pl-create-modal';
     overlay.className = 'pl-modal-overlay';
+    const DEFAULT_COLOR = '#cc88ff';
+
     overlay.innerHTML = (
       '<div class="pl-modal" role="dialog" aria-labelledby="pl-modal-title">' +
         '<button type="button" class="pl-modal-close" aria-label="Fermer">✕</button>' +
         '<h3 id="pl-modal-title" class="pl-modal-title">Nouvelle playlist</h3>' +
+
+        // Nom + aperçu neon live
         '<label class="pl-modal-label">Nom' +
           '<input type="text" id="pl-modal-name" maxlength="200" placeholder="Ma playlist…" autofocus />' +
         '</label>' +
+        '<div class="pl-neon-preview" id="pl-neon-preview" style="--nc:' + DEFAULT_COLOR + '">Ma playlist…</div>' +
+
+        // Couleur neon
+        '<div class="pl-modal-color-row">' +
+          '<span class="pl-modal-color-label">Couleur neon</span>' +
+          '<div class="pl-color-swatches" id="pl-color-swatches">' +
+            ['#cc88ff','#ff6b6b','#ff9500','#ffcc00','#00e676','#00d4ff','#4488ff','#ff44cc'].map(function(c) {
+              return '<button type="button" class="pl-swatch' + (c === DEFAULT_COLOR ? ' active' : '') + '" data-color="' + c + '" style="background:' + c + ';box-shadow:0 0 8px ' + c + '"></button>';
+            }).join('') +
+            '<input type="color" id="pl-modal-color" value="' + DEFAULT_COLOR + '" title="Couleur personnalisée" class="pl-swatch pl-swatch-custom" />' +
+          '</div>' +
+        '</div>' +
+
+        // Seed prompt (ADN de la playlist)
+        '<label class="pl-modal-label pl-modal-seed-label">ADN de la playlist <span class="pl-optional">(optionnel)</span>' +
+          '<textarea id="pl-modal-seed" rows="2" maxlength="1000" placeholder="Décris l\'ambiance, le style, le mood… ex : deep afro house, nuit tropicale, basses lourdes"></textarea>' +
+        '</label>' +
+
+        // Visibilité
         '<fieldset class="pl-modal-vis">' +
           '<legend>Visibilité</legend>' +
           '<label class="pl-vis-opt">' +
@@ -103,9 +126,10 @@
           '</label>' +
           '<label class="pl-vis-opt">' +
             '<input type="radio" name="pl-vis" value="public" /> ' +
-            '<span><strong>Publique</strong> · visible sur ton profil /u/&lt;slug&gt;</span>' +
+            '<span><strong>Publique</strong> · visible sur ton profil</span>' +
           '</label>' +
         '</fieldset>' +
+
         '<div class="pl-modal-actions">' +
           '<button type="button" class="pl-btn pl-btn-ghost" id="pl-modal-cancel">Annuler</button>' +
           '<button type="button" class="pl-btn pl-btn-primary" id="pl-modal-create">Créer</button>' +
@@ -116,14 +140,42 @@
     document.body.appendChild(overlay);
     _injectModalStyles();
 
+    // Live preview : nom + couleur
+    const nameInput   = overlay.querySelector('#pl-modal-name');
+    const colorInput  = overlay.querySelector('#pl-modal-color');
+    const preview     = overlay.querySelector('#pl-neon-preview');
+    const swatches    = overlay.querySelector('#pl-color-swatches');
+
+    function _applyColor(hex) {
+      colorInput.value = hex;
+      preview.style.setProperty('--nc', hex);
+      swatches.querySelectorAll('.pl-swatch[data-color]').forEach(function(s) {
+        s.classList.toggle('active', s.dataset.color === hex);
+      });
+    }
+
+    nameInput.addEventListener('input', function() {
+      preview.textContent = nameInput.value.trim() || 'Ma playlist…';
+    });
+    colorInput.addEventListener('input', function() {
+      preview.style.setProperty('--nc', colorInput.value);
+      swatches.querySelectorAll('.pl-swatch[data-color]').forEach(function(s) { s.classList.remove('active'); });
+    });
+    swatches.addEventListener('click', function(e) {
+      const sw = e.target.closest('.pl-swatch[data-color]');
+      if (sw) _applyColor(sw.dataset.color);
+    });
+
     const close = () => overlay.remove();
     overlay.querySelector('.pl-modal-close').onclick = close;
     overlay.querySelector('#pl-modal-cancel').onclick = close;
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
 
-    overlay.querySelector('#pl-modal-create').onclick = async () => {
-      const name = overlay.querySelector('#pl-modal-name').value.trim();
-      const vis  = overlay.querySelector('input[name="pl-vis"]:checked').value;
+    overlay.querySelector('#pl-modal-create').onclick = async function() {
+      const name  = nameInput.value.trim();
+      const vis   = overlay.querySelector('input[name="pl-vis"]:checked').value;
+      const color = colorInput.value || DEFAULT_COLOR;
+      const seed  = overlay.querySelector('#pl-modal-seed').value.trim();
       const errBox = overlay.querySelector('#pl-modal-err');
       errBox.style.display = 'none';
       if (!name) {
@@ -132,7 +184,7 @@
         return;
       }
       try {
-        const created = await createPlaylist(name, vis);
+        const created = await createPlaylist(name, vis, color, seed || null);
         close();
         if (typeof onCreated === 'function') onCreated(created);
       } catch (e) {
@@ -183,6 +235,21 @@
       '.pl-btn-primary { background: #cc88ff; color: #0a0a12; }' +
       '.pl-btn-primary:hover { background: #d8a0ff; }' +
       '.pl-modal-err { margin-top: 14px; color: #ff8888; font-size: 13px; }' +
+      // Aperçu neon live
+      '@keyframes pl-neon-live { 0%,19%,21%,54%,56%,100%{text-shadow:0 0 8px var(--nc,#cc88ff),0 0 22px var(--nc,#cc88ff),0 0 45px var(--nc,#cc88ff);opacity:1}20%,55%{text-shadow:none;opacity:.72}22%{text-shadow:0 0 6px var(--nc,#cc88ff);opacity:.88} }' +
+      '.pl-neon-preview { font-size:18px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--nc,#cc88ff); animation:pl-neon-live 4s infinite; text-align:center; padding:14px 8px 10px; min-height:46px; }' +
+      // Couleur swatches
+      '.pl-modal-color-row { display:flex; align-items:center; gap:12px; margin-bottom:18px; }' +
+      '.pl-modal-color-label { font-size:13px; color:#a09cb8; flex-shrink:0; }' +
+      '.pl-color-swatches { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }' +
+      '.pl-swatch { width:22px; height:22px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:transform .15s,border-color .15s; flex-shrink:0; }' +
+      '.pl-swatch:hover { transform:scale(1.2); }' +
+      '.pl-swatch.active { border-color:#fff; transform:scale(1.15); }' +
+      '.pl-swatch-custom { width:26px; height:26px; border-radius:50%; padding:0; cursor:pointer; border:2px solid rgba(255,255,255,.2); overflow:hidden; background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); }' +
+      // Seed prompt
+      '.pl-modal-seed-label textarea { background:rgba(255,255,255,.03); color:#e8e6f5; border:1px solid rgba(204,136,255,.22); border-radius:10px; padding:10px 14px; font-size:13px; line-height:1.5; resize:vertical; outline:none; width:100%; box-sizing:border-box; font-family:inherit; }' +
+      '.pl-modal-seed-label textarea:focus { border-color:rgba(204,136,255,.5); }' +
+      '.pl-optional { font-size:11px; color:#6b677f; font-weight:400; margin-left:4px; }' +
       // Dashboard section
       '.pl-dash-section { background: rgba(255,255,255,.02); border: 1px solid rgba(204,136,255,.14); border-radius: 14px; padding: 20px; margin: 20px 0; }' +
       '.pl-dash-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }' +
