@@ -96,7 +96,7 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 /* ── Main ────────────────────────────────────────────────────────────────── */
 
 .lib-main {
-  max-width: 880px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 28px 24px 80px;
 }
@@ -436,11 +436,11 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 }
 
 
-/* ── ADN Grid — 3 colonnes dépliables ───────────────────────────────────── */
+/* ── ADN Grid — 4 colonnes dépliables ───────────────────────────────────── */
 .lib-adn-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
   align-items: start;
   margin-top: 8px;
 }
@@ -513,12 +513,94 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 .lib-adn-col .lib-item-title { font-size: 13px; }
 .lib-adn-col .lib-content-body { font-size: 12px; }
 
+/* ── Cellule accordéon par item ─────────────────────────────────────────── */
+.lib-item-cell {
+  background: rgba(14, 12, 18, .86);
+  border: 1px solid rgba(204, 136, 255, .1);
+  border-radius: 10px;
+  margin: 0 10px 8px;
+  overflow: hidden;
+  transition: border-color .18s;
+}
+.lib-item-cell:last-child { margin-bottom: 12px; }
+.lib-item-cell:hover { border-color: rgba(204, 136, 255, .25); }
+.lib-item-cell[open] { border-color: rgba(204, 136, 255, .22); }
+
+.lib-item-cell-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: background .15s;
+}
+.lib-item-cell-hdr::-webkit-details-marker { display: none; }
+.lib-item-cell-hdr::marker { display: none; }
+.lib-item-cell-hdr:hover { background: rgba(204, 136, 255, .06); }
+
+.lib-item-cell-icon {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.lib-item-cell-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lib-item-cell-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8e4f0;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lib-item-cell-meta {
+  font-size: 9px;
+  color: var(--lib-dim);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lib-item-cell-chevron {
+  font-size: 9px;
+  color: #6b677f;
+  flex-shrink: 0;
+  transition: transform .2s ease;
+}
+.lib-item-cell[open] .lib-item-cell-chevron {
+  transform: rotate(180deg);
+}
+
+.lib-item-cell-body {
+  padding: 10px 12px 14px;
+  border-top: 1px solid rgba(255, 255, 255, .05);
+}
+.lib-item-cell-body .lib-item-artist { font-size: 10.5px; margin-bottom: 8px; }
+.lib-item-cell-body .lib-item-desc   { font-size: 10.5px; margin-bottom: 10px; }
+.lib-item-cell-body .lib-content-body { font-size: 11px; }
+.lib-item-cell-body .lib-prompt-badges { margin: 4px 0 6px; }
+
 /* ── Suppression anciens styles tabs (lib-tabs masqué) ───────────────────── */
 .lib-tabs { display: none; }
 .lib-tab-panel { display: block !important; }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
 
+/* ── Tablet (≤ 900px) : 2 colonnes ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .lib-adn-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+
+/* ── Mobile (≤ 640px) : 1 colonne ───────────────────────────────────────── */
 @media (max-width: 640px) {
   .lib-topbar { padding: 0 16px; }
   .lib-topbar-logo span { display: none; }
@@ -526,5 +608,5 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
   .lib-hero-title { font-size: 22px; }
   .lib-tabs { overflow-x: auto; }
   .lib-tab { padding: 10px 12px; font-size: 10px; }
-  .lib-adn-grid { grid-template-columns: 1fr; gap: 12px; }
+  .lib-adn-grid { grid-template-columns: 1fr; gap: 10px; }
 }

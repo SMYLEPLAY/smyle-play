@@ -114,10 +114,10 @@ async function loadAll() {
   }
 
   // Compteurs colonnes ADN
-  const trackTotal = _libData.prompts.length + _libData.playlist_adns.length;
-  setEl('lib-count-track-adns',  trackTotal              || '—');
-  setEl('lib-count-voices',      _libData.voices.length  || '—');
-  setEl('lib-count-artist-adns', _libData.adns.length    || '—');
+  setEl('lib-count-track-adns',    _libData.prompts.length       || '—');
+  setEl('lib-count-voices',        _libData.voices.length        || '—');
+  setEl('lib-count-artist-adns',   _libData.adns.length          || '—');
+  setEl('lib-count-playlist-adns', _libData.playlist_adns.length || '—');
 }
 
 function _renderError(containerId, err) {
@@ -188,9 +188,10 @@ function renderPrompts(items) {
     const artist   = p.artist || {};
     const hasLyrics= !!(p.lyrics && p.lyrics.trim());
     const slug     = artist.slug || '';
+    const artistName = artist.artist_name || artist.artistName || 'Artiste';
     const artistLink = slug
-      ? `<a href="/u/${esc(slug)}">${esc(artist.artist_name || artist.artistName || 'Artiste')}</a>`
-      : esc(artist.artist_name || artist.artistName || 'Artiste');
+      ? `<a href="/u/${esc(slug)}">${esc(artistName)}</a>`
+      : esc(artistName);
 
     const lyricsBlock = hasLyrics ? `
       <div class="lib-content-block lyrics">
@@ -199,77 +200,62 @@ function renderPrompts(items) {
           <button class="lib-copy-btn" onclick="copyContent('lib-lyrics-${i}', this)">Copier</button>
         </div>
         <div class="lib-content-body" id="lib-lyrics-${i}">${esc(p.lyrics)}</div>
-      </div>
-    ` : '';
+      </div>` : '';
 
-    // Réglages génération (P1-F4). Weirdness + style_influence sont
-    // RÉVÉLÉS ici (l'utilisateur a payé), invisibles sur la card publique.
     const platformLbl = PROMPT_PLATFORM_LBL[p.prompt_platform] || p.prompt_platform || '';
     const vocalLbl = PROMPT_VOCAL_LBL[p.prompt_vocal_gender] || '';
-    const settingsBadges = [
-      platformLbl,
-      p.prompt_model_version,
-      vocalLbl,
-    ].filter(Boolean).map(s => `<span class="lib-prompt-badge">${esc(s)}</span>`).join('');
+    const settingsBadges = [platformLbl, p.prompt_model_version, vocalLbl]
+      .filter(Boolean).map(s => `<span class="lib-prompt-badge">${esc(s)}</span>`).join('');
     const settingsBadgesBlock = settingsBadges
       ? `<div class="lib-prompt-badges">${settingsBadges}</div>` : '';
 
     const weirdnessBlock = p.prompt_weirdness ? `
       <div class="lib-content-block">
-        <div class="lib-content-header">
-          <span class="lib-content-label">🎛 Weirdness</span>
-        </div>
+        <div class="lib-content-header"><span class="lib-content-label">🎛 Weirdness</span></div>
         <div class="lib-content-body lib-content-body-short">${esc(p.prompt_weirdness)}</div>
-      </div>
-    ` : '';
+      </div>` : '';
 
     const styleInfluenceBlock = p.prompt_style_influence ? `
       <div class="lib-content-block">
-        <div class="lib-content-header">
-          <span class="lib-content-label">✨ Style influence</span>
-        </div>
+        <div class="lib-content-header"><span class="lib-content-label">✨ Style influence</span></div>
         <div class="lib-content-body lib-content-body-short">${esc(p.prompt_style_influence)}</div>
-      </div>
-    ` : '';
+      </div>` : '';
 
-    // P1-B8 (2026-05-11) — Lecteur audio du track lié au prompt débloqué.
-    // audio_url vient du backend (jointure tracks.prompt_id = prompts.id).
-    // NULL pour les anciens prompts sans track attaché → bloc masqué.
-    // Réutilise la classe lib-voice-audio-wrap (cohérence avec onglet Voix).
     const audioBlock = p.audio_url ? `
       <div class="lib-content-block">
-        <div class="lib-content-header">
-          <span class="lib-content-label">🔊 Morceau</span>
-        </div>
+        <div class="lib-content-header"><span class="lib-content-label">🔊 Morceau</span></div>
         <div class="lib-content-body lib-voice-audio-wrap">
           <audio controls preload="none" src="${esc(p.audio_url)}" class="lib-voice-audio"></audio>
         </div>
-      </div>
-    ` : '';
+      </div>` : '';
 
     return `
-      <div class="lib-item">
-        <div class="lib-item-head">
-          <div class="lib-item-title">${esc(p.title || 'Recette IA')}</div>
-          <div class="lib-item-meta">Débloqué le ${fmtDate(p.unlocked_at)}</div>
-        </div>
-        <div class="lib-item-artist">par ${artistLink}</div>
-        ${p.description ? `<div class="lib-item-desc">${esc(p.description)}</div>` : ''}
-        ${settingsBadgesBlock}
-        ${audioBlock}
-
-        <div class="lib-content-block">
-          <div class="lib-content-header">
-            <span class="lib-content-label">🎛 Prompt IA</span>
-            <button class="lib-copy-btn" onclick="copyContent('lib-prompt-${i}', this)">Copier</button>
+      <details class="lib-item-cell">
+        <summary class="lib-item-cell-hdr">
+          <span class="lib-item-cell-icon">🎵</span>
+          <span class="lib-item-cell-info">
+            <span class="lib-item-cell-title">${esc(p.title || 'Recette IA')}</span>
+            <span class="lib-item-cell-meta">par ${esc(artistName)} · ${fmtDate(p.unlocked_at)}</span>
+          </span>
+          <span class="lib-item-cell-chevron">▼</span>
+        </summary>
+        <div class="lib-item-cell-body">
+          <div class="lib-item-artist">par ${artistLink}</div>
+          ${p.description ? `<div class="lib-item-desc">${esc(p.description)}</div>` : ''}
+          ${settingsBadgesBlock}
+          ${audioBlock}
+          <div class="lib-content-block">
+            <div class="lib-content-header">
+              <span class="lib-content-label">🎛 Prompt IA</span>
+              <button class="lib-copy-btn" onclick="copyContent('lib-prompt-${i}', this)">Copier</button>
+            </div>
+            <div class="lib-content-body" id="lib-prompt-${i}">${esc(p.prompt_text || '')}</div>
           </div>
-          <div class="lib-content-body" id="lib-prompt-${i}">${esc(p.prompt_text || '')}</div>
+          ${weirdnessBlock}
+          ${styleInfluenceBlock}
+          ${lyricsBlock}
         </div>
-
-        ${weirdnessBlock}
-        ${styleInfluenceBlock}
-        ${lyricsBlock}
-      </div>`;
+      </details>`;
   }).join('');
 }
 
@@ -278,48 +264,52 @@ function renderPrompts(items) {
 
 function renderPlaylistAdns(items) {
   const el = getEl('lib-playlist-adns-list');
-  const section = getEl('lib-playlist-adns-section');
   if (!el) return;
 
   if (!items.length) {
-    if (section) section.style.display = 'none';
+    el.innerHTML = `
+      <div class="lib-empty">
+        Aucun ADN Playlist débloqué.<br>
+        <a href="/" class="lib-empty-cta">Explorer les univers →</a>
+      </div>`;
     return;
   }
-  if (section) section.style.display = '';
 
-  el.innerHTML = `<div class="lib-subsection-title">🧬 ADN Playlist</div>` +
-    items.map((p, i) => {
-      const owner = p.owner || {};
-      const slug  = owner.slug || '';
-      const color = p.color || '#cc88ff';
-      const ownerLink = slug
-        ? `<a href="/u/${esc(slug)}">${esc(owner.artist_name || 'Artiste')}</a>`
-        : esc(owner.artist_name || 'Artiste');
+  el.innerHTML = items.map((p, i) => {
+    const owner = p.owner || {};
+    const slug  = owner.slug || '';
+    const ownerName = owner.artist_name || 'Artiste';
+    const color = p.color || '#cc88ff';
+    const ownerLink = slug
+      ? `<a href="/u/${esc(slug)}">${esc(ownerName)}</a>`
+      : esc(ownerName);
 
-      const seedBlock = p.seed_prompt ? `
-        <div class="lib-content-block" style="margin-top:10px">
-          <div class="lib-content-header">
-            <span class="lib-content-label">🧬 ADN</span>
-            <button class="lib-copy-btn" onclick="copyContent('lib-pl-adn-${i}', this)">Copier</button>
-          </div>
-          <div class="lib-content-body" id="lib-pl-adn-${i}">${esc(p.seed_prompt)}</div>
-        </div>` : '';
+    const seedBlock = p.seed_prompt ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">🧬 ADN</span>
+          <button class="lib-copy-btn" onclick="copyContent('lib-pl-adn-${i}', this)">Copier</button>
+        </div>
+        <div class="lib-content-body" id="lib-pl-adn-${i}">${esc(p.seed_prompt)}</div>
+      </div>` : '';
 
-      return `
-        <div class="lib-item" style="border-left:3px solid ${esc(color)}">
-          <div class="lib-item-head">
-            <div class="lib-item-title">
-              <span style="color:${esc(color)}">🧬</span>
-              ${esc(p.title || 'Playlist')}
-              <span class="lib-adn-kind lib-adn-kind-playlist">ADN Playlist</span>
-            </div>
-            <div class="lib-item-meta">Acquis le ${fmtDate(p.owned_at)}</div>
-          </div>
+    return `
+      <details class="lib-item-cell" style="border-left:3px solid ${esc(color)}">
+        <summary class="lib-item-cell-hdr">
+          <span class="lib-item-cell-icon" style="color:${esc(color)}">🧬</span>
+          <span class="lib-item-cell-info">
+            <span class="lib-item-cell-title">${esc(p.title || 'Playlist')}</span>
+            <span class="lib-item-cell-meta">univers ${esc(ownerName)} · ${fmtDate(p.owned_at)}</span>
+          </span>
+          <span class="lib-item-cell-chevron">▼</span>
+        </summary>
+        <div class="lib-item-cell-body">
           <div class="lib-item-artist">univers de ${ownerLink}</div>
           <div class="lib-item-desc">-20% sur tous les ADN Track de cette playlist</div>
           ${seedBlock}
-        </div>`;
-    }).join('');
+        </div>
+      </details>`;
+  }).join('');
 }
 
 
@@ -343,61 +333,51 @@ function renderAdns(items) {
     const artist   = a.artist || {};
     const slug     = artist.slug || '';
     const brand    = artist.brand_color || artist.brandColor || '#FFD700';
+    const artistName = artist.artist_name || artist.artistName || 'Artiste';
     const artistLink = slug
-      ? `<a href="/u/${esc(slug)}">${esc(artist.artist_name || artist.artistName || 'Artiste')}</a>`
-      : esc(artist.artist_name || artist.artistName || 'Artiste');
+      ? `<a href="/u/${esc(slug)}">${esc(artistName)}</a>`
+      : esc(artistName);
 
     const usageBlock = a.usage_guide ? `
-      <span class="lib-adn-section-title">Guide d'utilisation</span>
       <div class="lib-content-block">
         <div class="lib-content-header">
           <span class="lib-content-label">📘 Usage</span>
           <button class="lib-copy-btn" onclick="copyContent('lib-usage-${i}', this)">Copier</button>
         </div>
         <div class="lib-content-body" id="lib-usage-${i}">${esc(a.usage_guide)}</div>
-      </div>
-    ` : '';
+      </div>` : '';
 
     const exampleBlock = a.example_outputs ? `
-      <span class="lib-adn-section-title">Exemples de sorties</span>
       <div class="lib-content-block">
         <div class="lib-content-header">
           <span class="lib-content-label">✨ Exemples</span>
           <button class="lib-copy-btn" onclick="copyContent('lib-ex-${i}', this)">Copier</button>
         </div>
         <div class="lib-content-body" id="lib-ex-${i}">${esc(a.example_outputs)}</div>
-      </div>
-    ` : '';
+      </div>` : '';
 
-    // Détection du sous-type d'ADN :
-    //   - "artist" → ADN Artiste (signature complète de profil)
-    //   - "playlist" (ou défaut) → ADN Playlist (univers sonore)
     const rawKind = String(a.kind || a.adn_type || a.type || 'playlist').toLowerCase();
     const isArtist = rawKind === 'artist' || rawKind === 'artiste' || rawKind === 'profile';
     const kindLabel = isArtist ? 'ADN Artiste' : 'ADN Playlist';
-    const kindSub   = isArtist
-      ? `signature complète de ${artistLink}`
-      : `univers signature de ${artistLink}`;
-    const kindBadgeCls = isArtist ? 'lib-adn-kind-artist' : 'lib-adn-kind-playlist';
+    const kindSub   = isArtist ? `signature complète de ${artistLink}` : `univers de ${artistLink}`;
 
     return `
-      <div class="lib-item" style="border-left: 3px solid ${esc(brand)}">
-        <div class="lib-item-head">
-          <div class="lib-item-title">
-            <svg class="lib-adn-dna-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
-              <path d="M7 3c0 4 10 6 10 10M7 11c0 4 10 6 10 10M7 21c0-4 10-6 10-10"/>
-              <path d="M8 5h8M8 8h8M8 13h8M8 16h8M8 19h8" stroke-width="1.1" opacity="0.55"/>
-            </svg>
-            ADN — ${esc(artist.artist_name || artist.artistName || 'Artiste')}
-            <span class="lib-adn-kind ${kindBadgeCls}">${kindLabel}</span>
-          </div>
-          <div class="lib-item-meta">Acquis le ${fmtDate(a.owned_at)}</div>
+      <details class="lib-item-cell" style="border-left:3px solid ${esc(brand)}">
+        <summary class="lib-item-cell-hdr">
+          <span class="lib-item-cell-icon">🧬</span>
+          <span class="lib-item-cell-info">
+            <span class="lib-item-cell-title">${esc(artistName)}</span>
+            <span class="lib-item-cell-meta">${kindLabel} · ${fmtDate(a.owned_at)}</span>
+          </span>
+          <span class="lib-item-cell-chevron">▼</span>
+        </summary>
+        <div class="lib-item-cell-body">
+          <div class="lib-item-artist">${kindSub}</div>
+          ${a.description ? `<div class="lib-item-desc">${esc(a.description)}</div>` : ''}
+          ${usageBlock}
+          ${exampleBlock}
         </div>
-        <div class="lib-item-artist">${kindSub}</div>
-        ${a.description ? `<div class="lib-item-desc">${esc(a.description)}</div>` : ''}
-        ${usageBlock}
-        ${exampleBlock}
-      </div>`;
+      </details>`;
   }).join('');
 }
 
@@ -450,9 +430,6 @@ function renderVoices(items) {
   el.innerHTML = items.map((v, i) => {
     const license = VOICE_LICENSE_LBL_LIB[v.license] || v.license || '';
     const genres  = _libVoiceGenresStr(v.genres);
-    // Backend enrichi (feat/voices-enriched-payload) — v.artist contient
-    // { id, artist_name, slug, brand_color }. On affiche "par <Artiste>"
-    // avec lien /u/<slug> + bordure brand_color sur la card.
     const artist = v.artist || null;
     const artistName = (artist && artist.artist_name) || '';
     const artistSlug = (artist && artist.slug) || '';
@@ -462,38 +439,37 @@ function renderVoices(items) {
           ? `<div class="lib-item-artist">par <a href="/u/${esc(artistSlug)}">${esc(artistName)}</a></div>`
           : `<div class="lib-item-artist">par ${esc(artistName)}</div>`)
       : '';
-    // Téléchargement du sample : on pose un <a download> direct sur l'URL R2.
-    // Pas d'auth header → l'URL R2 doit être publique (signed-URL ou public-read).
     const dlBtn = v.sample_url
-      ? `<a href="${esc(v.sample_url)}" download class="lib-copy-btn">Télécharger le sample</a>`
-      : `<span class="lib-copy-btn" style="opacity:.5">Sample indisponible</span>`;
+      ? `<a href="${esc(v.sample_url)}" download class="lib-copy-btn">Télécharger</a>`
+      : `<span class="lib-copy-btn" style="opacity:.5">Indisponible</span>`;
     const audioBlock = v.sample_url
       ? `<div class="lib-content-block">
            <div class="lib-content-header">
-             <span class="lib-content-label">🎙 Sample audio</span>
+             <span class="lib-content-label">🎙 Sample</span>
              ${dlBtn}
            </div>
            <div class="lib-content-body lib-voice-audio-wrap">
              <audio controls preload="none" src="${esc(v.sample_url)}" class="lib-voice-audio"></audio>
            </div>
-         </div>`
-      : '';
-    // Bordure brand_color sur la card si dispo (cohérent avec ADN cards).
-    const cardStyle = brandColor ? ` style="border-left: 3px solid ${esc(brandColor)}"` : '';
+         </div>` : '';
+    const cellStyle = brandColor ? ` style="border-left:3px solid ${esc(brandColor)}"` : '';
     return `
-      <div class="lib-item"${cardStyle}>
-        <div class="lib-item-head">
-          <div class="lib-item-title">
-            🎙 ${esc(v.name || 'Voix')}
-            <span class="lib-adn-kind lib-adn-kind-playlist">${esc(license)}</span>
-          </div>
-          <div class="lib-item-meta">Acquise le ${fmtDate(v.owned_at || v.updated_at || v.created_at)}</div>
+      <details class="lib-item-cell"${cellStyle}>
+        <summary class="lib-item-cell-hdr">
+          <span class="lib-item-cell-icon">🎙</span>
+          <span class="lib-item-cell-info">
+            <span class="lib-item-cell-title">${esc(v.name || 'Voix')}</span>
+            <span class="lib-item-cell-meta">${esc(license)}${artistName ? ' · ' + esc(artistName) : ''}</span>
+          </span>
+          <span class="lib-item-cell-chevron">▼</span>
+        </summary>
+        <div class="lib-item-cell-body">
+          ${artistBlock}
+          ${v.style ? `<div class="lib-item-desc">${esc(v.style)}</div>` : ''}
+          ${genres ? `<div class="lib-item-artist">Genres : ${esc(genres)}</div>` : ''}
+          ${audioBlock}
         </div>
-        ${artistBlock}
-        ${v.style ? `<div class="lib-item-desc">${esc(v.style)}</div>` : ''}
-        ${genres ? `<div class="lib-item-artist">Genres : ${esc(genres)}</div>` : ''}
-        ${audioBlock}
-      </div>`;
+      </details>`;
   }).join('');
 }
 
