@@ -893,11 +893,7 @@
     openEditPlaylistAdnModal,
     renderDashboardPlaylists,
     renderArtistPlaylists,
-<<<<<<< HEAD
     injectModalStyles: _injectModalStyles
-=======
-    injectModalStyles: _injectModalStyles,
->>>>>>> origin/main
   };
 })();
 
