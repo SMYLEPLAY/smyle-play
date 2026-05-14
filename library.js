@@ -132,6 +132,29 @@ function _renderError(containerId, err) {
 }
 
 
+/* ── Mini-player inline (bouton ▶ dans les headers cellules) ─────────────── */
+
+function libToggleAudio(btn, audioId) {
+  const audio = document.getElementById(audioId);
+  if (!audio) return;
+  if (audio.paused) {
+    // Stopper tous les autres audios lib en cours
+    document.querySelectorAll('.lib-hidden-audio').forEach(a => {
+      if (a !== audio) { a.pause(); a.currentTime = 0; }
+    });
+    document.querySelectorAll('.lib-cell-play-btn').forEach(b => {
+      if (b !== btn) b.textContent = '▶';
+    });
+    audio.play().catch(() => {});
+    btn.textContent = '⏸';
+    audio.onended = () => { btn.textContent = '▶'; };
+  } else {
+    audio.pause();
+    btn.textContent = '▶';
+  }
+}
+
+
 /* ── Toggle colonne ADN dépliable ───────────────────────────────────────── */
 
 function toggleAdnCol(col) {
@@ -229,14 +252,19 @@ function renderPrompts(items) {
         </div>
       </div>` : '';
 
+    const cellStyle = p.track_color ? ` style="border-left:3px solid ${esc(p.track_color)}"` : '';
+    const playBtn = p.audio_url ? `
+      <audio id="lib-audio-${i}" src="${esc(p.audio_url)}" preload="none" class="lib-hidden-audio"></audio>
+      <button class="lib-cell-play-btn" onclick="event.stopPropagation();event.preventDefault();libToggleAudio(this,'lib-audio-${i}')" aria-label="Écouter">▶</button>` : '';
     return `
-      <details class="lib-item-cell">
+      <details class="lib-item-cell"${cellStyle}>
         <summary class="lib-item-cell-hdr">
           <span class="lib-item-cell-icon">🎵</span>
           <span class="lib-item-cell-info">
             <span class="lib-item-cell-title">${esc(p.title || 'Recette IA')}</span>
             <span class="lib-item-cell-meta">par ${esc(artistName)} · ${fmtDate(p.unlocked_at)}</span>
           </span>
+          ${playBtn}
           <span class="lib-item-cell-chevron">▼</span>
         </summary>
         <div class="lib-item-cell-body">
@@ -307,6 +335,7 @@ function renderPlaylistAdns(items) {
           <div class="lib-item-artist">univers de ${ownerLink}</div>
           <div class="lib-item-desc">-20% sur tous les ADN Track de cette playlist</div>
           ${seedBlock}
+          ${slug ? `<a href="/u/${esc(slug)}" class="lib-cell-goto-btn" style="border-color:${esc(color)};color:${esc(color)}">→ Voir la playlist</a>` : ''}
         </div>
       </details>`;
   }).join('');
@@ -453,6 +482,9 @@ function renderVoices(items) {
            </div>
          </div>` : '';
     const cellStyle = brandColor ? ` style="border-left:3px solid ${esc(brandColor)}"` : '';
+    const voicePlayBtn = v.sample_url ? `
+      <audio id="lib-vaudio-${i}" src="${esc(v.sample_url)}" preload="none" class="lib-hidden-audio"></audio>
+      <button class="lib-cell-play-btn" onclick="event.stopPropagation();event.preventDefault();libToggleAudio(this,'lib-vaudio-${i}')" aria-label="Écouter">▶</button>` : '';
     return `
       <details class="lib-item-cell"${cellStyle}>
         <summary class="lib-item-cell-hdr">
@@ -461,6 +493,7 @@ function renderVoices(items) {
             <span class="lib-item-cell-title">${esc(v.name || 'Voix')}</span>
             <span class="lib-item-cell-meta">${esc(license)}${artistName ? ' · ' + esc(artistName) : ''}</span>
           </span>
+          ${voicePlayBtn}
           <span class="lib-item-cell-chevron">▼</span>
         </summary>
         <div class="lib-item-cell-body">

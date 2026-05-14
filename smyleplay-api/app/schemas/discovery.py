@@ -173,6 +173,9 @@ class LibraryPromptItem(BaseModel):
     # Frontend : si audio_url présent → afficher player ; sinon masquer.
     audio_url: str | None = None
     cover_url: str | None = None
+    # Couleur du track lié — repère visuel cohérent avec la marketplace.
+    # NULL si aucun track lié ou si le track n'a pas de couleur définie.
+    track_color: str | None = None
 
 
 class LibraryPromptsResponse(BaseModel):
