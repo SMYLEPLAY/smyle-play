@@ -250,7 +250,7 @@ async function loadSavedPlaylist(id, isLegacy) {
       trackIdx: idx,
       id: t.id,
       name: t.title || t.name,
-      url: t.audio_url || t.stream_url || t.streamUrl || ''
+      url: t.audio_url || t.stream_url || t.streamUrl || (t.r2_key ? '/watt/stream/' + t.r2_key : '') || ''
     }));
     mixPlaying = false;
     mixIdx = 0;
