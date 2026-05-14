@@ -67,6 +67,8 @@ async def create_playlist(
         color=data.color,
         cover_video_url=data.cover_video_url,
         seed_prompt=data.seed_prompt,
+        adn_for_sale=data.adn_for_sale,
+        adn_price=data.adn_price if data.adn_for_sale else None,
     )
     db.add(playlist)
     await db.commit()

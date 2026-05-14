@@ -34,6 +34,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -43,6 +44,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -85,6 +87,12 @@ class Playlist(Base):
     cover_video_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     seed_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ADN vendable — chantier Sprint 2 (migration 0035)
+    adn_for_sale: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    adn_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Forward-compat V2 — non exposé à l'API V1 (feature flag côté routeur).
     dna_description: Mapped[str | None] = mapped_column(Text, nullable=True)

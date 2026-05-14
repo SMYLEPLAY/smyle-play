@@ -28,29 +28,19 @@ Visibility = Literal["public", "private"]
 
 
 class PlaylistCreate(BaseModel):
-    """Payload création d'une playlist.
-
-    `visibility` par défaut est "private" : on encourage les playlists de
-    consommation (wishlist, favoris) plutôt que de forcer un partage public
-    accidentel. Passer explicitement "public" rend la playlist visible sur
-    /u/<slug> et impose la règle "tracks de l'owner uniquement" côté service.
-    """
+    """Payload création d'une playlist."""
 
     title: str = Field(min_length=1, max_length=200)
     visibility: Visibility = "private"
     color: str | None = Field(default=None, pattern=HEX_COLOR_RE)
     cover_video_url: str | None = Field(default=None, max_length=2048)
     seed_prompt: str | None = None
+    adn_for_sale: bool = False
+    adn_price: int | None = Field(default=None, ge=1, le=100_000)
 
 
 class PlaylistUpdate(BaseModel):
-    """Patch partiel d'une playlist (PATCH /playlists/{id}).
-
-    Tous les champs sont optionnels. Passer explicitement `None` n'est pas
-    distingué de "ne pas toucher" côté API V1 — on ne supporte que les
-    patches additifs pour simplifier. Le service applique un `setattr`
-    uniquement pour les champs présents (`model_dump(exclude_unset=True)`).
-    """
+    """Patch partiel d'une playlist (PATCH /playlists/{id})."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -59,6 +49,8 @@ class PlaylistUpdate(BaseModel):
     color: str | None = Field(default=None, pattern=HEX_COLOR_RE)
     cover_video_url: str | None = Field(default=None, max_length=2048)
     seed_prompt: str | None = None
+    adn_for_sale: bool | None = None
+    adn_price: int | None = Field(default=None, ge=1, le=100_000)
 
 
 class PlaylistRead(BaseModel):
@@ -72,6 +64,8 @@ class PlaylistRead(BaseModel):
     visibility: Visibility
     color: str | None
     cover_video_url: str | None
+    adn_for_sale: bool
+    adn_price: int | None
     created_at: datetime
 
 
@@ -87,6 +81,8 @@ class PlaylistWithTracks(BaseModel):
     color: str | None
     cover_video_url: str | None
     seed_prompt: str | None
+    adn_for_sale: bool
+    adn_price: int | None
     created_at: datetime
     tracks: list[TrackRead] = Field(default_factory=list)
 

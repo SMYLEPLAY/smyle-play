@@ -13,6 +13,8 @@
   <!-- Phase 4 refonte architecture : topbar partagée (ui/topbar/topbar.js).
        Remplace l'ex-header .ap-topbar spécifique à cette page. -->
   <link rel="stylesheet" href="/topbar.css" />
+  <!-- Player partagé (chantier playlists quick-play) -->
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body class="ap-page">
 
@@ -506,11 +508,44 @@
   </div>
 </div>
 
+<!-- ─── PLAYER BAR (quick-play playlists) ────────────────────────────── -->
+<div id="player">
+  <span class="player-empty" id="player-empty">Sélectionne un morceau pour écouter</span>
+  <div class="player-info" id="player-info" style="display:none">
+    <div class="player-track-name"    id="player-track-name">—</div>
+    <div class="player-playlist-name" id="player-playlist-name">—</div>
+  </div>
+  <div class="player-controls" id="player-controls" style="display:none">
+    <button class="ctrl-btn" onclick="prevTrack()" title="Précédent">
+      <svg viewBox="0 0 24 24"><polygon points="19,20 9,12 19,4"/><rect x="5" y="4" width="3" height="16"/></svg>
+    </button>
+    <button class="ctrl-btn play-pause" id="btn-play" onclick="togglePlay()">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+    </button>
+    <button class="ctrl-btn" onclick="nextTrack()" title="Suivant">
+      <svg viewBox="0 0 24 24"><polygon points="5,4 15,12 5,20"/><rect x="16" y="4" width="3" height="16"/></svg>
+    </button>
+  </div>
+  <div class="player-progress" id="player-progress" style="display:none">
+    <span class="player-time" id="time-current">0:00</span>
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <span class="player-time" id="time-duration">0:00</span>
+  </div>
+  <span class="player-mode-tag" id="player-mode-tag"></span>
+</div>
+
 <!-- ─── SCRIPTS ─────────────────────────────────────────────────────────── -->
 <!-- Chemins ABSOLUS obligatoires : /artiste/<slug> ajoute un segment dans
      le path, donc "artiste.js" serait résolu en "/artiste/artiste.js". -->
 <script src="/ui/core/api.js"></script>
 <script src="/ui/core/events.js"></script>
+<script src="/ui/core/toast.js"></script>
+<script src="/ui/core/state.js"></script>
+<script src="/ui/core/dom.js"></script>
+<script src="/ui/core/storage.js"></script>
+<script src="/ui/player/audio.js"></script>
 <!-- Phase 4 refonte : topbar partagée. Chargée après events.js pour que le
      bus SmyleEvents soit dispo quand le composant s'abonne aux events. -->
 <script src="/ui/topbar/topbar.js" defer></script>
