@@ -399,7 +399,124 @@
     document.head.appendChild(style);
   }
 
-  // ── 3. RENDERER DASHBOARD ─────────────────────────────────────────────────
+  // ── 3. COULEUR UNIVERS ────────────────────────────────────────────────────
+
+  // Palettes neon par univers — correspondance sur le nom de la playlist
+  var UNIVERSE_PALETTES = {
+    'jungle': { base: '#00FF88', swatches: ['#00FF88','#00E676','#69FF47','#00D4A0','#00FFCC','#B2FF59'] },
+    'osmose': { base: '#00FF88', swatches: ['#00FF88','#00E676','#69FF47','#00D4A0','#00FFCC','#B2FF59'] },
+    'night':  { base: '#4488FF', swatches: ['#4488FF','#00D4FF','#7C3AED','#B44FFF','#00B4D8','#5E60CE'] },
+    'city':   { base: '#4488FF', swatches: ['#4488FF','#00D4FF','#7C3AED','#B44FFF','#00B4D8','#5E60CE'] },
+    'sunset': { base: '#FF6B35', swatches: ['#FF6B35','#FF4D6D','#FFB347','#FF8C69','#FF6B9D','#FFCA28'] },
+    'lover':  { base: '#FF6B35', swatches: ['#FF6B35','#FF4D6D','#FFB347','#FF8C69','#FF6B9D','#FFCA28'] },
+    'hit':    { base: '#FFD700', swatches: ['#FFD700','#FFCC00','#FFC837','#FF9F00','#FFAB40','#FF6D00'] },
+    'mix':    { base: '#FFD700', swatches: ['#FFD700','#FFCC00','#FFC837','#FF9F00','#FFAB40','#FF6D00'] },
+  };
+  var WATT_SWATCHES = ['#cc88ff','#ff44cc','#4488ff','#00d4ff','#00ff88','#ffcc00','#ff6b35','#ff4d6d'];
+
+  function _universeColor(title) {
+    if (!title) return '#cc88ff';
+    var t = title.toLowerCase();
+    for (var key in UNIVERSE_PALETTES) {
+      if (t.indexOf(key) !== -1) return UNIVERSE_PALETTES[key].base;
+    }
+    return '#cc88ff';
+  }
+
+  function _universePalette(title) {
+    if (!title) return { base: '#cc88ff', swatches: WATT_SWATCHES };
+    var t = title.toLowerCase();
+    for (var key in UNIVERSE_PALETTES) {
+      if (t.indexOf(key) !== -1) return UNIVERSE_PALETTES[key];
+    }
+    return { base: '#cc88ff', swatches: WATT_SWATCHES };
+  }
+
+  function openEditPlaylistColorModal(plData, onUpdated) {
+    if (document.getElementById('pl-color-modal')) return;
+
+    var palette    = _universePalette(plData.title);
+    var initColor  = plData.color || palette.base;
+    var allSwatches = palette.swatches.concat(
+      WATT_SWATCHES.filter(function(c) { return palette.swatches.indexOf(c) === -1; })
+    );
+
+    var overlay = document.createElement('div');
+    overlay.id  = 'pl-color-modal';
+    overlay.className = 'pl-modal-overlay';
+    overlay.innerHTML = (
+      '<div class="pl-modal" role="dialog" style="max-width:380px">' +
+        '<button type="button" class="pl-modal-close" aria-label="Fermer">✕</button>' +
+        '<h3 class="pl-modal-title" style="margin-bottom:6px">Couleur neon</h3>' +
+        '<p style="font-size:12px;color:#6b677f;margin:0 0 18px">' + _esc(plData.title) + '</p>' +
+
+        // Aperçu neon live
+        '<div class="pl-neon-preview" id="plc-preview" style="--nc:' + initColor + '">' + _esc(plData.title) + '</div>' +
+
+        // Swatches univers en premier
+        '<div style="margin-bottom:10px">' +
+          '<div style="font-size:11px;color:#6b677f;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Palette univers</div>' +
+          '<div class="pl-color-swatches" id="plc-swatches">' +
+            allSwatches.map(function(c) {
+              return '<button type="button" class="pl-swatch' + (c.toLowerCase() === initColor.toLowerCase() ? ' active' : '') +
+                '" data-color="' + c + '" style="background:' + c + ';box-shadow:0 0 8px ' + c + '"></button>';
+            }).join('') +
+            '<input type="color" id="plc-custom" value="' + initColor + '" title="Couleur libre" class="pl-swatch pl-swatch-custom" />' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="pl-modal-actions" style="margin-top:20px">' +
+          '<button type="button" class="pl-btn pl-btn-ghost" id="plc-cancel">Annuler</button>' +
+          '<button type="button" class="pl-btn pl-btn-primary" id="plc-save">Enregistrer</button>' +
+        '</div>' +
+        '<div class="pl-modal-err" id="plc-err" style="display:none"></div>' +
+      '</div>'
+    );
+    document.body.appendChild(overlay);
+
+    var preview    = overlay.querySelector('#plc-preview');
+    var swatches   = overlay.querySelector('#plc-swatches');
+    var customInp  = overlay.querySelector('#plc-custom');
+    var chosenColor = initColor;
+
+    function _pick(hex) {
+      chosenColor = hex;
+      customInp.value = hex;
+      preview.style.setProperty('--nc', hex);
+      swatches.querySelectorAll('.pl-swatch[data-color]').forEach(function(s) {
+        s.classList.toggle('active', s.dataset.color.toLowerCase() === hex.toLowerCase());
+      });
+    }
+    swatches.addEventListener('click', function(e) {
+      var sw = e.target.closest('.pl-swatch[data-color]');
+      if (sw) _pick(sw.dataset.color);
+    });
+    customInp.addEventListener('input', function() {
+      chosenColor = customInp.value;
+      preview.style.setProperty('--nc', customInp.value);
+      swatches.querySelectorAll('.pl-swatch[data-color]').forEach(function(s) { s.classList.remove('active'); });
+    });
+
+    var close = function() { overlay.remove(); };
+    overlay.querySelector('.pl-modal-close').onclick = close;
+    overlay.querySelector('#plc-cancel').onclick = close;
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+
+    overlay.querySelector('#plc-save').onclick = async function() {
+      var errBox = overlay.querySelector('#plc-err');
+      errBox.style.display = 'none';
+      try {
+        await updatePlaylist(plData.id, { color: chosenColor });
+        close();
+        if (typeof onUpdated === 'function') onUpdated();
+      } catch (e) {
+        errBox.textContent = 'Mise à jour impossible : ' + (e && e.message || 'erreur');
+        errBox.style.display = 'block';
+      }
+    };
+  }
+
+  // ── 4. RENDERER DASHBOARD ─────────────────────────────────────────────────
 
   async function renderDashboardPlaylists(containerId) {
     const root = document.getElementById(containerId);
@@ -437,17 +554,20 @@
           const thumb = p.cover_video_url
             ? '<video class="pl-row-cover" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" /></video>'
             : '<div class="pl-row-cover-fallback">🎵</div>';
+          const currentColor = p.color || _universeColor(p.title);
           return (
             '<li class="pl-row" data-id="' + p.id + '" data-vis="' + p.visibility + '" ' +
                 'data-adn-for-sale="' + (p.adn_for_sale ? '1' : '0') + '" ' +
                 'data-adn-price="' + (p.adn_price || '') + '" ' +
+                'data-color="' + currentColor + '" ' +
                 'data-title="' + (p.title || '').replace(/"/g, '&quot;') + '">' +
               thumb +
               '<div style="flex:1;min-width:0">' +
-                '<div class="pl-row-name">' + _esc(p.title) + '</div>' +
+                '<div class="pl-row-name" style="color:' + currentColor + ';text-shadow:0 0 10px ' + currentColor + '55">' + _esc(p.title) + '</div>' +
                 '<div class="pl-row-meta">' + badge + adnBadge + '</div>' +
               '</div>' +
               '<div class="pl-row-actions">' +
+                '<button type="button" class="pl-icon-btn pl-act-color" title="Couleur neon" style="border-color:' + currentColor + '55;color:' + currentColor + '">🎨</button>' +
                 '<label class="pl-icon-btn-cover" title="Ajouter une cover vidéo (mp4 ≤5s)">📎' +
                   '<input type="file" class="pl-cover-input pl-act-cover" accept="video/mp4,video/webm,video/quicktime" />' +
                 '</label>' +
@@ -478,7 +598,12 @@
       if (!row) return;
       const id = row.dataset.id;
       const vis = row.dataset.vis;
-      if (ev.target.closest('.pl-act-adn')) {
+      if (ev.target.closest('.pl-act-color')) {
+        openEditPlaylistColorModal(
+          { id, title: row.dataset.title || '', color: row.dataset.color || '#cc88ff' },
+          () => reload()
+        );
+      } else if (ev.target.closest('.pl-act-adn')) {
         // Ouvrir modal édition ADN
         const plData = {
           id,
