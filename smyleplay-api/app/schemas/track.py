@@ -1,7 +1,8 @@
 from datetime import datetime
+from urllib.parse import quote
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 # Étape 2 — format couleur hex "#RRGGBB" utilisé partout (track.color,
 # futures extensions UI). Regex volontairement stricte (6 chars, majuscules
@@ -57,6 +58,27 @@ class TrackRead(BaseModel):
     cover_url: str | None = None
     prompt_id: UUID | None = None
     created_at: datetime
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def stream_url(self) -> str:
+        """URL de stream à utiliser côté frontend.
+
+        Priorité :
+          1. Proxy same-origin /watt/stream/{r2_key} (pas de CORS, pas de CSP)
+             → préféré dès que r2_key est disponible.
+          2. URL R2 directe audio_url (fallback si pas de r2_key).
+          3. Chaîne vide si aucune des deux n'est disponible.
+
+        La r2_key est encodée segment par segment pour gérer les espaces
+        et caractères spéciaux (tirets, accents…) dans les noms de fichiers.
+        """
+        if self.r2_key:
+            encoded = "/".join(quote(seg, safe="") for seg in self.r2_key.split("/"))
+            return f"/watt/stream/{encoded}"
+        if self.audio_url:
+            return self.audio_url
+        return ""
 
 
 class TrackWithDNA(BaseModel):
