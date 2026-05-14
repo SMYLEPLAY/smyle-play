@@ -240,7 +240,7 @@ async function loadSavedPlaylist(id, isLegacy) {
         tracks: tracks.map(t => ({
           id: t.id,
           name: t.title || t.name || 'Sans titre',
-          url: t.audio_url || t.stream_url || t.streamUrl || '',
+          url: t.audio_url || t.stream_url || t.streamUrl || (t.r2_key ? '/watt/stream/' + t.r2_key : '') || '',
           file: (t.title || t.name || 'track') + '.wav'
         }))
       };

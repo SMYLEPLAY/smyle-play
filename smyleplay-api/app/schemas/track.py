@@ -52,6 +52,7 @@ class TrackRead(BaseModel):
     id: UUID
     title: str
     audio_url: str | None
+    r2_key: str | None = None       # exposé pour que le front puisse construire /watt/stream/{r2_key}
     color: str | None
     cover_url: str | None = None
     prompt_id: UUID | None = None
