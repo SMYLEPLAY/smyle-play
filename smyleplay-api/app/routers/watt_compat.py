@@ -753,7 +753,7 @@ async def _build_playlists_for_sale_payload(db, artist_id) -> list[dict]:
             (Playlist.owner_id == artist_id)
             & (Playlist.adn_for_sale.is_(True))
         )
-        .order_by(desc(Playlist.updated_at))
+        .order_by(desc(Playlist.created_at))
         .limit(20)
     )).scalars().all()
     return [
