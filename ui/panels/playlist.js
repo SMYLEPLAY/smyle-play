@@ -52,8 +52,30 @@ function openPlaylist(key, cardEl) {
   const durEl = document.getElementById('panel-total-dur');
   if (durEl) durEl.textContent = totalDur > 0 ? `Durée totale · ${fmtTimeLong(totalDur)}` : '';
 
+  // Lien vers le profil officiel /u/smyle pour les playlists univers
+  const existingLink = document.getElementById('panel-profile-link');
+  if (existingLink) existingLink.remove();
+  const isUniverse = ['sunset-lover','jungle-osmose','night-city','hit-mix'].includes(key);
+  if (isUniverse) {
+    const linkEl = document.createElement('a');
+    linkEl.id        = 'panel-profile-link';
+    linkEl.className = 'panel-profile-link';
+    linkEl.href      = '/u/smyle';
+    linkEl.title     = 'Voir sur le profil Smyle';
+    linkEl.textContent = 'Voir le profil Smyle →';
+    document.getElementById('panel-sub').insertAdjacentElement('afterend', linkEl);
+  }
+
   list.innerHTML = pl.tracks.length
-    ? pl.tracks.map((t, i) => `
+    ? pl.tracks.map((t, i) => {
+        const tuuid = t.trackUuid || t.id || '';
+        const likeBtn  = tuuid
+          ? `<button class="like-btn panel-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist" onclick="event.stopPropagation()"></button>`
+          : '';
+        const addPlBtn = tuuid
+          ? `<button class="add-to-pl-btn panel-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist" onclick="event.stopPropagation()">+</button>`
+          : '';
+        return `
         <div class="track-item${currentPlaylist === key && currentTrackIdx === i ? ' active' : ''}"
              id="ti-${t.id}" onclick="loadTrack('${key}', ${i})">
           <span class="track-num">${String(i + 1).padStart(2, '0')}</span>
@@ -63,10 +85,11 @@ function openPlaylist(key, cardEl) {
           <div class="track-playing-icon"><span></span><span></span><span></span></div>
           ${t.duration ? `<span class="track-dur">${fmtTime(t.duration)}</span>` : ''}
           <span class="track-plays" id="plays-${t.id}">${fmtPlays(getPlayCount(t.id))} ▶</span>
+          ${likeBtn}${addPlBtn}
           <button class="add-to-mix-btn" title="Ajouter à My Mix"
-                  onclick="addToMix(event,'${key}',${i})">＋</button>
-        </div>
-      `).join('')
+                  onclick="addToMix(event,'${key}',${i})">＋ Mix</button>
+        </div>`;
+      }).join('')
     : `<div style="padding:32px 28px;font-size:11px;letter-spacing:.25em;color:rgba(136,0,255,.25);text-transform:uppercase">Aucun fichier audio trouvé</div>`;
 
   panel.classList.add('open');

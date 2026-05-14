@@ -350,11 +350,12 @@ async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
         if univ_slug not in out:
             continue
         out[univ_slug]["tracks"].append({
-            "id":       t.legacy_id or str(t.id),
-            "file":     (t.r2_key or "").split("/", 1)[-1] if t.r2_key else "",
-            "name":     t.title,
-            "duration": t.duration_seconds,
-            "url":      t.audio_url or "",
+            "id":        t.legacy_id or str(t.id),
+            "trackUuid": str(t.id),           # UUID réel pour wishlist/playlist
+            "file":      (t.r2_key or "").split("/", 1)[-1] if t.r2_key else "",
+            "name":      t.title,
+            "duration":  t.duration_seconds,
+            "url":       t.audio_url or "",
         })
     return out
 
