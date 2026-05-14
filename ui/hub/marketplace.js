@@ -267,7 +267,7 @@
           `</div>` +
           playBtn +
           `<div class="mp-ranking-meta">${plays} écoutes</div>` +
-          `<button class="add-to-pl-btn mp-ranking-add" type="button" data-add-to-playlist="${_esc(t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
+          `<button class="add-to-pl-btn mp-ranking-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
           `<button class="like-btn mp-ranking-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
           audioEl +
         `</li>`
@@ -407,7 +407,7 @@
           `</div>` +
           `<div class="mp-son-card-meta">` +
             `<span class="mp-son-card-meta-plays">${plays} écoutes</span>` +
-            `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
+            `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
             `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
           `</div>` +
           (streamUrl

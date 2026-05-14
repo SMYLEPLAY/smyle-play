@@ -265,6 +265,7 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         "date":       date_fr,
         # Sprint 1 — pivot écoute
         "coverUrl":   track.cover_url or "",
+        "trackUuid":         str(track.id),  # UUID réel — utilisé par /playlists/{id}/tracks
         "promptId":          str(track.prompt_id) if track.prompt_id else None,
         # Prix de la recette liée — injecté a posteriori par les endpoints
         # qui font un batch query sur Prompt (tracks-recent, /watt/artists).
