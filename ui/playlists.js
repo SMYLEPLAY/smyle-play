@@ -288,8 +288,28 @@
       '.pl-adn-toggle-txt { font-weight:600; }' +
       '.pl-adn-price-wrap { margin-top:12px; padding:14px; background:rgba(204,136,255,.06); border:1px solid rgba(204,136,255,.2); border-radius:10px; }' +
       '.pl-adn-hint { font-size:11px; color:#6b677f; margin:8px 0 0; }' +
-      // Badge lock sur les cards
-      '.ap-pl-adn-badge { position:absolute; top:8px; right:8px; background:rgba(0,0,0,.72); backdrop-filter:blur(6px); border:1px solid rgba(204,136,255,.4); border-radius:999px; padding:3px 8px; font-size:10px; color:#cc88ff; font-weight:700; z-index:8; letter-spacing:.02em; }' +
+      // Badge ADN sur les cards (cliquable)
+      '.ap-pl-adn-badge { position:absolute; top:8px; right:8px; background:rgba(0,0,0,.72); backdrop-filter:blur(6px); border:1px solid rgba(204,136,255,.4); border-radius:999px; padding:3px 8px; font-size:10px; color:#cc88ff; font-weight:700; z-index:8; letter-spacing:.02em; cursor:pointer; transition:background .18s,border-color .18s; }' +
+      '.ap-pl-adn-badge:hover { background:rgba(204,136,255,.18); border-color:rgba(204,136,255,.8); }' +
+      '.ap-pl-adn-badge.is-owned { color:#6fffb0; border-color:rgba(111,255,176,.4); }' +
+      // Modale achat ADN playlist
+      '.adn-buy-overlay { position:fixed; inset:0; background:rgba(0,0,0,.78); backdrop-filter:blur(8px); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; }' +
+      '.adn-buy-modal { background:#14111f; border:1px solid rgba(204,136,255,.25); border-radius:18px; padding:28px 24px; max-width:420px; width:100%; position:relative; }' +
+      '.adn-buy-close { position:absolute; top:14px; right:16px; background:transparent; border:none; color:#a09cb8; font-size:20px; cursor:pointer; line-height:1; }' +
+      '.adn-buy-close:hover { color:#fff; }' +
+      '.adn-buy-eyebrow { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#cc88ff; font-weight:700; margin:0 0 8px; }' +
+      '.adn-buy-title { font-size:20px; font-weight:700; color:#fff; margin:0 0 14px; line-height:1.25; }' +
+      '.adn-buy-desc { font-size:13px; color:#a09cb8; line-height:1.6; margin:0 0 18px; border-left:2px solid rgba(204,136,255,.3); padding-left:12px; }' +
+      '.adn-buy-perks { list-style:none; padding:0; margin:0 0 22px; display:flex; flex-direction:column; gap:6px; }' +
+      '.adn-buy-perks li { font-size:12px; color:#c8c4e0; display:flex; gap:8px; align-items:flex-start; }' +
+      '.adn-buy-price-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }' +
+      '.adn-buy-price { font-size:22px; font-weight:800; color:#fff; }' +
+      '.adn-buy-price span { font-size:13px; color:#a09cb8; font-weight:400; margin-left:4px; }' +
+      '.adn-buy-btn { width:100%; padding:13px; background:linear-gradient(135deg,rgba(204,136,255,.9),rgba(136,80,255,.9)); border:none; border-radius:12px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; transition:opacity .18s; }' +
+      '.adn-buy-btn:hover { opacity:.88; }' +
+      '.adn-buy-btn:disabled { opacity:.45; cursor:not-allowed; }' +
+      '.adn-buy-owned { text-align:center; padding:12px 0 4px; color:#6fffb0; font-weight:700; font-size:14px; }' +
+      '.adn-buy-error { margin-top:12px; font-size:12px; color:#ff6b6b; text-align:center; }' +
       // Dashboard section
       '.pl-dash-section { background: rgba(255,255,255,.02); border: 1px solid rgba(204,136,255,.14); border-radius: 14px; padding: 20px; margin: 20px 0; }' +
       '.pl-dash-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }' +
@@ -536,7 +556,7 @@
                   : '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + nc + ',rgba(10,10,20,1))">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
                 const qpId = 'ap-qp-' + p.id;
                 const adnBadge = p.adn_for_sale
-                  ? '<div class="ap-pl-adn-badge">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
+                  ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
                   : '';
                 return (
                   '<li class="ap-playlist-card" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
@@ -620,6 +640,100 @@
     } catch (err) {
       console.warn('[playlists] quickPlay error:', err);
       if (typeof showToast === 'function') showToast('Impossible de lancer la playlist');
+    }
+  }
+
+  // ── 5b. MODALE ACHAT ADN PLAYLIST ─────────────────────────────────────────
+
+  async function _openAdnPurchaseModal(badgeEl) {
+    const playlistId  = badgeEl.dataset.playlistId;
+    const adnPrice    = parseInt(badgeEl.dataset.adnPrice, 10) || 0;
+    const adnTitle    = badgeEl.dataset.adnTitle || 'cette playlist';
+    const seedPrompt  = badgeEl.dataset.seedPrompt || '';
+
+    // Supprimer overlay existant
+    const existing = document.getElementById('adn-buy-overlay');
+    if (existing) existing.remove();
+
+    // Créer overlay
+    const overlay = document.createElement('div');
+    overlay.id        = 'adn-buy-overlay';
+    overlay.className = 'adn-buy-overlay';
+
+    overlay.innerHTML =
+      '<div class="adn-buy-modal" role="dialog" aria-modal="true">' +
+        '<button class="adn-buy-close" id="adn-buy-close" aria-label="Fermer">✕</button>' +
+        '<p class="adn-buy-eyebrow">ADN Playlist</p>' +
+        '<h3 class="adn-buy-title">' + _esc(adnTitle) + '</h3>' +
+        (seedPrompt
+          ? '<p class="adn-buy-desc">' + _esc(seedPrompt) + '</p>'
+          : '<p class="adn-buy-desc">La synthèse créative de tous les sons de cette playlist — ton blueprint pour reproduire cet univers.</p>') +
+        '<ul class="adn-buy-perks">' +
+          '<li>🧬 Accès à l\'ADN créatif complet de la playlist</li>' +
+          '<li>💎 Réduction <strong>-20%</strong> sur tous les ADN Track de cette playlist</li>' +
+          '<li>🎵 La playlist reste écoutable librement — tu achètes le blueprint</li>' +
+        '</ul>' +
+        '<div id="adn-buy-content">' +
+          '<div style="text-align:center;color:#a09cb8;padding:24px 0;font-size:13px">Chargement…</div>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    // Fermeture
+    const closeBtn = document.getElementById('adn-buy-close');
+    if (closeBtn) closeBtn.addEventListener('click', function() { overlay.remove(); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+    // Vérifier ownership si connecté
+    const token = typeof getAuthToken === 'function' ? getAuthToken() : null;
+    const contentEl = document.getElementById('adn-buy-content');
+
+    if (!token) {
+      contentEl.innerHTML =
+        '<div class="adn-buy-price-row"><div class="adn-buy-price">' + adnPrice + '<span>Smyles</span></div></div>' +
+        '<button class="adn-buy-btn" id="adn-buy-confirm-btn" disabled>Connecte-toi pour acheter</button>';
+      return;
+    }
+
+    try {
+      const owned = await _req('/playlists/' + playlistId + '/adn-owned');
+      if (owned && owned.owned) {
+        contentEl.innerHTML = '<div class="adn-buy-owned">✅ Tu possèdes déjà cet ADN — profite de -20% sur les tracks !</div>';
+        badgeEl.textContent  = '✅ ADN';
+        badgeEl.classList.add('is-owned');
+        return;
+      }
+    } catch (_) { /* pas connecté ou autre — on continue */ }
+
+    // Non possédé : afficher prix + bouton
+    contentEl.innerHTML =
+      '<div class="adn-buy-price-row">' +
+        '<div class="adn-buy-price">' + adnPrice + '<span>Smyles</span></div>' +
+      '</div>' +
+      '<button class="adn-buy-btn" id="adn-buy-confirm-btn">🧬 Acheter l\'ADN</button>' +
+      '<div class="adn-buy-error" id="adn-buy-err" style="display:none"></div>';
+
+    const confirmBtn = document.getElementById('adn-buy-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', async function() {
+        confirmBtn.disabled     = true;
+        confirmBtn.textContent  = 'Traitement…';
+        const errEl = document.getElementById('adn-buy-err');
+
+        try {
+          await _req('/unlocks/playlist-adn/' + playlistId, { method: 'POST' });
+          contentEl.innerHTML = '<div class="adn-buy-owned">✅ ADN acheté ! Tu bénéficies maintenant de -20% sur les ADN Track de cette playlist.</div>';
+          badgeEl.textContent = '✅ ADN';
+          badgeEl.classList.add('is-owned');
+          if (typeof showToast === 'function') showToast('ADN playlist débloqué 🧬');
+        } catch (err) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '🧬 Acheter l\'ADN';
+          const msg = (err && err.message) ? err.message : 'Erreur lors de l\'achat';
+          if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+        }
+      });
     }
   }
 
@@ -1022,6 +1136,14 @@
         if (id) openPlaylistViewModal(id);
         return;
       }
+      // ADN badge click → modale d'achat (avant le clic carte pour bloquer la propagation)
+      const adnBadgeEl = ev.target.closest('.ap-pl-adn-badge[data-playlist-id]');
+      if (adnBadgeEl) {
+        ev.stopPropagation();
+        _openAdnPurchaseModal(adnBadgeEl);
+        return;
+      }
+
       // Open playlist view from profil public card
       const apCard = ev.target.closest('.ap-playlist-card[data-pl-id]');
       if (apCard) {
