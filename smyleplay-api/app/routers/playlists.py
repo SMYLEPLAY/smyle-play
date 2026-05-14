@@ -249,3 +249,36 @@ async def list_public_playlists_by_slug(
         db, target.id, visibility="public"
     )
     return [PlaylistRead.model_validate(p) for p in items]
+
+
+# ─── Public-facing : /watt/playlists/{id} — quick-play ────────────────────
+@public_router.get("/playlists/{playlist_id}", response_model=PlaylistWithTracks)
+async def get_public_playlist_with_tracks(
+    playlist_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> PlaylistWithTracks:
+    """
+    Détail d'une playlist publique avec ses tracks — sans authentification.
+    Utilisé par le bouton quick-play sur les cards du profil public.
+    Retourne 404 si la playlist est privée ou inexistante.
+    """
+    try:
+        playlist = await svc.get_playlist(db, playlist_id)
+    except svc.PlaylistNotFound:
+        raise HTTPException(status_code=404, detail="Playlist introuvable")
+
+    if playlist.visibility != "public":
+        raise HTTPException(status_code=404, detail="Playlist introuvable")
+
+    tracks = await svc.list_playlist_tracks(db, playlist.id)
+    return PlaylistWithTracks(
+        id=playlist.id,
+        owner_id=playlist.owner_id,
+        title=playlist.title,
+        visibility=playlist.visibility,  # type: ignore[arg-type]
+        color=playlist.color,
+        cover_video_url=playlist.cover_video_url,
+        seed_prompt=playlist.seed_prompt,
+        created_at=playlist.created_at,
+        tracks=[TrackRead.model_validate(t) for t in tracks],
+    )

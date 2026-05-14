@@ -223,7 +223,20 @@
       '.ap-playlist-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: .4; }' +
       '.ap-playlist-card-info { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 10px 8px; background: linear-gradient(to top, rgba(0,0,0,.72) 0%, transparent 60%); }' +
       '.ap-playlist-card-title { color: #fff; font-size: 13px; font-weight: 700; margin: 0; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,.6); }' +
-      '.ap-playlist-card-meta { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 2px; }'
+      '.ap-playlist-card-meta { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 2px; }' +
+      // Neon title (couleur dynamique via --nc CSS var)
+      '@keyframes ap-neon-pulse {' +
+        '0%,19%,21%,54%,56%,100%{text-shadow:0 0 8px var(--nc,#cc88ff),0 0 22px var(--nc,#cc88ff),0 0 45px var(--nc,#cc88ff);opacity:1}' +
+        '20%,55%{text-shadow:none;opacity:.72}' +
+        '22%{text-shadow:0 0 6px var(--nc,#cc88ff);opacity:.88}' +
+      '}' +
+      '.ap-pl-neon { font-size:13px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; line-height:1; margin:0; color:var(--nc,#cc88ff); animation:ap-neon-pulse 4.5s infinite; }' +
+      '.ap-playlist-card-meta { font-size:10px; color:rgba(255,255,255,.5); margin-top:3px; }' +
+      // Bouton quick-play centré (même pattern card-quick-play WATT)
+      '.ap-pl-qp { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.7); width:44px; height:44px; border-radius:50%; background:rgba(5,5,8,.72); backdrop-filter:blur(8px); border:1.5px solid rgba(255,255,255,.18); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .22s,transform .22s,border-color .22s,background .22s; z-index:10; }' +
+      '.ap-pl-qp svg { width:15px; height:15px; fill:currentColor; margin-left:2px; }' +
+      '.ap-playlist-card:hover .ap-pl-qp { opacity:1; transform:translate(-50%,-50%) scale(1); }' +
+      '.ap-playlist-card:hover .ap-pl-qp:hover { transform:translate(-50%,-50%) scale(1.1); background:rgba(var(--nc-rgb,204,136,255),.45); border-color:rgba(var(--nc-rgb,204,136,255),.55); }'
     );
     const style = document.createElement('style');
     style.id = 'pl-modal-styles';
@@ -409,14 +422,20 @@
           '<div class="ap-playlists-body" id="' + sectionId + '">' +
             '<ul class="ap-playlists-list">' +
               playlists.map(function(p, i) {
+                const nc     = p.color || '#cc88ff';
+                const ncRgb  = _hexToRgb(nc);
                 const mediaBg = p.cover_video_url
                   ? '<video autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
-                  : '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + (p.color || '#1a0a2e') + ',rgba(204,136,255,.18))">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
+                  : '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + nc + ',rgba(10,10,20,1))">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
+                const qpId = 'ap-qp-' + p.id;
                 return (
-                  '<li class="ap-playlist-card" data-pl-id="' + p.id + '">' +
+                  '<li class="ap-playlist-card" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
                     mediaBg +
+                    '<button class="ap-pl-qp" id="' + qpId + '" title="Lancer">' +
+                      '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' +
+                    '</button>' +
                     '<div class="ap-playlist-card-info">' +
-                      '<div class="ap-playlist-card-title">' + _esc(p.title) + '</div>' +
+                      '<div class="ap-pl-neon">' + _esc(p.title) + '</div>' +
                       '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
                     '</div>' +
                   '</li>'
@@ -426,6 +445,12 @@
           '</div>' +
         '</section>'
       );
+
+      // Brancher quick-play buttons
+      playlists.forEach(function(p) {
+        const btn = document.getElementById('ap-qp-' + p.id);
+        if (btn) btn.addEventListener('click', function(e) { _quickPlayUserPlaylist(e, p.id); });
+      });
 
       // Toggle accordion
       const toggleBtn = root.querySelector('.ap-playlists-toggle');
@@ -444,7 +469,50 @@
     }
   }
 
-  // ── 5. UTILS ──────────────────────────────────────────────────────────────
+  // ── 5. QUICK-PLAY playlists utilisateur ───────────────────────────────────
+
+  // Convertit #rrggbb en "r,g,b" pour les CSS variables --nc-rgb
+  function _hexToRgb(hex) {
+    const m = (hex || '').replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m) return '204,136,255';
+    return parseInt(m[1],16) + ',' + parseInt(m[2],16) + ',' + parseInt(m[3],16);
+  }
+
+  // Charge les tracks d'une playlist publique dans PLAYLISTS puis lance la lecture
+  async function _quickPlayUserPlaylist(e, playlistId) {
+    e.stopPropagation();
+    const key = 'user-pl-' + playlistId;
+    // Si déjà chargé, relancer directement
+    if (window.PLAYLISTS && window.PLAYLISTS[key]) {
+      if (typeof loadTrack === 'function') { loadTrack(key, 0); return; }
+    }
+    try {
+      const data = await _req('/watt/playlists/' + playlistId);
+      if (!data.tracks || !data.tracks.length) {
+        if (typeof showToast === 'function') showToast('Playlist vide');
+        return;
+      }
+      if (!window.PLAYLISTS) window.PLAYLISTS = {};
+      window.PLAYLISTS[key] = {
+        label:  data.title,
+        theme:  data.color || 'custom',
+        folder: '',
+        tracks: data.tracks
+          .filter(function(t) { return t.audio_url; })
+          .map(function(t) { return { url: t.audio_url, name: t.title, id: t.id }; })
+      };
+      if (!window.PLAYLISTS[key].tracks.length) {
+        if (typeof showToast === 'function') showToast('Aucun audio disponible');
+        return;
+      }
+      if (typeof loadTrack === 'function') loadTrack(key, 0);
+    } catch (err) {
+      console.warn('[playlists] quickPlay error:', err);
+      if (typeof showToast === 'function') showToast('Impossible de lancer la playlist');
+    }
+  }
+
+  // ── 6. UTILS ──────────────────────────────────────────────────────────────
 
   function _esc(s) {
     return String(s || '').replace(/[&<>"']/g, c => (
