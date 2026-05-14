@@ -407,7 +407,6 @@ async def delete_adn(db: AsyncSession, artist_id: UUID) -> None:
     adn.is_deleted = True
     adn.is_published = False
     await db.flush()
-    return prompt
 
 
 async def update_prompt(
