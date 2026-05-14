@@ -3,6 +3,7 @@ from .adn import Adn
 from .base import Base
 from .dna import DNA
 from .owned_adn import OwnedAdn
+from .owned_playlist_adn import OwnedPlaylistAdn
 from .playlist import Playlist, PlaylistTrack
 from .prompt import Prompt
 from .track import Track
@@ -19,6 +20,7 @@ __all__ = [
     "Base",
     "DNA",
     "OwnedAdn",
+    "OwnedPlaylistAdn",
     "OwnedVoice",
     "Playlist",
     "PlaylistTrack",

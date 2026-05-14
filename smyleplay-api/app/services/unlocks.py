@@ -39,6 +39,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.adn import Adn
 from app.models.owned_adn import OwnedAdn
+from app.models.owned_playlist_adn import OwnedPlaylistAdn
+from app.models.playlist import Playlist
 from app.models.prompt import Prompt
 from app.models.transaction import (
     Transaction,
@@ -48,10 +50,14 @@ from app.models.transaction import (
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.services.credits import (
     _acquire_user_locks,
+    compute_adn_price_with_playlist_perk,
     compute_effective_price,
     compute_split,
 )
-from app.services.marketplace import user_owns_artist_adn
+from app.services.marketplace import (
+    get_playlist_containing_adn_track,
+    user_owns_artist_adn,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -318,9 +324,7 @@ async def unlock_adn_atomic(
     if adn_row is None or not adn_row.is_published:
         raise AdnNotPurchasable("ADN not found or not published")
 
-    # 2026-05-13 — Stock-out : si max_supply défini, on vérifie le nombre
-    # d'OwnedAdn déjà créés. Race condition résolue par UNIQUE(buyer,adn)
-    # + le begin_nested plus bas. Premier rempart = ce check ici.
+    # Stock-out : si max_supply défini, on vérifie le nombre d'OwnedAdn.
     if adn_row.max_supply is not None:
         sold_count = (await db.execute(
             select(func.count(OwnedAdn.adn_id)).where(
@@ -333,7 +337,16 @@ async def unlock_adn_atomic(
             )
 
     artist_id = adn_row.artist_id
-    paid = adn_row.price_credits
+    base_price = adn_row.price_credits
+
+    # Perk pyramidal -20% : si le buyer possède l'ADN Playlist qui contient
+    # un track lié à cet ADN Track, il bénéficie d'une réduction.
+    playlist_perk = await get_playlist_containing_adn_track(
+        db, user_id=buyer_id, adn_id=adn_id
+    )
+    paid = compute_adn_price_with_playlist_perk(
+        base_price, has_perk=playlist_perk is not None
+    )
 
     if buyer_id == artist_id:
         raise SelfPurchaseForbidden(
@@ -367,7 +380,9 @@ async def unlock_adn_atomic(
             metadata_json={
                 "adn_id": str(adn_id),
                 "artist_id": str(artist_id),
-                # Pas de base_price/perk_applied : pas de perk sur ADN
+                "base_price": base_price,
+                "playlist_perk_applied": playlist_perk is not None,
+                "playlist_perk_id": str(playlist_perk) if playlist_perk else None,
             },
         )
         db.add(tx)
