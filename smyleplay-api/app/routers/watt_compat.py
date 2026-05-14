@@ -27,10 +27,12 @@ from app.auth.jwt import decode_access_token
 from app.config import settings
 from app.database import get_db
 from app.models.adn import Adn
+from app.models.playlist import Playlist
 from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.user import User
 from app.models.user_follow import UserFollow
+from app.models.voice import Voice
 
 
 router = APIRouter(prefix="/watt", tags=["watt-compat"])
@@ -495,7 +497,7 @@ async def build_artist_detail_payload(
         select(Track)
         .where(Track.artist_id == target.id)
         .order_by(desc(Track.created_at))
-        .limit(50)
+        .limit(200)
     )
     tracks = (await db.execute(stmt_tracks)).scalars().all()
     total_plays = sum(t.plays or 0 for t in tracks)
@@ -711,7 +713,58 @@ async def build_artist_detail_payload(
         "adn":            adn_payload,
         "promptsForSale": prompts_for_sale,
         "prompts":        prompts_payload,
+        # Boutique : voix publiées + playlists avec ADN en vente
+        "voices":         await _build_voices_payload(db, target.id),
+        "playlistsForSale": await _build_playlists_for_sale_payload(db, target.id),
     }
+
+
+async def _build_voices_payload(db, artist_id) -> list[dict]:
+    """Voix publiées par l'artiste pour la section boutique."""
+    rows = (await db.execute(
+        select(Voice)
+        .where(
+            (Voice.artist_id == artist_id)
+            & (Voice.is_published.is_(True))
+            & (Voice.is_deleted.is_(False))
+        )
+        .order_by(desc(Voice.created_at))
+        .limit(20)
+    )).scalars().all()
+    return [
+        {
+            "id":           str(v.id),
+            "name":         v.name,
+            "style":        v.style or "",
+            "genres":       list(v.genres or []),
+            "license":      v.license or "",
+            "priceCredits": v.price_credits,
+            "previewUrl":   v.preview_url or "",
+        }
+        for v in rows
+    ]
+
+
+async def _build_playlists_for_sale_payload(db, artist_id) -> list[dict]:
+    """Playlists avec ADN en vente pour la section boutique."""
+    rows = (await db.execute(
+        select(Playlist)
+        .where(
+            (Playlist.owner_id == artist_id)
+            & (Playlist.adn_for_sale.is_(True))
+        )
+        .order_by(desc(Playlist.updated_at))
+        .limit(20)
+    )).scalars().all()
+    return [
+        {
+            "id":       str(p.id),
+            "title":    p.title,
+            "color":    p.color or "#cc88ff",
+            "adnPrice": p.adn_price or 0,
+        }
+        for p in rows
+    ]
 
 
 @router.get("/artists/{slug}")
