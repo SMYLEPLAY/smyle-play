@@ -283,6 +283,7 @@ function renderProfile() {
   // s'affiche côté marketplace (pas de placeholder vide) — c'est ce que
   // voit un fan "pur". Cf. discussion vision / organisation.
   renderBoutique(artist);
+  renderPlaylistsAdn(artist);
   renderDna(artist);
   renderPrompts(artist);
   renderVoices(artist);
@@ -722,10 +723,11 @@ function _updateSaleDisclaimerVisibility(artist) {
 // ═══════════════════════════════════════════════════════════════════════════
 // BOUTIQUE v2 — Cards compactes + Drawer de détail
 // Clic sur une card → openBoutiqueDrawer(type, data)
-// 4 types : adn-artist · son · voix · playlist
+// 2 types dans la grille boutique : son · voix
+// ADN Artiste → ap-dna-card (compact, sous hero)
+// ADN Playlists → ap-playlists-adn (accordéon, sous dna-card)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Données de l'artiste courantes — mémorisées pour le drawer.
 var _boutiqueArtist = null;
 
 function renderBoutique(artist) {
@@ -734,13 +736,11 @@ function renderBoutique(artist) {
   const grid    = $('ap-boutique-grid');
   if (!section || !grid) return;
 
-  const adn           = artist && artist.adn;
   const tracksWithPmt = (Array.isArray(artist && artist.tracks) ? artist.tracks : [])
                           .filter(t => t.promptId && t.promptPriceCredits);
-  const voices        = Array.isArray(artist && artist.voices)           ? artist.voices           : [];
-  const playlists     = Array.isArray(artist && artist.playlistsForSale) ? artist.playlistsForSale : [];
+  const voices = Array.isArray(artist && artist.voices) ? artist.voices : [];
 
-  const total = (adn ? 1 : 0) + tracksWithPmt.length + voices.length + playlists.length;
+  const total = tracksWithPmt.length + voices.length;
   if (total === 0) { section.style.display = 'none'; return; }
 
   section.style.display = '';
@@ -749,8 +749,9 @@ function renderBoutique(artist) {
   const brandColor = (artist && artist.brandColor) || '#cc88ff';
 
   function compactCard(icon, type, name, price, color, dataItem) {
-    const safe = (name || '').replace(/</g, '&lt;');
+    const safe    = (name || '').replace(/</g, '&lt;');
     const encoded = (dataItem || '').replace(/'/g, '&#39;');
+    const typeLabel = type === 'son' ? 'Son · Recette' : 'Voix';
     return `
       <article class="ap-shop-card" style="border-left-color:${color}"
                role="button" tabindex="0"
@@ -758,10 +759,7 @@ function renderBoutique(artist) {
         <div class="ap-shop-card-top">
           <div class="ap-shop-card-icon">${icon}</div>
           <div class="ap-shop-card-info">
-            <div class="ap-shop-card-type">${type === 'adn-artist' ? 'ADN Artiste'
-              : type === 'son' ? 'Son · Recette'
-              : type === 'voix' ? 'Voix'
-              : 'ADN Playlist'}</div>
+            <div class="ap-shop-card-type">${typeLabel}</div>
             <div class="ap-shop-card-name">${safe}</div>
           </div>
         </div>
@@ -773,15 +771,6 @@ function renderBoutique(artist) {
   }
 
   const cards = [];
-
-  if (adn) {
-    cards.push(compactCard('🧬', 'adn-artist', 'Signature créative',
-      formatCount(adn.priceCredits), brandColor,
-      JSON.stringify({ id: adn.id, priceCredits: adn.priceCredits,
-        descriptionTeaser: adn.descriptionTeaser || '', color: brandColor,
-        hasUsageGuide: !!adn.hasUsageGuide, hasExampleOutputs: !!adn.hasExampleOutputs,
-        isSoldOut: !!adn.isSoldOut })));
-  }
 
   tracksWithPmt.forEach(t => {
     cards.push(compactCard('🎵', 'son', t.title,
@@ -801,14 +790,44 @@ function renderBoutique(artist) {
         previewUrl: v.previewUrl || v.preview_url || '' })));
   });
 
-  playlists.forEach(pl => {
-    cards.push(compactCard('🎚', 'playlist', pl.title,
-      formatCount(pl.adnPrice || 0), pl.color || brandColor,
-      JSON.stringify({ id: pl.id, title: pl.title || '',
-        adnPrice: pl.adnPrice || 0, color: pl.color || brandColor })));
-  });
-
   grid.innerHTML = cards.join('');
+}
+
+// ── Accordéon Playlists ADN — sous la card ADN ──────────────────────────────
+
+function renderPlaylistsAdn(artist) {
+  const section = $('ap-playlists-adn');
+  const list    = $('ap-playlists-adn-list');
+  if (!section || !list) return;
+
+  const playlists  = Array.isArray(artist && artist.playlistsForSale) ? artist.playlistsForSale : [];
+  const brandColor = (artist && artist.brandColor) || '#cc88ff';
+  const slug       = (artist && artist.slug) || '';
+
+  if (playlists.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  setText('ap-playlists-adn-count', playlists.length + ' playlist' + (playlists.length > 1 ? 's' : ''));
+
+  list.innerHTML = playlists.map(pl => {
+    const safeTitle = (pl.title || '').replace(/</g, '&lt;');
+    const color     = pl.color || brandColor;
+    const price     = formatCount(pl.adnPrice || 0);
+    // Lien vers la page playlist (unlock se fait depuis le slug playlist)
+    const href = `/u/${encodeURIComponent(slug)}`;
+    return `
+      <details class="ap-pl-adn-item" style="--pl-color:${color}">
+        <summary class="ap-pl-adn-summary">
+          <span class="ap-pl-adn-icon">🎚</span>
+          <span class="ap-pl-adn-name">${safeTitle}</span>
+          <span class="ap-pl-adn-badge">🧬 ADN · ${price} crédits</span>
+          <span class="ap-pl-adn-chevron">▾</span>
+        </summary>
+        <div class="ap-pl-adn-body">
+          <p class="ap-pl-adn-desc">Le code génératif de cette playlist — reproduis son univers musical.</p>
+          <a href="${href}" class="ap-pl-adn-goto">→ Voir la playlist</a>
+        </div>
+      </details>`;
+  }).join('');
 }
 
 // ── Drawer — ouvre le panneau de détail ──────────────────────────────────
