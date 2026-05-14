@@ -537,9 +537,17 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
 @keyframes eq { 0%,100%{height:4px}50%{height:14px} }
 .track-plays { font-size:9px;letter-spacing:.04em;min-width:26px;text-align:right;color:var(--panel-accent,rgba(136,0,255,.4));opacity:.5;flex-shrink:0;font-variant-numeric:tabular-nums;transition:opacity .2s; }
 .track-item:hover .track-plays, .track-item.active .track-plays { opacity:.95;font-weight:600; }
-.add-to-mix-btn { background:none;border:1px solid var(--panel-dim,rgba(136,0,255,.18));color:var(--panel-accent,rgba(136,0,255,.5));width:22px;height:22px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;line-height:1; }
+.add-to-mix-btn { background:none;border:1px solid var(--panel-dim,rgba(136,0,255,.18));color:var(--panel-accent,rgba(136,0,255,.5));width:22px;height:22px;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;line-height:1; }
 .add-to-mix-btn:hover { background:var(--panel-accent,rgba(136,0,255,.15));border-color:var(--panel-accent,#8800ff);color:#fff; }
 .track-item.in-mix .add-to-mix-btn { background:var(--panel-accent,#8800ff);border-color:var(--panel-accent,#8800ff);color:#fff; }
+.panel-like-btn,.panel-addpl-btn{background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);width:22px;height:22px;border-radius:50%;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;line-height:1;font-family:inherit;}
+.panel-like-btn::before{content:"\2661";}
+.panel-like-btn:hover{color:#ff7799;border-color:rgba(255,119,153,.4);}
+.panel-like-btn.liked::before{content:"\2665";}
+.panel-like-btn.liked{color:#ff5577;border-color:rgba(255,85,119,.5);}
+.panel-addpl-btn:hover{color:#cc88ff;border-color:rgba(204,136,255,.4);}
+.panel-profile-link{display:inline-block;margin:4px 28px 10px;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--panel-accent,rgba(136,0,255,.55));text-decoration:none;transition:color .15s;}
+.panel-profile-link:hover{color:var(--panel-accent,#8800ff);}
 
 /* PANEL THEMES */
 .track-panel[data-theme="sunset-lover"] { --panel-border:rgba(255,100,0,.2);--panel-accent:#ff6600;--panel-glow:#ff3300;--panel-dim:rgba(255,80,0,.18); }
