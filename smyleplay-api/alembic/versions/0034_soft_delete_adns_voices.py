@@ -16,8 +16,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0033_soft_delete_adns_voices"
-down_revision = "0032_merge_heads"
+revision = "0034_soft_delete_adns_voices"
+down_revision = "0033_final_merge"
 branch_labels = None
 depends_on = None
 
