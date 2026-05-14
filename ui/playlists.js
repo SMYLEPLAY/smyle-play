@@ -893,7 +893,11 @@
     openEditPlaylistAdnModal,
     renderDashboardPlaylists,
     renderArtistPlaylists,
+<<<<<<< HEAD
     injectModalStyles: _injectModalStyles
+=======
+    injectModalStyles: _injectModalStyles,
+>>>>>>> origin/main
   };
 })();
 
@@ -991,11 +995,9 @@
       return;
     }
     if (document.getElementById('pl-add-modal')) return;
-    if (document.getElementById('pl-modal-styles') === null) {
-      var st = document.createElement('style');
-      st.id = 'pl-modal-styles';
-      st.textContent = '.pl-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}.pl-modal{background:#0c0c14;color:#e8e6f5;border:1px solid rgba(204,136,255,.28);border-radius:16px;padding:28px 26px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,.5);position:relative}.pl-modal-close{position:absolute;top:12px;right:14px;background:transparent;color:#a09cb8;border:none;font-size:20px;cursor:pointer;padding:4px 8px}.pl-modal-title{margin:0 0 18px;font-size:20px}.pl-modal-label{display:flex;flex-direction:column;gap:8px;font-size:13px;color:#a09cb8;margin-bottom:18px}.pl-modal-label input{background:rgba(255,255,255,.04);color:#fff;border:1px solid rgba(204,136,255,.22);border-radius:10px;padding:11px 14px;font-size:15px;outline:none}.pl-modal-vis{border:none;padding:0;margin:0 0 22px}.pl-modal-vis legend{font-size:13px;color:#a09cb8;margin-bottom:10px;padding:0}.pl-vis-opt{display:flex;gap:10px;padding:10px 0;font-size:14px;color:#c7c4d8;cursor:pointer;align-items:flex-start}.pl-vis-opt strong{color:#fff;font-weight:600}.pl-modal-actions{display:flex;gap:10px;justify-content:flex-end}.pl-btn{padding:10px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent}.pl-btn-ghost{background:transparent;color:#a09cb8;border-color:rgba(255,255,255,.12)}.pl-btn-primary{background:#cc88ff;color:#0a0a12}.pl-modal-err{margin-top:14px;color:#ff8888;font-size:13px}';
-      document.head.appendChild(st);
+    // Injecter les styles complets (via SmylePlaylists pour éviter le conflit avec la modale de création)
+    if (window.SmylePlaylists && window.SmylePlaylists.injectModalStyles) {
+      window.SmylePlaylists.injectModalStyles();
     }
 
     const overlay = document.createElement('div');
@@ -1090,11 +1092,9 @@
   async function openPlaylistViewModal(playlistId) {
     if (!playlistId) return;
     if (document.getElementById('pl-view-modal')) return;
-    if (document.getElementById('pl-modal-styles') === null) {
-      var st = document.createElement('style');
-      st.id = 'pl-modal-styles';
-      st.textContent = '.pl-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}.pl-modal{background:#0c0c14;color:#e8e6f5;border:1px solid rgba(204,136,255,.28);border-radius:16px;padding:28px 26px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,.5);position:relative}.pl-modal-close{position:absolute;top:12px;right:14px;background:transparent;color:#a09cb8;border:none;font-size:20px;cursor:pointer;padding:4px 8px}.pl-modal-title{margin:0 0 18px;font-size:20px}';
-      document.head.appendChild(st);
+    // Injecter les styles complets via SmylePlaylists
+    if (window.SmylePlaylists && window.SmylePlaylists.injectModalStyles) {
+      window.SmylePlaylists.injectModalStyles();
     }
 
     const overlay = document.createElement('div');
