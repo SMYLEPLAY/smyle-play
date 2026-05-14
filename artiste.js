@@ -812,6 +812,10 @@ function openBoutiqueDrawer(type, dataStr) {
     : (data.title || '');
   const price = type === 'playlist' ? data.adnPrice : data.priceCredits;
 
+  // Cover image en haut du drawer (son uniquement, si disponible)
+  if (type === 'son' && data.coverUrl) {
+    html += `<div class="bd-cover"><img src="${(data.coverUrl+'').replace(/"/g,'&quot;')}" alt="" class="bd-cover-img" /></div>`;
+  }
   html += `<div class="bd-color-bar" style="background:${color}"></div>`;
   html += `<div><div class="bd-type">${typeLabel}</div><div class="bd-name">${(nameLabel + '').replace(/</g,'&lt;')}</div></div>`;
 
