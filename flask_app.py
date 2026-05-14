@@ -1135,6 +1135,75 @@ def create_app(config_class=None):
             'errors': errors,
         })
 
+    @app.route('/api/watt/upload-playlist-cover', methods=['POST'])
+    def watt_upload_playlist_cover():
+        """Upload d'une vidéo cover de playlist (max 8 Mo) vers R2.
+
+        Accepts multipart/form-data :
+          - file     : fichier vidéo (mp4 / webm / mov)
+          - userId   : identifiant utilisateur
+          - name     : nom slug de la playlist (pour nommer la clé R2)
+
+        La durée est validée côté frontend (≤ 3s). Côté serveur on valide
+        uniquement la taille (≤ 8 Mo) et l'extension.
+
+        Retourne { ok, cover_url, r2_key }.
+        Après cet appel, le client fait PATCH /playlists/{id} avec cover_video_url.
+        """
+        import time, re, mimetypes
+
+        ALLOWED_EXTS    = {'mp4', 'webm', 'mov', 'm4v'}
+        MAX_BYTES       = 8 * 1024 * 1024  # 8 Mo
+
+        user_id  = request.form.get('userId', 'guest').strip()
+        pl_name  = request.form.get('name', 'cover').strip()
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'Aucun fichier fourni'}), 400
+
+        f = request.files['file']
+        if not f.filename:
+            return jsonify({'error': 'Fichier vide'}), 400
+
+        ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+        if ext not in ALLOWED_EXTS:
+            return jsonify({'error': f'Format non supporté ({ext}). Utilise mp4, webm ou mov.'}), 400
+
+        raw = f.read()
+        if len(raw) > MAX_BYTES:
+            mb = len(raw) / 1024 / 1024
+            return jsonify({'error': f'Fichier trop lourd ({mb:.1f} Mo). Limite : 8 Mo.'}), 400
+        if not raw:
+            return jsonify({'error': 'Fichier vide'}), 400
+
+        safe = re.sub(r'[^a-z0-9_-]', '_', pl_name.lower())[:40] or 'cover'
+        ts   = int(time.time())
+        key  = f'PLAYLISTS/{user_id}/{ts}-{safe}.{ext}'
+
+        mime, _ = mimetypes.guess_type(f.filename)
+        ct = mime or 'video/mp4'
+
+        if not app.r2_client:
+            logger.info(f'[PLAYLIST_COVER] Mode sans R2 — key={key}')
+            return jsonify({'ok': True, 'mock': True, 'cover_url': None, 'r2_key': key})
+
+        bucket   = app.config.get('R2_BUCKET', 'smyle-play-audio')
+        base_url = app.config.get('CLOUD_AUDIO_BASE_URL', '').rstrip('/')
+
+        import io
+        try:
+            app.r2_client.upload_fileobj(
+                io.BytesIO(raw), bucket, key,
+                ExtraArgs={'ContentType': ct},
+            )
+        except Exception as e:
+            logger.error(f'[PLAYLIST_COVER] Erreur upload R2: {e}')
+            return jsonify({'error': str(e)}), 500
+
+        cover_url = f'{base_url}/{key}' if base_url else f'/api/watt/stream/{key}'
+        logger.info(f'[PLAYLIST_COVER] Uploadée: {key}')
+        return jsonify({'ok': True, 'cover_url': cover_url, 'r2_key': key})
+
     @app.route('/api/watt/upload-image', methods=['POST'])
     def watt_upload_image():
         """Upload d'une image de profil (avatar ou cover) vers R2."""
