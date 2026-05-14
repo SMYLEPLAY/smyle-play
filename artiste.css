@@ -3661,6 +3661,22 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   gap: 18px;
 }
 
+/* ── Drawer — cover image (sons) ──────────────────────────────────────────── */
+.bd-cover {
+  margin: -52px -22px 0;   /* annule le padding du body pour couvrir bord à bord */
+  width: calc(100% + 44px);
+  aspect-ratio: 1 / 1;
+  max-height: 260px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.bd-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* ── Drawer — blocs de contenu ────────────────────────────────────────────── */
 
 .bd-color-bar {

@@ -1150,7 +1150,7 @@
                   // Zone info = DRAWER au clic
                   '<div class="pl-view-row-info pl-view-row-detail-trigger">' +
                     '<div class="pl-view-row-title">' + safe + '</div>' +
-                    '<div class="pl-view-row-hint">▶ Écouter  ·  › Voir détails</div>' +
+                    '<div class="pl-view-row-hint">Cliquer pour écouter · › pour les détails</div>' +
                   '</div>' +
                   '<div class="pl-view-row-actions">' +
                     '<span class="pl-view-row-arrow pl-view-row-detail-trigger" title="Voir les détails">›</span>' +
@@ -1185,21 +1185,17 @@
         const trackIdx = parseInt(row.dataset.trackIdx, 10) || 0;
         const track    = tracks.find(t => String(t.id) === String(trackId));
 
-        // Zone couvre → play
-        if (ev.target.closest('.pl-view-row-play-zone')) {
-          ev.stopPropagation();
-          if (typeof loadTrack === 'function' && typeof PLAYLISTS !== 'undefined' && PLAYLISTS[_plKey] && PLAYLISTS[_plKey].tracks.length) {
-            loadTrack(_plKey, trackIdx);
-          } else if (typeof showToast === 'function') {
-            showToast('Audio indisponible pour ce son.');
-          }
-          return;
-        }
-
-        // Titre ou flèche → drawer
+        // Flèche › uniquement → drawer de détail
         if (ev.target.closest('.pl-view-row-detail-trigger')) {
           if (track) _openPlaylistTrackDrawer(track);
           return;
+        }
+
+        // Clic n'importe où ailleurs sur la row → play
+        if (typeof loadTrack === 'function' && typeof PLAYLISTS !== 'undefined' && PLAYLISTS[_plKey] && PLAYLISTS[_plKey].tracks.length) {
+          loadTrack(_plKey, trackIdx);
+        } else if (typeof showToast === 'function') {
+          showToast('Audio indisponible pour ce son.');
         }
       });
 
