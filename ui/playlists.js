@@ -43,8 +43,13 @@
     const resp = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
     if (!resp.ok) {
       let detail = '';
-      try { detail = (await resp.json()).detail || ''; } catch (_) {}
-      const err = new Error('HTTP ' + resp.status + (detail ? ' — ' + detail : ''));
+      try {
+        const body = await resp.json();
+        const d = body.detail;
+        if (typeof d === 'string') detail = d;
+        else if (d && typeof d === 'object') detail = d.message || JSON.stringify(d);
+      } catch (_) {}
+      const err = new Error(detail || ('Erreur HTTP ' + resp.status));
       err.status = resp.status;
       throw err;
     }
@@ -63,6 +68,10 @@
     if (adnForSale)           body.adn_for_sale = true;
     if (adnPrice)             body.adn_price    = adnPrice;
     return _req('/playlists', { method: 'POST', body: body });
+  }
+
+  async function updatePlaylist(id, patch) {
+    return _req('/playlists/' + encodeURIComponent(id), { method: 'PATCH', body: patch });
   }
 
   async function deletePlaylist(id) {
@@ -334,6 +343,25 @@
       '.pl-cover-input { display: none; }' +
       '.pl-icon-btn-cover { background: rgba(204,136,255,.1); border: 1px solid rgba(204,136,255,.35); color: #cc88ff; border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer; }' +
       '.pl-icon-btn-cover:hover { background: rgba(204,136,255,.2); }' +
+      '.pl-act-adn { background: rgba(204,136,255,.12); border-color: rgba(204,136,255,.4); color: #cc88ff; }' +
+      '.pl-act-adn:hover { background: rgba(204,136,255,.25); }' +
+      '.pl-act-adn.adn-active { background: rgba(111,255,176,.12); border-color: rgba(111,255,176,.4); color: #6fffb0; }' +
+      // Modal édition ADN playlist
+      '.pl-edit-overlay { position:fixed; inset:0; background:rgba(0,0,0,.78); backdrop-filter:blur(8px); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px; }' +
+      '.pl-edit-modal { background:#14111f; border:1px solid rgba(204,136,255,.25); border-radius:18px; padding:28px 24px; max-width:400px; width:100%; position:relative; }' +
+      '.pl-edit-close { position:absolute; top:14px; right:16px; background:transparent; border:none; color:#a09cb8; font-size:20px; cursor:pointer; line-height:1; }' +
+      '.pl-edit-close:hover { color:#fff; }' +
+      '.pl-edit-title { font-size:16px; color:#fff; margin:0 0 20px; font-weight:700; }' +
+      '.pl-edit-label { display:block; font-size:12px; color:#a09cb8; margin-bottom:6px; }' +
+      '.pl-edit-input { width:100%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:10px; color:#fff; padding:10px 12px; font-size:14px; box-sizing:border-box; margin-bottom:14px; }' +
+      '.pl-edit-input:focus { outline:none; border-color:rgba(204,136,255,.5); }' +
+      '.pl-edit-check-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }' +
+      '.pl-edit-check-row input[type=checkbox] { width:16px; height:16px; accent-color:#cc88ff; cursor:pointer; }' +
+      '.pl-edit-check-label { font-size:13px; color:#e0dcf0; cursor:pointer; }' +
+      '.pl-edit-price-wrap { margin-bottom:14px; }' +
+      '.pl-edit-save { width:100%; background:linear-gradient(90deg,#cc88ff,#8bd9ff); color:#0d0a1a; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; }' +
+      '.pl-edit-save:disabled { opacity:.5; cursor:not-allowed; }' +
+      '.pl-edit-err { margin-top:10px; font-size:12px; color:#ff6b6b; text-align:center; }' +
       // Artiste public section — accordion + cards carrées 1:1
       '.ap-playlists-section { padding: 0 12px; margin: 20px 0 28px; }' +
       '.ap-playlists-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; border: none; padding: 10px 0; cursor: pointer; gap: 12px; }' +
@@ -403,20 +431,27 @@
           const badge = p.visibility === 'public'
             ? '<span class="pl-badge pl-badge-public">Publique</span>'
             : '<span class="pl-badge pl-badge-private">Privée</span>';
+          const adnBadge = p.adn_for_sale
+            ? '<span class="pl-badge" style="background:rgba(111,255,176,.12);color:#6fffb0;border:1px solid rgba(111,255,176,.35)">🧬 ' + (p.adn_price || '?') + ' Smyles</span>'
+            : '';
           const thumb = p.cover_video_url
             ? '<video class="pl-row-cover" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" /></video>'
             : '<div class="pl-row-cover-fallback">🎵</div>';
           return (
-            '<li class="pl-row" data-id="' + p.id + '" data-vis="' + p.visibility + '">' +
+            '<li class="pl-row" data-id="' + p.id + '" data-vis="' + p.visibility + '" ' +
+                'data-adn-for-sale="' + (p.adn_for_sale ? '1' : '0') + '" ' +
+                'data-adn-price="' + (p.adn_price || '') + '" ' +
+                'data-title="' + (p.title || '').replace(/"/g, '&quot;') + '">' +
               thumb +
               '<div style="flex:1;min-width:0">' +
                 '<div class="pl-row-name">' + _esc(p.title) + '</div>' +
-                '<div class="pl-row-meta">' + badge + '</div>' +
+                '<div class="pl-row-meta">' + badge + adnBadge + '</div>' +
               '</div>' +
               '<div class="pl-row-actions">' +
                 '<label class="pl-icon-btn-cover" title="Ajouter une cover vidéo (mp4 ≤5s)">📎' +
                   '<input type="file" class="pl-cover-input pl-act-cover" accept="video/mp4,video/webm,video/quicktime" />' +
                 '</label>' +
+                '<button type="button" class="pl-icon-btn pl-act-adn' + (p.adn_for_sale ? ' adn-active' : '') + '" title="Configurer ADN">🧬</button>' +
                 '<button type="button" class="pl-icon-btn pl-act-vis" title="Changer visibilité">' +
                   (p.visibility === 'public' ? 'Privée' : 'Publique') +
                 '</button>' +
@@ -437,13 +472,23 @@
 
     root.querySelector('#pl-dash-create').onclick = () => openCreatePlaylistModal(() => reload());
 
-    // Délégation pour boutons toggle / delete
+    // Délégation pour boutons toggle / delete / edit ADN
     root.querySelector('#pl-dash-list').addEventListener('click', async (ev) => {
       const row = ev.target.closest('.pl-row');
       if (!row) return;
       const id = row.dataset.id;
       const vis = row.dataset.vis;
-      if (ev.target.closest('.pl-act-vis')) {
+      if (ev.target.closest('.pl-act-adn')) {
+        // Ouvrir modal édition ADN
+        const plData = {
+          id,
+          title: row.dataset.title || '',
+          visibility: vis,
+          adn_for_sale: row.dataset.adnForSale === '1',
+          adn_price: parseInt(row.dataset.adnPrice, 10) || null
+        };
+        openEditPlaylistAdnModal(plData, () => reload());
+      } else if (ev.target.closest('.pl-act-vis')) {
         try {
           await togglePlaylistVisibility(id, vis);
           await reload();
@@ -754,17 +799,101 @@
     } catch (_) { return ''; }
   }
 
+  // ── 5b. MODALE ÉDITION ADN PLAYLIST ──────────────────────────────────────
+
+  function openEditPlaylistAdnModal(playlistData, onSaved) {
+    // playlistData : { id, title, visibility, adn_for_sale, adn_price }
+    if (document.getElementById('pl-edit-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pl-edit-overlay';
+    overlay.className = 'pl-edit-overlay';
+
+    overlay.innerHTML =
+      '<div class="pl-edit-modal" role="dialog">' +
+        '<button class="pl-edit-close" id="pl-edit-close" aria-label="Fermer">✕</button>' +
+        '<h3 class="pl-edit-title">Configurer « ' + _esc(playlistData.title || 'Playlist') + ' »</h3>' +
+        '<label class="pl-edit-label" for="pl-edit-vis">Visibilité</label>' +
+        '<select id="pl-edit-vis" class="pl-edit-input">' +
+          '<option value="private"' + (playlistData.visibility !== 'public' ? ' selected' : '') + '>🔒 Privée</option>' +
+          '<option value="public"' + (playlistData.visibility === 'public' ? ' selected' : '') + '>🌐 Publique</option>' +
+        '</select>' +
+        '<div class="pl-edit-check-row">' +
+          '<input type="checkbox" id="pl-edit-adn" ' + (playlistData.adn_for_sale ? 'checked' : '') + ' />' +
+          '<label class="pl-edit-check-label" for="pl-edit-adn">🧬 Vendre l\'ADN de cette playlist</label>' +
+        '</div>' +
+        '<div class="pl-edit-price-wrap" id="pl-edit-price-wrap" style="display:' + (playlistData.adn_for_sale ? '' : 'none') + '">' +
+          '<label class="pl-edit-label" for="pl-edit-price">Prix en Smyles (1 – 100 000)</label>' +
+          '<input type="number" id="pl-edit-price" class="pl-edit-input" min="1" max="100000" placeholder="ex : 50" value="' + (playlistData.adn_price || '') + '" />' +
+        '</div>' +
+        '<button class="pl-edit-save" id="pl-edit-save">Enregistrer</button>' +
+        '<div class="pl-edit-err" id="pl-edit-err" style="display:none"></div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    const closeBtn = document.getElementById('pl-edit-close');
+    if (closeBtn) closeBtn.addEventListener('click', function() { overlay.remove(); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+    const adnChk = document.getElementById('pl-edit-adn');
+    const priceWrap = document.getElementById('pl-edit-price-wrap');
+    if (adnChk && priceWrap) {
+      adnChk.addEventListener('change', function() {
+        priceWrap.style.display = adnChk.checked ? '' : 'none';
+      });
+    }
+
+    const saveBtn = document.getElementById('pl-edit-save');
+    const errEl   = document.getElementById('pl-edit-err');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async function() {
+        const vis      = document.getElementById('pl-edit-vis').value;
+        const adnSale  = adnChk && adnChk.checked;
+        const adnPrice = adnSale ? (parseInt(document.getElementById('pl-edit-price').value, 10) || null) : null;
+
+        if (adnSale && !adnPrice) {
+          if (errEl) { errEl.textContent = 'Fixe un prix en Smyles pour activer la vente d\'ADN.'; errEl.style.display = 'block'; }
+          return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Sauvegarde…';
+        if (errEl) errEl.style.display = 'none';
+
+        const patch = { visibility: vis, adn_for_sale: adnSale };
+        if (adnSale && adnPrice) patch.adn_price = adnPrice;
+        if (!adnSale) patch.adn_price = null;
+
+        try {
+          await updatePlaylist(playlistData.id, patch);
+          overlay.remove();
+          if (typeof onSaved === 'function') onSaved();
+          if (typeof showToast === 'function') showToast('Playlist mise à jour ✓');
+        } catch (e) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Enregistrer';
+          const msg = (e && e.message) || 'Erreur lors de la mise à jour';
+          if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+        }
+      });
+    }
+  }
+
   // ── 6. EXPORTS ────────────────────────────────────────────────────────────
 
   window.SmylePlaylists = {
     loadMyPlaylists,
     createPlaylist,
+    updatePlaylist,
     deletePlaylist,
     togglePlaylistVisibility,
     loadArtistPublicPlaylists,
     openCreatePlaylistModal,
+    openEditPlaylistAdnModal,
     renderDashboardPlaylists,
-    renderArtistPlaylists
+    renderArtistPlaylists,
+    injectModalStyles: _injectModalStyles
   };
 })();
 
