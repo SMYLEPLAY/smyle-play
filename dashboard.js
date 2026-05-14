@@ -2523,7 +2523,7 @@ function dashVoiceEditFromList(voiceId) {
 }
 
 async function dashVoiceDeleteFromList(voiceId) {
-  if (!confirm('Supprimer cette voix ? Les acheteurs précédents perdront aussi l\'accès au sample.')) return;
+  if (!confirm('Supprimer cette voix du marketplace ? Les acheteurs qui ont déjà acheté gardent leur accès au sample.')) return;
   if (typeof apiFetch !== 'function') return;
   try {
     await apiFetch(`/api/voices/${voiceId}`, { method: 'DELETE' });
@@ -2536,6 +2536,26 @@ async function dashVoiceDeleteFromList(voiceId) {
       ? _humanizeApiError(e)
       : (e && e.message) || 'Erreur inconnue';
     alert(`Échec suppression : ${msg}`);
+  }
+}
+
+async function deleteAdnConfirm() {
+  if (!confirm('Supprimer votre ADN du marketplace ? Les acheteurs qui ont déjà acquis votre ADN gardent leur accès en library.')) return;
+  if (typeof apiFetch !== 'function') return;
+  try {
+    await apiFetch('/api/artist/me/adn', { method: 'DELETE' });
+    if (typeof dashToast === 'function') dashToast('ADN supprimé');
+    // Recharge la section ADN pour afficher l'état vide
+    if (typeof loadMyAdn === 'function') {
+      await loadMyAdn();
+    } else {
+      window.location.reload();
+    }
+  } catch (e) {
+    const msg = (typeof _humanizeApiError === 'function')
+      ? _humanizeApiError(e)
+      : (e && e.message) || 'Erreur inconnue';
+    alert('Échec suppression ADN : ' + msg);
   }
 }
 
@@ -2563,6 +2583,7 @@ if (typeof window !== 'undefined') {
   window.dashVoiceToggleGenre      = dashVoiceToggleGenre;
   window.dashVoiceSelectLicense    = dashVoiceSelectLicense;
   window.dashVoiceHandleSampleFile = dashVoiceHandleSampleFile;
+  window.deleteAdnConfirm           = deleteAdnConfirm;
   window.dashVoiceResetForm        = dashVoiceResetForm;
   window.dashVoiceSave             = dashVoiceSave;
   window.dashVoicePublishToggle    = dashVoicePublishToggle;

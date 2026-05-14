@@ -267,18 +267,17 @@ async def delete_voice(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Supprime une voix.
+    Soft-delete d'une voix.
 
-    Note importante : la suppression CASCADE sur owned_voices supprime aussi
-    les achats. Les transactions historiques sont préservées (FK NULL ou
-    pas de FK selon le design transactions). Une amélioration future :
-    soft-delete via `deleted_at` pour permettre aux acheteurs de récupérer
-    leur sample même après que l'artiste ait dépublié.
+    - La voix disparaît du marketplace et du dashboard artiste.
+    - Les acheteurs (OwnedVoice) conservent leur accès au sample audio.
+    - Retourne 204 No Content.
     """
     voice = await _get_voice_or_404(db, voice_id)
     _ensure_owner(voice, current_user)
 
-    await db.delete(voice)
+    voice.is_deleted = True
+    voice.is_published = False
     try:
         await db.commit()
     except Exception:

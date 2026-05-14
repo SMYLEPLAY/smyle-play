@@ -58,7 +58,11 @@ def _has_published_content_subquery(user_id_col):
     """
     adn_exists = (
         select(Adn.id)
-        .where(Adn.artist_id == user_id_col, Adn.is_published.is_(True))
+        .where(
+            Adn.artist_id == user_id_col,
+            Adn.is_published.is_(True),
+            Adn.is_deleted.is_(False),
+        )
         .exists()
     )
     prompt_exists = (
@@ -127,7 +131,9 @@ async def get_public_artist_profile(
 
     has_adn_q = select(
         exists().where(
-            Adn.artist_id == artist_id, Adn.is_published.is_(True)
+            Adn.artist_id == artist_id,
+            Adn.is_published.is_(True),
+            Adn.is_deleted.is_(False),
         )
     )
     has_adn = bool((await db.execute(has_adn_q)).scalar())
@@ -243,7 +249,7 @@ async def list_public_adns(
     per_page: int = 20,
 ) -> tuple[list[dict], int]:
     """Liste les ADN publiés (sans example_outputs). Tri : created_at DESC."""
-    base_filter = [Adn.is_published.is_(True)]
+    base_filter = [Adn.is_published.is_(True), Adn.is_deleted.is_(False)]
     if artist_id is not None:
         base_filter.append(Adn.artist_id == artist_id)
 
@@ -278,7 +284,7 @@ async def get_public_adn(db: AsyncSession, adn_id: UUID) -> dict | None:
     q = (
         select(Adn, User)
         .join(User, User.id == Adn.artist_id)
-        .where(Adn.id == adn_id, Adn.is_published.is_(True))
+        .where(Adn.id == adn_id, Adn.is_published.is_(True), Adn.is_deleted.is_(False))
     )
     row = (await db.execute(q)).first()
     if row is None:

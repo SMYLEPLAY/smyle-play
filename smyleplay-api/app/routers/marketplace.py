@@ -47,6 +47,7 @@ from app.services.marketplace import (
     PromptNotFound,
     create_adn,
     create_prompt,
+    delete_adn,
     delete_prompt,
     get_adn_by_artist,
     get_prompt_for_artist,
@@ -155,6 +156,35 @@ async def update_my_adn(
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update ADN",
+        )
+
+
+@router.delete(
+    "/adn",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_my_adn(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Soft-delete de l'ADN de l'artiste connecté.
+
+    - L'ADN disparaît du marketplace et du dashboard artiste.
+    - Les acheteurs (OwnedAdn) conservent leur accès en library.
+    - Renvoie 204 No Content.
+    """
+    try:
+        await delete_adn(db=db, artist_id=current_user.id)
+        await db.commit()
+    except ValueError as e:
+        await db.rollback()
+        _raise_marketplace_error(e)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete ADN",
         )
 
 
