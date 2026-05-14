@@ -822,7 +822,15 @@
         folder: '',
         tracks: data.tracks
           .map(function(t) {
-            var url = t.audio_url || (t.r2_key ? '/watt/stream/' + t.r2_key : null);
+            // Priorité : stream_url (proxy same-origin, calculé backend)
+            // → pas de CORS/CSP, r2_key encodée proprement.
+            // Fallback : r2_key brute encodée côté JS, puis audio_url direct R2.
+            var url = t.stream_url
+              || (t.r2_key
+                    ? '/watt/stream/' + t.r2_key.split('/').map(encodeURIComponent).join('/')
+                    : null)
+              || t.audio_url
+              || null;
             return { url: url, name: t.title, id: t.id };
           })
           .filter(function(t) { return t.url; })
