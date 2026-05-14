@@ -74,6 +74,14 @@ class Adn(Base):
         default=False,
         server_default="false",
     )
+    # Soft-delete (2026-05-14) : masque l'ADN du marketplace et du
+    # dashboard artiste. Les OwnedAdn acheteurs ne sont PAS supprimés.
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

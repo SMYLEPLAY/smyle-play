@@ -114,6 +114,14 @@ class Voice(Base):
         default=False,
         server_default="false",
     )
+    # Soft-delete (2026-05-14) : masque la voix du marketplace et du
+    # dashboard artiste. Les OwnedVoice acheteurs ne sont PAS supprimés.
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
     # Phase B metadata 2026-05-13 : origine + lien track (CHECK enum côté DB)
     voice_origin: Mapped[str | None] = mapped_column(
         String(20),

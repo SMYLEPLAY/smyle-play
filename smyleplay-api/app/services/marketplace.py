@@ -112,7 +112,10 @@ async def get_adn_by_artist(
     db: AsyncSession, artist_id: UUID
 ) -> Adn | None:
     result = await db.execute(
-        select(Adn).where(Adn.artist_id == artist_id)
+        select(Adn).where(
+            Adn.artist_id == artist_id,
+            Adn.is_deleted.is_(False),
+        )
     )
     return result.scalar_one_or_none()
 
@@ -340,6 +343,22 @@ async def delete_prompt(
 
     prompt.is_deleted = True
     prompt.is_published = False
+    await db.flush()
+
+
+async def delete_adn(db: AsyncSession, artist_id: UUID) -> None:
+    """
+    Soft-delete d'un ADN appartenant à l'artiste.
+
+    - L'ADN disparaît du marketplace et du dashboard artiste.
+    - Les acheteurs (OwnedAdn) conservent leur accès en library.
+    - AdnNotFound si ADN inexistant, déjà supprimé, ou pas au bon artiste.
+    """
+    adn = await get_adn_by_artist(db, artist_id)
+    if adn is None:
+        raise AdnNotFound("ADN introuvable ou déjà supprimé")
+    adn.is_deleted = True
+    adn.is_published = False
     await db.flush()
     return prompt
 

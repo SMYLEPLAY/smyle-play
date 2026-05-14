@@ -92,7 +92,7 @@ async def unlock_voice_atomic(
     voice_row = (await db.execute(
         select(Voice).where(Voice.id == voice_id)
     )).scalar_one_or_none()
-    if voice_row is None or not voice_row.is_published:
+    if voice_row is None or not voice_row.is_published or voice_row.is_deleted:
         raise VoiceNotPurchasable("Voice not found or not published")
 
     artist_id = voice_row.artist_id
@@ -217,7 +217,10 @@ async def list_voices_for_artist(
 
     Tri : publiées en tête puis brouillons, ordre de création desc.
     """
-    stmt = select(Voice).where(Voice.artist_id == artist_id)
+    stmt = select(Voice).where(
+        Voice.artist_id == artist_id,
+        Voice.is_deleted.is_(False),
+    )
     if only_published:
         stmt = stmt.where(Voice.is_published.is_(True))
     stmt = stmt.order_by(Voice.is_published.desc(), Voice.created_at.desc())

@@ -550,7 +550,9 @@ async def build_artist_detail_payload(
     # débloque via /unlocks/adns/{id} ou /unlocks/prompts/{id}. On se limite
     # à un teaser (200 premiers chars) pour la carte publique.
     adn_stmt = select(Adn).where(
-        (Adn.artist_id == target.id) & (Adn.is_published == True)  # noqa: E712
+        (Adn.artist_id == target.id)
+        & (Adn.is_published == True)  # noqa: E712
+        & (Adn.is_deleted == False)  # noqa: E712
     )
     published_adn = (await db.execute(adn_stmt)).scalar_one_or_none()
     adn_payload: dict | None = None
@@ -595,6 +597,7 @@ async def build_artist_detail_payload(
         .where(
             (Prompt.artist_id == target.id)
             & (Prompt.is_published == True)  # noqa: E712
+            & (Prompt.is_deleted == False)  # noqa: E712
         )
         .order_by(desc(Prompt.created_at))
         .limit(50)
@@ -970,7 +973,7 @@ async def list_adns(db: AsyncSession = Depends(get_db)) -> dict:
     stmt = (
         select(Adn, User)
         .join(User, User.id == Adn.artist_id)
-        .where(Adn.is_published == True)  # noqa: E712
+        .where(Adn.is_published == True, Adn.is_deleted == False)  # noqa: E712
     )
     rows = (await db.execute(stmt)).all()
 
