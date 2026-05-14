@@ -1070,9 +1070,13 @@
 
     const apRoot = document.getElementById('ap-playlists-root');
     if (apRoot && window.SmylePlaylists) {
-      // Slug parsé depuis /u/<slug>
-      const match = (window.location.pathname || '').match(/^\/u\/([^/?#]+)/);
-      const slug = match ? decodeURIComponent(match[1]) : null;
+      // Priorité 1 : attribut data-artist-slug (ex. vitrine marketplace)
+      // Priorité 2 : slug extrait de l'URL /u/<slug>
+      let slug = apRoot.dataset.artistSlug || null;
+      if (!slug) {
+        const match = (window.location.pathname || '').match(/^\/u\/([^/?#]+)/);
+        slug = match ? decodeURIComponent(match[1]) : null;
+      }
       if (slug) {
         window.SmylePlaylists.renderArtistPlaylists(slug, 'ap-playlists-root')
           .catch(e => console.warn('[playlists] artist render failed:', e));
@@ -1292,6 +1296,9 @@
               const cover = t.cover_url || t.coverUrl || '';
               const color = t.color || '#cc88ff';
               // Pas de player inline — clic sur la row ouvre le drawer de détail
+              const tid = String(t.id || '');
+              const likeBtn    = tid ? '<button type="button" class="like-btn pl-row-like" data-like-btn="' + tid + '" title="Wishlist" onclick="event.stopPropagation()"></button>' : '';
+              const addPlBtn   = tid ? '<button type="button" class="add-to-pl-btn pl-row-addpl" data-add-to-playlist="' + tid + '" title="Ajouter à une playlist" onclick="event.stopPropagation()">+</button>' : '';
               return '<li class="pl-view-row" data-track-id="' + t.id + '" data-track-idx="' + idx + '">' +
                 '<div class="pl-view-row-inner">' +
                   // Zone gauche = PLAY au clic
@@ -1305,9 +1312,10 @@
                   // Zone info = DRAWER au clic
                   '<div class="pl-view-row-info pl-view-row-detail-trigger">' +
                     '<div class="pl-view-row-title">' + safe + '</div>' +
-                    '<div class="pl-view-row-hint">Cliquer pour écouter · › pour les détails</div>' +
+                    '<div class="pl-view-row-hint">Écouter · › détails</div>' +
                   '</div>' +
                   '<div class="pl-view-row-actions">' +
+                    likeBtn + addPlBtn +
                     '<span class="pl-view-row-arrow pl-view-row-detail-trigger" title="Voir les détails">›</span>' +
                     '<button type="button" class="pl-view-row-remove" data-track-remove="' + t.id + '" title="Retirer de la playlist" aria-label="Retirer">✕</button>' +
                   '</div>' +
@@ -1548,10 +1556,16 @@
       '.pl-view-row-info { flex: 1; min-width: 0; }' +
       '.pl-view-row-title { color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
       '.pl-view-row-hint { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 2px; }' +
-      '.pl-view-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }' +
+      '.pl-view-row-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }' +
       '.pl-view-row-arrow { font-size: 18px; color: rgba(255,255,255,.3); }' +
       '.pl-view-row-remove { background: none; border: none; color: rgba(255,255,255,.3); cursor: pointer; font-size: 14px; padding: 4px; border-radius: 4px; line-height: 1; }' +
       '.pl-view-row-remove:hover { color: #ff6b6b; background: rgba(255,107,107,.1); }' +
+      '.pl-row-like,.pl-row-addpl { width:26px!important; height:26px!important; display:inline-flex!important; align-items:center!important; justify-content:center!important; padding:0!important; background:transparent!important; border:1px solid rgba(255,255,255,.1)!important; color:rgba(255,255,255,.35)!important; border-radius:7px!important; font-size:12px!important; cursor:pointer!important; flex:0 0 26px!important; }' +
+      '.pl-row-like::before { content:"\\2661"; }' +
+      '.pl-row-like.liked { color:#ff7799!important; border-color:rgba(255,119,153,.4)!important; }' +
+      '.pl-row-like.liked::before { content:"\\2665"; }' +
+      '.pl-row-like:hover { color:#ff7799!important; border-color:rgba(255,119,153,.35)!important; }' +
+      '.pl-row-addpl:hover { color:#cc88ff!important; border-color:rgba(204,136,255,.4)!important; }' +
       '.ap-playlist-card { cursor: pointer; transition: border-color .15s ease; }' +
       '.ap-playlist-card:hover { border-color: rgba(204,136,255,.4); }' +
       '.pl-row { cursor: pointer; }' +
