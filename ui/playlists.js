@@ -629,8 +629,11 @@
         theme:  data.color || 'custom',
         folder: '',
         tracks: data.tracks
-          .filter(function(t) { return t.audio_url; })
-          .map(function(t) { return { url: t.audio_url, name: t.title, id: t.id }; })
+          .map(function(t) {
+            var url = t.audio_url || (t.r2_key ? '/watt/stream/' + t.r2_key : null);
+            return { url: url, name: t.title, id: t.id };
+          })
+          .filter(function(t) { return t.url; })
       };
       if (!window.PLAYLISTS[key].tracks.length) {
         if (typeof showToast === 'function') showToast('Aucun audio disponible');
