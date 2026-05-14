@@ -658,8 +658,9 @@
   async function _quickPlayUserPlaylist(e, playlistId) {
     e.stopPropagation();
     const key = 'user-pl-' + playlistId;
-    // Si déjà chargé, relancer directement
-    if (window.PLAYLISTS && window.PLAYLISTS[key]) {
+    // PLAYLISTS est un `let` global (state.js) — ne pas utiliser window.PLAYLISTS
+    // car let ne se bind pas sur window. Les deux pointent vers des objets différents.
+    if (typeof PLAYLISTS !== 'undefined' && PLAYLISTS[key]) {
       if (typeof loadTrack === 'function') { loadTrack(key, 0); return; }
     }
     try {
@@ -668,8 +669,7 @@
         if (typeof showToast === 'function') showToast('Playlist vide');
         return;
       }
-      if (!window.PLAYLISTS) window.PLAYLISTS = {};
-      window.PLAYLISTS[key] = {
+      PLAYLISTS[key] = {
         label:  data.title,
         theme:  data.color || 'custom',
         folder: '',
@@ -680,7 +680,7 @@
           })
           .filter(function(t) { return t.url; })
       };
-      if (!window.PLAYLISTS[key].tracks.length) {
+      if (!PLAYLISTS[key].tracks.length) {
         if (typeof showToast === 'function') showToast('Aucun audio disponible');
         return;
       }
