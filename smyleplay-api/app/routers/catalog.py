@@ -31,8 +31,10 @@ from app.schemas.discovery import (
     ArtistPublicProfile,
     ArtistsListResponse,
     EffectivePricePreview,
+    PlaylistAdnCatalogResponse,
     PromptCatalogResponse,
     PromptPublicDetail,
+    VoiceCatalogResponse,
 )
 from app.services.credits import compute_effective_price
 from app.services.discovery import (
@@ -42,7 +44,9 @@ from app.services.discovery import (
     get_public_prompt,
     list_public_adns,
     list_public_artists,
+    list_public_playlists_adn,
     list_public_prompts,
+    list_public_voices,
 )
 from app.services.marketplace import user_owns_artist_adn
 
@@ -147,6 +151,44 @@ async def get_adn(
             status.HTTP_404_NOT_FOUND, detail="ADN not found or not published"
         )
     return detail
+
+
+# -----------------------------------------------------------------------------
+# Voix publiques
+# -----------------------------------------------------------------------------
+
+@catalog_router.get("/voices", response_model=VoiceCatalogResponse)
+async def list_voices(
+    artist_id: UUID | None = Query(None, description="Filtre par artiste"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    items, total = await list_public_voices(
+        db, artist_id=artist_id, page=page, per_page=per_page
+    )
+    return VoiceCatalogResponse(
+        items=items, total=total, page=page, per_page=per_page
+    )
+
+
+# -----------------------------------------------------------------------------
+# Playlists ADN en vente
+# -----------------------------------------------------------------------------
+
+@catalog_router.get("/playlists-adn", response_model=PlaylistAdnCatalogResponse)
+async def list_playlists_adn(
+    artist_id: UUID | None = Query(None, description="Filtre par artiste"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    items, total = await list_public_playlists_adn(
+        db, artist_id=artist_id, page=page, per_page=per_page
+    )
+    return PlaylistAdnCatalogResponse(
+        items=items, total=total, page=page, per_page=per_page
+    )
 
 
 # -----------------------------------------------------------------------------

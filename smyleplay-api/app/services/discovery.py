@@ -30,6 +30,7 @@ from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
+from app.models.voice import Voice
 
 
 # -----------------------------------------------------------------------------
@@ -499,5 +500,107 @@ async def list_user_library_playlist_adns(
             "owner": _artist_card(u),
         }
         for opa, pl, u in rows
+    ]
+    return items, int(total)
+
+
+# -----------------------------------------------------------------------------
+# Catalog public — Voix (is_published=True, is_deleted=False)
+# -----------------------------------------------------------------------------
+
+async def list_public_voices(
+    db: AsyncSession,
+    *,
+    artist_id: UUID | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[dict], int]:
+    """
+    Liste les voix publiées visible dans le catalogue public.
+    `sample_url` (full) n'est PAS retourné — seulement `preview_url` (30s).
+    """
+    base_filter = [
+        Voice.is_published.is_(True),
+        Voice.is_deleted.is_(False),
+    ]
+    if artist_id is not None:
+        base_filter.append(Voice.artist_id == artist_id)
+
+    total = (await db.execute(
+        select(func.count(Voice.id)).where(*base_filter)
+    )).scalar() or 0
+
+    offset = (page - 1) * per_page
+    items_q = (
+        select(Voice, User)
+        .join(User, User.id == Voice.artist_id)
+        .where(*base_filter)
+        .order_by(Voice.created_at.desc(), Voice.id.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    rows = (await db.execute(items_q)).all()
+    items = [
+        {
+            "id": v.id,
+            "name": v.name,
+            "style": v.style,
+            "genres": v.genres or [],
+            "license": v.license,
+            "price_credits": v.price_credits,
+            "preview_url": v.preview_url,
+            "artist": _artist_card(u),
+        }
+        for v, u in rows
+    ]
+    return items, int(total)
+
+
+# -----------------------------------------------------------------------------
+# Catalog public — Playlists ADN en vente (adn_for_sale=True, public)
+# -----------------------------------------------------------------------------
+
+async def list_public_playlists_adn(
+    db: AsyncSession,
+    *,
+    artist_id: UUID | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[dict], int]:
+    """
+    Liste les playlists publiques dont l'ADN est en vente.
+    Filtres : visibility='public' ET adn_for_sale=True ET adn_price IS NOT NULL.
+    """
+    base_filter = [
+        Playlist.visibility == "public",
+        Playlist.adn_for_sale.is_(True),
+        Playlist.adn_price.is_not(None),
+    ]
+    if artist_id is not None:
+        base_filter.append(Playlist.owner_id == artist_id)
+
+    total = (await db.execute(
+        select(func.count(Playlist.id)).where(*base_filter)
+    )).scalar() or 0
+
+    offset = (page - 1) * per_page
+    items_q = (
+        select(Playlist, User)
+        .join(User, User.id == Playlist.owner_id)
+        .where(*base_filter)
+        .order_by(Playlist.created_at.desc(), Playlist.id.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    rows = (await db.execute(items_q)).all()
+    items = [
+        {
+            "id": pl.id,
+            "title": pl.title,
+            "color": pl.color,
+            "adn_price": pl.adn_price,
+            "owner": _artist_card(u),
+        }
+        for pl, u in rows
     ]
     return items, int(total)
