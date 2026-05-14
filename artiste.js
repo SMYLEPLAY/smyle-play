@@ -801,7 +801,7 @@ function renderDna(artist) {
       btn.style.opacity = '';
       btn.style.cursor = '';
       setText('ap-dna-unlock-label',
-        `Débloquer · ${formatCount(adn.priceCredits)} crédits`);
+        `🧬 ADN · ${formatCount(adn.priceCredits)} crédits`);
     }
   }
 }
@@ -890,7 +890,7 @@ function renderPrompts(artist) {
       ? '<span class="ap-prompt-owner-note">Ton prompt</span>'
       : `<button type="button" class="ap-prompt-unlock-btn"
                  data-prompt-id="${p.id}" data-price="${p.priceCredits}">
-          🔓 Débloquer · ${priceStr} crédits
+          🧬 Recette · ${priceStr} crédits
         </button>`;
     // Audio player du track lié (revert 2026-05-05) — pré-écoute avant
     // achat pour augmenter la conversion. Si pas de track lié, pas
@@ -1023,7 +1023,7 @@ function renderTracks(artist) {
           <button type="button" class="ap-track-unlock-btn"
                   data-prompt-id="${linkedPrompt.id}"
                   data-price="${linkedPrompt.priceCredits}">
-            🔓 Débloquer la recette · ${priceStr} crédits
+            🧬 Recette · ${priceStr} crédits
           </button>
         </div>`;
     } else if (linkedPrompt && artist.isSelf) {
@@ -1314,7 +1314,7 @@ function renderVoices(artist) {
       ? '<span class="ap-voice-owner-note">Ta voix</span>'
       : `<button type="button" class="ap-voice-unlock-btn"
                  data-voice-id="${v.id}" data-price="${v.price_credits}">
-          🔓 Débloquer · ${priceStr} crédits
+          🎙 Voix · ${priceStr} crédits
         </button>`;
     // Phase B metadata 2026-05-13 : badges origine + lien track
     const _originLabel = (function(o) {

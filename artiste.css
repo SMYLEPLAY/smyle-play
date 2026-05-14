@@ -2911,25 +2911,25 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
   flex-wrap: wrap;
 }
 .ap-dna-unlock-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  border-radius: 10px;
-  border: 1px solid rgba(var(--brand-rgb), .5);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--brand-rgb), .85) 0%,
-    rgba(var(--brand-rgb), .55) 100%
-  );
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .05em;
+  color: #cc88ff;
+  border-radius: 999px;
+  border: 1px solid rgba(204, 136, 255, .5);
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  transition: background .15s, border-color .15s, transform .12s;
 }
-.ap-dna-unlock-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
-.ap-dna-unlock-btn:disabled { opacity: .6; cursor: wait; }
+.ap-dna-unlock-btn:hover {
+  background: rgba(204, 136, 255, .2);
+  border-color: rgba(204, 136, 255, .85);
+  transform: translateY(-1px);
+}
+.ap-dna-unlock-btn:disabled { opacity: .5; cursor: wait; }
 .ap-dna-perk-hint {
   font-size: 12px;
   color: rgba(255,255,255,.55);
@@ -3011,19 +3011,25 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
 }
 .ap-prompt-card-actions { margin-top: auto; }
 .ap-prompt-unlock-btn {
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--brand-rgb), .45);
-  background: rgba(var(--brand-rgb), .15);
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .05em;
+  color: #cc88ff;
+  border-radius: 999px;
+  border: 1px solid rgba(204, 136, 255, .45);
+  background: rgba(0, 0, 0, .65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   cursor: pointer;
-  transition: background .12s ease;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
 }
-.ap-prompt-unlock-btn:hover { background: rgba(var(--brand-rgb), .3); }
-.ap-prompt-unlock-btn:disabled { opacity: .6; cursor: wait; }
+.ap-prompt-unlock-btn:hover {
+  background: rgba(204, 136, 255, .18);
+  border-color: rgba(204, 136, 255, .8);
+}
+.ap-prompt-unlock-btn:disabled { opacity: .5; cursor: wait; }
 /* Audio player sur card prompt (revert fusion 2026-05-05) — pré-écoute
    du track lié avant achat de la recette. */
 .ap-prompt-audio {
@@ -3216,19 +3222,25 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
 }
 .ap-voice-card-actions { margin-top: auto; }
 .ap-voice-unlock-btn {
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--brand-rgb), .45);
-  background: rgba(var(--brand-rgb), .15);
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .05em;
+  color: #cc88ff;
+  border-radius: 999px;
+  border: 1px solid rgba(204, 136, 255, .45);
+  background: rgba(0, 0, 0, .65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   cursor: pointer;
-  transition: background .12s ease;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
 }
-.ap-voice-unlock-btn:hover { background: rgba(var(--brand-rgb), .3); }
-.ap-voice-unlock-btn:disabled { opacity: .6; cursor: wait; }
+.ap-voice-unlock-btn:hover {
+  background: rgba(204, 136, 255, .18);
+  border-color: rgba(204, 136, 255, .8);
+}
+.ap-voice-unlock-btn:disabled { opacity: .5; cursor: wait; }
 .ap-voice-owner-note {
   font-size: 12px;
   color: rgba(255,255,255,.5);
@@ -3319,33 +3331,38 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
 }
 .ap-track-prompt-block {
   margin-top: 6px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255, 215, 0, .06);
-  border: 1px solid rgba(255, 215, 0, .2);
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
 .ap-track-prompt-meta {
-  font-size: 11.5px;
-  color: rgba(255, 215, 0, .82);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(204, 136, 255, .7);
   font-weight: 600;
 }
 .ap-track-unlock-btn {
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 215, 0, .55);
-  background: rgba(255, 215, 0, .15);
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .05em;
+  color: #cc88ff;
+  border-radius: 999px;
+  border: 1px solid rgba(204, 136, 255, .45);
+  background: rgba(0, 0, 0, .65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   cursor: pointer;
-  transition: background .12s ease;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
 }
-.ap-track-unlock-btn:hover { background: rgba(255, 215, 0, .3); }
-.ap-track-unlock-btn:disabled { opacity: .6; cursor: wait; }
+.ap-track-unlock-btn:hover {
+  background: rgba(204, 136, 255, .18);
+  border-color: rgba(204, 136, 255, .8);
+}
+.ap-track-unlock-btn:disabled { opacity: .5; cursor: wait; }
 
 @media (max-width: 640px) {
   .ap-track-card-inner { flex-direction: column; }
