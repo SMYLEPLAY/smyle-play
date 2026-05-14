@@ -61,13 +61,8 @@
         <span class="lib-adn-col-arrow" id="lib-arrow-track">▲</span>
       </button>
       <div class="lib-adn-col-body is-open" id="lib-col-track-body">
-        <!-- Tracks (recettes IA) -->
         <div id="lib-prompts-list">
           <div class="lib-loading">Chargement…</div>
-        </div>
-        <!-- Playlist ADNs (regroupés ici) -->
-        <div id="lib-playlist-adns-section">
-          <div id="lib-playlist-adns-list"></div>
         </div>
       </div>
     </div>
@@ -97,6 +92,21 @@
       </button>
       <div class="lib-adn-col-body is-open" id="lib-col-artist-body">
         <div id="lib-adns-list">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne 4 : ADN Playlist -->
+    <div class="lib-adn-col" id="lib-col-playlist">
+      <button class="lib-adn-col-hdr" onclick="toggleAdnCol('playlist')" aria-expanded="true" aria-controls="lib-col-playlist-body">
+        <span class="lib-adn-col-icon">🧬</span>
+        <span class="lib-adn-col-title">ADN Playlist</span>
+        <span class="lib-adn-col-count" id="lib-count-playlist-adns">—</span>
+        <span class="lib-adn-col-arrow" id="lib-arrow-playlist">▲</span>
+      </button>
+      <div class="lib-adn-col-body is-open" id="lib-col-playlist-body">
+        <div id="lib-playlist-adns-list">
           <div class="lib-loading">Chargement…</div>
         </div>
       </div>
