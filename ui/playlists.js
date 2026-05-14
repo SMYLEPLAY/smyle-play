@@ -504,14 +504,36 @@
 
     overlay.querySelector('#plc-save').onclick = async function() {
       var errBox = overlay.querySelector('#plc-err');
+      var saveBtn = overlay.querySelector('#plc-save');
       errBox.style.display = 'none';
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Enregistrement…';
       try {
+        // 1. Mettre à jour la couleur de la playlist
         await updatePlaylist(plData.id, { color: chosenColor });
+
+        // 2. Récupérer les tracks de la playlist et propager la couleur
+        try {
+          var plDetail = await _req('/playlists/' + encodeURIComponent(plData.id));
+          var tracks = (plDetail && plDetail.tracks) || [];
+          await Promise.all(tracks.map(function(t) {
+            var trackId = t.track_uuid || t.id;
+            return _req('/tracks/' + encodeURIComponent(trackId), {
+              method: 'PATCH',
+              body: { color: chosenColor }
+            });
+          }));
+        } catch (_) {
+          // Propagation best-effort : on ne bloque pas si un track échoue
+        }
+
         close();
         if (typeof onUpdated === 'function') onUpdated();
       } catch (e) {
         errBox.textContent = 'Mise à jour impossible : ' + (e && e.message || 'erreur');
         errBox.style.display = 'block';
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Enregistrer';
       }
     };
   }
