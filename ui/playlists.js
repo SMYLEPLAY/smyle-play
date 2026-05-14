@@ -56,10 +56,12 @@
     return _req('/playlists/me');
   }
 
-  async function createPlaylist(title, visibility, color, seedPrompt) {
+  async function createPlaylist(title, visibility, color, seedPrompt, adnForSale, adnPrice) {
     const body = { title: title, visibility: visibility || 'private' };
-    if (color)      body.color       = color;
-    if (seedPrompt) body.seed_prompt = seedPrompt;
+    if (color)                body.color        = color;
+    if (seedPrompt)           body.seed_prompt  = seedPrompt;
+    if (adnForSale)           body.adn_for_sale = true;
+    if (adnPrice)             body.adn_price    = adnPrice;
     return _req('/playlists', { method: 'POST', body: body });
   }
 
@@ -117,6 +119,20 @@
           '<textarea id="pl-modal-seed" rows="2" maxlength="1000" placeholder="Décris l\'ambiance, le style, le mood… ex : deep afro house, nuit tropicale, basses lourdes"></textarea>' +
         '</label>' +
 
+        // ADN en vente
+        '<div class="pl-modal-adn-row">' +
+          '<label class="pl-adn-toggle-label">' +
+            '<input type="checkbox" id="pl-modal-adn-sale" /> ' +
+            '<span class="pl-adn-toggle-txt">🔒 Mettre l\'ADN de cette playlist en vente</span>' +
+          '</label>' +
+          '<div class="pl-adn-price-wrap" id="pl-adn-price-wrap" style="display:none">' +
+            '<label class="pl-modal-label" style="margin-bottom:0">Prix en Smyles' +
+              '<input type="number" id="pl-modal-adn-price" min="1" max="100000" placeholder="ex : 50" />' +
+            '</label>' +
+            '<p class="pl-adn-hint">Les visiteurs voient la playlist mais doivent acheter l\'ADN pour l\'utiliser</p>' +
+          '</div>' +
+        '</div>' +
+
         // Visibilité
         '<fieldset class="pl-modal-vis">' +
           '<legend>Visibilité</legend>' +
@@ -166,16 +182,25 @@
       if (sw) _applyColor(sw.dataset.color);
     });
 
+    // Toggle ADN en vente
+    const adnCheckbox  = overlay.querySelector('#pl-modal-adn-sale');
+    const adnPriceWrap = overlay.querySelector('#pl-adn-price-wrap');
+    adnCheckbox.addEventListener('change', function() {
+      adnPriceWrap.style.display = adnCheckbox.checked ? '' : 'none';
+    });
+
     const close = () => overlay.remove();
     overlay.querySelector('.pl-modal-close').onclick = close;
     overlay.querySelector('#pl-modal-cancel').onclick = close;
     overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
 
     overlay.querySelector('#pl-modal-create').onclick = async function() {
-      const name  = nameInput.value.trim();
-      const vis   = overlay.querySelector('input[name="pl-vis"]:checked').value;
-      const color = colorInput.value || DEFAULT_COLOR;
-      const seed  = overlay.querySelector('#pl-modal-seed').value.trim();
+      const name       = nameInput.value.trim();
+      const vis        = overlay.querySelector('input[name="pl-vis"]:checked').value;
+      const color      = colorInput.value || DEFAULT_COLOR;
+      const seed       = overlay.querySelector('#pl-modal-seed').value.trim();
+      const adnForSale = adnCheckbox.checked;
+      const adnPrice   = adnForSale ? parseInt(overlay.querySelector('#pl-modal-adn-price').value, 10) || null : null;
       const errBox = overlay.querySelector('#pl-modal-err');
       errBox.style.display = 'none';
       if (!name) {
@@ -184,7 +209,12 @@
         return;
       }
       try {
-        const created = await createPlaylist(name, vis, color, seed || null);
+        if (adnForSale && !adnPrice) {
+          errBox.textContent = 'Indique un prix en Smyles pour l\'ADN.';
+          errBox.style.display = 'block';
+          return;
+        }
+        const created = await createPlaylist(name, vis, color, seed || null, adnForSale, adnPrice);
         close();
         if (typeof onCreated === 'function') onCreated(created);
       } catch (e) {
@@ -250,6 +280,15 @@
       '.pl-modal-seed-label textarea { background:rgba(255,255,255,.03); color:#e8e6f5; border:1px solid rgba(204,136,255,.22); border-radius:10px; padding:10px 14px; font-size:13px; line-height:1.5; resize:vertical; outline:none; width:100%; box-sizing:border-box; font-family:inherit; }' +
       '.pl-modal-seed-label textarea:focus { border-color:rgba(204,136,255,.5); }' +
       '.pl-optional { font-size:11px; color:#6b677f; font-weight:400; margin-left:4px; }' +
+      // Toggle ADN en vente
+      '.pl-modal-adn-row { margin-bottom:18px; }' +
+      '.pl-adn-toggle-label { display:flex; align-items:center; gap:10px; cursor:pointer; font-size:14px; color:#e8e6f5; }' +
+      '.pl-adn-toggle-label input[type=checkbox] { width:16px; height:16px; accent-color:#cc88ff; cursor:pointer; }' +
+      '.pl-adn-toggle-txt { font-weight:600; }' +
+      '.pl-adn-price-wrap { margin-top:12px; padding:14px; background:rgba(204,136,255,.06); border:1px solid rgba(204,136,255,.2); border-radius:10px; }' +
+      '.pl-adn-hint { font-size:11px; color:#6b677f; margin:8px 0 0; }' +
+      // Badge lock sur les cards
+      '.ap-pl-adn-badge { position:absolute; top:8px; right:8px; background:rgba(0,0,0,.72); backdrop-filter:blur(6px); border:1px solid rgba(204,136,255,.4); border-radius:999px; padding:3px 8px; font-size:10px; color:#cc88ff; font-weight:700; z-index:8; letter-spacing:.02em; }' +
       // Dashboard section
       '.pl-dash-section { background: rgba(255,255,255,.02); border: 1px solid rgba(204,136,255,.14); border-radius: 14px; padding: 20px; margin: 20px 0; }' +
       '.pl-dash-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }' +
@@ -495,12 +534,16 @@
                   ? '<video autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
                   : '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + nc + ',rgba(10,10,20,1))">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
                 const qpId = 'ap-qp-' + p.id;
+                const adnBadge = p.adn_for_sale
+                  ? '<div class="ap-pl-adn-badge">🔒 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : '') + '</div>'
+                  : '';
                 return (
                   '<li class="ap-playlist-card" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
                     mediaBg +
                     '<button class="ap-pl-qp" id="' + qpId + '" title="Lancer">' +
                       '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' +
                     '</button>' +
+                    adnBadge +
                     '<div class="ap-playlist-card-info">' +
                       '<div class="ap-pl-neon">' + _esc(p.title) + '</div>' +
                       '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
