@@ -263,6 +263,18 @@
     </div>
   </section>
 
+  <!-- ═══ DRAWER BOUTIQUE — panneau de détail (clic sur une card) ══════════
+       Masqué par défaut. Ouvert par openBoutiqueDrawer(type, data) dans
+       artiste.js. Contient le détail complet + player preview + bouton unlock.
+       L'overlay `#boutique-overlay` ferme le drawer au clic. ══════════════ -->
+  <div class="boutique-overlay" id="boutique-overlay" onclick="closeBoutiqueDrawer()"></div>
+  <aside class="boutique-drawer" id="boutique-drawer" aria-label="Détail article" aria-hidden="true">
+    <button class="boutique-drawer-close" onclick="closeBoutiqueDrawer()" aria-label="Fermer">✕</button>
+    <div class="boutique-drawer-body" id="boutique-drawer-body">
+      <!-- Rempli dynamiquement par openBoutiqueDrawer() -->
+    </div>
+  </aside>
+
   <section class="ap-dna-card" id="ap-dna-card" style="display:none"
            aria-label="ADN de l'artiste">
     <div class="ap-dna-card-inner">

@@ -720,15 +720,16 @@ function _updateSaleDisclaimerVisibility(artist) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// BOUTIQUE — shop cards pour tous les éléments mis en vente
-// 4 types :
-//   • adn-artist  → artist.adn (1 card max)
-//   • son         → artist.tracks filtrés sur promptId != null
-//   • voix        → artist.voices (chargées via payload watt_compat.py)
-//   • playlist    → artist.playlistsForSale (payload watt_compat.py)
+// BOUTIQUE v2 — Cards compactes + Drawer de détail
+// Clic sur une card → openBoutiqueDrawer(type, data)
+// 4 types : adn-artist · son · voix · playlist
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Données de l'artiste courantes — mémorisées pour le drawer.
+var _boutiqueArtist = null;
+
 function renderBoutique(artist) {
+  _boutiqueArtist = artist;
   const section = $('ap-boutique');
   const grid    = $('ap-boutique-grid');
   if (!section || !grid) return;
@@ -736,204 +737,216 @@ function renderBoutique(artist) {
   const adn           = artist && artist.adn;
   const tracksWithPmt = (Array.isArray(artist && artist.tracks) ? artist.tracks : [])
                           .filter(t => t.promptId && t.promptPriceCredits);
-  const voices        = Array.isArray(artist && artist.voices)          ? artist.voices          : [];
+  const voices        = Array.isArray(artist && artist.voices)           ? artist.voices           : [];
   const playlists     = Array.isArray(artist && artist.playlistsForSale) ? artist.playlistsForSale : [];
 
   const total = (adn ? 1 : 0) + tracksWithPmt.length + voices.length + playlists.length;
+  if (total === 0) { section.style.display = 'none'; return; }
 
-  if (total === 0) {
-    section.style.display = 'none';
-    return;
-  }
   section.style.display = '';
   setText('ap-boutique-count', total + ' article' + (total > 1 ? 's' : ''));
 
-  const brandColor  = (artist && artist.brandColor) || '#cc88ff';
-  const isSelf      = !!(artist && artist.isSelf);
-  const cards       = [];
+  const brandColor = (artist && artist.brandColor) || '#cc88ff';
 
-  // ── ADN Artiste ──────────────────────────────────────────────────────────
-  if (adn) {
-    const teaser = (adn.descriptionTeaser || '').replace(/</g, '&lt;');
-    const price  = formatCount(adn.priceCredits);
-    const unlockEl = isSelf
-      ? '<span class="ap-shop-card-chip">Ton ADN</span>'
-      : `<button type="button" class="ap-shop-card-unlock"
-                 data-type="adn-artist" data-id="${adn.id}">
-           🧬 ADN · ${price} crédits
-         </button>`;
-    cards.push(`
-      <article class="ap-shop-card ap-shop-card-adn-artist"
-               style="border-left-color:${brandColor}">
+  function compactCard(icon, type, name, price, color, dataItem) {
+    const safe = (name || '').replace(/</g, '&lt;');
+    const encoded = (dataItem || '').replace(/'/g, '&#39;');
+    return `
+      <article class="ap-shop-card" style="border-left-color:${color}"
+               role="button" tabindex="0"
+               onclick="openBoutiqueDrawer('${type}', '${encoded}')">
         <div class="ap-shop-card-top">
-          <div class="ap-shop-card-icon">🧬</div>
+          <div class="ap-shop-card-icon">${icon}</div>
           <div class="ap-shop-card-info">
-            <div class="ap-shop-card-type">ADN Artiste</div>
-            <div class="ap-shop-card-name">Signature créative</div>
-          </div>
-        </div>
-        ${teaser ? `<p class="ap-shop-card-desc">${teaser}</p>` : ''}
-        <div class="ap-shop-card-chips">
-          <span class="ap-shop-card-chip">−30 % sur toutes les recettes</span>
-        </div>
-        <div class="ap-shop-card-footer">${unlockEl}</div>
-      </article>`);
-  }
-
-  // ── Sons avec recette ────────────────────────────────────────────────────
-  tracksWithPmt.forEach(t => {
-    const safe  = (t.title || '').replace(/</g, '&lt;');
-    const price = formatCount(t.promptPriceCredits);
-    const color = t.color || brandColor;
-    const audioId = 'boutique-audio-' + (t.id || '').replace(/[^a-z0-9]/gi, '');
-    const hasAudio = !!(t.audioUrl);
-    const audioEl = hasAudio
-      ? `<audio id="${audioId}" preload="none" src="${(t.audioUrl + '').replace(/"/g, '&quot;')}"></audio>
-         <button type="button" class="ap-shop-card-preview-btn"
-                 onclick="boutiqueToggleAudio(this,'${audioId}')"
-                 title="Pré-écouter">▶</button>`
-      : '';
-    const unlockEl = isSelf
-      ? '<span class="ap-shop-card-chip">Ta recette</span>'
-      : `<button type="button" class="ap-shop-card-unlock"
-                 data-type="son" data-id="${t.promptId}">
-           🧬 Recette · ${price} crédits
-         </button>`;
-    const platform = t.platform ? `<span class="ap-shop-card-chip">${t.platform}</span>` : '';
-    cards.push(`
-      <article class="ap-shop-card" style="border-left-color:${color}">
-        <div class="ap-shop-card-top">
-          <div class="ap-shop-card-icon">🎵</div>
-          <div class="ap-shop-card-info">
-            <div class="ap-shop-card-type">Son · Recette</div>
+            <div class="ap-shop-card-type">${type === 'adn-artist' ? 'ADN Artiste'
+              : type === 'son' ? 'Son · Recette'
+              : type === 'voix' ? 'Voix'
+              : 'ADN Playlist'}</div>
             <div class="ap-shop-card-name">${safe}</div>
           </div>
         </div>
-        ${platform ? `<div class="ap-shop-card-chips">${platform}</div>` : ''}
-        <div class="ap-shop-card-footer">
-          ${audioEl}
-          ${unlockEl}
+        <div class="ap-shop-card-price">
+          ${price} crédits
+          <span class="ap-shop-card-price-arrow">→</span>
         </div>
-      </article>`);
+      </article>`;
+  }
+
+  const cards = [];
+
+  if (adn) {
+    cards.push(compactCard('🧬', 'adn-artist', 'Signature créative',
+      formatCount(adn.priceCredits), brandColor,
+      JSON.stringify({ id: adn.id, priceCredits: adn.priceCredits,
+        descriptionTeaser: adn.descriptionTeaser || '', color: brandColor,
+        hasUsageGuide: !!adn.hasUsageGuide, hasExampleOutputs: !!adn.hasExampleOutputs,
+        isSoldOut: !!adn.isSoldOut })));
+  }
+
+  tracksWithPmt.forEach(t => {
+    cards.push(compactCard('🎵', 'son', t.title,
+      formatCount(t.promptPriceCredits), t.color || brandColor,
+      JSON.stringify({ id: t.promptId, title: t.title || '',
+        priceCredits: t.promptPriceCredits, color: t.color || brandColor,
+        platform: t.platform || '', audioUrl: t.audioUrl || '',
+        coverUrl: t.coverUrl || '' })));
   });
 
-  // ── Voix ─────────────────────────────────────────────────────────────────
   voices.forEach(v => {
-    const safeName  = (v.name  || '').replace(/</g, '&lt;');
-    const safeStyle = (v.style || '').replace(/</g, '&lt;');
-    const price     = formatCount(v.priceCredits || v.price_credits || 0);
-    const licLbl    = v.license === 'exclusif' ? '👑 Exclusif'
-                    : v.license === 'commercial' ? '💼 Commercial' : '🎧 Personnel';
-    const audioSrc  = v.previewUrl || v.preview_url || '';
-    const audioId   = 'boutique-vaudio-' + (v.id || '').replace(/[^a-z0-9]/gi, '');
-    const audioEl   = audioSrc
-      ? `<audio id="${audioId}" preload="none" src="${audioSrc.replace(/"/g, '&quot;')}"></audio>
-         <button type="button" class="ap-shop-card-preview-btn"
-                 onclick="boutiqueToggleAudio(this,'${audioId}')"
-                 title="Pré-écouter 30s">▶</button>`
-      : '';
-    const unlockEl = isSelf
-      ? '<span class="ap-shop-card-chip">Ta voix</span>'
-      : `<button type="button" class="ap-shop-card-unlock"
-                 data-type="voix" data-id="${v.id}">
-           🎙 Voix · ${price} crédits
-         </button>`;
-    const genres = Array.isArray(v.genres) && v.genres.length
-      ? v.genres.map(g => `<span class="ap-shop-card-chip">${g.replace(/</g,'&lt;')}</span>`).join('')
-      : '';
-    cards.push(`
-      <article class="ap-shop-card" style="border-left-color:${brandColor}">
-        <div class="ap-shop-card-top">
-          <div class="ap-shop-card-icon">🎙</div>
-          <div class="ap-shop-card-info">
-            <div class="ap-shop-card-type">Voix</div>
-            <div class="ap-shop-card-name">${safeName}</div>
-          </div>
-        </div>
-        ${safeStyle ? `<p class="ap-shop-card-desc">${safeStyle}</p>` : ''}
-        <div class="ap-shop-card-chips">
-          <span class="ap-shop-card-chip">${licLbl}</span>
-          ${genres}
-        </div>
-        <div class="ap-shop-card-footer">
-          ${audioEl}
-          ${unlockEl}
-        </div>
-      </article>`);
+    cards.push(compactCard('🎙', 'voix', v.name,
+      formatCount(v.priceCredits || v.price_credits || 0), brandColor,
+      JSON.stringify({ id: v.id, name: v.name || '', style: v.style || '',
+        priceCredits: v.priceCredits || v.price_credits || 0,
+        license: v.license || '', genres: v.genres || [],
+        previewUrl: v.previewUrl || v.preview_url || '' })));
   });
 
-  // ── Playlists ADN ─────────────────────────────────────────────────────────
   playlists.forEach(pl => {
-    const safeTitle = (pl.title || '').replace(/</g, '&lt;');
-    const price     = formatCount(pl.adnPrice || 0);
-    const color     = pl.color || brandColor;
-    const unlockEl  = isSelf
-      ? '<span class="ap-shop-card-chip">Ta playlist</span>'
-      : `<button type="button" class="ap-shop-card-unlock"
-                 data-type="playlist" data-id="${pl.id}">
-           🎚 ADN Playlist · ${price} crédits
-         </button>`;
-    cards.push(`
-      <article class="ap-shop-card" style="border-left-color:${color}">
-        <div class="ap-shop-card-top">
-          <div class="ap-shop-card-icon">🎚</div>
-          <div class="ap-shop-card-info">
-            <div class="ap-shop-card-type">ADN Playlist</div>
-            <div class="ap-shop-card-name">${safeTitle}</div>
-          </div>
-        </div>
-        <p class="ap-shop-card-desc">Le code génératif de cette playlist — reproduis son univers.</p>
-        <div class="ap-shop-card-footer">${unlockEl}</div>
-      </article>`);
+    cards.push(compactCard('🎚', 'playlist', pl.title,
+      formatCount(pl.adnPrice || 0), pl.color || brandColor,
+      JSON.stringify({ id: pl.id, title: pl.title || '',
+        adnPrice: pl.adnPrice || 0, color: pl.color || brandColor })));
   });
 
   grid.innerHTML = cards.join('');
-
-  // ── Délégation click unlock ──────────────────────────────────────────────
-  grid.onclick = async (ev) => {
-    const btn = ev.target.closest('.ap-shop-card-unlock');
-    if (!btn) return;
-    const type = btn.dataset.type;
-    const id   = btn.dataset.id;
-    if (!type || !id) return;
-    btn.disabled = true;
-    try {
-      if (type === 'adn-artist') {
-        await apiFetch(`/unlocks/adns/${encodeURIComponent(id)}`, { method: 'POST' });
-        toast('ADN débloqué 🧬 — retrouve-le dans ta bibliothèque');
-      } else if (type === 'son') {
-        await apiFetch(`/unlocks/prompts/${encodeURIComponent(id)}`, { method: 'POST' });
-        toast('Recette débloquée 🧬 — retrouve-la dans ta bibliothèque');
-      } else if (type === 'voix') {
-        await apiFetch(`/unlocks/voices/${encodeURIComponent(id)}`, { method: 'POST' });
-        toast('Voix débloquée 🎙 — retrouve-la dans ta bibliothèque');
-      } else if (type === 'playlist') {
-        await apiFetch(`/unlocks/playlist-adn/${encodeURIComponent(id)}`, { method: 'POST' });
-        toast('ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque');
-      }
-      btn.disabled = true;
-      btn.textContent = '✓ Débloqué';
-    } catch (err) {
-      handleUnlockError(err);
-      btn.disabled = false;
-    }
-  };
 }
 
-// Lecture audio des previews boutique (même logique que lib mini-player).
-function boutiqueToggleAudio(btn, audioId) {
-  document.querySelectorAll('.boutique-playing-audio').forEach(a => {
-    if (a.id !== audioId) { a.pause(); a.currentTime = 0; }
-  });
-  document.querySelectorAll('.ap-shop-card-preview-btn').forEach(b => {
-    if (b !== btn) b.textContent = '▶';
-  });
-  const audio = document.getElementById(audioId);
-  if (!audio) return;
-  audio.classList.add('boutique-playing-audio');
-  if (audio.paused) { audio.play(); btn.textContent = '⏸'; }
-  else              { audio.pause(); btn.textContent = '▶'; }
-  audio.onended = () => { btn.textContent = '▶'; };
+// ── Drawer — ouvre le panneau de détail ──────────────────────────────────
+
+function openBoutiqueDrawer(type, dataStr) {
+  const drawer  = $('boutique-drawer');
+  const body    = $('boutique-drawer-body');
+  const overlay = $('boutique-overlay');
+  if (!drawer || !body || !overlay) return;
+
+  let data;
+  try { data = JSON.parse(dataStr); } catch (e) { return; }
+
+  const artist  = _boutiqueArtist || {};
+  const isSelf  = !!artist.isSelf;
+  const LICENSE_LBL = { personnel: '🎧 Personnel', commercial: '💼 Commercial', exclusif: '👑 Exclusif' };
+
+  let html = '';
+
+  // ── Barre de couleur + type + nom ────────────────────────────────────────
+  const color = data.color || (artist.brandColor) || '#cc88ff';
+  const typeLabel = type === 'adn-artist' ? 'ADN Artiste'
+    : type === 'son' ? 'Son · Recette Suno'
+    : type === 'voix' ? 'Voix'
+    : 'ADN Playlist';
+  const nameLabel = type === 'adn-artist' ? 'Signature créative'
+    : type === 'son'      ? (data.title || '')
+    : type === 'voix'     ? (data.name  || '')
+    : (data.title || '');
+  const price = type === 'playlist' ? data.adnPrice : data.priceCredits;
+
+  html += `<div class="bd-color-bar" style="background:${color}"></div>`;
+  html += `<div><div class="bd-type">${typeLabel}</div><div class="bd-name">${(nameLabel + '').replace(/</g,'&lt;')}</div></div>`;
+
+  // ── Contenu spécifique par type ──────────────────────────────────────────
+  if (type === 'adn-artist') {
+    if (data.descriptionTeaser) {
+      html += `<p class="bd-desc">${(data.descriptionTeaser + '').replace(/</g,'&lt;')}</p>`;
+    }
+    const chips = [];
+    if (data.hasUsageGuide)     chips.push('📘 Guide d\'usage');
+    if (data.hasExampleOutputs) chips.push('🎧 Exemples sonores');
+    chips.push('−30 % sur toutes les recettes de cet artiste');
+    html += `<div class="bd-chips">${chips.map(c => `<span class="bd-chip">${c}</span>`).join('')}</div>`;
+
+  } else if (type === 'son') {
+    const chips = [];
+    if (data.platform) chips.push(data.platform);
+    if (chips.length) html += `<div class="bd-chips">${chips.map(c => `<span class="bd-chip">${c}</span>`).join('')}</div>`;
+    if (data.audioUrl) {
+      html += `<div>
+        <div class="bd-preview-label">Pré-écoute du son</div>
+        <audio class="bd-audio" controls preload="none" controlsList="nodownload noremoteplayback"
+               oncontextmenu="return false"
+               src="${(data.audioUrl + '').replace(/"/g,'&quot;')}"></audio>
+      </div>`;
+    }
+
+  } else if (type === 'voix') {
+    const lic = LICENSE_LBL[data.license] || data.license || '';
+    const genres = Array.isArray(data.genres) && data.genres.length
+      ? data.genres.map(g => `<span class="bd-chip">${(g+'').replace(/</g,'&lt;')}</span>`).join('') : '';
+    if (data.style) html += `<p class="bd-desc">${(data.style+'').replace(/</g,'&lt;')}</p>`;
+    html += `<div class="bd-chips">${lic ? `<span class="bd-chip">${lic}</span>` : ''}${genres}</div>`;
+    if (data.previewUrl) {
+      html += `<div>
+        <div class="bd-preview-label">Pré-écoute 30 s</div>
+        <audio class="bd-audio" controls preload="none" controlsList="nodownload noremoteplayback"
+               oncontextmenu="return false"
+               src="${(data.previewUrl+'').replace(/"/g,'&quot;')}"></audio>
+      </div>`;
+    }
+
+  } else if (type === 'playlist') {
+    html += `<p class="bd-desc">Accède au code génératif de cette playlist — reproduis son univers musical avec les mêmes outils IA.</p>`;
+  }
+
+  // ── Prix + unlock ────────────────────────────────────────────────────────
+  html += `<div class="bd-price-row">
+    <div>
+      <span class="bd-price-amount">${formatCount(price)}</span>
+      <span class="bd-price-unit">crédits</span>
+    </div>
+    ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur toutes les recettes</span>' : ''}
+  </div>`;
+
+  if (isSelf) {
+    html += `<p class="bd-self-note">C'est ton contenu — tu ne peux pas l'acheter.</p>`;
+  } else {
+    const unlockLabel = type === 'adn-artist' ? '🧬 Débloquer l\'ADN'
+      : type === 'son'      ? '🧬 Débloquer la recette'
+      : type === 'voix'     ? '🎙 Débloquer la voix'
+      : '🎚 Débloquer l\'ADN Playlist';
+    html += `<button type="button" class="bd-unlock-btn"
+                     id="boutique-drawer-unlock-btn"
+                     onclick="boutiqueDrawerUnlock('${type}','${data.id}')">${unlockLabel}</button>`;
+  }
+
+  body.innerHTML = html;
+  overlay.classList.add('is-open');
+  drawer.classList.add('is-open');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+
+function closeBoutiqueDrawer() {
+  const drawer  = $('boutique-drawer');
+  const overlay = $('boutique-overlay');
+  if (!drawer || !overlay) return;
+  // Stoppe l'audio si en lecture
+  drawer.querySelectorAll('audio').forEach(a => { a.pause(); a.currentTime = 0; });
+  drawer.classList.remove('is-open');
+  overlay.classList.remove('is-open');
+  drawer.setAttribute('aria-hidden', 'true');
+}
+
+async function boutiqueDrawerUnlock(type, id) {
+  const btn = $('boutique-drawer-unlock-btn');
+  if (btn) btn.disabled = true;
+  const ENDPOINTS = {
+    'adn-artist': '/unlocks/adns/',
+    'son':        '/unlocks/prompts/',
+    'voix':       '/unlocks/voices/',
+    'playlist':   '/unlocks/playlist-adn/',
+  };
+  const TOASTS = {
+    'adn-artist': 'ADN débloqué 🧬 — retrouve-le dans ta bibliothèque',
+    'son':        'Recette débloquée 🧬 — retrouve-la dans ta bibliothèque',
+    'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
+    'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
+  };
+  try {
+    await apiFetch(`${ENDPOINTS[type]}${encodeURIComponent(id)}`, { method: 'POST' });
+    toast(TOASTS[type] || 'Débloqué ✓');
+    closeBoutiqueDrawer();
+  } catch (err) {
+    handleUnlockError(err);
+    if (btn) btn.disabled = false;
+  }
 }
 
 function renderDna(artist) {
