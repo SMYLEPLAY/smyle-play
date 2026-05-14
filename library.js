@@ -113,13 +113,11 @@ async function loadAll() {
     _renderError('lib-voices-list', voicesRes.reason);
   }
 
-  // Compteurs par ranger ADN
-  const totalAdns = _libData.prompts.length + _libData.playlist_adns.length + _libData.adns.length;
-  setEl('lib-count-adns',         totalAdns || '—');
-  setEl('lib-count-track-adns',   _libData.prompts.length        || '—');
-  setEl('lib-count-playlist-adns',_libData.playlist_adns.length  || '—');
-  setEl('lib-count-artist-adns',  _libData.adns.length           || '—');
-  setEl('lib-count-voices',       _libData.voices.length);
+  // Compteurs colonnes ADN
+  const trackTotal = _libData.prompts.length + _libData.playlist_adns.length;
+  setEl('lib-count-track-adns',  trackTotal              || '—');
+  setEl('lib-count-voices',      _libData.voices.length  || '—');
+  setEl('lib-count-artist-adns', _libData.adns.length    || '—');
 }
 
 function _renderError(containerId, err) {
@@ -134,8 +132,19 @@ function _renderError(containerId, err) {
 }
 
 
-/* ── Tabs ────────────────────────────────────────────────────────────────── */
+/* ── Toggle colonne ADN dépliable ───────────────────────────────────────── */
 
+function toggleAdnCol(col) {
+  const body  = document.getElementById('lib-col-' + col + '-body');
+  const arrow = document.getElementById('lib-arrow-' + col);
+  const btn   = body && body.previousElementSibling;
+  if (!body) return;
+  const isOpen = body.classList.toggle('is-open');
+  if (arrow) arrow.textContent = isOpen ? '▲' : '▼';
+  if (btn)   btn.setAttribute('aria-expanded', String(isOpen));
+}
+
+/* ── Tabs (legacy, masqué en CSS) ───────────────────────────────────────── */
 function switchTab(tab) {
   document.querySelectorAll('.lib-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);

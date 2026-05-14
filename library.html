@@ -49,71 +49,60 @@
     <p class="lib-hero-sub">Tes recettes IA et ADN débloqués. Copie, réutilise, re-génère.</p>
   </section>
 
-  <!-- Tabs -->
-  <div class="lib-tabs">
-    <button class="lib-tab active" data-tab="adns" onclick="switchTab('adns')">
-      <!-- Hélice ADN -->
-      <svg class="lib-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
-        <path d="M7 3c0 4 10 6 10 10M7 11c0 4 10 6 10 10M7 21c0-4 10-6 10-10"/>
-        <path d="M8 5h8M8 8h8M8 13h8M8 16h8M8 19h8" stroke-width="1.1" opacity="0.55"/>
-      </svg>
-      ADN <span class="lib-tab-count" id="lib-count-adns">—</span>
-    </button>
-    <button class="lib-tab" data-tab="voices" onclick="switchTab('voices')">
-      <!-- Microphone -->
-      <svg class="lib-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
-        <rect x="9" y="3" width="6" height="11" rx="3"/>
-        <path d="M5 11a7 7 0 0 0 14 0"/>
-        <line x1="12" y1="18" x2="12" y2="22"/>
-        <line x1="9" y1="22" x2="15" y2="22"/>
-      </svg>
-      Voix <span class="lib-tab-count" id="lib-count-voices">—</span>
-    </button>
+  <!-- Grille ADN — 3 colonnes dépliables -->
+  <div class="lib-adn-grid">
+
+    <!-- Colonne 1 : ADN Track -->
+    <div class="lib-adn-col" id="lib-col-track">
+      <button class="lib-adn-col-hdr" onclick="toggleAdnCol('track')" aria-expanded="true" aria-controls="lib-col-track-body">
+        <span class="lib-adn-col-icon">🎵</span>
+        <span class="lib-adn-col-title">ADN Track</span>
+        <span class="lib-adn-col-count" id="lib-count-track-adns">—</span>
+        <span class="lib-adn-col-arrow" id="lib-arrow-track">▲</span>
+      </button>
+      <div class="lib-adn-col-body is-open" id="lib-col-track-body">
+        <!-- Tracks (recettes IA) -->
+        <div id="lib-prompts-list">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+        <!-- Playlist ADNs (regroupés ici) -->
+        <div id="lib-playlist-adns-section">
+          <div id="lib-playlist-adns-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne 2 : ADN Voice -->
+    <div class="lib-adn-col" id="lib-col-voice">
+      <button class="lib-adn-col-hdr" onclick="toggleAdnCol('voice')" aria-expanded="true" aria-controls="lib-col-voice-body">
+        <span class="lib-adn-col-icon">🎙️</span>
+        <span class="lib-adn-col-title">ADN Voice</span>
+        <span class="lib-adn-col-count" id="lib-count-voices">—</span>
+        <span class="lib-adn-col-arrow" id="lib-arrow-voice">▲</span>
+      </button>
+      <div class="lib-adn-col-body is-open" id="lib-col-voice-body">
+        <div id="lib-voices-list">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne 3 : ADN Artist -->
+    <div class="lib-adn-col" id="lib-col-artist">
+      <button class="lib-adn-col-hdr" onclick="toggleAdnCol('artist')" aria-expanded="true" aria-controls="lib-col-artist-body">
+        <span class="lib-adn-col-icon">👤</span>
+        <span class="lib-adn-col-title">ADN Artist</span>
+        <span class="lib-adn-col-count" id="lib-count-artist-adns">—</span>
+        <span class="lib-adn-col-arrow" id="lib-arrow-artist">▲</span>
+      </button>
+      <div class="lib-adn-col-body is-open" id="lib-col-artist-body">
+        <div id="lib-adns-list">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
   </div>
-
-  <!-- ADNs tab (unique — 3 rangers) -->
-  <section class="lib-tab-panel active" id="lib-panel-adns">
-    <!-- Ranger 1 : ADN Track -->
-    <div id="lib-track-adns-section" class="lib-adn-ranger">
-      <div class="lib-adn-ranger-hdr">
-        <span class="lib-adn-ranger-icon">🎵</span>
-        <span class="lib-adn-ranger-label">ADN Track</span>
-        <span class="lib-adn-ranger-count" id="lib-count-track-adns">—</span>
-      </div>
-      <div class="lib-list" id="lib-prompts-list">
-        <div class="lib-loading">Chargement…</div>
-      </div>
-    </div>
-    <!-- Ranger 2 : ADN Playlist -->
-    <div id="lib-playlist-adns-section" class="lib-adn-ranger">
-      <div class="lib-adn-ranger-hdr">
-        <span class="lib-adn-ranger-icon">🧬</span>
-        <span class="lib-adn-ranger-label">ADN Playlist</span>
-        <span class="lib-adn-ranger-count" id="lib-count-playlist-adns">—</span>
-      </div>
-      <div class="lib-list" id="lib-playlist-adns-list">
-        <div class="lib-loading">Chargement…</div>
-      </div>
-    </div>
-    <!-- Ranger 3 : ADN Artist -->
-    <div id="lib-adns-section" class="lib-adn-ranger">
-      <div class="lib-adn-ranger-hdr">
-        <span class="lib-adn-ranger-icon">👤</span>
-        <span class="lib-adn-ranger-label">ADN Artist</span>
-        <span class="lib-adn-ranger-count" id="lib-count-artist-adns">—</span>
-      </div>
-      <div class="lib-list" id="lib-adns-list">
-        <div class="lib-loading">Chargement…</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Voices tab (P1-F9 frontend — voix unlockées) -->
-  <section class="lib-tab-panel" id="lib-panel-voices">
-    <div class="lib-list" id="lib-voices-list">
-      <div class="lib-loading">Chargement de tes voix…</div>
-    </div>
-  </section>
 
 </main>
 
