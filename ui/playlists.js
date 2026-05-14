@@ -123,13 +123,14 @@
         '<div class="pl-modal-adn-row">' +
           '<label class="pl-adn-toggle-label">' +
             '<input type="checkbox" id="pl-modal-adn-sale" /> ' +
-            '<span class="pl-adn-toggle-txt">🔒 Mettre l\'ADN de cette playlist en vente</span>' +
+            '<span class="pl-adn-toggle-txt">🧬 Vendre l\'ADN de cette playlist</span>' +
           '</label>' +
+          '<p class="pl-adn-hint" style="margin:6px 0 0;padding:0">La playlist reste écoutable librement. L\'ADN (synthèse des prompts) est un produit séparé que les fans peuvent acheter pour recréer l\'univers.</p>' +
           '<div class="pl-adn-price-wrap" id="pl-adn-price-wrap" style="display:none">' +
             '<label class="pl-modal-label" style="margin-bottom:0">Prix en Smyles' +
               '<input type="number" id="pl-modal-adn-price" min="1" max="100000" placeholder="ex : 50" />' +
             '</label>' +
-            '<p class="pl-adn-hint">Les visiteurs voient la playlist mais doivent acheter l\'ADN pour l\'utiliser</p>' +
+            '<p class="pl-adn-hint">⚠️ Recommandé si tous les morceaux partagent le même univers créatif</p>' +
           '</div>' +
         '</div>' +
 
@@ -535,7 +536,7 @@
                   : '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + nc + ',rgba(10,10,20,1))">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
                 const qpId = 'ap-qp-' + p.id;
                 const adnBadge = p.adn_for_sale
-                  ? '<div class="ap-pl-adn-badge">🔒 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : '') + '</div>'
+                  ? '<div class="ap-pl-adn-badge">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
                   : '';
                 return (
                   '<li class="ap-playlist-card" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
