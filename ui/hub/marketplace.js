@@ -44,6 +44,8 @@
     smyleArtist: null,     // payload de /watt/artists/smyle
     artists:     [],       // tous les artistes publics (Smyle compris)
     tracks:      [],       // tous les sons (source tracks-recent)
+    voices:      [],       // voix publiées (/catalog/voices)
+    playlists:   [],       // playlists ADN en vente (/catalog/playlists-adn)
     // adnBySlug supprimé (2026-05-14) : badge recette utilise promptId/promptPriceCredits par track.
     // Refs DOM résolues une seule fois pour éviter les lookups répétés.
     dom: null,
@@ -63,6 +65,10 @@
       topArtists:       document.getElementById('mp-top-artists'),
       gridSons:         document.getElementById('mp-grid-sons'),
       gridArtists:      document.getElementById('mp-grid-artists'),
+      gridVoices:       document.getElementById('mp-grid-voices'),
+      gridPlaylists:    document.getElementById('mp-grid-playlists'),
+      sectionVoices:    document.getElementById('mp-section-voices'),
+      sectionPlaylists: document.getElementById('mp-section-playlists'),
       searchDna:        document.getElementById('mp-search-dna'),
       searchConnect:    document.getElementById('mp-search-connect'),
       searchBarDna:     document.querySelector('.mp-search-bar-dna'),
@@ -177,6 +183,26 @@
     } catch (err) {
       console.warn('[marketplace] /watt/tracks-recent :', err && err.message);
       _state.tracks = [];
+    }
+  }
+
+  async function _fetchVoices() {
+    try {
+      const data = await apiFetch('/catalog/voices?per_page=40');
+      _state.voices = Array.isArray(data && data.items) ? data.items : [];
+    } catch (err) {
+      console.warn('[marketplace] /catalog/voices :', err && err.message);
+      _state.voices = [];
+    }
+  }
+
+  async function _fetchPlaylists() {
+    try {
+      const data = await apiFetch('/catalog/playlists-adn?per_page=40');
+      _state.playlists = Array.isArray(data && data.items) ? data.items : [];
+    } catch (err) {
+      console.warn('[marketplace] /catalog/playlists-adn :', err && err.message);
+      _state.playlists = [];
     }
   }
 
@@ -516,6 +542,101 @@
     }).join('');
   }
 
+  // ── Voix en vente ────────────────────────────────────────────────────────
+
+  function _renderGridVoices() {
+    const d = _state.dom;
+    if (!d.gridVoices) return;
+    const items = _state.voices;
+    if (!items.length) {
+      if (d.sectionVoices) d.sectionVoices.style.display = 'none';
+      return;
+    }
+    if (d.sectionVoices) d.sectionVoices.style.display = '';
+
+    const LICENSE_LBL = { personnel: '🎧 Personnel', commercial: '💼 Commercial', exclusif: '👑 Exclusif' };
+    d.gridVoices.innerHTML = items.map(v => {
+      const name    = _esc(v.name || '');
+      const style   = _esc(v.style || '');
+      const artist  = v.artist || {};
+      const slug    = _esc(artist.slug || '');
+      const aName   = _esc(artist.artist_name || '');
+      const color   = artist.brand_color || '#cc88ff';
+      const price   = v.price_credits;
+      const lic     = LICENSE_LBL[v.license] || v.license || '';
+      const genres  = Array.isArray(v.genres) && v.genres.length
+        ? v.genres.slice(0, 3).map(g => `<span class="mp-shop-chip">${_esc(g)}</span>`).join('')
+        : '';
+      const preview = v.preview_url
+        ? `<audio class="mp-voice-preview" preload="none" controls controlsList="nodownload noremoteplayback"
+                  oncontextmenu="return false"
+                  src="${_esc(v.preview_url)}"></audio>`
+        : `<span class="mp-shop-chip" style="font-style:italic;opacity:.6">Pré-écoute après achat</span>`;
+      return (
+        `<article class="mp-shop-card" style="border-left-color:${_esc(color)}">` +
+          `<div class="mp-shop-card-top">` +
+            `<div class="mp-shop-card-icon">🎙</div>` +
+            `<div class="mp-shop-card-info">` +
+              `<div class="mp-shop-card-type">Voix</div>` +
+              `<div class="mp-shop-card-name">${name}</div>` +
+              `<a class="mp-shop-card-artist" href="/u/${slug}">${aName}</a>` +
+            `</div>` +
+          `</div>` +
+          (style ? `<p class="mp-shop-card-desc">${style}</p>` : '') +
+          `<div class="mp-shop-chips">` +
+            `<span class="mp-shop-chip">${_esc(lic)}</span>${genres}` +
+          `</div>` +
+          `<div class="mp-shop-card-footer">` +
+            preview +
+            `<a class="mp-shop-card-cta" href="/u/${slug}">` +
+              `🎙 Voix · ${price} crédits` +
+            `</a>` +
+          `</div>` +
+        `</article>`
+      );
+    }).join('');
+  }
+
+  // ── Playlists ADN en vente ────────────────────────────────────────────────
+
+  function _renderGridPlaylists() {
+    const d = _state.dom;
+    if (!d.gridPlaylists) return;
+    const items = _state.playlists;
+    if (!items.length) {
+      if (d.sectionPlaylists) d.sectionPlaylists.style.display = 'none';
+      return;
+    }
+    if (d.sectionPlaylists) d.sectionPlaylists.style.display = '';
+
+    d.gridPlaylists.innerHTML = items.map(pl => {
+      const title  = _esc(pl.title || '');
+      const owner  = pl.owner || {};
+      const slug   = _esc(owner.slug || '');
+      const aName  = _esc(owner.artist_name || '');
+      const color  = pl.color || owner.brand_color || '#cc88ff';
+      const price  = pl.adn_price;
+      return (
+        `<article class="mp-shop-card" style="border-left-color:${_esc(color)}">` +
+          `<div class="mp-shop-card-top">` +
+            `<div class="mp-shop-card-icon">🎚</div>` +
+            `<div class="mp-shop-card-info">` +
+              `<div class="mp-shop-card-type">ADN Playlist</div>` +
+              `<div class="mp-shop-card-name">${title}</div>` +
+              `<a class="mp-shop-card-artist" href="/u/${slug}">${aName}</a>` +
+            `</div>` +
+          `</div>` +
+          `<p class="mp-shop-card-desc">Le code génératif de cette playlist — reproduis son univers.</p>` +
+          `<div class="mp-shop-card-footer">` +
+            `<a class="mp-shop-card-cta" href="/u/${slug}">` +
+              `🎚 ADN Playlist · ${price} crédits` +
+            `</a>` +
+          `</div>` +
+        `</article>`
+      );
+    }).join('');
+  }
+
   /** Re-render complet de toutes les sections dépendant de l'état. */
   function _renderAll() {
     _renderVitrine();
@@ -523,6 +644,8 @@
     _renderTopArtists();
     _renderGridSons(_state.dom.searchDna ? _state.dom.searchDna.value : '');
     _renderGridArtists(_state.dom.searchConnect ? _state.dom.searchConnect.value : '');
+    _renderGridVoices();
+    _renderGridPlaylists();
   }
 
 
@@ -791,8 +914,8 @@
     _bindBus();
     _bindTrackClicks();
 
-    // Trois fetches en parallèle — indépendants, pas de cascade.
-    await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);
+    // Cinq fetches en parallèle — indépendants, pas de cascade.
+    await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks(), _fetchVoices(), _fetchPlaylists()]);
     _renderAll();
   }
 

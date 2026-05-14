@@ -418,6 +418,34 @@
   </div>
 </section>
 
+<!-- ═══════════════════════════════════════════════════════════ VOIX EN VENTE -->
+<!-- Grille des voix publiées. Source : GET /catalog/voices.
+     Masqué par _renderGridVoices() si aucune voix disponible. -->
+<section class="mp-section mp-section-voices" id="mp-section-voices" style="display:none">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Catalogue</span>
+    <h2 class="mp-section-title">Voix à acheter</h2>
+    <span class="mp-section-sub">Samples vocaux des artistes de la plateforme</span>
+  </div>
+  <div class="mp-shop-grid" id="mp-grid-voices">
+    <div class="mp-grid-empty">Chargement…</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ ADN PLAYLISTS -->
+<!-- Grille des playlists avec ADN en vente. Source : GET /catalog/playlists-adn.
+     Masqué par _renderGridPlaylists() si aucune playlist disponible. -->
+<section class="mp-section mp-section-playlists" id="mp-section-playlists" style="display:none">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Catalogue</span>
+    <h2 class="mp-section-title">ADN Playlists</h2>
+    <span class="mp-section-sub">Le code créatif des playlists — à débloquer pour reproduire l'univers</span>
+  </div>
+  <div class="mp-shop-grid" id="mp-grid-playlists">
+    <div class="mp-grid-empty">Chargement…</div>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════════════════════════════ TOUS LES ARTISTES -->
 <!-- Liste de tous les profils publics. Chaque ligne = une "boutique".
      Clic → /u/<slug>. Le compte officiel Smyle est filtré ici car déjà

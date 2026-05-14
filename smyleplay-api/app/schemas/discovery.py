@@ -202,3 +202,54 @@ class LibraryAdnsResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+# -----------------------------------------------------------------------------
+# Voix publiques (catalog marketplace — sans sample_url gated)
+# -----------------------------------------------------------------------------
+
+class VoicePublicCard(BaseModel):
+    """
+    Vignette voix dans un listing public.
+    `sample_url` (full) est gated — seul `preview_url` (30s) est exposé.
+    """
+
+    id: UUID
+    artist: ArtistPublicCard
+    name: str
+    style: str
+    genres: list[str] = []
+    license: str
+    price_credits: int
+    preview_url: str | None = None  # clip 30s public ; None = pas encore uploadé
+
+
+class VoiceCatalogResponse(BaseModel):
+    items: list[VoicePublicCard]
+    total: int
+    page: int
+    per_page: int
+
+
+# -----------------------------------------------------------------------------
+# Playlists ADN publiques (catalog marketplace — adn_for_sale=True)
+# -----------------------------------------------------------------------------
+
+class PlaylistAdnCard(BaseModel):
+    """
+    Vignette playlist dont l'ADN est en vente.
+    N'expose pas le contenu détaillé des tracks (juste le titre + prix ADN).
+    """
+
+    id: UUID
+    owner: ArtistPublicCard
+    title: str
+    color: str | None = None
+    adn_price: int
+
+
+class PlaylistAdnCatalogResponse(BaseModel):
+    items: list[PlaylistAdnCard]
+    total: int
+    page: int
+    per_page: int

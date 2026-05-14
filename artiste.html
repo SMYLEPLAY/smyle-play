@@ -242,6 +242,27 @@
        self-purchase refusé, déjà acheté → 409 silencieux (message toast).
        La description complète + usage_guide + example_outputs sont
        exposés APRÈS achat uniquement (/artist/me/owned-adns côté compte). -->
+  <!-- ═══ BOUTIQUE — shop cards pour tous les éléments mis en vente ══════
+       Affiché dès que l'artiste a AU MOINS 1 item vendable parmi :
+         • ADN Artiste publié        → 1 card type "adn-artist"
+         • Track avec recette (promptId) → N cards type "son"
+         • Voix publiées             → N cards type "voix"
+         • Playlists ADN en vente    → N cards type "playlist"
+       Rendu par renderBoutique(artist) dans artiste.js.
+       Les données voices + playlistsForSale viennent du payload artist
+       (watt_compat.py _build_voices_payload + _build_playlists_for_sale_payload).
+       Les tracks avec recette filtrent artist.tracks sur promptId != null. -->
+  <section class="ap-boutique" id="ap-boutique" style="display:none"
+           aria-label="Boutique de l'artiste">
+    <div class="ap-boutique-hdr">
+      <h2 class="ap-boutique-title">Boutique</h2>
+      <span class="ap-boutique-count" id="ap-boutique-count"></span>
+    </div>
+    <div class="ap-boutique-grid" id="ap-boutique-grid">
+      <!-- Cards injectées par renderBoutique() -->
+    </div>
+  </section>
+
   <section class="ap-dna-card" id="ap-dna-card" style="display:none"
            aria-label="ADN de l'artiste">
     <div class="ap-dna-card-inner">
