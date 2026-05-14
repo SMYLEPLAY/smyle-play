@@ -44,7 +44,7 @@
     smyleArtist: null,     // payload de /watt/artists/smyle
     artists:     [],       // tous les artistes publics (Smyle compris)
     tracks:      [],       // tous les sons (source tracks-recent)
-    adnBySlug:   {},       // slug → {adnId, adnPrice} pour badge 🧬 track cards
+    // adnBySlug supprimé (2026-05-14) : badge recette utilise promptId/promptPriceCredits par track.
     // Refs DOM résolues une seule fois pour éviter les lookups répétés.
     dom: null,
   };
@@ -162,13 +162,7 @@
     try {
       const data = await apiFetch('/watt/artists');
       _state.artists = Array.isArray(data && data.artists) ? data.artists : [];
-      // Index slug → {adnId, adnPrice} pour le badge 🧬 sur les track cards
-      _state.adnBySlug = {};
-      _state.artists.forEach(function(a) {
-        if (a.artistAdnId && a.artistAdnPrice) {
-          _state.adnBySlug[a.slug] = { adnId: a.artistAdnId, adnPrice: a.artistAdnPrice };
-        }
-      });
+      // Badge recette : données par track (promptId/promptPriceCredits depuis /watt/tracks-recent).
     } catch (err) {
       console.warn('[marketplace] /watt/artists :', err && err.message);
       _state.artists = [];
@@ -273,7 +267,7 @@
           `</div>` +
           playBtn +
           `<div class="mp-ranking-meta">${plays} écoutes</div>` +
-          `<button class="add-to-pl-btn mp-ranking-add" type="button" data-add-to-playlist="${_esc(t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
+          `<button class="add-to-pl-btn mp-ranking-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
           `<button class="like-btn mp-ranking-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
           audioEl +
         `</li>`
@@ -392,9 +386,11 @@
         ? `<img src="${_esc(coverUrl)}" alt="" class="mp-son-card-cover-img" />`
         : '';
       // Badge 🧬 si l'artiste a un ADN publié achetable
-      const adnInfo = artistSlug && _state.adnBySlug[artistSlug];
-      const adnBadge = adnInfo
-        ? `<div class="mp-adn-badge" data-adn-id="${_esc(adnInfo.adnId)}" data-adn-artist-slug="${_esc(artistSlug)}" data-adn-price="${adnInfo.adnPrice}" data-adn-artist="${_esc(name)}" title="ADN ${_esc(name)}">\u{1F9EC} ADN</div>`
+      // Badge Recette si le track a un prompt achetable
+      const promptId    = t.promptId    || null;
+      const promptPrice = t.promptPriceCredits != null ? t.promptPriceCredits : null;
+      const recipeBadge = (promptId && promptPrice != null)
+        ? `<div class="mp-recipe-badge" data-prompt-id="${_esc(promptId)}" data-prompt-price="${promptPrice}" data-track-name="${_esc(t.name || '')}" title="D\u00e9bloquer la recette \u00b7 ${promptPrice} Smyles">\uD83D\uDD13 Recette</div>`
         : '';
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
@@ -403,7 +399,7 @@
             `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +
               `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
             `</button>` +
-            adnBadge +
+            recipeBadge +
           `</div>` +
           `<div class="mp-son-card-title">${_esc(title)}</div>` +
           `<div class="mp-son-card-artist">` +
@@ -411,7 +407,7 @@
           `</div>` +
           `<div class="mp-son-card-meta">` +
             `<span class="mp-son-card-meta-plays">${plays} écoutes</span>` +
-            `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
+            `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
             `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
           `</div>` +
           (streamUrl
@@ -620,12 +616,12 @@
         return;
       }
 
-      // Badge 🧬 ADN artiste → modale d'achat ADN
-      const adnBadgeBtn = ev.target.closest('.mp-adn-badge[data-adn-id]');
-      if (adnBadgeBtn) {
+      // Badge Recette → modale d'achat recette
+      const recipeBadgeBtn = ev.target.closest('.mp-recipe-badge[data-prompt-id]');
+      if (recipeBadgeBtn) {
         ev.stopPropagation();
         ev.preventDefault();
-        _openArtistAdnModal(adnBadgeBtn);
+        _openRecipeUnlockModal(recipeBadgeBtn);
         return;
       }
 
@@ -689,42 +685,40 @@
   }
 
 
-  // ── Modale achat ADN artiste (depuis badge 🧬 sur une track card) ────────
-  // Appelée quand l'user clique le badge .mp-adn-badge sur une card.
-  // badgeEl a : data-adn-id, data-adn-price, data-adn-artist, data-adn-artist-slug
-  function _openArtistAdnModal(badgeEl) {
-    const adnId      = badgeEl.dataset.adnId;
-    const adnPrice   = parseInt(badgeEl.dataset.adnPrice, 10) || 0;
-    const artistName = badgeEl.dataset.adnArtist || 'cet artiste';
-    const artistSlug = badgeEl.dataset.adnArtistSlug || '';
+  // ── Modale achat recette (depuis badge Recette sur une track card) ────────
+  // badgeEl a : data-prompt-id, data-prompt-price, data-track-name
+  function _openRecipeUnlockModal(badgeEl) {
+    const promptId   = badgeEl.dataset.promptId;
+    const price      = parseInt(badgeEl.dataset.promptPrice, 10) || 0;
+    const trackName  = badgeEl.dataset.trackName || 'ce son';
 
-    // Évite d'ouvrir 2 modales en même temps
-    if (document.getElementById('mp-adn-modal')) return;
+    if (document.getElementById('mp-recipe-modal')) return;
 
     const overlay = document.createElement('div');
-    overlay.id = 'mp-adn-modal';
-    overlay.className = 'mp-adn-modal-overlay';
+    overlay.id = 'mp-recipe-modal';
+    overlay.className = 'mp-recipe-modal-overlay';
     overlay.innerHTML = `
-      <div class="mp-adn-modal-box" role="dialog" aria-modal="true" aria-label="Débloquer l'ADN">
-        <button class="mp-adn-modal-close" aria-label="Fermer">&times;</button>
-        <div class="mp-adn-modal-icon">🧬</div>
-        <h3 class="mp-adn-modal-title">ADN · ${_esc(artistName)}</h3>
-        <p class="mp-adn-modal-desc">
-          Débloque l'ADN de <strong>${_esc(artistName)}</strong> et bénéficie de
-          <strong>-30 % sur toutes ses recettes</strong>.
+      <div class="mp-recipe-modal-box" role="dialog" aria-modal="true">
+        <button class="mp-recipe-modal-close" aria-label="Fermer">&times;</button>
+        <div class="mp-recipe-modal-icon">🔓</div>
+        <h3 class="mp-recipe-modal-title">Recette · ${_esc(trackName)}</h3>
+        <p class="mp-recipe-modal-desc">
+          Débloque la recette Suno de <strong>${_esc(trackName)}</strong>
+          pour régénérer ce son ou t’en inspirer.
         </p>
-        <div class="mp-adn-modal-price">
-          <span class="mp-adn-modal-price-val">${adnPrice}</span>
-          <span class="mp-adn-modal-price-unit">Smyles</span>
+        <div class="mp-recipe-modal-price">
+          <span class="mp-recipe-modal-price-val">${price}</span>
+          <span class="mp-recipe-modal-price-unit">Smyles</span>
         </div>
-        <div class="mp-adn-modal-actions">
-          <button class="mp-adn-modal-cancel">Annuler</button>
-          <button class="mp-adn-modal-confirm" id="mp-adn-confirm-btn">
-            Débloquer · ${adnPrice} <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <div class="mp-recipe-modal-actions">
+          <button class="mp-recipe-modal-cancel">Annuler</button>
+          <button class="mp-recipe-modal-confirm" id="mp-recipe-confirm-btn">
+            Débloquer · ${price}
+            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           </button>
         </div>
-        <p class="mp-adn-modal-note">
-          L'accès ADN est permanent et lié à ton compte.
+        <p class="mp-recipe-modal-note">
+          La recette sera disponible dans ta bibliothèque après achat.
         </p>
       </div>
     `;
@@ -735,33 +729,35 @@
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
     }
 
-    // Fermeture : bouton X, bouton Annuler, clic hors de la box
-    overlay.querySelector('.mp-adn-modal-close').addEventListener('click', _close);
-    overlay.querySelector('.mp-adn-modal-cancel').addEventListener('click', _close);
+    overlay.querySelector('.mp-recipe-modal-close').addEventListener('click', _close);
+    overlay.querySelector('.mp-recipe-modal-cancel').addEventListener('click', _close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) _close(); });
-    document.addEventListener('keydown', function _esc(e) {
-      if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', _esc); }
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', onEsc); }
     });
 
-    // Confirmation → appel API
-    overlay.querySelector('#mp-adn-confirm-btn').addEventListener('click', async () => {
-      const btn = overlay.querySelector('#mp-adn-confirm-btn');
+    overlay.querySelector('#mp-recipe-confirm-btn').addEventListener('click', async () => {
+      const btn = overlay.querySelector('#mp-recipe-confirm-btn');
       btn.disabled = true;
-      btn.textContent = 'Débloquage…';
+      btn.textContent = 'Déblocage…';
       try {
-        await window.apiFetch(`/unlocks/adns/${encodeURIComponent(adnId)}`, { method: 'POST' });
+        const resp = await window.apiFetch(
+          `/unlocks/prompts/${encodeURIComponent(promptId)}`,
+          { method: 'POST' }
+        );
         _close();
-        if (window.showToast) window.showToast('ADN débloqué · -30 % sur toutes les recettes 🎉');
-        // Marquer visuellement tous les badges de cet artiste comme "owned"
-        document.querySelectorAll(`.mp-adn-badge[data-adn-id="${CSS.escape(adnId)}"]`).forEach(el => {
+        const msg = (resp && resp.perk_applied)
+          ? 'Recette débloquée avec perk ADN −30 % 🔓'
+          : 'Recette débloquée 🔓 — retrouve-la dans ta bibliothèque';
+        if (window.showToast) window.showToast(msg);
+        // Marquer le badge comme owned
+        document.querySelectorAll(`.mp-recipe-badge[data-prompt-id="${CSS.escape(promptId)}"]`).forEach(el => {
           el.classList.add('is-owned');
-          el.title = 'ADN débloqué ✓';
+          el.title = 'Recette débloquée ✓';
         });
-        // Retirer cet artiste du map pour éviter de ré-ouvrir la modale
-        if (artistSlug) delete _state.adnBySlug[artistSlug];
       } catch (err) {
         btn.disabled = false;
-        btn.innerHTML = `Débloquer · ${adnPrice} <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+        btn.innerHTML = `Débloquer · ${price} <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
         const status = err && err.status;
         if (status === 401) {
           _close();
@@ -774,20 +770,19 @@
           if (window.showToast) window.showToast(msg);
         } else if (status === 409) {
           _close();
-          if (window.showToast) window.showToast('Tu possèdes déjà cet ADN.');
-          document.querySelectorAll(`.mp-adn-badge[data-adn-id="${CSS.escape(adnId)}"]`).forEach(el => {
+          if (window.showToast) window.showToast('Tu possèdes déjà cette recette.');
+          document.querySelectorAll(`.mp-recipe-badge[data-prompt-id="${CSS.escape(promptId)}"]`).forEach(el => {
             el.classList.add('is-owned');
-            el.title = 'ADN débloqué ✓';
           });
         } else {
-          if (window.showToast) window.showToast('Erreur lors du débloquage. Réessaie.');
-          console.error('[marketplace] unlock ADN error:', err);
+          if (window.showToast) window.showToast('Erreur lors du déblocage. Réessaie.');
+          console.error('[marketplace] unlock recipe error:', err);
         }
       }
     });
   }
 
-  // ── Boot ─────────────────────────────────────────────────────────────────
+    // ── Boot ─────────────────────────────────────────────────────────────────
 
   async function _boot() {
     if (!_isMarketplacePage()) return;

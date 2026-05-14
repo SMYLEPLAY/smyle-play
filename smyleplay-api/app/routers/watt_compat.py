@@ -265,7 +265,12 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         "date":       date_fr,
         # Sprint 1 — pivot écoute
         "coverUrl":   track.cover_url or "",
-        "promptId":   str(track.prompt_id) if track.prompt_id else None,
+        "trackUuid":         str(track.id),  # UUID réel — utilisé par /playlists/{id}/tracks
+        "promptId":          str(track.prompt_id) if track.prompt_id else None,
+        # Prix de la recette liée — injecté a posteriori par les endpoints
+        # qui font un batch query sur Prompt (tracks-recent, /watt/artists).
+        # Vaut None si la track n'a pas de prompt ou si non encore injecté.
+        "promptPriceCredits": None,
     }
     if artist is not None:
         out["artistName"] = artist.artist_name or ""
@@ -787,7 +792,25 @@ async def tracks_recent(
         .limit(safe_limit)
     )
     rows = (await db.execute(stmt)).all()
-    return {"tracks": [_track_to_flask_dict(t, a) for t, a in rows]}
+    tracks_out = [_track_to_flask_dict(t, a) for t, a in rows]
+
+    # Batch-fetch du prix des recettes liées (promptId → priceCredits).
+    # Une seule requête pour tous les tracks ayant un prompt_id.
+    prompt_ids = [
+        t.prompt_id for t, _ in rows if t.prompt_id is not None
+    ]
+    if prompt_ids:
+        from app.models.prompt import Prompt as _Prompt
+        price_rows = (await db.execute(
+            select(_Prompt.id, _Prompt.price_credits)
+            .where(_Prompt.id.in_(prompt_ids))
+        )).all()
+        price_by_id = {str(r.id): r.price_credits for r in price_rows}
+        for td in tracks_out:
+            if td.get("promptId"):
+                td["promptPriceCredits"] = price_by_id.get(td["promptId"])
+
+    return {"tracks": tracks_out}
 
 
 @router.post("/plays/{public_id}")
