@@ -272,6 +272,9 @@ async def get_public_playlist_with_tracks(
         raise HTTPException(status_code=404, detail="Playlist introuvable")
 
     tracks = await svc.list_playlist_tracks(db, playlist.id)
+    # seed_prompt est du contenu gated : masqué si l'ADN est en vente.
+    # Exposé uniquement via /me/library/playlist-adns après achat.
+    seed_visible = not playlist.adn_for_sale
     return PlaylistWithTracks(
         id=playlist.id,
         owner_id=playlist.owner_id,
@@ -279,7 +282,7 @@ async def get_public_playlist_with_tracks(
         visibility=playlist.visibility,  # type: ignore[arg-type]
         color=playlist.color,
         cover_video_url=playlist.cover_video_url,
-        seed_prompt=playlist.seed_prompt,
+        seed_prompt=playlist.seed_prompt if seed_visible else None,
         adn_for_sale=playlist.adn_for_sale,
         adn_price=playlist.adn_price,
         created_at=playlist.created_at,

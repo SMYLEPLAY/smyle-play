@@ -24,6 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.adn import Adn
 from app.models.owned_adn import OwnedAdn
+from app.models.owned_playlist_adn import OwnedPlaylistAdn
+from app.models.playlist import Playlist
 from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
@@ -441,5 +443,48 @@ async def list_user_library_adns(
             "artist": _artist_card(u),
         }
         for oa, a, u in rows
+    ]
+    return items, int(total)
+
+
+async def list_user_library_playlist_adns(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[dict], int]:
+    """
+    Liste les ADN Playlist achetés par user_id, tri owned_at DESC.
+    seed_prompt est exposé ici car l'utilisateur a payé.
+    """
+    base_filter = OwnedPlaylistAdn.user_id == user_id
+
+    total = (await db.execute(
+        select(func.count(OwnedPlaylistAdn.playlist_id)).where(base_filter)
+    )).scalar() or 0
+
+    offset = (page - 1) * per_page
+    items_q = (
+        select(OwnedPlaylistAdn, Playlist, User)
+        .join(Playlist, Playlist.id == OwnedPlaylistAdn.playlist_id)
+        .join(User, User.id == Playlist.owner_id)
+        .where(base_filter)
+        .order_by(OwnedPlaylistAdn.owned_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    rows = (await db.execute(items_q)).all()
+    items = [
+        {
+            "playlist_id": str(pl.id),
+            "owned_at": opa.owned_at,
+            "title": pl.title,
+            "color": pl.color,
+            "seed_prompt": pl.seed_prompt,
+            "adn_price": pl.adn_price,
+            "owner": _artist_card(u),
+        }
+        for opa, pl, u in rows
     ]
     return items, int(total)

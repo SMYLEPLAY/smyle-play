@@ -157,10 +157,12 @@ async def add_track(
     if track is None:
         raise TrackNotFound()
 
-    # Règle : une playlist publique ne peut contenir que des tracks de
-    # l'owner. Les privées (wishlist) peuvent contenir n'importe quoi.
-    if playlist.visibility == "public" and track.artist_id != owner.id:
-        raise PlaylistPublicOwnerMismatch()
+    # Règle retirée (2026-05-14) : on autorise l'ajout de n'importe quelle
+    # track dans n'importe quelle playlist. La restriction public/owner
+    # est maintenue uniquement lors du PASSAGE en public (update_playlist),
+    # ce qui est suffisant pour garantir la cohérence des playlists publiques
+    # tout en permettant aux users d'ajouter des sons marketplace à leurs
+    # playlists privées existantes ou récemment créées.
 
     # Position : si absente, placer en queue.
     if position is None:

@@ -44,6 +44,7 @@
     smyleArtist: null,     // payload de /watt/artists/smyle
     artists:     [],       // tous les artistes publics (Smyle compris)
     tracks:      [],       // tous les sons (source tracks-recent)
+    adnBySlug:   {},       // slug → {adnId, adnPrice} pour badge 🧬 track cards
     // Refs DOM résolues une seule fois pour éviter les lookups répétés.
     dom: null,
   };
@@ -161,9 +162,17 @@
     try {
       const data = await apiFetch('/watt/artists');
       _state.artists = Array.isArray(data && data.artists) ? data.artists : [];
+      // Index slug → {adnId, adnPrice} pour le badge 🧬 sur les track cards
+      _state.adnBySlug = {};
+      _state.artists.forEach(function(a) {
+        if (a.artistAdnId && a.artistAdnPrice) {
+          _state.adnBySlug[a.slug] = { adnId: a.artistAdnId, adnPrice: a.artistAdnPrice };
+        }
+      });
     } catch (err) {
       console.warn('[marketplace] /watt/artists :', err && err.message);
       _state.artists = [];
+      _state.adnBySlug = {};
     }
   }
 
@@ -382,6 +391,11 @@
       const coverHTML  = coverUrl
         ? `<img src="${_esc(coverUrl)}" alt="" class="mp-son-card-cover-img" />`
         : '';
+      // Badge 🧬 si l'artiste a un ADN publié achetable
+      const adnInfo = artistSlug && _state.adnBySlug[artistSlug];
+      const adnBadge = adnInfo
+        ? `<div class="mp-adn-badge" data-adn-id="${_esc(adnInfo.adnId)}" data-adn-artist-slug="${_esc(artistSlug)}" data-adn-price="${adnInfo.adnPrice}" data-adn-artist="${_esc(name)}" title="ADN ${_esc(name)}">\u{1F9EC} ADN</div>`
+        : '';
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
           `<div class="mp-son-card-cover">` +
@@ -389,6 +403,7 @@
             `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +
               `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
             `</button>` +
+            adnBadge +
           `</div>` +
           `<div class="mp-son-card-title">${_esc(title)}</div>` +
           `<div class="mp-son-card-artist">` +
@@ -605,6 +620,15 @@
         return;
       }
 
+      // Badge 🧬 ADN artiste → modale d'achat ADN
+      const adnBadgeBtn = ev.target.closest('.mp-adn-badge[data-adn-id]');
+      if (adnBadgeBtn) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        _openArtistAdnModal(adnBadgeBtn);
+        return;
+      }
+
       const card = ev.target.closest('.mp-son-card');
       if (!card) return;
 
@@ -664,6 +688,104 @@
     }, true);
   }
 
+
+  // ── Modale achat ADN artiste (depuis badge 🧬 sur une track card) ────────
+  // Appelée quand l'user clique le badge .mp-adn-badge sur une card.
+  // badgeEl a : data-adn-id, data-adn-price, data-adn-artist, data-adn-artist-slug
+  function _openArtistAdnModal(badgeEl) {
+    const adnId      = badgeEl.dataset.adnId;
+    const adnPrice   = parseInt(badgeEl.dataset.adnPrice, 10) || 0;
+    const artistName = badgeEl.dataset.adnArtist || 'cet artiste';
+    const artistSlug = badgeEl.dataset.adnArtistSlug || '';
+
+    // Évite d'ouvrir 2 modales en même temps
+    if (document.getElementById('mp-adn-modal')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mp-adn-modal';
+    overlay.className = 'mp-adn-modal-overlay';
+    overlay.innerHTML = `
+      <div class="mp-adn-modal-box" role="dialog" aria-modal="true" aria-label="Débloquer l'ADN">
+        <button class="mp-adn-modal-close" aria-label="Fermer">&times;</button>
+        <div class="mp-adn-modal-icon">🧬</div>
+        <h3 class="mp-adn-modal-title">ADN · ${_esc(artistName)}</h3>
+        <p class="mp-adn-modal-desc">
+          Débloque l'ADN de <strong>${_esc(artistName)}</strong> et bénéficie de
+          <strong>-30 % sur toutes ses recettes</strong>.
+        </p>
+        <div class="mp-adn-modal-price">
+          <span class="mp-adn-modal-price-val">${adnPrice}</span>
+          <span class="mp-adn-modal-price-unit">Smyles</span>
+        </div>
+        <div class="mp-adn-modal-actions">
+          <button class="mp-adn-modal-cancel">Annuler</button>
+          <button class="mp-adn-modal-confirm" id="mp-adn-confirm-btn">
+            Débloquer · ${adnPrice} <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </button>
+        </div>
+        <p class="mp-adn-modal-note">
+          L'accès ADN est permanent et lié à ton compte.
+        </p>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+
+    // Fermeture : bouton X, bouton Annuler, clic hors de la box
+    overlay.querySelector('.mp-adn-modal-close').addEventListener('click', _close);
+    overlay.querySelector('.mp-adn-modal-cancel').addEventListener('click', _close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) _close(); });
+    document.addEventListener('keydown', function _esc(e) {
+      if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', _esc); }
+    });
+
+    // Confirmation → appel API
+    overlay.querySelector('#mp-adn-confirm-btn').addEventListener('click', async () => {
+      const btn = overlay.querySelector('#mp-adn-confirm-btn');
+      btn.disabled = true;
+      btn.textContent = 'Débloquage…';
+      try {
+        await window.apiFetch(`/unlocks/adns/${encodeURIComponent(adnId)}`, { method: 'POST' });
+        _close();
+        if (window.showToast) window.showToast('ADN débloqué · -30 % sur toutes les recettes 🎉');
+        // Marquer visuellement tous les badges de cet artiste comme "owned"
+        document.querySelectorAll(`.mp-adn-badge[data-adn-id="${CSS.escape(adnId)}"]`).forEach(el => {
+          el.classList.add('is-owned');
+          el.title = 'ADN débloqué ✓';
+        });
+        // Retirer cet artiste du map pour éviter de ré-ouvrir la modale
+        if (artistSlug) delete _state.adnBySlug[artistSlug];
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = `Débloquer · ${adnPrice} <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+        const status = err && err.status;
+        if (status === 401) {
+          _close();
+          if (window.showToast) window.showToast('Connecte-toi pour débloquer ce contenu.');
+        } else if (status === 402) {
+          const d = err.body && err.body.detail;
+          const msg = (d && typeof d === 'object')
+            ? `Crédits insuffisants — il te faut ${d.required}, tu en as ${d.available}.`
+            : 'Crédits insuffisants.';
+          if (window.showToast) window.showToast(msg);
+        } else if (status === 409) {
+          _close();
+          if (window.showToast) window.showToast('Tu possèdes déjà cet ADN.');
+          document.querySelectorAll(`.mp-adn-badge[data-adn-id="${CSS.escape(adnId)}"]`).forEach(el => {
+            el.classList.add('is-owned');
+            el.title = 'ADN débloqué ✓';
+          });
+        } else {
+          if (window.showToast) window.showToast('Erreur lors du débloquage. Réessaie.');
+          console.error('[marketplace] unlock ADN error:', err);
+        }
+      }
+    });
+  }
 
   // ── Boot ─────────────────────────────────────────────────────────────────
 
