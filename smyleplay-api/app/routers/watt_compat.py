@@ -439,6 +439,26 @@ async def list_artists(db: AsyncSession = Depends(get_db)) -> dict:
             "isOfficial":     bool(user.is_official),
             "created_at":     user.created_at.isoformat() if user.created_at else None,
         })
+
+    # Enrichissement : ADN publié de chaque artiste (pour badge 🧬 marketplace)
+    # Une seule requête groupée plutôt que N requêtes par artiste.
+    artist_ids = [a["userId"] for a in artists]
+    if artist_ids:
+        from app.models.adn import Adn as _Adn
+        adn_rows = (await db.execute(
+            select(_Adn.artist_id, _Adn.id, _Adn.price_credits)
+            .where(
+                _Adn.artist_id.in_(artist_ids),
+                _Adn.is_published.is_(True),
+                _Adn.is_deleted.is_(False),
+            )
+        )).all()
+        adn_by_artist = {str(r.artist_id): {"adnId": str(r.id), "adnPrice": r.price_credits} for r in adn_rows}
+        for a in artists:
+            adn_info = adn_by_artist.get(a["userId"])
+            a["artistAdnId"]    = adn_info["adnId"]    if adn_info else None
+            a["artistAdnPrice"] = adn_info["adnPrice"] if adn_info else None
+
     return {"artists": artists}
 
 

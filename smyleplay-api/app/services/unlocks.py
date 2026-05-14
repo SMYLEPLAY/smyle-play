@@ -414,3 +414,123 @@ async def unlock_adn_atomic(
     )
 
     return _UnlockAdnResult(owned_adn=owned, transaction=tx, paid=paid)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# unlock_playlist_adn_atomic
+# ─────────────────────────────────────────────────────────────────────────────
+
+class _UnlockPlaylistAdnResult:
+    __slots__ = ("owned_playlist_adn", "transaction", "paid")
+
+    def __init__(self, owned_playlist_adn, transaction, paid: int):
+        self.owned_playlist_adn = owned_playlist_adn
+        self.transaction = transaction
+        self.paid = paid
+
+
+async def unlock_playlist_adn_atomic(
+    db,
+    *,
+    buyer_id,
+    playlist_id,
+) -> _UnlockPlaylistAdnResult:
+    """
+    Achète l'ADN d'une playlist publique avec des Smyles.
+    Donne ensuite droit au perk -20% sur les ADN Track de cette playlist.
+    """
+    from uuid import UUID
+    from sqlalchemy import select, text, func
+    from sqlalchemy.exc import IntegrityError
+    from app.models.playlist import Playlist
+    from app.models.owned_playlist_adn import OwnedPlaylistAdn
+    from app.models.transaction import Transaction, TransactionType, TransactionStatus
+    from app.services.credits import compute_split, _acquire_user_locks
+
+    playlist = (await db.execute(
+        select(Playlist).where(Playlist.id == playlist_id)
+    )).scalar_one_or_none()
+
+    if playlist is None or not playlist.adn_for_sale or not playlist.adn_price:
+        raise AdnNotPurchasable("ADN playlist introuvable ou non disponible à la vente")
+
+    if playlist.visibility != "public":
+        raise AdnNotPurchasable("ADN playlist non disponible")
+
+    owner_id = playlist.owner_id
+    paid = int(playlist.adn_price)
+
+    if buyer_id == owner_id:
+        raise SelfPurchaseForbidden("Tu ne peux pas acheter ton propre ADN de playlist")
+
+    # Vérification possession déjà existante (avant savepoint)
+    existing = (await db.execute(
+        select(OwnedPlaylistAdn).where(
+            OwnedPlaylistAdn.user_id == buyer_id,
+            OwnedPlaylistAdn.playlist_id == playlist_id,
+        )
+    )).scalar_one_or_none()
+    if existing is not None:
+        raise AlreadyOwned("Tu possèdes déjà l'ADN de cette playlist")
+
+    async with db.begin_nested():
+        await _acquire_user_locks(db, [buyer_id, owner_id])
+
+        artist_revenue, platform_fee = compute_split(paid)
+        assert artist_revenue + platform_fee == paid
+
+        buyer_row = (await db.execute(
+            text("SELECT credits_balance FROM users WHERE id = :uid"),
+            {"uid": buyer_id},
+        )).first()
+        if buyer_row is None:
+            raise AdnNotPurchasable("Acheteur introuvable")
+        if int(buyer_row.credits_balance) < paid:
+            raise InsufficientCredits(required=paid, available=int(buyer_row.credits_balance))
+
+        tx = Transaction(
+            type=TransactionType.UNLOCK,
+            status=TransactionStatus.PENDING,
+            buyer_id=buyer_id,
+            seller_id=owner_id,
+            credits_amount=paid,
+            artist_revenue=artist_revenue,
+            platform_fee=platform_fee,
+            metadata_json={
+                "playlist_id": str(playlist_id),
+                "owner_id": str(owner_id),
+            },
+        )
+        db.add(tx)
+        await db.flush()
+
+        await db.execute(
+            text("UPDATE users SET credits_balance = credits_balance - :paid WHERE id = :uid"),
+            {"paid": paid, "uid": buyer_id},
+        )
+        await db.execute(
+            text(
+                "UPDATE users "
+                "SET credits_balance = credits_balance + :rev, "
+                "    credits_earned_total = credits_earned_total + :rev "
+                "WHERE id = :uid"
+            ),
+            {"rev": artist_revenue, "uid": owner_id},
+        )
+
+        owned = OwnedPlaylistAdn(user_id=buyer_id, playlist_id=playlist_id)
+        db.add(owned)
+        try:
+            await db.flush()
+        except IntegrityError as e:
+            raise AlreadyOwned("Tu possèdes déjà l'ADN de cette playlist") from e
+
+        tx.status = TransactionStatus.COMPLETED
+        tx.completed_at = func.now()
+        await db.flush()
+
+    return _UnlockPlaylistAdnResult(
+        owned_playlist_adn=owned,
+        transaction=tx,
+        paid=paid,
+    )

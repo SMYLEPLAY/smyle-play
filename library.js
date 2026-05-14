@@ -28,7 +28,7 @@ function fmtDate(iso) {
   } catch (_) { return '—'; }
 }
 
-let _libData = { prompts: [], adns: [], voices: [] };
+let _libData = { prompts: [], adns: [], playlist_adns: [], voices: [] };
 
 
 /* ── Init + auth gate ────────────────────────────────────────────────────── */
@@ -78,9 +78,10 @@ async function loadAll() {
   // directement une liste (pas un { items: [...] }) — le backend voices
   // n'est pas paginé contrairement à /me/library/prompts. On accède donc
   // à voicesRes.value directement, pas .items.
-  const [promptsRes, adnsRes, voicesRes] = await Promise.allSettled([
+  const [promptsRes, adnsRes, playlistAdnsRes, voicesRes] = await Promise.allSettled([
     apiFetch('/me/library/prompts?per_page=100'),
     apiFetch('/me/library/adns?per_page=100'),
+    apiFetch('/me/library/playlist-adns?per_page=100'),
     apiFetch('/api/voices/me/unlocked'),
   ]);
 
@@ -98,6 +99,13 @@ async function loadAll() {
     _renderError('lib-adns-list', adnsRes.reason);
   }
 
+  if (playlistAdnsRes.status === 'fulfilled') {
+    _libData.playlist_adns = playlistAdnsRes.value.items || [];
+    renderPlaylistAdns(_libData.playlist_adns);
+  } else {
+    _renderError('lib-playlist-adns-list', playlistAdnsRes.reason);
+  }
+
   if (voicesRes.status === 'fulfilled') {
     _libData.voices = Array.isArray(voicesRes.value) ? voicesRes.value : [];
     renderVoices(_libData.voices);
@@ -105,8 +113,9 @@ async function loadAll() {
     _renderError('lib-voices-list', voicesRes.reason);
   }
 
+  const totalAdns = _libData.adns.length + _libData.playlist_adns.length;
   setEl('lib-count-prompts', _libData.prompts.length);
-  setEl('lib-count-adns',    _libData.adns.length);
+  setEl('lib-count-adns',    totalAdns || '—');
   setEl('lib-count-voices',  _libData.voices.length);
 }
 
@@ -250,6 +259,55 @@ function renderPrompts(items) {
         ${lyricsBlock}
       </div>`;
   }).join('');
+}
+
+
+/* ── Render ADN Playlist ─────────────────────────────────────────────────── */
+
+function renderPlaylistAdns(items) {
+  const el = getEl('lib-playlist-adns-list');
+  const section = getEl('lib-playlist-adns-section');
+  if (!el) return;
+
+  if (!items.length) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+  if (section) section.style.display = '';
+
+  el.innerHTML = `<div class="lib-subsection-title">🧬 ADN Playlist</div>` +
+    items.map((p, i) => {
+      const owner = p.owner || {};
+      const slug  = owner.slug || '';
+      const color = p.color || '#cc88ff';
+      const ownerLink = slug
+        ? `<a href="/u/${esc(slug)}">${esc(owner.artist_name || 'Artiste')}</a>`
+        : esc(owner.artist_name || 'Artiste');
+
+      const seedBlock = p.seed_prompt ? `
+        <div class="lib-content-block" style="margin-top:10px">
+          <div class="lib-content-header">
+            <span class="lib-content-label">🧬 ADN</span>
+            <button class="lib-copy-btn" onclick="copyContent('lib-pl-adn-${i}', this)">Copier</button>
+          </div>
+          <div class="lib-content-body" id="lib-pl-adn-${i}">${esc(p.seed_prompt)}</div>
+        </div>` : '';
+
+      return `
+        <div class="lib-item" style="border-left:3px solid ${esc(color)}">
+          <div class="lib-item-head">
+            <div class="lib-item-title">
+              <span style="color:${esc(color)}">🧬</span>
+              ${esc(p.title || 'Playlist')}
+              <span class="lib-adn-kind lib-adn-kind-playlist">ADN Playlist</span>
+            </div>
+            <div class="lib-item-meta">Acquis le ${fmtDate(p.owned_at)}</div>
+          </div>
+          <div class="lib-item-artist">univers de ${ownerLink}</div>
+          <div class="lib-item-desc">-20% sur tous les ADN Track de cette playlist</div>
+          ${seedBlock}
+        </div>`;
+    }).join('');
 }
 
 
