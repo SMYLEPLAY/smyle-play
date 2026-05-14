@@ -728,6 +728,9 @@ function _updateSaleDisclaimerVisibility(artist) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 var _boutiqueArtist = null;
+// Cache des données track/voix pour le drawer — évite d'encoder du JSON en HTML
+const _trackDetailCache = {};
+const _voiceDetailCache = {};
 
 // ── Accordéon Playlists ADN — sous la card ADN ──────────────────────────────
 
@@ -766,6 +769,20 @@ function renderPlaylistsAdn(artist) {
   }).join('');
 }
 
+// ── Helpers d'accès au cache — appelés depuis les onclick HTML ────────────
+
+function openTrackDetailById(trackId) {
+  const data = _trackDetailCache[trackId];
+  if (!data) return;
+  openBoutiqueDrawer('son', JSON.stringify(data));
+}
+
+function openVoiceDetailById(voiceId) {
+  const data = _voiceDetailCache[voiceId];
+  if (!data) return;
+  openBoutiqueDrawer('voix', JSON.stringify(data));
+}
+
 // ── Drawer — ouvre le panneau de détail ──────────────────────────────────
 
 function openBoutiqueDrawer(type, dataStr) {
@@ -777,7 +794,7 @@ function openBoutiqueDrawer(type, dataStr) {
   let data;
   try { data = JSON.parse(dataStr); } catch (e) { return; }
 
-  const artist  = _boutiqueArtist || {};
+  const artist  = (typeof state !== 'undefined' && state.artist) || _boutiqueArtist || {};
   const isSelf  = !!artist.isSelf;
   const LICENSE_LBL = { personnel: '🎧 Personnel', commercial: '💼 Commercial', exclusif: '👑 Exclusif' };
 
@@ -1231,8 +1248,8 @@ function renderTracks(artist) {
     // data-stream-url permet au click handler de retrouver l'URL
     // pour le fallback play JS sur la card entière.
     const streamAttr = t.streamUrl ? ` data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"` : '';
-    // Data JSON sérialisée pour le drawer (titre, audio, prompt éventuel)
-    const _drawerData = JSON.stringify({
+    // Stocke les données dans le cache — évite le problème des " en HTML
+    _trackDetailCache[t.id] = {
       id:           linkedPrompt ? linkedPrompt.id : null,
       trackId:      t.id,
       title:        t.name || t.title || '',
@@ -1242,8 +1259,7 @@ function renderTracks(artist) {
       audioUrl:     t.streamUrl || t.audioUrl || '',
       coverUrl:     t.coverUrl || t.cover_url || '',
       hasPrompt:    !!linkedPrompt,
-    });
-    const _drawerEncoded = _drawerData.replace(/'/g, '&#39;');
+    };
 
     card.innerHTML = `
       <div class="ap-track-card-inner"${streamAttr}>
@@ -1252,7 +1268,7 @@ function renderTracks(artist) {
           <div class="ap-track-card-top">
             <h3 class="ap-track-card-title ap-track-detail-trigger"
                 style="cursor:pointer"
-                onclick="openBoutiqueDrawer('son','${_drawerEncoded}')">${safeName}</h3>
+                onclick="openTrackDetailById('${t.id}')">${safeName}</h3>
             <div class="ap-track-card-meta">
               <span>▶ ${plays}</span>
               ${date ? `<span>· ${date}</span>` : ''}
@@ -1535,7 +1551,7 @@ function renderVoices(artist) {
       ? `<span class="ap-voice-linked" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(255,215,0,.1);color:#FFD700;font-size:11px;letter-spacing:.02em">🎵 Démo dans un morceau</span>`
       : '';
 
-    const _vDrawerData = JSON.stringify({
+    _voiceDetailCache[v.id] = {
       id:           v.id,
       name:         v.name || '',
       style:        v.style || '',
@@ -1543,12 +1559,11 @@ function renderVoices(artist) {
       license:      v.license || '',
       genres:       v.genres || [],
       previewUrl:   v.preview_url || v.previewUrl || '',
-    });
-    const _vDrawerEncoded = _vDrawerData.replace(/'/g, '&#39;');
+    };
 
     card.innerHTML = `
       <div class="ap-voice-card-top" style="cursor:pointer"
-           onclick="openBoutiqueDrawer('voix','${_vDrawerEncoded}')">
+           onclick="openVoiceDetailById('${v.id}')"
         <h3 class="ap-voice-card-title">${safeName}</h3>
         <span class="${licenseClass}">${licenseLbl}</span>
       </div>

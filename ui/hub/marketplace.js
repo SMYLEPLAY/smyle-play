@@ -390,8 +390,10 @@
       // Badge Recette si le track a un prompt achetable
       const promptId    = t.promptId    || null;
       const promptPrice = t.promptPriceCredits != null ? t.promptPriceCredits : null;
-      const recipeBadge = (promptId && promptPrice != null)
-        ? `<div class="mp-recipe-badge" data-prompt-id="${_esc(promptId)}" data-prompt-price="${promptPrice}" data-track-name="${_esc(t.name || '')}" title="D\u00e9bloquer la recette \u00b7 ${promptPrice} Smyles">\uD83D\uDD13 Recette</div>`
+      // Badge recette retir\u00e9 de la cover \u2014 l'unlock se fait depuis le drawer (clic cover/titre)
+      // Indicateur discret si une recette est disponible
+      const recipeIndicator = (promptId && promptPrice != null)
+        ? `<span class="mp-son-card-recipe-dot" title="Recette \u00b7 ${promptPrice} Smyles">\uD83E\uDDEC</span>`
         : '';
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
@@ -400,9 +402,8 @@
             `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +
               `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
             `</button>` +
-            recipeBadge +
           `</div>` +
-          `<div class="mp-son-card-title">${_esc(title)}</div>` +
+          `<div class="mp-son-card-title">${_esc(title)}${recipeIndicator}</div>` +
           `<div class="mp-son-card-artist">` +
             `<a class="mp-son-card-artist-name" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
           `</div>` +
@@ -614,15 +615,6 @@
           return;
         }
         // Click ailleurs sur la row → ne fait rien (navigation libre).
-        return;
-      }
-
-      // Badge Recette → modale d'achat recette
-      const recipeBadgeBtn = ev.target.closest('.mp-recipe-badge[data-prompt-id]');
-      if (recipeBadgeBtn) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        _openRecipeUnlockModal(recipeBadgeBtn);
         return;
       }
 
