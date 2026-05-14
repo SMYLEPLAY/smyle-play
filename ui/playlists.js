@@ -207,20 +207,23 @@
       '.pl-cover-input { display: none; }' +
       '.pl-icon-btn-cover { background: rgba(204,136,255,.1); border: 1px solid rgba(204,136,255,.35); color: #cc88ff; border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer; }' +
       '.pl-icon-btn-cover:hover { background: rgba(204,136,255,.2); }' +
-      // Artiste public section — cards portrait 9:16 avec cover vidéo
+      // Artiste public section — accordion + cards carrées 1:1
       '.ap-playlists-section { padding: 0 12px; margin: 20px 0 28px; }' +
-      '.ap-playlists-hdr { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }' +
+      '.ap-playlists-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; border: none; padding: 10px 0; cursor: pointer; gap: 12px; }' +
+      '.ap-playlists-toggle-left { display: flex; align-items: baseline; gap: 10px; }' +
       '.ap-playlists-title { font-size: 18px; color: #fff; margin: 0; letter-spacing: -.01em; }' +
       '.ap-playlists-count { font-size: 12px; color: #a09cb8; }' +
-      '.ap-playlists-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }' +
+      '.ap-playlists-arrow { color: #a09cb8; font-size: 14px; transition: transform .25s ease; flex-shrink: 0; }' +
+      '.ap-playlists-body { overflow: hidden; max-height: 0; transition: max-height .35s ease; }' +
+      '.ap-playlists-body.is-open { max-height: 1200px; }' +
+      '.ap-playlists-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }' +
       '@media (max-width: 480px) { .ap-playlists-list { grid-template-columns: repeat(2, 1fr); } }' +
-      '.ap-playlist-card { position: relative; aspect-ratio: 9/16; border-radius: 14px; overflow: hidden; cursor: pointer; background: #0e0e1a; border: 1px solid rgba(204,136,255,.18); }' +
-      '.ap-playlist-card:hover .ap-playlist-card-overlay { background: linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.2) 60%, transparent 100%); }' +
-      '.ap-playlist-card-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }' +
-      '.ap-playlist-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: .35; }' +
-      '.ap-playlist-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.1) 55%, transparent 100%); transition: background .2s; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 10px 12px; }' +
-      '.ap-playlist-card-title { color: #fff; font-size: 12px; font-weight: 700; margin: 0; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,.7); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }' +
-      '.ap-playlist-card-meta { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 3px; }'
+      '.ap-playlist-card { position: relative; aspect-ratio: 1/1; border-radius: 12px; overflow: hidden; cursor: pointer; background: linear-gradient(135deg, rgba(204,136,255,.15), rgba(10,10,20,1)); border: 1px solid rgba(204,136,255,.18); }' +
+      '.ap-playlist-card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .85; }' +
+      '.ap-playlist-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: .4; }' +
+      '.ap-playlist-card-info { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 10px 8px; background: linear-gradient(to top, rgba(0,0,0,.72) 0%, transparent 60%); }' +
+      '.ap-playlist-card-title { color: #fff; font-size: 13px; font-weight: 700; margin: 0; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,.6); }' +
+      '.ap-playlist-card-meta { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 2px; }'
     );
     const style = document.createElement('style');
     style.id = 'pl-modal-styles';
@@ -381,51 +384,60 @@
     if (!root) return;
     _injectModalStyles();
     try {
-      const playlists = await loadArtistPublicPlaylists(slug);
-      if (!playlists || playlists.length === 0) {
+      const all = await loadArtistPublicPlaylists(slug);
+      if (!all || all.length === 0) {
         root.style.display = 'none';
         return;
       }
+      const playlists = all.slice(0, 6);
       root.style.display = '';
 
-      // Emojis fallback pour les playlists sans cover
       const FALLBACK_EMOJIS = ['🎵','🎶','🔥','✨','🎸','🎹','🌙','⚡'];
-      function _cardMedia(p, idx) {
-        if (p.cover_video_url) {
-          return (
-            '<video class="ap-playlist-card-bg" autoplay muted loop playsinline preload="metadata">' +
-              '<source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" />' +
-            '</video>'
-          );
-        }
-        const emoji = FALLBACK_EMOJIS[idx % FALLBACK_EMOJIS.length];
-        const color = p.color || '#1a0a2e';
-        return (
-          '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + color + ',rgba(204,136,255,.18))">' +
-            emoji +
-          '</div>'
-        );
-      }
+      const sectionId  = 'ap-pl-body-' + containerId;
+      const arrowId    = 'ap-pl-arrow-' + containerId;
+      const countLabel = playlists.length + ' playlist' + (playlists.length > 1 ? 's' : '');
 
       root.innerHTML = (
         '<section class="ap-playlists-section" aria-label="Playlists publiques">' +
-          '<div class="ap-playlists-hdr">' +
-            '<h2 class="ap-playlists-title">Playlists</h2>' +
-            '<span class="ap-playlists-count">' + playlists.length + ' playlist' + (playlists.length > 1 ? 's' : '') + '</span>' +
+          '<button class="ap-playlists-toggle" aria-expanded="false" aria-controls="' + sectionId + '">' +
+            '<span class="ap-playlists-toggle-left">' +
+              '<h2 class="ap-playlists-title">Playlists</h2>' +
+              '<span class="ap-playlists-count">' + countLabel + '</span>' +
+            '</span>' +
+            '<span class="ap-playlists-arrow" id="' + arrowId + '">▼</span>' +
+          '</button>' +
+          '<div class="ap-playlists-body" id="' + sectionId + '">' +
+            '<ul class="ap-playlists-list">' +
+              playlists.map(function(p, i) {
+                const mediaBg = p.cover_video_url
+                  ? '<video autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
+                  : '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + (p.color || '#1a0a2e') + ',rgba(204,136,255,.18))">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
+                return (
+                  '<li class="ap-playlist-card" data-pl-id="' + p.id + '">' +
+                    mediaBg +
+                    '<div class="ap-playlist-card-info">' +
+                      '<div class="ap-playlist-card-title">' + _esc(p.title) + '</div>' +
+                      '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
+                    '</div>' +
+                  '</li>'
+                );
+              }).join('') +
+            '</ul>' +
           '</div>' +
-          '<ul class="ap-playlists-list">' +
-            playlists.map((p, i) => (
-              '<li class="ap-playlist-card" data-pl-id="' + p.id + '">' +
-                _cardMedia(p, i) +
-                '<div class="ap-playlist-card-overlay">' +
-                  '<div class="ap-playlist-card-title">' + _esc(p.title) + '</div>' +
-                  '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
-                '</div>' +
-              '</li>'
-            )).join('') +
-          '</ul>' +
         '</section>'
       );
+
+      // Toggle accordion
+      const toggleBtn = root.querySelector('.ap-playlists-toggle');
+      const body      = document.getElementById(sectionId);
+      const arrow     = document.getElementById(arrowId);
+      if (toggleBtn && body && arrow) {
+        toggleBtn.addEventListener('click', function () {
+          const open = body.classList.toggle('is-open');
+          toggleBtn.setAttribute('aria-expanded', String(open));
+          arrow.style.transform = open ? 'rotate(180deg)' : '';
+        });
+      }
     } catch (e) {
       root.style.display = 'none';
       console.warn('[playlists] artist load failed:', e);
