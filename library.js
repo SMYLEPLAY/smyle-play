@@ -113,10 +113,13 @@ async function loadAll() {
     _renderError('lib-voices-list', voicesRes.reason);
   }
 
-  const totalAdns = _libData.adns.length + _libData.playlist_adns.length;
-  setEl('lib-count-prompts', _libData.prompts.length);
-  setEl('lib-count-adns',    totalAdns || '—');
-  setEl('lib-count-voices',  _libData.voices.length);
+  // Compteurs par ranger ADN
+  const totalAdns = _libData.prompts.length + _libData.playlist_adns.length + _libData.adns.length;
+  setEl('lib-count-adns',         totalAdns || '—');
+  setEl('lib-count-track-adns',   _libData.prompts.length        || '—');
+  setEl('lib-count-playlist-adns',_libData.playlist_adns.length  || '—');
+  setEl('lib-count-artist-adns',  _libData.adns.length           || '—');
+  setEl('lib-count-voices',       _libData.voices.length);
 }
 
 function _renderError(containerId, err) {
