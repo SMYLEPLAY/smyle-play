@@ -822,6 +822,43 @@
   background: rgba(255, 85, 119, 0.08);
 }
 
+/* ── Boutons Wishlist / Playlist dans le drawer marketplace ─────────────── */
+.mp-td-social-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+.mp-td-like-btn,
+.mp-td-addpl-btn {
+  flex: 1;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04);
+  color: rgba(255, 255, 255, .65);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color .14s, border-color .14s, background .14s;
+  font-family: inherit;
+  letter-spacing: .01em;
+}
+.mp-td-like-btn:hover {
+  color: #ff7799;
+  border-color: rgba(255, 119, 153, .35);
+  background: rgba(255, 119, 153, .06);
+}
+.mp-td-like-btn.liked {
+  color: #ff5577;
+  border-color: rgba(255, 85, 119, .5);
+  background: rgba(255, 85, 119, .08);
+}
+.mp-td-addpl-btn:hover {
+  color: #cc88ff;
+  border-color: rgba(204, 136, 255, .4);
+  background: rgba(204, 136, 255, .07);
+}
+
 .mp-ranking-row {
   display: flex !important;
   align-items: center;
