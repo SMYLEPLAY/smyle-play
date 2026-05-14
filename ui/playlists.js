@@ -1132,22 +1132,40 @@
         (tracks.length > 0 ? '<button class="pl-btn pl-btn-primary pl-load-mix-btn" type="button" data-pl-id="' + playlist.id + '" style="margin-bottom:14px">▶ Charger dans MY MIX</button>' : '') +
         (tracks.length === 0
           ? '<p class="pl-empty">Aucune track. Ajoute des sons depuis la marketplace via le bouton +.</p>'
-          : '<ul class="pl-view-list">' + tracks.map(t => {
-              const safe = String(t.title || t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-              const url = t.audio_url || t.stream_url || t.streamUrl || (t.r2_key ? '/watt/stream/' + t.r2_key : '') || '';
+          : '<ul class="pl-view-list">' + tracks.map((t, idx) => {
+              const safe  = String(t.title || t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
               const cover = t.cover_url || t.coverUrl || '';
-              const safeUrl = url.replace(/"/g, '&quot;');
-              return '<li class="pl-view-row" data-track-id="' + t.id + '">' +
-                '<div class="pl-view-row-top">' +
-                  (cover ? '<img class="pl-view-row-cover" src="' + cover.replace(/"/g, '&quot;') + '" alt="" />' : '') +
-                  '<div class="pl-view-row-title">' + safe + '</div>' +
-                  '<button type="button" class="pl-view-row-remove" data-track-remove="' + t.id + '" title="Retirer de la playlist" aria-label="Retirer">✕</button>' +
+              const color = t.color || '#cc88ff';
+              // Pas de player inline — clic sur la row ouvre le drawer de détail
+              return '<li class="pl-view-row pl-view-row-clickable" data-track-id="' + t.id + '" data-track-idx="' + idx + '">' +
+                '<div class="pl-view-row-inner">' +
+                  (cover
+                    ? '<img class="pl-view-row-cover" src="' + cover.replace(/"/g, '&quot;') + '" alt="" />'
+                    : '<div class="pl-view-row-cover-fallback" style="background:' + color + '"></div>'
+                  ) +
+                  '<div class="pl-view-row-info">' +
+                    '<div class="pl-view-row-title">' + safe + '</div>' +
+                    '<div class="pl-view-row-hint">Appuie pour écouter</div>' +
+                  '</div>' +
+                  '<div class="pl-view-row-actions">' +
+                    '<span class="pl-view-row-arrow">›</span>' +
+                    '<button type="button" class="pl-view-row-remove" data-track-remove="' + t.id + '" title="Retirer de la playlist" aria-label="Retirer">✕</button>' +
+                  '</div>' +
                 '</div>' +
-                (safeUrl ? '<audio controls preload="none" class="pl-view-audio" src="' + safeUrl + '"></audio>' : '<span class="pl-empty">Audio indisponible</span>') +
               '</li>';
             }).join('') + '</ul>'
         )
       );
+      // ── Click sur une row → drawer de détail du track ─────────────────
+      content.addEventListener('click', (ev) => {
+        if (ev.target.closest('.pl-view-row-remove')) return; // handled below
+        const row = ev.target.closest('.pl-view-row-clickable');
+        if (!row) return;
+        const trackId = row.dataset.trackId;
+        const track = tracks.find(t => String(t.id) === String(trackId));
+        if (track) _openPlaylistTrackDrawer(track);
+      });
+
       content.addEventListener('click', async (ev) => {
         const btn = ev.target.closest('.pl-view-row-remove');
         if (!btn) return;
@@ -1211,6 +1229,112 @@
     }
   }
 
+  // ── Drawer de détail track depuis une playlist ────────────────────────────
+  function _openPlaylistTrackDrawer(t) {
+    const existing = document.getElementById('pl-track-detail-drawer');
+    if (existing) existing.remove();
+
+    const color    = t.color || '#cc88ff';
+    const title    = t.title || t.name || 'Sans titre';
+    const url      = t.audio_url || t.stream_url || t.streamUrl || (t.r2_key ? '/watt/stream/' + t.r2_key : '') || '';
+    const cover    = t.cover_url || t.coverUrl || '';
+    const promptId = t.prompt_id || t.promptId || null;
+    const promptPrice = (t.prompt_price_credits || t.promptPriceCredits) != null
+      ? (t.prompt_price_credits || t.promptPriceCredits) : null;
+
+    function _e(s) {
+      const d = document.createElement('div');
+      d.textContent = s == null ? '' : String(s);
+      return d.innerHTML;
+    }
+
+    const coverHTML = cover
+      ? '<img src="' + _e(cover) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block" />'
+      : '<div style="width:100%;height:100%;background:' + _e(color) + '"></div>';
+
+    const audioHTML = url
+      ? '<div style="margin-top:8px">' +
+          '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">Pré-écoute</div>' +
+          '<audio controls preload="none" controlsList="nodownload noremoteplayback" oncontextmenu="return false" style="width:100%;height:28px" src="' + _e(url) + '"></audio>' +
+        '</div>'
+      : '';
+
+    const recipeHTML = (promptId && promptPrice != null)
+      ? '<div style="margin-top:12px;padding:14px 16px;border-radius:12px;background:rgba(204,136,255,.07);border:1px solid rgba(204,136,255,.2)">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+            '<div>' +
+              '<div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Recette Suno</div>' +
+              '<div style="font-size:20px;font-weight:700;color:#fff">' + promptPrice + ' <span style="font-size:12px;color:rgba(255,255,255,.4)">Smyles</span></div>' +
+            '</div>' +
+            '<button id="pl-td-recipe-btn" data-prompt-id="' + _e(promptId) + '" data-prompt-price="' + promptPrice + '" data-track-name="' + _e(title) + '" ' +
+              'style="padding:9px 16px;border-radius:999px;background:rgba(204,136,255,.18);border:1px solid rgba(204,136,255,.5);color:#cc88ff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">' +
+              '🧬 Débloquer' +
+            '</button>' +
+          '</div>' +
+        '</div>'
+      : '';
+
+    const overlay = document.createElement('div');
+    overlay.id        = 'pl-track-detail-drawer';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);opacity:0;transition:opacity .25s;pointer-events:none';
+    overlay.innerHTML =
+      '<aside id="pl-td-aside" style="position:fixed;right:0;top:0;bottom:0;width:min(420px,100vw);background:#0f0d14;border-left:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;overflow-y:auto;transform:translateX(100%);transition:transform .28s cubic-bezier(.22,.68,0,1.2)">' +
+        '<button id="pl-td-close" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;z-index:1;display:flex;align-items:center;justify-content:center" aria-label="Fermer">✕</button>' +
+        '<div style="width:100%;aspect-ratio:1/1;max-height:260px;overflow:hidden;flex-shrink:0">' + coverHTML + '</div>' +
+        '<div style="padding:18px 20px 32px;display:flex;flex-direction:column;gap:10px">' +
+          '<div style="height:3px;border-radius:2px;background:' + _e(color) + ';margin-bottom:4px"></div>' +
+          '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4)">Son</div>' +
+          '<h2 style="font-size:20px;font-weight:700;color:#fff;margin:0;line-height:1.2">' + _e(title) + '</h2>' +
+          audioHTML +
+          recipeHTML +
+        '</div>' +
+      '</aside>';
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+      overlay.style.pointerEvents = 'auto';
+      document.getElementById('pl-td-aside').style.transform = 'translateX(0)';
+    });
+
+    function _close() {
+      overlay.style.opacity = '0';
+      const aside = document.getElementById('pl-td-aside');
+      if (aside) aside.style.transform = 'translateX(100%)';
+      const audio = overlay.querySelector('audio');
+      if (audio) { try { audio.pause(); } catch(_) {} }
+      setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 300);
+    }
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) _close(); });
+    document.getElementById('pl-td-close').addEventListener('click', _close);
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', onEsc); }
+    });
+
+    const recipeBtn = document.getElementById('pl-td-recipe-btn');
+    if (recipeBtn) {
+      recipeBtn.addEventListener('click', async () => {
+        recipeBtn.disabled = true;
+        recipeBtn.textContent = 'Déblocage…';
+        try {
+          const resp = await (typeof apiFetch === 'function'
+            ? apiFetch('/unlocks/prompts/' + encodeURIComponent(recipeBtn.dataset.promptId), { method: 'POST' })
+            : fetch('/unlocks/prompts/' + encodeURIComponent(recipeBtn.dataset.promptId), { method: 'POST', headers: { 'Content-Type': 'application/json', ...(typeof getAuthToken === 'function' && getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : {}) } }).then(r => r.json())
+          );
+          _close();
+          if (typeof showToast === 'function') showToast((resp && resp.perk_applied) ? 'Recette débloquée avec perk ADN −30 % 🔓' : 'Recette débloquée 🔓');
+        } catch (err) {
+          recipeBtn.disabled = false;
+          recipeBtn.textContent = '🧬 Débloquer';
+          const status = err && err.status;
+          const msg = status === 402 ? 'Crédits insuffisants.' : status === 409 ? 'Déjà débloqué.' : 'Erreur lors du déblocage.';
+          if (typeof showToast === 'function') showToast(msg);
+        }
+      });
+    }
+  }
+
   // ── 10. ADDITIONAL STYLES ─────────────────────────────────────────────
   function _injectExtraStyles() {
     if (document.getElementById('pl-extra-styles')) return;
@@ -1223,10 +1347,20 @@
       '.pl-picker-vis { font-size: 11px; color: #a09cb8; letter-spacing: .04em; text-transform: uppercase; }' +
       '.pl-view-hdr { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }' +
       '.pl-view-sub { color: #a09cb8; font-size: 12px; margin: 0 0 16px; }' +
-      '.pl-view-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }' +
-      '.pl-view-row { display: flex; flex-direction: column; gap: 6px; padding: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; }' +
-      '.pl-view-row-title { color: #fff; font-size: 14px; font-weight: 500; }' +
-      '.pl-view-audio { width: 100%; max-width: 100%; }' +
+      '.pl-view-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }' +
+      '.pl-view-row { border-radius: 10px; overflow: hidden; }' +
+      '.pl-view-row-clickable { cursor: pointer; }' +
+      '.pl-view-row-inner { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; transition: background .15s, border-color .15s; }' +
+      '.pl-view-row-clickable .pl-view-row-inner:hover { background: rgba(204,136,255,.08); border-color: rgba(204,136,255,.25); }' +
+      '.pl-view-row-cover { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }' +
+      '.pl-view-row-cover-fallback { width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0; }' +
+      '.pl-view-row-info { flex: 1; min-width: 0; }' +
+      '.pl-view-row-title { color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
+      '.pl-view-row-hint { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 2px; }' +
+      '.pl-view-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }' +
+      '.pl-view-row-arrow { font-size: 18px; color: rgba(255,255,255,.3); }' +
+      '.pl-view-row-remove { background: none; border: none; color: rgba(255,255,255,.3); cursor: pointer; font-size: 14px; padding: 4px; border-radius: 4px; line-height: 1; }' +
+      '.pl-view-row-remove:hover { color: #ff6b6b; background: rgba(255,107,107,.1); }' +
       '.ap-playlist-card { cursor: pointer; transition: border-color .15s ease; }' +
       '.ap-playlist-card:hover { border-color: rgba(204,136,255,.4); }' +
       '.pl-row { cursor: pointer; }' +
