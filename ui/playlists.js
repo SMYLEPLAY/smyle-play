@@ -201,15 +201,26 @@
       '.pl-icon-btn { background: transparent; border: 1px solid rgba(255,255,255,.1); color: #a09cb8; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; }' +
       '.pl-icon-btn:hover { color: #fff; border-color: rgba(255,255,255,.3); }' +
       '.pl-empty { color: #6b677f; font-size: 13px; text-align: center; padding: 24px 12px; }' +
-      // Artiste public section
+      // Dashboard cover thumb
+      '.pl-row-cover { width: 32px; height: 48px; border-radius: 6px; object-fit: cover; flex: 0 0 32px; }' +
+      '.pl-row-cover-fallback { width: 32px; height: 48px; border-radius: 6px; background: linear-gradient(135deg, rgba(204,136,255,.3), rgba(0,200,255,.15)); flex: 0 0 32px; display: flex; align-items: center; justify-content: center; font-size: 14px; }' +
+      '.pl-cover-input { display: none; }' +
+      '.pl-icon-btn-cover { background: rgba(204,136,255,.1); border: 1px solid rgba(204,136,255,.35); color: #cc88ff; border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer; }' +
+      '.pl-icon-btn-cover:hover { background: rgba(204,136,255,.2); }' +
+      // Artiste public section — cards portrait 9:16 avec cover vidéo
       '.ap-playlists-section { padding: 0 12px; margin: 20px 0 28px; }' +
-      '.ap-playlists-hdr { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }' +
+      '.ap-playlists-hdr { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }' +
       '.ap-playlists-title { font-size: 18px; color: #fff; margin: 0; letter-spacing: -.01em; }' +
       '.ap-playlists-count { font-size: 12px; color: #a09cb8; }' +
-      '.ap-playlists-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }' +
-      '.ap-playlist-card { background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.005)); border: 1px solid rgba(204,136,255,.16); border-radius: 12px; padding: 14px 16px; cursor: default; }' +
-      '.ap-playlist-card-title { color: #fff; font-size: 14px; font-weight: 600; margin: 0 0 4px; }' +
-      '.ap-playlist-card-meta { font-size: 11px; color: #a09cb8; }'
+      '.ap-playlists-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }' +
+      '@media (max-width: 480px) { .ap-playlists-list { grid-template-columns: repeat(2, 1fr); } }' +
+      '.ap-playlist-card { position: relative; aspect-ratio: 9/16; border-radius: 14px; overflow: hidden; cursor: pointer; background: #0e0e1a; border: 1px solid rgba(204,136,255,.18); }' +
+      '.ap-playlist-card:hover .ap-playlist-card-overlay { background: linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.2) 60%, transparent 100%); }' +
+      '.ap-playlist-card-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }' +
+      '.ap-playlist-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: .35; }' +
+      '.ap-playlist-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.1) 55%, transparent 100%); transition: background .2s; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 10px 12px; }' +
+      '.ap-playlist-card-title { color: #fff; font-size: 12px; font-weight: 700; margin: 0; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,.7); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }' +
+      '.ap-playlist-card-meta { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 3px; }'
     );
     const style = document.createElement('style');
     style.id = 'pl-modal-styles';
@@ -249,15 +260,22 @@
           const badge = p.visibility === 'public'
             ? '<span class="pl-badge pl-badge-public">Publique</span>'
             : '<span class="pl-badge pl-badge-private">Privée</span>';
+          const thumb = p.cover_video_url
+            ? '<video class="pl-row-cover" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" /></video>'
+            : '<div class="pl-row-cover-fallback">🎵</div>';
           return (
             '<li class="pl-row" data-id="' + p.id + '" data-vis="' + p.visibility + '">' +
-              '<div>' +
+              thumb +
+              '<div style="flex:1;min-width:0">' +
                 '<div class="pl-row-name">' + _esc(p.title) + '</div>' +
                 '<div class="pl-row-meta">' + badge + '</div>' +
               '</div>' +
               '<div class="pl-row-actions">' +
+                '<label class="pl-icon-btn-cover" title="Ajouter une cover vidéo (mp4 ≤3s)">📎' +
+                  '<input type="file" class="pl-cover-input pl-act-cover" accept="video/mp4,video/webm,video/quicktime" />' +
+                '</label>' +
                 '<button type="button" class="pl-icon-btn pl-act-vis" title="Changer visibilité">' +
-                  (p.visibility === 'public' ? 'Rendre privée' : 'Rendre publique') +
+                  (p.visibility === 'public' ? 'Privée' : 'Publique') +
                 '</button>' +
                 '<button type="button" class="pl-icon-btn pl-act-del" title="Supprimer">✕</button>' +
               '</div>' +
@@ -300,6 +318,59 @@
       }
     });
 
+    // Délégation upload cover (input file change)
+    root.querySelector('#pl-dash-list').addEventListener('change', async (ev) => {
+      const input = ev.target.closest('.pl-act-cover');
+      if (!input || !input.files || !input.files[0]) return;
+      const row = ev.target.closest('.pl-row');
+      if (!row) return;
+      const id   = row.dataset.id;
+      const file = input.files[0];
+      // Validation durée ≤ 3s côté frontend
+      try {
+        await new Promise((resolve, reject) => {
+          const vid = document.createElement('video');
+          vid.preload = 'metadata';
+          vid.onloadedmetadata = () => {
+            URL.revokeObjectURL(vid.src);
+            if (vid.duration > 3.5) reject(new Error('La vidéo dépasse 3 secondes (' + vid.duration.toFixed(1) + 's). Raccourcis-la avant.'));
+            else resolve();
+          };
+          vid.onerror = () => reject(new Error('Impossible de lire la vidéo.'));
+          vid.src = URL.createObjectURL(file);
+        });
+      } catch (e) {
+        alert(e.message);
+        input.value = '';
+        return;
+      }
+      // Upload R2
+      const plName = row.querySelector('.pl-row-name');
+      const label  = ev.target.closest('label');
+      const origTxt = label ? label.textContent.trim() : '';
+      if (label) label.textContent = '⏳';
+      try {
+        const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+        const me    = (typeof getWattProfile === 'function') ? getWattProfile() : null;
+        const userId = (me && me.id) || 'guest';
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('userId', userId);
+        fd.append('name', (plName ? plName.textContent : 'cover').slice(0, 40));
+        const headers = {};
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const resp = await fetch('/api/watt/upload-playlist-cover', { method: 'POST', body: fd, headers, credentials: 'same-origin' });
+        const data = await resp.json();
+        if (!resp.ok || data.error) throw new Error(data.error || 'Upload échoué');
+        // PATCH playlist avec la nouvelle cover_url
+        await _req('/playlists/' + encodeURIComponent(id), { method: 'PATCH', body: { cover_video_url: data.cover_url } });
+        await reload();
+      } catch (e) {
+        if (label) label.textContent = '📎';
+        alert('Échec upload cover : ' + (e && e.message || 'erreur'));
+      }
+    });
+
     await reload();
   }
 
@@ -312,11 +383,30 @@
     try {
       const playlists = await loadArtistPublicPlaylists(slug);
       if (!playlists || playlists.length === 0) {
-        // Section invisible si rien de public — pas la peine de polluer le profil
         root.style.display = 'none';
         return;
       }
       root.style.display = '';
+
+      // Emojis fallback pour les playlists sans cover
+      const FALLBACK_EMOJIS = ['🎵','🎶','🔥','✨','🎸','🎹','🌙','⚡'];
+      function _cardMedia(p, idx) {
+        if (p.cover_video_url) {
+          return (
+            '<video class="ap-playlist-card-bg" autoplay muted loop playsinline preload="metadata">' +
+              '<source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" />' +
+            '</video>'
+          );
+        }
+        const emoji = FALLBACK_EMOJIS[idx % FALLBACK_EMOJIS.length];
+        const color = p.color || '#1a0a2e';
+        return (
+          '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + color + ',rgba(204,136,255,.18))">' +
+            emoji +
+          '</div>'
+        );
+      }
+
       root.innerHTML = (
         '<section class="ap-playlists-section" aria-label="Playlists publiques">' +
           '<div class="ap-playlists-hdr">' +
@@ -324,17 +414,19 @@
             '<span class="ap-playlists-count">' + playlists.length + ' playlist' + (playlists.length > 1 ? 's' : '') + '</span>' +
           '</div>' +
           '<ul class="ap-playlists-list">' +
-            playlists.map(p => (
+            playlists.map((p, i) => (
               '<li class="ap-playlist-card" data-pl-id="' + p.id + '">' +
-                '<div class="ap-playlist-card-title">' + _esc(p.title) + '</div>' +
-                '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
+                _cardMedia(p, i) +
+                '<div class="ap-playlist-card-overlay">' +
+                  '<div class="ap-playlist-card-title">' + _esc(p.title) + '</div>' +
+                  '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
+                '</div>' +
               '</li>'
             )).join('') +
           '</ul>' +
         '</section>'
       );
     } catch (e) {
-      // Erreur silencieuse côté public — on ne casse pas le profil pour ça
       root.style.display = 'none';
       console.warn('[playlists] artist load failed:', e);
     }
