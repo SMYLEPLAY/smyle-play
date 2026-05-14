@@ -589,6 +589,42 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 .lib-item-cell-body .lib-content-body { font-size: 11px; }
 .lib-item-cell-body .lib-prompt-badges { margin: 4px 0 6px; }
 
+/* ── Mini play button dans le header de cellule ─────────────────────────── */
+.lib-hidden-audio { display: none; }
+
+.lib-cell-play-btn {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .15);
+  color: #fff;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background .15s, transform .12s;
+  line-height: 1;
+  padding: 0;
+}
+.lib-cell-play-btn:hover {
+  background: rgba(255, 255, 255, .18);
+  transform: scale(1.1);
+}
+
+/* ── Bouton "Voir la playlist" dans le body ADN Playlist ────────────────── */
+.lib-cell-goto-btn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 12px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid;
+  border-radius: 6px;
+  opacity: .85;
+  transition: opacity .18s, background .18s;
+}
+.lib-cell-goto-btn:hover { opacity: 1; background: rgba(255,255,255,.06); }
+
 /* ── Suppression anciens styles tabs (lib-tabs masqué) ───────────────────── */
 .lib-tabs { display: none; }
 .lib-tab-panel { display: block !important; }

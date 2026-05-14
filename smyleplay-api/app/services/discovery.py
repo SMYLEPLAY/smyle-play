@@ -353,6 +353,16 @@ async def list_user_library_prompts(
         .scalar_subquery()
     )
 
+    # Couleur du track lié — repère visuel cohérent avec la marketplace.
+    track_color_subq = (
+        select(Track.color)
+        .where(Track.prompt_id == Prompt.id, Track.is_deleted.is_(False))
+        .order_by(Track.created_at.desc())
+        .limit(1)
+        .correlate(Prompt)
+        .scalar_subquery()
+    )
+
     items_q = (
         select(
             UnlockedPrompt,
@@ -360,6 +370,7 @@ async def list_user_library_prompts(
             User,
             audio_url_subq.label("audio_url"),
             cover_url_subq.label("cover_url"),
+            track_color_subq.label("track_color"),
         )
         .join(Prompt, Prompt.id == UnlockedPrompt.prompt_id)
         .join(User, User.id == Prompt.artist_id)
@@ -392,8 +403,10 @@ async def list_user_library_prompts(
             # P1-B8 — audio + cover du track lié (ou None si pas de track).
             "audio_url": audio_url,
             "cover_url": cover_url,
+            # Couleur du track lié — repère visuel cohérent avec la marketplace.
+            "track_color": track_color,
         }
-        for up, p, u, audio_url, cover_url in rows
+        for up, p, u, audio_url, cover_url, track_color in rows
     ]
     return items, int(total)
 
