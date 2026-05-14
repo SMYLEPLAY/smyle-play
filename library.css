@@ -436,6 +436,42 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 }
 
 
+/* ── ADN Rangers (3 sections dans l'onglet ADN) ─────────────────────────── */
+.lib-adn-ranger {
+  margin-bottom: 32px;
+}
+.lib-adn-ranger-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 10px;
+  border-bottom: 1px solid rgba(204,136,255,.15);
+  margin-bottom: 16px;
+}
+.lib-adn-ranger-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.lib-adn-ranger-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0dcf0;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.lib-adn-ranger-count {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(204,136,255,.14);
+  color: #cc88ff;
+  border: 1px solid rgba(204,136,255,.3);
+  border-radius: 999px;
+  padding: 2px 9px;
+  min-width: 24px;
+  text-align: center;
+}
+
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {

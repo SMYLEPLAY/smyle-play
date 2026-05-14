@@ -51,19 +51,7 @@
 
   <!-- Tabs -->
   <div class="lib-tabs">
-    <button class="lib-tab active" data-tab="prompts" onclick="switchTab('prompts')">
-      <!-- Fiole de potion magique -->
-      <svg class="lib-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
-        <path d="M9 3h6"/>
-        <path d="M10 3v6.5L5.4 17.3A2 2 0 0 0 7.1 20.5h9.8a2 2 0 0 0 1.7-3.2L14 9.5V3"/>
-        <path d="M7.5 14h9"/>
-        <circle cx="10" cy="17" r="0.6" fill="currentColor"/>
-        <circle cx="13" cy="18" r="0.5" fill="currentColor"/>
-        <circle cx="11.5" cy="15.5" r="0.4" fill="currentColor"/>
-      </svg>
-      Recettes IA <span class="lib-tab-count" id="lib-count-prompts">—</span>
-    </button>
-    <button class="lib-tab" data-tab="adns" onclick="switchTab('adns')">
+    <button class="lib-tab active" data-tab="adns" onclick="switchTab('adns')">
       <!-- Hélice ADN -->
       <svg class="lib-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
         <path d="M7 3c0 4 10 6 10 10M7 11c0 4 10 6 10 10M7 21c0-4 10-6 10-10"/>
@@ -83,25 +71,39 @@
     </button>
   </div>
 
-  <!-- Prompts tab -->
-  <section class="lib-tab-panel active" id="lib-panel-prompts">
-    <div class="lib-list" id="lib-prompts-list">
-      <div class="lib-loading">Chargement de tes recettes…</div>
+  <!-- ADNs tab (unique — 3 rangers) -->
+  <section class="lib-tab-panel active" id="lib-panel-adns">
+    <!-- Ranger 1 : ADN Track -->
+    <div id="lib-track-adns-section" class="lib-adn-ranger">
+      <div class="lib-adn-ranger-hdr">
+        <span class="lib-adn-ranger-icon">🎵</span>
+        <span class="lib-adn-ranger-label">ADN Track</span>
+        <span class="lib-adn-ranger-count" id="lib-count-track-adns">—</span>
+      </div>
+      <div class="lib-list" id="lib-prompts-list">
+        <div class="lib-loading">Chargement…</div>
+      </div>
     </div>
-  </section>
-
-  <!-- ADNs tab -->
-  <section class="lib-tab-panel" id="lib-panel-adns">
-    <!-- ADN Playlist (univers sonores achetés) -->
-    <div id="lib-playlist-adns-section">
+    <!-- Ranger 2 : ADN Playlist -->
+    <div id="lib-playlist-adns-section" class="lib-adn-ranger">
+      <div class="lib-adn-ranger-hdr">
+        <span class="lib-adn-ranger-icon">🧬</span>
+        <span class="lib-adn-ranger-label">ADN Playlist</span>
+        <span class="lib-adn-ranger-count" id="lib-count-playlist-adns">—</span>
+      </div>
       <div class="lib-list" id="lib-playlist-adns-list">
         <div class="lib-loading">Chargement…</div>
       </div>
     </div>
-    <!-- ADN Artiste (signatures de profil achetées) -->
-    <div id="lib-adns-section">
+    <!-- Ranger 3 : ADN Artist -->
+    <div id="lib-adns-section" class="lib-adn-ranger">
+      <div class="lib-adn-ranger-hdr">
+        <span class="lib-adn-ranger-icon">👤</span>
+        <span class="lib-adn-ranger-label">ADN Artist</span>
+        <span class="lib-adn-ranger-count" id="lib-count-artist-adns">—</span>
+      </div>
       <div class="lib-list" id="lib-adns-list">
-        <div class="lib-loading">Chargement de tes ADN artiste…</div>
+        <div class="lib-loading">Chargement…</div>
       </div>
     </div>
   </section>
