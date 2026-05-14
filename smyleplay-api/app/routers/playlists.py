@@ -115,6 +115,11 @@ async def get_playlist_endpoint(
         raise HTTPException(status_code=404, detail="Playlist introuvable")
 
     tracks = await svc.list_playlist_tracks(db, playlist.id)
+    # seed_prompt masqué si ADN en vente et non-owner
+    seed_visible = (
+        playlist.owner_id == current_user.id
+        or not playlist.adn_for_sale
+    )
     return PlaylistWithTracks(
         id=playlist.id,
         owner_id=playlist.owner_id,
@@ -122,7 +127,9 @@ async def get_playlist_endpoint(
         visibility=playlist.visibility,  # type: ignore[arg-type]
         color=playlist.color,
         cover_video_url=playlist.cover_video_url,
-        seed_prompt=playlist.seed_prompt,
+        seed_prompt=playlist.seed_prompt if seed_visible else None,
+        adn_for_sale=playlist.adn_for_sale,
+        adn_price=playlist.adn_price,
         created_at=playlist.created_at,
         tracks=[TrackRead.model_validate(t) for t in tracks],
     )
