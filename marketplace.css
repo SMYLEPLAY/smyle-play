@@ -763,11 +763,14 @@
 .mp-son-card-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.05em;
-  padding: 0;
+  padding: 4px 0 0;
+  border-top: 1px solid rgba(255,255,255,.05);
+  margin-top: 6px;
 }
 .mp-son-card-meta-plays,
 .mp-son-card-meta > span:first-child {
@@ -776,26 +779,33 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Groupe actions dans la meta card marketplace */
+.mp-son-card-meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
 
 .add-to-pl-btn,
 .like-btn {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  min-height: 24px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.55);
-  border-radius: 6px;
-  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  border-radius: 7px;
+  font-size: 13px;
   line-height: 1;
   cursor: pointer;
   box-sizing: border-box;
-  flex: 0 0 24px;
+  flex: 0 0 28px;
   transition: color .12s ease, border-color .12s ease, background .12s ease;
   vertical-align: middle;
   font-family: inherit;
