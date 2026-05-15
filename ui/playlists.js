@@ -1623,7 +1623,7 @@
       '.pl-view-row-cover { width:38px; height:38px; object-fit:cover; border-radius:6px; display:block; }' +
       '.pl-view-row-cover-fallback { width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0; }' +
       '.pl-view-row-info { flex: 1; min-width: 0; }' +
-      '.pl-view-row-title { color: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
+      '.pl-view-row-title { color: var(--pl-c,#cc88ff); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
       '.pl-view-row-hint { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 2px; }' +
       '.pl-view-row-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }' +
       '.pl-view-row-arrow { font-size: 18px; color: rgba(255,255,255,.3); }' +
