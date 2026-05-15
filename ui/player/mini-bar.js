@@ -2,128 +2,139 @@
    SMYLE PLAY — ui/player/mini-bar.js
    Barre audio fixe en bas de page — visible sur toutes les pages.
 
-   Fonctionnement :
-   - S'attache à window.smyleAudio (singleton, exposé par state.js)
-   - Détecte aussi les <audio> inline (page artiste) via capture 'play'
-   - Mise à jour automatique : cover, titre, artiste, barre de progression
-   - Contrôles : prev | play/pause | next | loop | like | add to playlist | close
-
-   Chargement : après ui/core/state.js et ui/player/audio.js.
-   Doit être inclus dans index.html, artiste.html, library.html.
+   Fix v2 :
+   - Lecture meta immédiate sur chaque play event (plus de bug timing)
+   - Like/Add câblés directement via SmylePlaylists (pas data-attributes)
+   - Layout 3 colonnes : info | controls | actions
    ───────────────────────────────────────────────────────────────────────── */
 
 (function initSmyleMiniBar() {
   'use strict';
   if (typeof window === 'undefined') return;
-  if (window.SmyleMiniBar) return;  // guard double init
+  if (window.SmyleMiniBar) return;
 
-  // ── State interne ──────────────────────────────────────────────────────────
-  let _audio      = null;   // Audio element actif
-  let _trackId    = null;   // ID du track courant
-  let _dismissed  = false;  // l'utilisateur a fermé la barre → ne pas rouvrir pour CE track
-  let _raf        = null;   // requestAnimationFrame pour la progress bar
-  let _barEl      = null;
+  // ── State ──────────────────────────────────────────────────────────────────
+  let _audio     = null;
+  let _trackId   = null;
+  let _dismissed = false;
+  let _raf       = null;
+  let _barEl     = null;
 
-  // ── Création DOM ──────────────────────────────────────────────────────────
+  // ── Build DOM ──────────────────────────────────────────────────────────────
   function _build() {
-    if (document.getElementById('smyle-mini-bar')) return;
+    if (document.getElementById('smyle-mini-bar')) {
+      _barEl = document.getElementById('smyle-mini-bar');
+      return;
+    }
     const el = document.createElement('div');
     el.id = 'smyle-mini-bar';
     el.setAttribute('aria-hidden', 'true');
     el.innerHTML = [
-      /* barre de progression en haut */
       '<div class="smb-progress-wrap" id="smb-progress-wrap">',
         '<div class="smb-progress-fill" id="smb-progress-fill"></div>',
       '</div>',
-      /* cover */
-      '<div class="smb-cover-wrap" id="smb-cover-wrap">',
-        '<span class="smb-cover-placeholder" id="smb-cover-placeholder">♪</span>',
-        '<img class="smb-cover" id="smb-cover" src="" alt="" style="display:none">',
+
+      /* ── COL GAUCHE : cover + info ── */
+      '<div class="smb-left">',
+        '<div class="smb-cover-wrap">',
+          '<span class="smb-cover-ph" id="smb-cover-ph">♪</span>',
+          '<img class="smb-cover-img" id="smb-cover-img" src="" alt="" style="display:none">',
+        '</div>',
+        '<div class="smb-meta">',
+          '<span class="smb-title"  id="smb-title">—</span>',
+          '<span class="smb-artist" id="smb-artist">WATT</span>',
+        '</div>',
       '</div>',
-      /* infos */
-      '<div class="smb-meta">',
-        '<span class="smb-title" id="smb-title">&mdash;</span>',
-        '<span class="smb-artist" id="smb-artist">WATT</span>',
+
+      /* ── COL CENTRE : prev | play | next ── */
+      '<div class="smb-center">',
+        '<button class="smb-btn smb-prev" id="smb-prev" title="Précédent">⏮</button>',
+        '<button class="smb-btn smb-play" id="smb-play" title="Play / Pause">▶</button>',
+        '<button class="smb-btn smb-next" id="smb-next" title="Suivant">⏭</button>',
       '</div>',
-      /* contrôles centraux */
-      '<div class="smb-controls">',
-        '<button class="smb-btn smb-prev"     id="smb-prev"      title="Précédent">⏮</button>',
-        '<button class="smb-btn smb-playpause" id="smb-playpause" title="Play / Pause">▶</button>',
-        '<button class="smb-btn smb-next"     id="smb-next"      title="Suivant">⏭</button>',
-      '</div>',
-      /* actions droite */
-      '<div class="smb-actions">',
+
+      /* ── COL DROITE : loop | like | add | close ── */
+      '<div class="smb-right">',
         '<button class="smb-btn smb-loop"  id="smb-loop"  title="Répéter">↺</button>',
-        '<button class="smb-btn smb-like  like-btn"  id="smb-like-btn"  title="Like" data-like-btn=""></button>',
-        '<button class="smb-btn smb-addpl add-to-pl-btn" id="smb-addpl-btn" title="Ajouter à une playlist" data-add-to-playlist="">+</button>',
+        '<button class="smb-btn smb-like"  id="smb-like"  title="Like">♡</button>',
+        '<button class="smb-btn smb-add"   id="smb-add"   title="Ajouter à une playlist">+</button>',
+        '<button class="smb-close"         id="smb-close" title="Fermer">×</button>',
       '</div>',
-      /* fermer */
-      '<button class="smb-close" id="smb-close" title="Fermer">×</button>',
     ].join('');
     document.body.appendChild(el);
     _barEl = el;
-    _wireEvents(el);
+    _wireButtons();
   }
 
   // ── Câblage boutons ────────────────────────────────────────────────────────
-  function _wireEvents(bar) {
-    // Progress bar — clic pour seek
-    const prog = bar.querySelector('#smb-progress-wrap');
-    prog.addEventListener('click', function(e) {
+  function _wireButtons() {
+    // Progress — seek
+    _barEl.querySelector('#smb-progress-wrap').addEventListener('click', function(e) {
       if (!_audio || !_audio.duration) return;
-      const rect = prog.getBoundingClientRect();
-      const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      _audio.currentTime = pct * _audio.duration;
+      const r = this.getBoundingClientRect();
+      _audio.currentTime = ((e.clientX - r.left) / r.width) * _audio.duration;
     });
 
-    // Play/Pause
-    bar.querySelector('#smb-playpause').addEventListener('click', function() {
+    // Play / Pause
+    _barEl.querySelector('#smb-play').addEventListener('click', function() {
       if (!_audio) return;
-      if (_audio.paused) {
-        _audio.play().catch(() => {});
-      } else {
-        _audio.pause();
-      }
+      _audio.paused ? _audio.play().catch(() => {}) : _audio.pause();
     });
 
-    // Prev / Next — appelle les globales de audio.js si dispo
-    bar.querySelector('#smb-prev').addEventListener('click', function() {
+    // Prev / Next
+    _barEl.querySelector('#smb-prev').addEventListener('click', function() {
       if (typeof prevTrack === 'function') prevTrack();
+      else if (typeof prevMixTrack === 'function') prevMixTrack();
     });
-    bar.querySelector('#smb-next').addEventListener('click', function() {
+    _barEl.querySelector('#smb-next').addEventListener('click', function() {
       if (typeof nextTrack === 'function') nextTrack();
+      else if (typeof nextMixTrack === 'function') nextMixTrack();
     });
 
     // Loop
-    bar.querySelector('#smb-loop').addEventListener('click', function() {
+    _barEl.querySelector('#smb-loop').addEventListener('click', function() {
       if (!_audio) return;
       if (typeof toggleLoop === 'function') {
         toggleLoop();
+        this.classList.toggle('smb-loop-on', typeof loopMode !== 'undefined' ? loopMode : _audio.loop);
       } else {
         _audio.loop = !_audio.loop;
+        this.classList.toggle('smb-loop-on', _audio.loop);
       }
-      this.classList.toggle('smb-loop-active', _audio.loop || (typeof loopMode !== 'undefined' && loopMode));
+    });
+
+    // Like — câblé direct sur SmylePlaylists
+    _barEl.querySelector('#smb-like').addEventListener('click', function() {
+      if (!_trackId) return;
+      if (window.SmylePlaylists && typeof window.SmylePlaylists.toggleLike === 'function') {
+        window.SmylePlaylists.toggleLike(_trackId);
+        this.classList.toggle('smb-liked');
+      }
+    });
+
+    // Add to playlist — câblé direct
+    _barEl.querySelector('#smb-add').addEventListener('click', function() {
+      if (!_trackId) return;
+      if (window.SmylePlaylists && typeof window.SmylePlaylists.openAddToPlaylistModal === 'function') {
+        window.SmylePlaylists.openAddToPlaylistModal(_trackId);
+      }
     });
 
     // Fermer
-    bar.querySelector('#smb-close').addEventListener('click', function() {
+    _barEl.querySelector('#smb-close').addEventListener('click', function() {
       _dismissed = true;
       _hide();
       if (_audio && !_audio.paused) _audio.pause();
     });
-
-    // NB : like-btn et add-to-pl-btn sont gérés par la délégation globale
-    // de ui/playlists.js via data-like-btn / data-add-to-playlist
   }
 
-  // ── Affichage / masquage ───────────────────────────────────────────────────
+  // ── Show / Hide ────────────────────────────────────────────────────────────
   function _show() {
     if (!_barEl) return;
     _barEl.classList.add('smb-visible');
     _barEl.setAttribute('aria-hidden', 'false');
     document.body.classList.add('smyle-mini-bar-open');
   }
-
   function _hide() {
     if (!_barEl) return;
     _barEl.classList.remove('smb-visible');
@@ -131,105 +142,66 @@
     document.body.classList.remove('smyle-mini-bar-open');
   }
 
-  // ── Mise à jour de la barre de progression ────────────────────────────────
+  // ── Progress bar ───────────────────────────────────────────────────────────
   function _startProgress() {
     if (_raf) cancelAnimationFrame(_raf);
-    function _tick() {
+    function tick() {
       const fill = document.getElementById('smb-progress-fill');
       if (fill && _audio && _audio.duration) {
         fill.style.width = ((_audio.currentTime / _audio.duration) * 100).toFixed(2) + '%';
       }
-      _raf = requestAnimationFrame(_tick);
+      _raf = requestAnimationFrame(tick);
     }
-    _raf = requestAnimationFrame(_tick);
+    _raf = requestAnimationFrame(tick);
   }
-
   function _stopProgress() {
     if (_raf) cancelAnimationFrame(_raf);
     _raf = null;
   }
 
-  // ── Mise à jour des métadonnées affichées ─────────────────────────────────
-  function _updateMeta(info) {
-    // info : { name, artist, cover, id, color }
-    const titleEl  = document.getElementById('smb-title');
-    const artistEl = document.getElementById('smb-artist');
-    const coverEl  = document.getElementById('smb-cover');
-    const phEl     = document.getElementById('smb-cover-placeholder');
-    const likeBtn  = document.getElementById('smb-like-btn');
-    const addBtn   = document.getElementById('smb-addpl-btn');
-    const barEl    = document.getElementById('smyle-mini-bar');
-
-    if (titleEl)  titleEl.textContent  = info.name   || '—';
-    if (artistEl) artistEl.textContent = info.artist || 'WATT';
-
-    // Cover
-    if (info.cover && coverEl && phEl) {
-      coverEl.src          = info.cover;
-      coverEl.style.display = '';
-      phEl.style.display   = 'none';
-    } else if (coverEl && phEl) {
-      coverEl.style.display = 'none';
-      phEl.style.display   = '';
-    }
-
-    // Couleur accent si dispo
-    if (info.color && barEl) {
-      const m = String(info.color).match(/^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/i);
-      if (m) {
-        barEl.style.setProperty('--smb-accent', info.color);
-      }
-    }
-
-    // Buttons data-attributes pour like/add delegation
-    _trackId = info.id ? String(info.id) : null;
-    if (likeBtn) {
-      likeBtn.setAttribute('data-like-btn', _trackId || '');
-      if (!_trackId) likeBtn.style.opacity = '0.35';
-      else likeBtn.style.opacity = '';
-    }
-    if (addBtn) {
-      addBtn.setAttribute('data-add-to-playlist', _trackId || '');
-      if (!_trackId) addBtn.style.opacity = '0.35';
-      else addBtn.style.opacity = '';
-    }
-
-    // Sync état liked
-    if (_trackId && typeof window.SmylePlaylists !== 'undefined' && typeof window.SmylePlaylists.syncLikeBtns === 'function') {
-      window.SmylePlaylists.syncLikeBtns();
-    }
+  // ── Bouton play/pause ──────────────────────────────────────────────────────
+  function _updatePlayBtn(playing) {
+    const btn = document.getElementById('smb-play');
+    if (!btn) return;
+    btn.innerHTML = playing ? '⏸' : '▶';
+    btn.classList.toggle('smb-playing', !!playing);
   }
 
-  // ── Lecture des métadonnées depuis l'audio actif ──────────────────────────
+  // ── Lecture des métadonnées ────────────────────────────────────────────────
   function _readMeta(audioEl) {
-    let info = { name: '—', artist: 'WATT', cover: null, id: null, color: null };
+    const info = { id: null, name: '—', artist: 'WATT', cover: null, color: null };
 
-    // 1) window.smyleAudio singleton (player principal index.html)
+    // 1) Singleton principal (window.smyleAudio, index.html)
     if (audioEl === window.smyleAudio && audioEl._trackRef) {
       const t  = audioEl._trackRef;
-      // Récupérer la playlist courante
       const pl = (typeof PLAYLISTS !== 'undefined' && typeof currentPlaylist !== 'undefined')
         ? PLAYLISTS[currentPlaylist] : null;
-      info.name   = t.name       || info.name;
-      info.artist = (pl && pl.label) || info.artist;
-      info.cover  = t.cover_url  || null;
-      info.id     = t.id         || null;
+      info.id     = t.id        || null;
+      info.name   = t.name      || '—';
+      info.artist = (pl && pl.label) || 'WATT';
+      info.cover  = t.cover_url || null;
       info.color  = (pl && pl.theme && /^#[0-9a-fA-F]{6}$/.test(pl.theme)) ? pl.theme : null;
       return info;
     }
 
-    // 2) Audio inline artiste — chercher les data-attrs dans le parent
-    // L'audio est dans .ap-track-inner ; le parent .ap-track-card a data-track-id / data-track-name
+    // 2) Audio inline (artiste, marketplace) — remonte l'arbre DOM
     let el = audioEl.parentElement;
-    for (let i = 0; i < 6 && el; i++) {
+    for (let i = 0; i < 8 && el; i++) {
       const tid  = el.dataset.trackId  || el.getAttribute('data-track-id');
       const name = el.dataset.trackName || el.getAttribute('data-track-name');
-      if (tid || name) {
-        info.id   = tid   || null;
-        info.name = name  || info.name;
-        // Cover : chercher img.ap-track-cover dans le même card
-        const img = el.querySelector('img.ap-track-cover, img.ap-cover, .ap-track-cover img');
-        if (img) info.cover = img.src || null;
+      const titleEl = el.querySelector('.mp-son-card-title, .ap-track-card-title, h3.ap-track-card-title');
+      if (tid || name || titleEl) {
+        info.id   = tid || null;
+        info.name = name || (titleEl && titleEl.textContent.trim()) || '—';
+        // Artist depuis la card
+        const artistEl = el.querySelector('.mp-son-card-artist-name, .ap-artist-name');
+        if (artistEl) info.artist = artistEl.textContent.trim();
+        // Cover
+        const img = el.querySelector('img.mp-son-card-cover-img, img.ap-track-cover, img.ap-cover');
+        if (img && img.src) info.cover = img.src;
+        // Couleur
+        const color = el.style && el.style.getPropertyValue('--son-color');
+        if (color) info.color = color.trim();
         break;
       }
       el = el.parentElement;
@@ -237,115 +209,109 @@
     return info;
   }
 
-  // ── Bind sur un Audio element ─────────────────────────────────────────────
-  function _bindAudio(audioEl) {
-    if (_audio === audioEl) return;   // déjà attaché
-    _unbindAudio();
-    _audio    = audioEl;
-    _dismissed = false;
+  // ── Mise à jour de l'affichage ─────────────────────────────────────────────
+  function _applyMeta(info) {
+    const titleEl  = document.getElementById('smb-title');
+    const artistEl = document.getElementById('smb-artist');
+    const coverImg = document.getElementById('smb-cover-img');
+    const coverPh  = document.getElementById('smb-cover-ph');
 
-    const onPlay = function() {
-      _updateMeta(_readMeta(audioEl));
-      _updatePlayBtn(true);
-      _show();
-      _startProgress();
-    };
-    const onPause = function() {
-      _updatePlayBtn(false);
-      _stopProgress();
-    };
-    const onEnded = function() {
-      _updatePlayBtn(false);
-      _stopProgress();
-    };
+    if (titleEl)  titleEl.textContent  = info.name   || '—';
+    if (artistEl) artistEl.textContent = info.artist || 'WATT';
 
-    audioEl._smb_play   = onPlay;
-    audioEl._smb_pause  = onPause;
-    audioEl._smb_ended  = onEnded;
-
-    audioEl.addEventListener('play',   onPlay);
-    audioEl.addEventListener('pause',  onPause);
-    audioEl.addEventListener('ended',  onEnded);
-
-    // Si déjà en cours de lecture (ex: on charge la page mid-song)
-    if (!audioEl.paused) {
-      _updateMeta(_readMeta(audioEl));
-      _updatePlayBtn(true);
-      _show();
-      _startProgress();
+    if (info.cover && coverImg && coverPh) {
+      coverImg.src          = info.cover;
+      coverImg.style.display = '';
+      coverPh.style.display  = 'none';
+    } else if (coverImg && coverPh) {
+      coverImg.style.display = 'none';
+      coverPh.style.display  = '';
     }
+
+    // Accent color
+    if (info.color && _barEl) {
+      _barEl.style.setProperty('--smb-accent', info.color);
+    }
+
+    // Sync trackId + like state
+    _trackId = info.id ? String(info.id) : null;
+    const likeBtn = document.getElementById('smb-like');
+    const addBtn  = document.getElementById('smb-add');
+    if (likeBtn) {
+      likeBtn.style.opacity = _trackId ? '' : '0.3';
+      likeBtn.classList.remove('smb-liked');
+    }
+    if (addBtn) addBtn.style.opacity = _trackId ? '' : '0.3';
   }
 
-  function _unbindAudio() {
+  // ── Capture ANY audio play sur la page ────────────────────────────────────
+  // v2 : on lit la meta IMMÉDIATEMENT sur capture play
+  function _onAnyPlay(e) {
+    const target = e.target;
+    if (!(target instanceof HTMLAudioElement)) return;
+    if (_dismissed && _audio === target) return;
+
+    // Changer de source audio si nécessaire
+    if (_audio !== target) {
+      _unbind();
+      _audio    = target;
+      _dismissed = false;
+
+      // Pause / ended listeners
+      target.addEventListener('pause',  _onPause);
+      target.addEventListener('ended',  _onEnded);
+    }
+
+    // Lire la meta IMMÉDIATEMENT (le play event est déjà là)
+    const info = _readMeta(target);
+    _applyMeta(info);
+    _updatePlayBtn(true);
+    _show();
+    _startProgress();
+  }
+
+  function _onPause() { _updatePlayBtn(false); _stopProgress(); }
+  function _onEnded() { _updatePlayBtn(false); _stopProgress(); }
+
+  function _unbind() {
     if (!_audio) return;
-    if (_audio._smb_play)  _audio.removeEventListener('play',   _audio._smb_play);
-    if (_audio._smb_pause) _audio.removeEventListener('pause',  _audio._smb_pause);
-    if (_audio._smb_ended) _audio.removeEventListener('ended',  _audio._smb_ended);
-    delete _audio._smb_play;
-    delete _audio._smb_pause;
-    delete _audio._smb_ended;
+    _audio.removeEventListener('pause', _onPause);
+    _audio.removeEventListener('ended', _onEnded);
     _stopProgress();
     _audio = null;
   }
 
-  // ── Bouton play/pause de la barre ─────────────────────────────────────────
-  function _updatePlayBtn(playing) {
-    const btn = document.getElementById('smb-playpause');
-    if (!btn) return;
-    btn.innerHTML = playing
-      ? '⏸' /* ⏸ */
-      : '▶' /* ▶ */;
-    btn.classList.toggle('smb-playing', playing);
-  }
-
-  // ── Détection capture : tout audio qui démarre sur la page ────────────────
-  function _onCapturePlay(e) {
-    const target = e.target;
-    if (!(target instanceof HTMLAudioElement)) return;
-    if (_dismissed && _audio === target) return;
-    _bindAudio(target);
-  }
-
-  // ── SmyleEvents : le player principal notifie quand un track change ────────
-  function _onTrackChange() {
-    // Rebind sur smyleAudio si ce n'est pas déjà le cas
-    if (window.smyleAudio && _audio !== window.smyleAudio) {
-      _bindAudio(window.smyleAudio);
-    } else if (window.smyleAudio) {
-      // Même audio mais track différent — rafraîchir les métas
-      _updateMeta(_readMeta(window.smyleAudio));
+  // ── SmyleEvents : track changé sur player principal ───────────────────────
+  function _onTrackLoaded() {
+    if (window.smyleAudio) {
+      _unbind();
+      _audio    = window.smyleAudio;
+      _dismissed = false;
+      window.smyleAudio.addEventListener('pause', _onPause);
+      window.smyleAudio.addEventListener('ended', _onEnded);
     }
-    _dismissed = false;
+    // Meta sera lue sur le prochain 'play' event via _onAnyPlay
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
   function _init() {
     _build();
-
-    // Bind immédiat sur le singleton principal s'il existe déjà
-    if (window.smyleAudio) {
-      _bindAudio(window.smyleAudio);
-    }
-
-    // Capture tous les <audio> de la page (artiste inline, etc.)
-    document.addEventListener('play', _onCapturePlay, true);
-
-    // Écouter SmyleEvents si dispo
+    document.addEventListener('play', _onAnyPlay, true);
     if (typeof SmyleEvents !== 'undefined') {
-      SmyleEvents.on('smyle:track-loaded', _onTrackChange);
+      SmyleEvents.on('smyle:track-loaded', _onTrackLoaded);
     }
-    // Polling léger au cas où smyleAudio est exposé après notre init
-    // (race condition si state.js charge après mini-bar dans certaines pages)
-    let _pollCount = 0;
-    const _poll = setInterval(function() {
-      if (window.smyleAudio && _audio !== window.smyleAudio) {
-        _bindAudio(window.smyleAudio);
+    // Polling fallback si smyleAudio exposé après init
+    let n = 0;
+    const p = setInterval(function() {
+      if (window.smyleAudio && !window.smyleAudio._smb_bound) {
+        window.smyleAudio._smb_bound = true;
+        window.smyleAudio.addEventListener('pause', _onPause);
+        window.smyleAudio.addEventListener('ended', _onEnded);
       }
-      if (++_pollCount > 20) clearInterval(_poll);
+      if (++n > 20) clearInterval(p);
     }, 300);
   }
 
-  // Lancement dès que le DOM est prêt
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _init);
   } else {
@@ -353,20 +319,6 @@
   }
 
   // ── API publique ──────────────────────────────────────────────────────────
-  window.SmyleMiniBar = {
-    // Permet aux pages de forcer la mise à jour des métadonnées
-    setTrack: function(info) {
-      // info : { name, artist, cover, id, color }
-      _dismissed = false;
-      _updateMeta(info);
-      if (window.smyleAudio && !window.smyleAudio.paused) {
-        _updatePlayBtn(true);
-        _show();
-      }
-    },
-    show: _show,
-    hide: _hide,
-    bindAudio: _bindAudio,
-  };
+  window.SmyleMiniBar = { show: _show, hide: _hide };
 
 })();
