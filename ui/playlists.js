@@ -268,6 +268,10 @@
       '.pl-vis-opt { display: flex; gap: 10px; padding: 10px 0; font-size: 14px; color: #c7c4d8; cursor: pointer; align-items: flex-start; }' +
       '.pl-vis-opt input { margin-top: 3px; }' +
       '.pl-vis-opt strong { color: #fff; font-weight: 600; }' +
+      '.pl-field-label { display:block; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:6px; }' +
+      '.pl-field-input { width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#fff; font-size:.88rem; padding:9px 13px; outline:none; transition:border-color .15s; box-sizing:border-box; margin-bottom:14px; font-family:inherit; }' +
+      '.pl-field-input:focus { border-color:rgba(204,136,255,.5); }' +
+      '.pl-field-input option { background:#14111f; }' +
       '.pl-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }' +
       '.pl-btn { padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }' +
       '.pl-btn-ghost { background: transparent; color: #a09cb8; border-color: rgba(255,255,255,.12); }' +
@@ -592,6 +596,7 @@
                 '<div class="pl-row-meta">' + badge + adnBadge + '</div>' +
               '</div>' +
               '<div class="pl-row-actions">' +
+                '<button type="button" class="pl-icon-btn pl-act-edit" title="Modifier">✏️</button>' +
                 '<button type="button" class="pl-icon-btn pl-act-color" title="Couleur neon" style="border-color:' + currentColor + '55;color:' + currentColor + '">🎨</button>' +
                 '<label class="pl-icon-btn-cover" title="Ajouter une cover vidéo (mp4 ≤5s)">📎' +
                   '<input type="file" class="pl-cover-input pl-act-cover" accept="video/mp4,video/webm,video/quicktime" />' +
@@ -623,7 +628,12 @@
       if (!row) return;
       const id = row.dataset.id;
       const vis = row.dataset.vis;
-      if (ev.target.closest('.pl-act-color')) {
+      if (ev.target.closest('.pl-act-edit')) {
+        openEditPlaylistModal(
+          { id, title: row.dataset.title || '', color: row.dataset.color || '#cc88ff', visibility: vis },
+          () => reload()
+        );
+      } else if (ev.target.closest('.pl-act-color')) {
         openEditPlaylistColorModal(
           { id, title: row.dataset.title || '', color: row.dataset.color || '#cc88ff' },
           () => reload()
@@ -1093,6 +1103,128 @@
     }
   }
 
+  // ── 5c. MODALE ÉDITION COMPLÈTE PLAYLIST ─────────────────────────────────
+  // Couvre : titre, visibilité, couleur neon.
+  // ADN + cover gardent leurs modales dédiées (flux plus complexes).
+
+  function openEditPlaylistModal(plData, onSaved) {
+    if (document.getElementById('pl-full-edit-overlay')) return;
+
+    var palette    = _universePalette(plData.title);
+    var initColor  = plData.color || palette.base;
+    var allSwatches = palette.swatches.concat(
+      WATT_SWATCHES.filter(function(c) { return palette.swatches.indexOf(c) === -1; })
+    );
+    var chosenColor = initColor;
+
+    var overlay = document.createElement('div');
+    overlay.id  = 'pl-full-edit-overlay';
+    overlay.className = 'pl-modal-overlay';
+    overlay.innerHTML = (
+      '<div class="pl-modal" role="dialog" style="max-width:420px">' +
+        '<button type="button" class="pl-modal-close" id="pledit-close" aria-label="Fermer">✕</button>' +
+        '<h3 class="pl-modal-title">Modifier la playlist</h3>' +
+
+        // Titre
+        '<label class="pl-field-label" for="pledit-title">Titre</label>' +
+        '<input id="pledit-title" class="pl-field-input" type="text" maxlength="200" value="' + _esc(plData.title || '') + '" placeholder="Nom de la playlist" />' +
+
+        // Visibilité
+        '<label class="pl-field-label" for="pledit-vis">Visibilité</label>' +
+        '<select id="pledit-vis" class="pl-field-input">' +
+          '<option value="private"' + (plData.visibility !== 'public' ? ' selected' : '') + '>🔒 Privée</option>' +
+          '<option value="public"' + (plData.visibility === 'public' ? ' selected' : '') + '>🌐 Publique</option>' +
+        '</select>' +
+        '<p style="font-size:11px;color:#6b677f;margin:-8px 0 14px;line-height:1.5">Une playlist publique doit contenir uniquement tes propres sons.</p>' +
+
+        // Couleur
+        '<label class="pl-field-label">Couleur neon</label>' +
+        '<div class="pl-neon-preview" id="pledit-preview" style="--nc:' + initColor + '">' + _esc(plData.title || 'Playlist') + '</div>' +
+        '<div class="pl-color-swatches" id="pledit-swatches" style="margin-bottom:16px">' +
+          allSwatches.map(function(c) {
+            return '<button type="button" class="pl-swatch' + (c.toLowerCase() === initColor.toLowerCase() ? ' active' : '') +
+              '" data-color="' + c + '" style="background:' + c + ';box-shadow:0 0 8px ' + c + '"></button>';
+          }).join('') +
+          '<input type="color" id="pledit-custom" value="' + initColor + '" title="Couleur personnalisée" class="pl-swatch pl-swatch-custom" />' +
+        '</div>' +
+
+        // Actions
+        '<div class="pl-modal-actions">' +
+          '<button type="button" class="pl-btn pl-btn-ghost" id="pledit-cancel">Annuler</button>' +
+          '<button type="button" class="pl-btn pl-btn-primary" id="pledit-save">Enregistrer</button>' +
+        '</div>' +
+        '<div class="pl-modal-err" id="pledit-err" style="display:none"></div>' +
+      '</div>'
+    );
+    document.body.appendChild(overlay);
+
+    // Preview couleur live
+    var preview   = overlay.querySelector('#pledit-preview');
+    var swatches  = overlay.querySelector('#pledit-swatches');
+    var customInp = overlay.querySelector('#pledit-custom');
+    var titleInp  = overlay.querySelector('#pledit-title');
+
+    function _pickColor(hex) {
+      chosenColor = hex;
+      customInp.value = hex;
+      preview.style.setProperty('--nc', hex);
+      swatches.querySelectorAll('.pl-swatch[data-color]').forEach(function(s) {
+        s.classList.toggle('active', s.dataset.color.toLowerCase() === hex.toLowerCase());
+      });
+    }
+
+    // Sync preview title en live
+    titleInp.addEventListener('input', function() {
+      preview.textContent = titleInp.value || 'Playlist';
+    });
+    swatches.addEventListener('click', function(e) {
+      var sw = e.target.closest('.pl-swatch[data-color]');
+      if (sw) _pickColor(sw.dataset.color);
+    });
+    customInp.addEventListener('input', function() {
+      chosenColor = customInp.value;
+      preview.style.setProperty('--nc', customInp.value);
+      swatches.querySelectorAll('.pl-swatch[data-color]').forEach(function(s) { s.classList.remove('active'); });
+    });
+
+    var close = function() { overlay.remove(); };
+    overlay.querySelector('#pledit-close').onclick = close;
+    overlay.querySelector('#pledit-cancel').onclick = close;
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+
+    overlay.querySelector('#pledit-save').onclick = async function() {
+      var errBox  = overlay.querySelector('#pledit-err');
+      var saveBtn = overlay.querySelector('#pledit-save');
+      errBox.style.display = 'none';
+      var newTitle = titleInp.value.trim();
+      if (!newTitle) { errBox.textContent = 'Le titre est obligatoire.'; errBox.style.display = 'block'; return; }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Enregistrement…';
+      try {
+        var patch = {};
+        if (newTitle !== (plData.title || ''))         patch.title      = newTitle;
+        if (chosenColor !== initColor)                 patch.color      = chosenColor;
+        var newVis = overlay.querySelector('#pledit-vis').value;
+        if (newVis !== (plData.visibility || 'private')) patch.visibility = newVis;
+
+        if (Object.keys(patch).length > 0) {
+          await updatePlaylist(plData.id, patch);
+        }
+        close();
+        if (typeof onSaved === 'function') onSaved();
+      } catch (e) {
+        var msg = (e && e.message) || 'Erreur inconnue';
+        // Cas owner mismatch (playlist publique avec sons d'autres artistes)
+        if (e && e.status === 422) msg = 'Impossible : la playlist contient des sons qui ne sont pas à toi.';
+        errBox.textContent = msg;
+        errBox.style.display = 'block';
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Enregistrer';
+      }
+    };
+  }
+
   // ── 6. EXPORTS ────────────────────────────────────────────────────────────
 
   window.SmylePlaylists = {
@@ -1104,6 +1236,7 @@
     loadArtistPublicPlaylists,
     openCreatePlaylistModal,
     openEditPlaylistAdnModal,
+    openEditPlaylistModal,
     openAdnPurchaseModal: _openAdnPurchaseModal,
     renderDashboardPlaylists,
     renderArtistPlaylists,
