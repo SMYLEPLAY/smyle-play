@@ -67,8 +67,23 @@ function loadTrack(playlistKey, idx) {
     });
   }
 
-  // Thème du player
-  document.getElementById('player').dataset.theme          = pl.theme;
+  // Thème du player — supporte noms (sunset-lover…) ET hex (#RRGGBB)
+  const playerEl = document.getElementById('player');
+  if (pl.theme && /^#[0-9a-fA-F]{6}$/.test(pl.theme)) {
+    const m = pl.theme.match(/^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/i);
+    if (m) {
+      const rgb = parseInt(m[1],16)+','+parseInt(m[2],16)+','+parseInt(m[3],16);
+      playerEl.style.setProperty('--p-accent', pl.theme);
+      playerEl.style.setProperty('--p-glow',   'rgba('+rgb+',.55)');
+      playerEl.style.setProperty('--p-dim',    'rgba('+rgb+',.18)');
+    }
+    playerEl.dataset.theme = 'custom';
+  } else {
+    playerEl.style.removeProperty('--p-accent');
+    playerEl.style.removeProperty('--p-glow');
+    playerEl.style.removeProperty('--p-dim');
+    playerEl.dataset.theme = pl.theme || '';
+  }
   document.getElementById('player-track-name').textContent = track.name;
   document.getElementById('player-playlist-name').textContent = pl.label;
 

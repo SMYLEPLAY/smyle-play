@@ -3859,3 +3859,86 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   .ap-prompts-list,
   .ap-voices-list { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CELLULES CARTE — Biographie, Réseaux, Sons, Voix, Recettes, Playlists
+   Fond blanc semi-transparent + bordure néon = couleur du profil (--brand-rgb)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ap-section,
+.ap-section-socials {
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(var(--brand-rgb,136,0,255),.3);
+  box-shadow: 0 0 24px rgba(var(--brand-rgb,136,0,255),.06), 0 2px 16px rgba(0,0,0,.18);
+  border-radius: 18px;
+  padding: 22px 28px;
+  max-width: 900px;
+  margin: 0 auto 20px;
+}
+
+.ap-tracks, .ap-voices, .ap-prompts {
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(var(--brand-rgb,136,0,255),.3);
+  box-shadow: 0 0 24px rgba(var(--brand-rgb,136,0,255),.06), 0 2px 16px rgba(0,0,0,.18);
+  border-radius: 18px;
+  padding: 22px 28px;
+  max-width: 900px;
+  margin: 0 auto 20px;
+}
+
+#ap-playlists-root { max-width: 900px; margin: 0 auto 20px; }
+
+/* Titres en couleur néon du profil */
+.ap-tracks-title, .ap-voices-title, .ap-prompts-title {
+  color: var(--brand,#8800ff);
+  font-size: 11px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.ap-tracks-count, .ap-voices-count, .ap-prompts-count {
+  color: rgba(var(--brand-rgb,136,0,255),.6);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Réseaux sociaux : flex centré dans sa card */
+.ap-section-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.ap-section-socials:empty { display: none; }
+
+/* Bouton accordéon */
+.ap-accordion-toggle {
+  display: block;
+  margin: 14px auto 4px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--brand-rgb,136,0,255),.35);
+  background: rgba(var(--brand-rgb,136,0,255),.06);
+  color: var(--brand,#8800ff);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+  font-family: inherit;
+}
+.ap-accordion-toggle:hover {
+  background: rgba(var(--brand-rgb,136,0,255),.14);
+  border-color: rgba(var(--brand-rgb,136,0,255),.6);
+}
+
+@media (max-width: 860px) {
+  .ap-section, .ap-section-socials, .ap-tracks, .ap-voices, .ap-prompts {
+    margin: 0 16px 16px; padding: 18px 20px; border-radius: 14px;
+  }
+}
+@media (max-width: 640px) {
+  .ap-section, .ap-section-socials, .ap-tracks, .ap-voices, .ap-prompts {
+    margin: 0 12px 14px; padding: 16px; border-radius: 12px;
+  }
+}
