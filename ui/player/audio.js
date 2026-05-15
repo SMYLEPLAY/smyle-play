@@ -110,6 +110,16 @@ function loadTrack(playlistKey, idx) {
   if (typeof SmyleEvents !== 'undefined') {
     try { SmyleEvents.emit('smyle:track-loaded', { track, playlist: pl }); } catch (_) {}
   }
+  // Push direct vers SmyleMiniBar — contourne les problèmes de timing DOM
+  if (window.SmyleMiniBar && typeof window.SmyleMiniBar.setTrack === 'function') {
+    window.SmyleMiniBar.setTrack({
+      id:     track.id        || null,
+      name:   track.name      || '—',
+      cover:  track.cover_url || null,
+      artist: (pl && pl.label) || 'WATT',
+      color:  (pl && pl.theme && /^#[0-9a-fA-F]{6}$/.test(pl.theme)) ? pl.theme : null
+    });
+  }
 }
 
 function togglePlay() {
@@ -196,6 +206,17 @@ function loadMixTrack() {
   updatePlayBtn();
   incrementPlay(track.id);
   renderMixPanel(); // mettre à jour active
+
+  // Push direct vers SmyleMiniBar
+  if (window.SmyleMiniBar && typeof window.SmyleMiniBar.setTrack === 'function') {
+    window.SmyleMiniBar.setTrack({
+      id:     track.id        || null,
+      name:   track.name      || '—',
+      cover:  track.cover_url || null,
+      artist: 'MY MIX',
+      color:  (pl && pl.theme && /^#[0-9a-fA-F]{6}$/.test(pl.theme)) ? pl.theme : null
+    });
+  }
 }
 
 function nextMixTrack() {
