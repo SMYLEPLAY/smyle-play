@@ -82,7 +82,32 @@ function setAuthToken(token) {
   } catch (_) { /* quota / mode privé → silent */ }
 }
 
-function clearAuthToken() { setAuthToken(null); }
+function clearAuthToken() {
+  setAuthToken(null);
+  // Diffuse le logout à tous les autres onglets du même site (cross-tab sync).
+  // BroadcastChannel n'envoie PAS au sender — pas de boucle infinie.
+  try {
+    const _bc = new BroadcastChannel('smyle_auth');
+    _bc.postMessage({ type: 'logout' });
+    _bc.close();
+  } catch (_) { /* navigateur sans BroadcastChannel → silent */ }
+}
+
+// ── 2b. RÉCEPTION LOGOUT CROSS-ONGLET ───────────────────────────────────────
+// Tout onglet qui charge api.js écoute le canal smyle_auth.
+// Si un autre onglet se déconnecte → on vide le token local et on redirige.
+(function _wireCrossTabLogout() {
+  try {
+    const _bc = new BroadcastChannel('smyle_auth');
+    _bc.onmessage = function(e) {
+      if (e.data && e.data.type === 'logout') {
+        try { sessionStorage.removeItem(_TOKEN_KEY); } catch (_) {}
+        try { localStorage.removeItem('smyle_current_user'); } catch (_) {}
+        window.location.href = '/';
+      }
+    };
+  } catch (_) { /* BroadcastChannel non supporté → dégradé silencieux */ }
+})();
 
 
 // ── 3. ERREUR DÉDIÉE ────────────────────────────────────────────────────────

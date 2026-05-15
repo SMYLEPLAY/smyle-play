@@ -1282,30 +1282,31 @@
       const tracks = playlist.tracks || [];
       const badge = playlist.visibility === 'public' ? 'Publique' : 'Privée';
       const safeTitle = String(playlist.title || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const plColor = playlist.color || '#cc88ff';
       content.innerHTML = (
-        '<div class="pl-view-hdr">' +
-          '<h3 class="pl-modal-title" style="margin:0">' + safeTitle + '</h3>' +
+        '<div class="pl-view-hdr" style="--pl-c:' + plColor + '">' +
+          '<h3 class="pl-modal-title" style="margin:0;color:' + plColor + '">' + safeTitle + '</h3>' +
           '<span class="pl-badge pl-badge-' + (playlist.visibility === 'public' ? 'public' : 'private') + '">' + badge + '</span>' +
         '</div>' +
         '<p class="pl-view-sub">' + tracks.length + ' titre' + (tracks.length > 1 ? 's' : '') + '</p>' +
-        (tracks.length > 0 ? '<button class="pl-btn pl-btn-primary pl-load-mix-btn" type="button" data-pl-id="' + playlist.id + '" style="margin-bottom:14px">▶ Charger dans MY MIX</button>' : '') +
+        (tracks.length > 0 ? '<button class="pl-btn pl-btn-primary pl-load-mix-btn" type="button" data-pl-id="' + playlist.id + '" style="margin-bottom:14px;background:' + plColor + ';color:#0a0a12">▶ Charger dans MY MIX</button>' : '') +
         (tracks.length === 0
           ? '<p class="pl-empty">Aucune track. Ajoute des sons depuis la marketplace via le bouton +.</p>'
           : '<ul class="pl-view-list">' + tracks.map((t, idx) => {
               const safe  = String(t.title || t.name || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
               const cover = t.cover_url || t.coverUrl || '';
-              const color = t.color || '#cc88ff';
+              // plColor hérite de la portée parente (défini avant content.innerHTML)
               // Pas de player inline — clic sur la row ouvre le drawer de détail
               const tid = String(t.id || '');
               const likeBtn    = tid ? '<button type="button" class="like-btn pl-row-like" data-like-btn="' + tid + '" title="Wishlist" onclick="event.stopPropagation()"></button>' : '';
               const addPlBtn   = tid ? '<button type="button" class="add-to-pl-btn pl-row-addpl" data-add-to-playlist="' + tid + '" title="Ajouter à une playlist" onclick="event.stopPropagation()">+</button>' : '';
-              return '<li class="pl-view-row" data-track-id="' + t.id + '" data-track-idx="' + idx + '">' +
+              return '<li class="pl-view-row" style="--pl-c:' + plColor + '" data-track-id="' + t.id + '" data-track-idx="' + idx + '">' +
                 '<div class="pl-view-row-inner">' +
                   // Zone gauche = PLAY au clic
                   '<div class="pl-view-row-play-zone">' +
                     (cover
                       ? '<img class="pl-view-row-cover" src="' + cover.replace(/"/g, '&quot;') + '" alt="" />'
-                      : '<div class="pl-view-row-cover-fallback" style="background:' + color + '"></div>'
+                      : '<div class="pl-view-row-cover-fallback" style="background:' + plColor + '"></div>'
                     ) +
                     '<div class="pl-view-row-play-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg></div>' +
                   '</div>' +
@@ -1550,8 +1551,8 @@
       '.pl-view-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }' +
       '.pl-view-row { border-radius: 10px; overflow: hidden; }' +
       '.pl-view-row-clickable { cursor: pointer; }' +
-      '.pl-view-row-inner { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; transition: background .15s, border-color .15s; }' +
-      '.pl-view-row-clickable .pl-view-row-inner:hover { background: rgba(204,136,255,.08); border-color: rgba(204,136,255,.25); }' +
+      '.pl-view-row-inner { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-left: 3px solid var(--pl-c,#cc88ff); border-radius: 10px; transition: background .15s, border-color .15s; }' +
+      '.pl-view-row-clickable .pl-view-row-inner:hover { background: rgba(255,255,255,.06); border-color: var(--pl-c,#cc88ff); }' +
       '.pl-view-row-play-zone { position:relative; width:38px; height:38px; flex-shrink:0; cursor:pointer; border-radius:6px; overflow:hidden; }' +
       '.pl-view-row-play-zone:hover .pl-view-row-play-icon { opacity:1; }' +
       '.pl-view-row-play-icon { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.5); color:#fff; opacity:0; transition:opacity .15s; border-radius:6px; }' +
