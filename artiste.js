@@ -1298,6 +1298,25 @@ function renderTracks(artist) {
     list.appendChild(card);
   });
 
+  // ── Accordéon : 6 tracks visibles par défaut ────────────────────────────
+  const TRACKS_FOLD = 6;
+  const _prevTT = list.nextElementSibling;
+  if (_prevTT && _prevTT.classList && _prevTT.classList.contains('ap-accordion-toggle')) _prevTT.remove();
+  if (tracks.length > TRACKS_FOLD) {
+    const allCards = list.querySelectorAll('.ap-track-card');
+    allCards.forEach((c, i) => { c.style.display = i >= TRACKS_FOLD ? 'none' : ''; });
+    const tb = document.createElement('button');
+    tb.type = 'button'; tb.className = 'ap-accordion-toggle';
+    tb.textContent = `Voir tout (${tracks.length}) ▼`;
+    let _exp = false;
+    tb.onclick = () => {
+      _exp = !_exp;
+      allCards.forEach((c, i) => { c.style.display = (!_exp && i >= TRACKS_FOLD) ? 'none' : ''; });
+      tb.textContent = _exp ? 'Réduire ▲' : `Voir tout (${tracks.length}) ▼`;
+    };
+    list.insertAdjacentElement('afterend', tb);
+  }
+
   // Délégation click + gestion robuste de play/pause via pattern promise
   // (suggéré par Tom 2026-05-05 — évite AbortError quand play/pause
   // s'enchaînent rapidement avant la résolution de la promesse de play).
@@ -1589,6 +1608,25 @@ function renderVoices(artist) {
     `;
     list.appendChild(card);
   });
+
+  // ── Accordéon : 4 voix visibles par défaut ──────────────────────────────
+  const VOICES_FOLD = 4;
+  const _prevVT = list.nextElementSibling;
+  if (_prevVT && _prevVT.classList && _prevVT.classList.contains('ap-accordion-toggle')) _prevVT.remove();
+  if (voices.length > VOICES_FOLD) {
+    const allVC = list.querySelectorAll('.ap-voice-card');
+    allVC.forEach((c, i) => { c.style.display = i >= VOICES_FOLD ? 'none' : ''; });
+    const tbV = document.createElement('button');
+    tbV.type = 'button'; tbV.className = 'ap-accordion-toggle';
+    tbV.textContent = `Voir tout (${voices.length}) ▼`;
+    let _expV = false;
+    tbV.onclick = () => {
+      _expV = !_expV;
+      allVC.forEach((c, i) => { c.style.display = (!_expV && i >= VOICES_FOLD) ? 'none' : ''; });
+      tbV.textContent = _expV ? 'Réduire ▲' : `Voir tout (${voices.length}) ▼`;
+    };
+    list.insertAdjacentElement('afterend', tbV);
+  }
 
   // Délégation click — un seul listener pour la liste re-rendue souvent.
   list.onclick = (ev) => {

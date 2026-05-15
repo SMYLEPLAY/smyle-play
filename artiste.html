@@ -256,7 +256,7 @@
     </div>
   </section>
 
-  <!-- ─ Biographie (champ DB : bio, max 2000 chars) ─────────────────────── -->
+  <!-- ─ Biographie ──────────────────────────────────────────────────────── -->
   <section class="ap-section ap-section-bio" id="ap-section-bio" aria-labelledby="ap-section-bio-title">
     <h2 class="ap-section-title" id="ap-section-bio-title">Biographie</h2>
     <div class="ap-section-body ap-editable ap-editable-long"
@@ -266,7 +266,12 @@
          spellcheck="true"></div>
   </section>
 
-  <!-- Section actions sociales (Follow) -->
+  <!-- ═══ Réseaux sociaux — juste sous la bio ═══════════════════════════ -->
+  <section class="ap-section ap-section-socials" id="ap-socials" aria-label="Réseaux sociaux">
+    <!-- Rendu par renderSocials() -->
+  </section>
+
+  <!-- Bouton Follow — entre réseaux sociaux et playlists -->
   <div id="ap-social-actions" style="text-align: center; margin: 16px auto 24px; display: none;">
     <button id="ap-follow-btn" type="button"
             style="background: rgba(204,136,255,.14); color: #cc88ff; border: 1px solid rgba(204,136,255,.4); padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: .02em;">
@@ -275,18 +280,8 @@
     <span id="ap-followers-count" style="margin-left: 14px; color: #a09cb8; font-size: 13px;"></span>
   </div>
 
-  <!-- ═══ Playlists publiques (chantier #2 — câblage frontend) ═══
-       Container vide rempli par ui/playlists.js au DOMContentLoaded.
-       Si l'artiste n'a aucune playlist publique, le container reste
-       caché (display:none) — pas de pollution du profil. ═══ -->
+  <!-- ═══ Playlists publiques — après les réseaux sociaux ═══════════════ -->
   <div id="ap-playlists-root" style="display:none"></div>
-
-  <!-- ═══ Réseaux sociaux (#43) — visibles pour les fans, éditables owner ═══ -->
-  <section class="ap-socials" id="ap-socials" aria-label="Réseaux sociaux">
-    <!-- Rendu par renderSocials() :
-           • fans → chips de liens visibles seulement si renseignés
-           • owner → chips + "+ ajouter" pour les non-renseignés -->
-  </section>
 
   <!-- ═══ DNA unlock (visible ssi l'artiste a un ADN publié) ════════════════
        Règle produit (Tom, chantier "profil artiste vendeur") :
