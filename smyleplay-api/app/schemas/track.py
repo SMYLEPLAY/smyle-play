@@ -57,6 +57,9 @@ class TrackRead(BaseModel):
     color: str | None
     cover_url: str | None = None
     prompt_id: UUID | None = None
+    # Prix du prompt lié — None si pas de prompt ou non injecté.
+    # Peuplé uniquement dans les endpoints playlist detail.
+    prompt_price_credits: int | None = None
     created_at: datetime
 
     @computed_field  # type: ignore[misc]

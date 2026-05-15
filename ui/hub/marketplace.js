@@ -768,8 +768,8 @@
     const tuuid = _esc(t.trackUuid || t.id || '');
     const socialHTML = tuuid ? `
       <div class="mp-td-social-row">
-        <button class="like-btn mp-td-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist">❤️ Wishlist</button>
-        <button class="add-to-pl-btn mp-td-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">＋ Playlist</button>
+        <button class="like-btn mp-td-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist"></button>
+        <button class="add-to-pl-btn mp-td-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">+</button>
       </div>` : '';
     overlay.innerHTML = `
       <aside class="mp-td-drawer" style="--td-color:${_esc(color)}"

@@ -391,7 +391,10 @@
       '.ap-pl-qp { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.7); width:44px; height:44px; border-radius:50%; background:rgba(5,5,8,.72); backdrop-filter:blur(8px); border:1.5px solid rgba(255,255,255,.18); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .22s,transform .22s,border-color .22s,background .22s; z-index:10; }' +
       '.ap-pl-qp svg { width:15px; height:15px; fill:currentColor; margin-left:2px; }' +
       '.ap-playlist-card:hover .ap-pl-qp { opacity:1; transform:translate(-50%,-50%) scale(1); }' +
-      '.ap-playlist-card:hover .ap-pl-qp:hover { transform:translate(-50%,-50%) scale(1.1); background:rgba(var(--nc-rgb,204,136,255),.45); border-color:rgba(var(--nc-rgb,204,136,255),.55); }'
+      '.ap-playlist-card:hover .ap-pl-qp:hover { transform:translate(-50%,-50%) scale(1.1); background:rgba(var(--nc-rgb,204,136,255),.45); border-color:rgba(var(--nc-rgb,204,136,255),.55); }' +
+      // Badge ADN sur les rows de tracks dans la modale playlist
+      '.pl-row-adn-badge { font-size:10px; font-weight:700; color:#cc88ff; background:rgba(204,136,255,.1); border:1px solid rgba(204,136,255,.3); border-radius:999px; padding:2px 8px; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }' +
+      '.pl-row-adn-badge:hover { background:rgba(204,136,255,.2); }'
     );
     const style = document.createElement('style');
     style.id = 'pl-modal-styles';
@@ -1033,6 +1036,63 @@
     }
   }
 
+  // ── 5c. MODALE ACHAT ADN TRACK (prompt lié) ───────────────────────────────
+
+  function _openTrackAdnModal(badgeEl) {
+    const promptId  = badgeEl.dataset.promptId;
+    const price     = parseInt(badgeEl.dataset.promptPrice, 10) || 0;
+    const trackName = badgeEl.dataset.trackName || 'ce son';
+    const existing  = document.getElementById('track-adn-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id        = 'track-adn-overlay';
+    overlay.className = 'adn-buy-overlay';
+    overlay.innerHTML =
+      '<div class="adn-buy-modal" role="dialog" aria-modal="true">' +
+        '<button class="adn-buy-close" id="track-adn-close" aria-label="Fermer">✕</button>' +
+        '<p class="adn-buy-eyebrow">ADN Track</p>' +
+        '<h3 class="adn-buy-title">' + _esc(trackName) + '</h3>' +
+        '<p class="adn-buy-desc">La recette Suno complète de ce son — tous les réglages pour reproduire cet univers sonore.</p>' +
+        '<ul class="adn-buy-perks">' +
+          '<li>🧬 Accès au prompt complet + réglages</li>' +
+          '<li>🎵 Son toujours écoutable librement</li>' +
+        '</ul>' +
+        '<div class="adn-buy-price-row"><div class="adn-buy-price">' + price + '<span>Smyles</span></div></div>' +
+        '<button class="adn-buy-btn" id="track-adn-confirm-btn" data-prompt-id="' + _esc(promptId) + '">' +
+          (typeof getAuthToken === 'function' && getAuthToken() ? 'Débloquer · ' + price + ' Smyles' : 'Connecte-toi pour acheter') +
+        '</button>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    const closeBtn = document.getElementById('track-adn-close');
+    if (closeBtn) closeBtn.addEventListener('click', function() { overlay.remove(); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+    const confirmBtn = document.getElementById('track-adn-confirm-btn');
+    if (confirmBtn && typeof getAuthToken === 'function' && getAuthToken()) {
+      confirmBtn.addEventListener('click', async function() {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Chargement…';
+        try {
+          const resp = await fetch('/unlocks/prompts/' + encodeURIComponent(promptId), {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Authorization': 'Bearer ' + getAuthToken(), 'Content-Type': 'application/json' }
+          });
+          if (!resp.ok) {
+            const body = await resp.json().catch(() => ({}));
+            throw new Error(body.detail || 'Erreur ' + resp.status);
+          }
+          overlay.remove();
+          if (typeof showToast === 'function') showToast('Recette débloquée 🔓 — retrouve-la dans ta bibliothèque');
+        } catch (err) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Erreur : ' + (err.message || 'réessaie');
+        }
+      });
+    }
+  }
+
   // ── 6. EXPORTS ────────────────────────────────────────────────────────────
 
   window.SmylePlaylists = {
@@ -1296,8 +1356,14 @@
               // plColor hérite de la portée parente (défini avant content.innerHTML)
               // Pas de player inline — clic sur la row ouvre le drawer de détail
               const tid = String(t.id || '');
-              const likeBtn    = tid ? '<button type="button" class="like-btn pl-row-like" data-like-btn="' + tid + '" title="Wishlist" onclick="event.stopPropagation()"></button>' : '';
-              const addPlBtn   = tid ? '<button type="button" class="add-to-pl-btn pl-row-addpl" data-add-to-playlist="' + tid + '" title="Ajouter à une playlist" onclick="event.stopPropagation()">+</button>' : '';
+              const likeBtn  = tid ? '<button type="button" class="like-btn pl-row-like" data-like-btn="' + tid + '" title="♡" onclick="event.stopPropagation()"></button>' : '';
+              const addPlBtn = tid ? '<button type="button" class="add-to-pl-btn pl-row-addpl" data-add-to-playlist="' + tid + '" title="+" onclick="event.stopPropagation()">+</button>' : '';
+              // Badge ADN si le track a un prompt lié avec prix
+              const pId    = t.prompt_id || t.promptId || null;
+              const pPrice = t.prompt_price_credits != null ? t.prompt_price_credits : (t.promptPriceCredits != null ? t.promptPriceCredits : null);
+              const adnBadge = (pId && pPrice != null)
+                ? '<button type="button" class="pl-row-adn-badge" data-prompt-id="' + _esc(String(pId)) + '" data-prompt-price="' + pPrice + '" data-track-name="' + safe.replace(/"/g,'&quot;') + '" onclick="event.stopPropagation()">🧬 ' + pPrice + ' Smyles</button>'
+                : '';
               return '<li class="pl-view-row" style="--pl-c:' + plColor + '" data-track-id="' + t.id + '" data-track-idx="' + idx + '">' +
                 '<div class="pl-view-row-inner">' +
                   // Zone gauche = PLAY au clic
@@ -1311,10 +1377,10 @@
                   // Zone info = DRAWER au clic
                   '<div class="pl-view-row-info pl-view-row-detail-trigger">' +
                     '<div class="pl-view-row-title">' + safe + '</div>' +
-                    '<div class="pl-view-row-hint">Écouter · › détails</div>' +
+                    '<div class="pl-view-row-hint">' + (adnBadge ? '🧬 ADN · ' : '') + 'Écouter · › détails</div>' +
                   '</div>' +
                   '<div class="pl-view-row-actions">' +
-                    likeBtn + addPlBtn +
+                    adnBadge + likeBtn + addPlBtn +
                     '<span class="pl-view-row-arrow pl-view-row-detail-trigger" title="Voir les détails">›</span>' +
                     '<button type="button" class="pl-view-row-remove" data-track-remove="' + t.id + '" title="Retirer de la playlist" aria-label="Retirer">✕</button>' +
                   '</div>' +
@@ -1607,7 +1673,14 @@
         if (id) openPlaylistViewModal(id);
         return;
       }
-      // ADN badge click → modale d'achat (avant le clic carte pour bloquer la propagation)
+      // ADN badge track (dans modale playlist) → modale achat prompt
+      const trackAdnBadge = ev.target.closest('.pl-row-adn-badge[data-prompt-id]');
+      if (trackAdnBadge) {
+        ev.stopPropagation();
+        _openTrackAdnModal(trackAdnBadge);
+        return;
+      }
+      // ADN badge playlist card → modale d'achat playlist
       const adnBadgeEl = ev.target.closest('.ap-pl-adn-badge[data-playlist-id]');
       if (adnBadgeEl) {
         ev.stopPropagation();
