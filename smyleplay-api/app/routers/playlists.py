@@ -40,6 +40,10 @@ from app.schemas.playlist import (
     PlaylistUpdate,
     PlaylistWithTracks,
 )
+from sqlalchemy import select as _select
+
+from app.models.prompt import Prompt as _Prompt
+from app.models.track import Track as _Track
 from app.schemas.track import TrackRead
 from app.services import playlists as svc
 from app.services.marketplace import user_owns_playlist_adn
@@ -47,6 +51,28 @@ from app.services.marketplace import user_owns_playlist_adn
 
 router = APIRouter(prefix="/playlists", tags=["playlists"])
 public_router = APIRouter(prefix="/watt", tags=["watt-playlists"])
+
+
+async def _tracks_with_prompt_prices(
+    db: AsyncSession, tracks: list[_Track]
+) -> list[TrackRead]:
+    """Construit la liste TrackRead en injectant prompt_price_credits
+    pour chaque track qui a un prompt_id lié."""
+    prompt_ids = [t.prompt_id for t in tracks if t.prompt_id]
+    prices: dict[str, int] = {}
+    if prompt_ids:
+        rows = (await db.execute(
+            _select(_Prompt.id, _Prompt.price_credits)
+            .where(_Prompt.id.in_(prompt_ids))
+        )).all()
+        prices = {str(r.id): r.price_credits for r in rows}
+    result = []
+    for t in tracks:
+        tr = TrackRead.model_validate(t)
+        if t.prompt_id:
+            tr = tr.model_copy(update={"prompt_price_credits": prices.get(str(t.prompt_id))})
+        result.append(tr)
+    return result
 
 
 # ─── Owner-facing : /playlists/... ───────────────────────────────────────
@@ -131,7 +157,7 @@ async def get_playlist_endpoint(
         adn_for_sale=playlist.adn_for_sale,
         adn_price=playlist.adn_price,
         created_at=playlist.created_at,
-        tracks=[TrackRead.model_validate(t) for t in tracks],
+        tracks=await _tracks_with_prompt_prices(db, tracks),
     )
 
 
@@ -293,7 +319,7 @@ async def get_public_playlist_with_tracks(
         adn_for_sale=playlist.adn_for_sale,
         adn_price=playlist.adn_price,
         created_at=playlist.created_at,
-        tracks=[TrackRead.model_validate(t) for t in tracks],
+        tracks=await _tracks_with_prompt_prices(db, tracks),
     )
 
 
