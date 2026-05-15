@@ -1438,10 +1438,51 @@
   .mp-td-cover { max-height: 200px; }
 }
 
-/* Indicateur discret "recette disponible" dans le titre de la card */
-.mp-son-card-recipe-dot {
+/* Bouton recette cliquable sur la card (remplace le simple indicateur) */
+.mp-son-card-recipe-row {
+  padding: 0 4px 4px;
+}
+.mp-recipe-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(204,136,255,.12);
+  border: 1px solid rgba(204,136,255,.35);
+  border-radius: 8px;
+  padding: 4px 9px;
   font-size: 11px;
-  margin-left: 5px;
-  opacity: .7;
-  vertical-align: middle;
+  color: #cc88ff;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+  width: 100%;
+  justify-content: center;
+}
+.mp-recipe-badge:hover {
+  background: rgba(204,136,255,.25);
+  border-color: rgba(204,136,255,.7);
+}
+.mp-recipe-badge.is-owned {
+  color: #6fffb0;
+  border-color: rgba(111,255,176,.4);
+  background: rgba(111,255,176,.08);
+  cursor: default;
+}
+.mp-recipe-badge-price {
+  font-weight: 400;
+  opacity: .8;
+}
+
+/* Lien perma artiste (↗) sur la card */
+.mp-son-card-permalink {
+  font-size: 11px;
+  color: rgba(255,255,255,.35);
+  text-decoration: none;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: color .15s;
+}
+.mp-son-card-permalink:hover {
+  color: rgba(255,255,255,.75);
 }
