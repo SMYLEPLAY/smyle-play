@@ -1281,14 +1281,16 @@ function renderTracks(artist) {
             <h3 class="ap-track-card-title ap-track-detail-trigger"
                 style="cursor:pointer"
                 onclick="openTrackDetailById('${t.id}')">${safeName}</h3>
-            <div class="ap-track-card-meta">
-              <span>▶ ${plays}</span>
-              ${date ? `<span>· ${date}</span>` : ''}
-              ${platformBadge}
-              <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
+            <div class="ap-track-card-actions">
               <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
+              <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
               ${deleteBtn}
             </div>
+          </div>
+          <div class="ap-track-card-meta">
+            <span class="ap-track-meta-plays">▶ ${plays}</span>
+            ${date ? `<span class="ap-track-meta-date">· ${date}</span>` : ''}
+            ${platformBadge}
           </div>
           ${audio}
           ${unlockBlock}
