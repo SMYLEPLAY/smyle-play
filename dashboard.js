@@ -3198,6 +3198,9 @@ function initSectionNav() {
 
 function dashLogout() {
   clearCurrentUser();
+  // Vide le JWT (sessionStorage) et notifie les autres composants
+  if (typeof clearAuthToken === 'function') clearAuthToken();
+  if (window.SmyleEvents) SmyleEvents.emit('smyle:auth-changed', { loggedIn: false });
   window.location.href = '/';
 }
 
