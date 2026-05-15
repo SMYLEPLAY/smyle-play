@@ -1332,9 +1332,9 @@
           theme: playlist.color || 'custom',
           folder: '',
           tracks: tracks.map(function(t) {
-            var url = t.stream_url || t.streamUrl
+            var url = t.audio_url
               || (t.r2_key ? '/watt/stream/' + t.r2_key.split('/').map(encodeURIComponent).join('/') : null)
-              || t.audio_url || null;
+              || t.stream_url || t.streamUrl || null;
             return { id: t.id, name: t.title || t.name || 'Sans titre', url: url, file: 'track.wav' };
           }).filter(function(t) { return !!t.url; })
         };
@@ -1434,9 +1434,9 @@
 
     const color    = t.color || '#cc88ff';
     const title    = t.title || t.name || 'Sans titre';
-    const url      = t.stream_url || t.streamUrl
+    const url      = t.audio_url
       || (t.r2_key ? '/watt/stream/' + t.r2_key.split('/').map(encodeURIComponent).join('/') : '')
-      || t.audio_url || '';
+      || t.stream_url || t.streamUrl || '';
     const cover    = t.cover_url || t.coverUrl || '';
     const promptId = t.prompt_id || t.promptId || null;
     const promptPrice = (t.prompt_price_credits || t.promptPriceCredits) != null
