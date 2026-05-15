@@ -1180,6 +1180,8 @@ function renderTracks(artist) {
   tracks.forEach(t => {
     const card = document.createElement('article');
     card.className = 'ap-track-card';
+    card.dataset.trackId   = t.id || '';
+    card.dataset.trackName = t.name || '';
     const safeName = (t.name || 'Sans titre').replace(/</g, '&lt;');
     const plays    = formatCount(t.plays);
     const date     = t.date || '';
