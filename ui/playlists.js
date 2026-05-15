@@ -366,7 +366,7 @@
       '.ap-playlists-section { padding: 0 12px; margin: 20px 0 28px; }' +
       '.ap-playlists-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; border: none; padding: 10px 0; cursor: pointer; gap: 12px; }' +
       '.ap-playlists-toggle-left { display: flex; align-items: baseline; gap: 10px; }' +
-      '.ap-playlists-title { font-size: 18px; color: #fff; margin: 0; letter-spacing: -.01em; }' +
+      '.ap-playlists-title { font-size: 18px; color: rgba(245,242,252,.95); margin: 0; letter-spacing: -.01em; text-shadow: 0 0 8px rgba(var(--brand-rgb,136,0,255),.80), 0 0 24px rgba(var(--brand-rgb,136,0,255),.40); }' +
       '.ap-playlists-count { font-size: 12px; color: #a09cb8; }' +
       '.ap-playlists-arrow { color: #a09cb8; font-size: 14px; transition: transform .25s ease; flex-shrink: 0; }' +
       '.ap-playlists-body { overflow: hidden; max-height: 0; transition: max-height .35s ease; }' +

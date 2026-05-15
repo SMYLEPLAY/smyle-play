@@ -2729,13 +2729,13 @@ body.ap-owner-editing .ap-artist-name:focus {
   letter-spacing: .22em;
   text-transform: uppercase;
   font-weight: 600;
-  color: rgba(var(--brand-rgb, 136,0,255), .85);
+  color: rgba(245,242,252,.95);
   margin-bottom: 14px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(var(--brand-rgb, 136,0,255), .22);
   text-shadow:
-    0 0 6px  rgba(var(--brand-rgb,136,0,255),.55),
-    0 0 18px rgba(var(--brand-rgb,136,0,255),.25);
+    0 0 8px  rgba(var(--brand-rgb,136,0,255),.80),
+    0 0 24px rgba(var(--brand-rgb,136,0,255),.40);
 }
 .ap-section-body {
   font-size: 15px;
@@ -3913,17 +3913,17 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 
 #ap-playlists-root { max-width: 900px; margin: 0 auto 20px; }
 
-/* Titres de section profil — couleur néon synchronisée avec le profil artiste */
+/* Titres de section profil — blanc + glow néon synchronisé avec la couleur du profil */
 .ap-tracks-title, .ap-voices-title, .ap-prompts-title,
 .ap-playlists-adn-title {
-  color: var(--brand,#8800ff);
+  color: rgba(245,242,252,.95);
   font-size: 11px;
   letter-spacing: .22em;
   text-transform: uppercase;
   font-weight: 700;
   text-shadow:
-    0 0 6px  rgba(var(--brand-rgb,136,0,255),.65),
-    0 0 18px rgba(var(--brand-rgb,136,0,255),.30);
+    0 0 8px  rgba(var(--brand-rgb,136,0,255),.85),
+    0 0 24px rgba(var(--brand-rgb,136,0,255),.45);
 }
 .ap-tracks-count, .ap-voices-count, .ap-prompts-count {
   color: rgba(var(--brand-rgb,136,0,255),.6);
