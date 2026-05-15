@@ -733,9 +733,213 @@ function renderMyTracks() {
         <div class="dash-track-meta">${htmlEscape(t.genre || 'Sans genre')} · ${t.date || 'récent'}</div>
       </div>
       <div class="dash-track-plays">${t.plays || 0} écoutes</div>
-      <button class="dash-btn-ghost" style="padding:4px 10px;font-size:.68rem" onclick="deleteTrack('${t.id}')">✕</button>
+      <div class="dash-track-row-actions">
+        <button class="dash-track-edit-btn" title="Modifier ce son" onclick="openTrackEdit('${t.id}')">✏️</button>
+        <button class="dash-btn-ghost" style="padding:4px 10px;font-size:.68rem" onclick="deleteTrack('${t.id}')">✕</button>
+      </div>
     </div>`;
   }).join('');
+}
+
+// ── Édition inline d'un son ────────────────────────────────────────────────
+// Panneau modal qui permet à tout artiste de modifier :
+//   - le titre du son
+//   - la cover (upload fichier → R2 via /api/watt/upload-image)
+//   - la couleur signature
+//   - la recette (prompt) liée
+// Utilise PATCH /tracks/{dbId} (FastAPI) après avoir résolu les assets.
+// Les mêmes fonctions seront accessibles à tous les artistes via leur
+// dashboard — l'ID local (localStorage) sert de clé de lookup, le dbId
+// est transmis au backend.
+
+let _editTrackLocalId  = null;   // id localStorage en cours d'édition
+let _editCoverFile     = null;   // fichier cover sélectionné (si nouveau)
+let _editCoverPreview  = null;   // data URL preview
+
+async function openTrackEdit(localId) {
+  const tracks = getMyTracks();
+  const t = tracks.find(x => x.id === localId);
+  if (!t) return;
+  _editTrackLocalId = localId;
+  _editCoverFile    = null;
+  _editCoverPreview = t.coverDataUrl || null;
+
+  // Récupère les prompts de l'artiste pour le dropdown
+  let myPrompts = [];
+  try {
+    const resp = await apiFetch('/artist/me/prompts');
+    myPrompts = (resp && Array.isArray(resp.prompts)) ? resp.prompts
+              : (Array.isArray(resp) ? resp : []);
+  } catch (_) {}
+
+  const coverSrc = _editCoverPreview || '';
+  const promptOptions = [
+    `<option value="">— Aucune recette liée —</option>`,
+    ...myPrompts.map(p =>
+      `<option value="${p.id}"${t.promptId === p.id ? ' selected' : ''}>${htmlEscape(p.title)} (${p.priceCredits} crédits)</option>`
+    ),
+  ].join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dashTrackEditOverlay';
+  overlay.innerHTML = `
+    <div class="dte-backdrop" onclick="closeTrackEdit()"></div>
+    <div class="dte-panel" role="dialog" aria-modal="true">
+      <div class="dte-hdr">
+        <span class="dte-hdr-title">Modifier le son</span>
+        <button class="dte-close" onclick="closeTrackEdit()" aria-label="Fermer">✕</button>
+      </div>
+      <div class="dte-body">
+
+        <!-- Cover -->
+        <div class="dte-field">
+          <label class="dte-label">Cover</label>
+          <div class="dte-cover-area">
+            <div class="dte-cover-preview" id="dteCoverPreview">
+              ${coverSrc
+                ? `<img src="${coverSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
+                : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="32" height="32" style="opacity:.3"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`}
+            </div>
+            <label class="dte-cover-pick-btn">
+              📷 Choisir une image
+              <input type="file" accept="image/*" id="dteCoverFile" style="display:none" onchange="onEditCoverChange(event)">
+            </label>
+            <span class="dte-cover-hint">JPG / PNG / WEBP · max 5 MB</span>
+          </div>
+        </div>
+
+        <!-- Titre -->
+        <div class="dte-field">
+          <label class="dte-label" for="dteTitle">Titre</label>
+          <input class="dte-input" id="dteTitle" type="text" maxlength="255"
+                 value="${htmlEscape(t.name || '')}" placeholder="Nom du son">
+        </div>
+
+        <!-- Couleur -->
+        <div class="dte-field">
+          <label class="dte-label">Couleur signature</label>
+          <div class="dte-color-row">
+            ${['#FFD700','#cc88ff','#00e5ff','#ff6b6b','#00ffaa','#ff9f43'].map(c =>
+              `<button class="dte-color-swatch${(t.color||'').toUpperCase()===c.toUpperCase()?' is-selected':''}"
+                       style="background:${c}" data-hex="${c}"
+                       onclick="selectEditColor('${c}',this)"></button>`
+            ).join('')}
+            <input type="color" id="dteColorPicker"
+                   value="${t.color || '#FFD700'}"
+                   oninput="onEditColorPicker(this.value)"
+                   title="Couleur personnalisée">
+          </div>
+          <input type="hidden" id="dteColorVal" value="${t.color || ''}">
+        </div>
+
+        <!-- Recette liée -->
+        <div class="dte-field">
+          <label class="dte-label" for="dtePrompt">Recette (ADN) liée</label>
+          <select class="dte-select" id="dtePrompt">${promptOptions}</select>
+          <span class="dte-hint">Lier une recette rend ce son achetable sur la marketplace.</span>
+        </div>
+
+      </div>
+      <div class="dte-footer">
+        <button class="dash-btn-ghost" onclick="closeTrackEdit()">Annuler</button>
+        <button class="dash-btn-primary" id="dteSaveBtn" onclick="_saveTrackEdit()">Enregistrer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('is-visible'));
+}
+
+function closeTrackEdit() {
+  const el = document.getElementById('dashTrackEditOverlay');
+  if (!el) return;
+  el.classList.remove('is-visible');
+  setTimeout(() => el.remove(), 280);
+  _editTrackLocalId = null;
+  _editCoverFile    = null;
+  _editCoverPreview = null;
+}
+
+function onEditCoverChange(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { dashToast('Image trop lourde (max 5 MB)'); return; }
+  _editCoverFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _editCoverPreview = e.target.result;
+    const prev = document.getElementById('dteCoverPreview');
+    if (prev) prev.innerHTML = `<img src="${e.target.result}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectEditColor(hex, btn) {
+  document.getElementById('dteColorVal').value = hex;
+  document.getElementById('dteColorPicker').value = hex;
+  document.querySelectorAll('.dte-color-swatch').forEach(s => s.classList.remove('is-selected'));
+  btn.classList.add('is-selected');
+}
+
+function onEditColorPicker(hex) {
+  document.getElementById('dteColorVal').value = hex;
+  document.querySelectorAll('.dte-color-swatch').forEach(s => s.classList.remove('is-selected'));
+}
+
+async function _saveTrackEdit() {
+  if (!_editTrackLocalId) return;
+  const tracks = getMyTracks();
+  const t = tracks.find(x => x.id === _editTrackLocalId);
+  if (!t) return;
+
+  const saveBtn = document.getElementById('dteSaveBtn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement…'; }
+
+  try {
+    const newTitle  = (document.getElementById('dteTitle')?.value || '').trim();
+    const newColor  = document.getElementById('dteColorVal')?.value || '';
+    const newPrompt = document.getElementById('dtePrompt')?.value || '';
+
+    // 1. Upload cover si nouveau fichier
+    let newCoverUrl = t.coverUrl || null;
+    if (_editCoverFile) {
+      const uploaded = await _uploadTrackCover(_editCoverFile, newTitle || t.name);
+      if (uploaded) newCoverUrl = uploaded;
+    }
+
+    // 2. PATCH FastAPI si dbId disponible
+    if (t.dbId) {
+      const patch = {};
+      if (newTitle && newTitle !== t.name)          patch.title      = newTitle;
+      if (newColor)                                  patch.color      = newColor;
+      if (newCoverUrl)                               patch.cover_url  = newCoverUrl;
+      if (newPrompt)                                 patch.prompt_id  = newPrompt;
+      else if (!newPrompt && t.promptId)             patch.prompt_id  = null;
+      if (Object.keys(patch).length > 0) {
+        await apiFetch(`/tracks/${encodeURIComponent(t.dbId)}`, { method: 'PATCH', json: patch });
+      }
+    }
+
+    // 3. Mise à jour localStorage
+    const updated = tracks.map(x => {
+      if (x.id !== _editTrackLocalId) return x;
+      return {
+        ...x,
+        name:         newTitle || x.name,
+        color:        newColor || x.color,
+        coverUrl:     newCoverUrl || x.coverUrl,
+        coverDataUrl: _editCoverPreview || x.coverDataUrl,
+        promptId:     newPrompt || x.promptId || null,
+      };
+    });
+    saveMyTracks(updated);
+    renderMyTracks();
+    renderArtistCard();
+    dashToast('Son mis à jour ✓');
+    closeTrackEdit();
+  } catch (err) {
+    dashToast('Erreur : ' + (err && err.message || 'inconnue'));
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Enregistrer'; }
+  }
 }
 
 async function deleteTrack(id) {
