@@ -2135,3 +2135,46 @@ img, video, svg { max-width: 100%; }
   .smyle-footer-line,
   .smyle-footer-line * { font-size: 9.5px; letter-spacing: .16em; }
 }
+
+/* ── Boutons globaux like / add-to-playlist (partagés marketplace + profil + modal) ── */
+.like-btn,
+.add-to-pl-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.55);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+  flex: 0 0 24px;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+  vertical-align: middle;
+  font-family: inherit;
+  font-weight: 400;
+}
+.add-to-pl-btn:hover {
+  color: #cc88ff;
+  border-color: rgba(204,136,255,.45);
+  background: rgba(204,136,255,.06);
+}
+.like-btn::before { content: "\2661"; font-size: 14px; }
+.like-btn:hover {
+  color: #ff7799;
+  border-color: rgba(255,119,153,.35);
+  background: rgba(255,119,153,.05);
+}
+.like-btn.liked::before { content: "\2665"; }
+.like-btn.liked {
+  color: #ff5577;
+  border-color: rgba(255,85,119,.5);
+  background: rgba(255,85,119,.08);
+}
