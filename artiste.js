@@ -845,8 +845,8 @@ function openBoutiqueDrawer(type, dataStr) {
     const tuuid = (data.trackUuid || data.trackId || '').replace(/"/g,'&quot;');
     if (tuuid) {
       html += `<div class="bd-social-row">
-        <button class="like-btn bd-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist">❤️ Wishlist</button>
-        <button class="add-to-pl-btn bd-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">＋ Playlist</button>
+        <button class="like-btn bd-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist"></button>
+        <button class="add-to-pl-btn bd-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">+</button>
       </div>`;
     }
 
