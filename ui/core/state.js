@@ -23,3 +23,10 @@ let dragSrcIdx       = null;
 // Compteur de timeupdate pour limiter les updates Media Session (coûteux)
 // (consommé par le listener audio.addEventListener('timeupdate', …) dans ui/app.js)
 let _msUpdateCounter = 0;
+
+// ── 2. EXPOSITION GLOBALE ────────────────────────────────────────────────────
+// window.smyleAudio : permet au mini-bar (et aux futurs modules) de s'attacher
+// à l'unique instance Audio singleton sans dépendance directe sur ce fichier.
+if (typeof window !== 'undefined') {
+  window.smyleAudio = audio;
+}

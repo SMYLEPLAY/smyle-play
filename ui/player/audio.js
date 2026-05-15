@@ -105,6 +105,11 @@ function loadTrack(playlistKey, idx) {
 
   const playsEl = document.getElementById(`plays-${track.id}`);
   if (playsEl) playsEl.textContent = `${fmtPlays(getPlayCount(track.id))} ▶`;
+
+  // Notifier le mini-bar que le track a changé
+  if (typeof SmyleEvents !== 'undefined') {
+    try { SmyleEvents.emit('smyle:track-loaded', { track, playlist: pl }); } catch (_) {}
+  }
 }
 
 function togglePlay() {
