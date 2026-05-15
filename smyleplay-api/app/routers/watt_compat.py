@@ -27,7 +27,7 @@ from app.auth.jwt import decode_access_token
 from app.config import settings
 from app.database import get_db
 from app.models.adn import Adn
-from app.models.playlist import Playlist
+from app.models.playlist import Playlist, PlaylistTrack
 from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.user import User
@@ -267,6 +267,7 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         "date":       date_fr,
         # Sprint 1 — pivot écoute
         "coverUrl":   track.cover_url or "",
+        "color":      track.color or "",
         "trackUuid":         str(track.id),  # UUID réel — utilisé par /playlists/{id}/tracks
         "promptId":          str(track.prompt_id) if track.prompt_id else None,
         # Prix de la recette liée — injecté a posteriori par les endpoints
@@ -503,6 +504,35 @@ async def build_artist_detail_payload(
     tracks = (await db.execute(stmt_tracks)).scalars().all()
     total_plays = sum(t.plays or 0 for t in tracks)
 
+    # Batch query — playlist publique de rattachement pour chaque track.
+    # On ne prend que les playlists publiques de l'artiste. Si un track
+    # appartient à plusieurs playlists, on prend la première (added_at ASC).
+    playlist_by_track: dict = {}
+    if tracks:
+        track_ids = [t.id for t in tracks]
+        pt_stmt = (
+            select(
+                PlaylistTrack.track_id,
+                Playlist.id.label("pl_id"),
+                Playlist.title.label("pl_title"),
+                Playlist.color.label("pl_color"),
+            )
+            .join(Playlist, Playlist.id == PlaylistTrack.playlist_id)
+            .where(
+                PlaylistTrack.track_id.in_(track_ids)
+                & (Playlist.owner_id == target.id)
+                & (Playlist.visibility == "public")
+            )
+            .order_by(PlaylistTrack.added_at)
+        )
+        for row in (await db.execute(pt_stmt)).all():
+            if row.track_id not in playlist_by_track:
+                playlist_by_track[row.track_id] = {
+                    "playlistId":    str(row.pl_id),
+                    "playlistTitle": row.pl_title or "",
+                    "playlistColor": row.pl_color or "",
+                }
+
     # Rank = nombre d'artistes qui ont strictement plus de plays, +1
     rank_subq = (
         select(
@@ -706,7 +736,10 @@ async def build_artist_detail_payload(
         # la vitrine d'accueil.
         "isOfficial":     bool(target.is_official),
         "created_at":     target.created_at.isoformat() if target.created_at else None,
-        "tracks":         [_track_to_flask_dict(t) for t in tracks],
+        "tracks":         [
+            {**_track_to_flask_dict(t), **(playlist_by_track.get(t.id) or {})}
+            for t in tracks
+        ],
         # Chantier "DNA unlock sur profil" — présents si l'artiste vend,
         # None / 0 / [] sinon. Le front cache la section correspondante
         # si vide. On ne renvoie JAMAIS prompt_text / lyrics en clair :
