@@ -390,10 +390,19 @@
       // Badge Recette si le track a un prompt achetable
       const promptId    = t.promptId    || null;
       const promptPrice = t.promptPriceCredits != null ? t.promptPriceCredits : null;
-      // Badge recette retir\u00e9 de la cover \u2014 l'unlock se fait depuis le drawer (clic cover/titre)
-      // Indicateur discret si une recette est disponible
-      const recipeIndicator = (promptId && promptPrice != null)
-        ? `<span class="mp-son-card-recipe-dot" title="Recette \u00b7 ${promptPrice} Smyles">\uD83E\uDDEC</span>`
+      // Badge 🧬 si le track a un prompt achetable — bouton cliquable direct
+      const recipeBtn   = (promptId && promptPrice != null)
+        ? `<button type="button" class="mp-recipe-badge" onclick="event.stopPropagation()"
+                   data-prompt-id="${_esc(String(promptId))}"
+                   data-prompt-price="${promptPrice}"
+                   data-track-name="${_esc(title)}"
+                   title="D\u00e9bloquer la recette \u00b7 ${promptPrice} Smyles">
+            \uD83E\uDDEC <span class="mp-recipe-badge-price">${promptPrice} Smyles</span>
+           </button>`
+        : '';
+      // Lien perma vers le profil artiste
+      const permalinkBtn = artistSlug
+        ? `<a class="mp-son-card-permalink" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();" title="Voir le profil artiste" aria-label="Voir le profil artiste">\u2197</a>`
         : '';
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
@@ -403,13 +412,15 @@
               `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
             `</button>` +
           `</div>` +
-          `<div class="mp-son-card-title">${_esc(title)}${recipeIndicator}</div>` +
+          `<div class="mp-son-card-title">${_esc(title)}</div>` +
           `<div class="mp-son-card-artist">` +
             `<a class="mp-son-card-artist-name" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
+            permalinkBtn +
           `</div>` +
+          (recipeBtn ? `<div class="mp-son-card-recipe-row">${recipeBtn}</div>` : '') +
           `<div class="mp-son-card-meta">` +
-            `<span class="mp-son-card-meta-plays">${plays} écoutes</span>` +
-            `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
+            `<span class="mp-son-card-meta-plays">${plays} \u00e9coutes</span>` +
+            `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter \u00e0 une playlist" aria-label="Ajouter \u00e0 une playlist">+</button>` +
             `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
           `</div>` +
           (streamUrl
@@ -658,6 +669,15 @@
         console.log('[marketplace] fallback audio inline card');
         if (audio.paused) audio.play().catch(e => console.error('audio inline card:', e));
         else audio.pause();
+        return;
+      }
+
+      // Click sur badge recette → modale unlock directe
+      const recipeBadgeEl = ev.target.closest('.mp-recipe-badge');
+      if (recipeBadgeEl) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        _openRecipeUnlockModal(recipeBadgeEl);
         return;
       }
 
