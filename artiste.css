@@ -3931,6 +3931,25 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   font-weight: 600;
 }
 
+/* Badge playlist sur les cards track — cliquable, couleur héritée de la playlist */
+.ap-track-pl-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity .15s ease;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.ap-track-pl-badge:hover { opacity: .7; }
+
 /* Réseaux sociaux : flex centré dans sa card */
 .ap-section-socials {
   display: flex;

@@ -1258,6 +1258,17 @@ function renderTracks(artist) {
                  data-track-name="${(t.name || '').replace(/"/g, '&quot;')}"
                  title="Supprimer ce son">🗑</button>`
       : '';
+    // Couleur de la card : priorité playlist > couleur propre du track > défaut
+    const tc    = t.playlistColor || t.color || '';
+    const tcRgb = tc ? hexToRgbTriplet(tc) : '255,215,0';
+    // Badge playlist cliquable (si le track appartient à une playlist publique)
+    const artistSlug = (typeof state !== 'undefined' && state.artist && state.artist.slug) || '';
+    const plBadge = t.playlistTitle
+      ? `<a class="ap-track-pl-badge"
+              href="/u/${encodeURIComponent(artistSlug)}"
+              style="color:${tc};border-color:rgba(${tcRgb},.4);background:rgba(${tcRgb},.1)"
+              onclick="event.stopPropagation()">${(t.playlistTitle + '').replace(/</g,'&lt;')}</a>`
+      : '';
     // data-stream-url permet au click handler de retrouver l'URL
     // pour le fallback play JS sur la card entière.
     const streamAttr = t.streamUrl ? ` data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"` : '';
@@ -1275,13 +1286,14 @@ function renderTracks(artist) {
       hasPrompt:    !!linkedPrompt,
     };
 
+    if (tc) card.style.cssText = `--tc:${tc};--tc-rgb:${tcRgb}`;
     card.innerHTML = `
-      <div class="ap-track-card-inner"${streamAttr}>
+      <div class="ap-track-card-inner"${streamAttr}${tc ? ` style="background:rgba(${tcRgb},.07);border-left:3px solid rgba(${tcRgb},.55)"` : ''}>
         ${coverHTML}
         <div class="ap-track-card-body">
           <div class="ap-track-card-top">
             <h3 class="ap-track-card-title ap-track-detail-trigger"
-                style="cursor:pointer"
+                style="cursor:pointer${tc ? `;color:${tc};text-shadow:0 0 8px rgba(${tcRgb},.6),0 0 20px rgba(${tcRgb},.25)` : ''}"
                 onclick="openTrackDetailById('${t.id}')">${safeName}</h3>
             <div class="ap-track-card-actions">
               <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
@@ -1293,6 +1305,7 @@ function renderTracks(artist) {
             <span class="ap-track-meta-plays">▶ ${plays}</span>
             ${date ? `<span class="ap-track-meta-date">· ${date}</span>` : ''}
             ${platformBadge}
+            ${plBadge}
           </div>
           ${audio}
           ${unlockBlock}
