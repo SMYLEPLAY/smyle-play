@@ -318,7 +318,20 @@
     _init();
   }
 
+  // ── setTrack : push direct depuis loadTrack() / loadMixTrack() ───────────
+  function _setTrack(info) {
+    _dismissed = false;
+    _applyMeta(info);
+    // Sync l'audio singleton si pas encore lié
+    if (window.smyleAudio && _audio !== window.smyleAudio) {
+      _unbind();
+      _audio = window.smyleAudio;
+      window.smyleAudio.addEventListener('pause', _onPause);
+      window.smyleAudio.addEventListener('ended', _onEnded);
+    }
+  }
+
   // ── API publique ──────────────────────────────────────────────────────────
-  window.SmyleMiniBar = { show: _show, hide: _hide };
+  window.SmyleMiniBar = { show: _show, hide: _hide, setTrack: _setTrack };
 
 })();
