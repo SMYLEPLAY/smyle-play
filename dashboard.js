@@ -756,6 +756,236 @@ let _editTrackLocalId  = null;   // id localStorage en cours d'édition
 let _editCoverFile     = null;   // fichier cover sélectionné (si nouveau)
 let _editCoverPreview  = null;   // data URL preview
 
+// ══════════════════════════════════════════════════════════════════════════════
+// CELLULE ÉDITION CATALOGUE — Section 1a du WattBoard
+// Recherche inline par nom → formulaire d'édition cover/titre/couleur/mood/recette.
+// Partagée par tous les artistes : pas de state global pollutant.
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _dte2TrackId  = null;   // id localStorage en cours d'édition
+let _dte2CoverFile = null;  // nouveau fichier cover sélectionné
+let _dte2CoverPrev = null;  // data-url preview
+
+// Initialisation : charge les prompts et prépare la liste
+async function initTrackEditor() {
+  // Charge les prompts de l'artiste pour le dropdown recette
+  try {
+    const resp = await apiFetch('/artist/me/prompts');
+    const prompts = (resp && Array.isArray(resp.prompts)) ? resp.prompts
+                  : (Array.isArray(resp) ? resp : []);
+    const sel = document.getElementById('dte2Prompt');
+    if (sel && prompts.length > 0) {
+      prompts.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.title} · ${p.priceCredits} Smyles`;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (_) {}
+}
+
+// Filtre en temps réel
+function dte2Filter(q) {
+  const res = document.getElementById('dte2Results');
+  if (!res) return;
+  const tracks = getMyTracks();
+  const term = (q || '').trim().toLowerCase();
+  if (!term) { res.style.display = 'none'; res.innerHTML = ''; return; }
+
+  const hits = tracks.filter(t => (t.name || '').toLowerCase().includes(term)).slice(0, 8);
+  if (hits.length === 0) {
+    res.innerHTML = '<li class="dte2-result-empty">Aucun son trouvé</li>';
+    res.style.display = 'block';
+    return;
+  }
+  res.innerHTML = hits.map(t => {
+    const col = t.color || '#FFD700';
+    const cover = t.coverDataUrl
+      ? `<img src="${t.coverDataUrl}" class="dte2-result-cover" alt="">`
+      : `<div class="dte2-result-cover" style="background:${col}"></div>`;
+    return `<li class="dte2-result-item" data-id="${t.id}" onclick="dte2Select('${t.id}')">
+      ${cover}
+      <span class="dte2-result-name" style="color:${col}">${htmlEscape(t.name || 'Sans titre')}</span>
+      <span class="dte2-result-meta">${t.plays || 0} écoutes</span>
+    </li>`;
+  }).join('');
+  res.style.display = 'block';
+}
+
+// Sélection d'un son → rempli le formulaire
+function dte2Select(localId) {
+  const tracks = getMyTracks();
+  const t = tracks.find(x => x.id === localId);
+  if (!t) return;
+
+  _dte2TrackId  = localId;
+  _dte2CoverFile = null;
+  _dte2CoverPrev = t.coverDataUrl || null;
+
+  // Ferme les résultats
+  const res = document.getElementById('dte2Results');
+  const inp = document.getElementById('dte2SearchInput');
+  if (res) res.style.display = 'none';
+  if (inp) inp.value = t.name || '';
+
+  // Cover preview
+  const coverEl = document.getElementById('dte2Cover');
+  if (coverEl) {
+    coverEl.innerHTML = _dte2CoverPrev
+      ? `<img src="${_dte2CoverPrev}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`
+      : `<div style="width:100%;height:100%;background:${t.color||'#FFD700'};border-radius:10px;opacity:.7"></div>`;
+  }
+
+  // Infos
+  const lbl = document.getElementById('dte2SelectedLabel');
+  const plays = document.getElementById('dte2SelectedPlays');
+  if (lbl)   lbl.textContent = t.name || 'Sans titre';
+  if (plays) plays.textContent = `${t.plays || 0} écoutes`;
+
+  // Champs
+  const titleInp = document.getElementById('dte2Title');
+  if (titleInp) titleInp.value = t.name || '';
+
+  const genreInp = document.getElementById('dte2Genre');
+  if (genreInp) genreInp.value = t.genre || '';
+
+  // Couleur
+  const col = t.color || '';
+  const picker = document.getElementById('dte2ColorPicker');
+  const colVal = document.getElementById('dte2ColorVal');
+  if (picker) picker.value = col || '#FFD700';
+  if (colVal) colVal.value = col;
+  _dte2RefreshSwatches(col);
+  _dte2RefreshColorPreview(col);
+
+  // Recette liée
+  const promptSel = document.getElementById('dte2Prompt');
+  if (promptSel) promptSel.value = t.promptId || '';
+
+  // Erreur reset
+  const err = document.getElementById('dte2Err');
+  if (err) { err.style.display = 'none'; err.textContent = ''; }
+
+  // Affiche le formulaire
+  const form = document.getElementById('dte2Form');
+  if (form) form.style.display = 'block';
+}
+
+// Cover
+function dte2OnCoverChange(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { dashToast('Image trop lourde (max 5 MB)'); return; }
+  _dte2CoverFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _dte2CoverPrev = e.target.result;
+    const coverEl = document.getElementById('dte2Cover');
+    if (coverEl) coverEl.innerHTML = `<img src="${e.target.result}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Couleur
+function dte2PickColor(hex, btn) {
+  const colVal = document.getElementById('dte2ColorVal');
+  const picker = document.getElementById('dte2ColorPicker');
+  if (colVal) colVal.value = hex;
+  if (picker) picker.value = hex;
+  _dte2RefreshSwatches(hex);
+  _dte2RefreshColorPreview(hex);
+}
+function dte2OnColorPicker(hex) {
+  const colVal = document.getElementById('dte2ColorVal');
+  if (colVal) colVal.value = hex;
+  _dte2RefreshSwatches('');
+  _dte2RefreshColorPreview(hex);
+}
+function _dte2RefreshSwatches(active) {
+  document.querySelectorAll('.dte2-swatch').forEach(s => {
+    s.classList.toggle('is-active', active && s.dataset.hex && s.dataset.hex.toLowerCase() === active.toLowerCase());
+  });
+}
+function _dte2RefreshColorPreview(hex) {
+  const prev = document.getElementById('dte2ColorPreview');
+  if (!prev || !hex) return;
+  prev.style.cssText = `background:${hex};box-shadow:0 0 12px ${hex}66;`;
+  prev.textContent = hex.toUpperCase();
+}
+
+// Annuler
+function dte2Cancel() {
+  _dte2TrackId = null; _dte2CoverFile = null; _dte2CoverPrev = null;
+  const form = document.getElementById('dte2Form');
+  const inp  = document.getElementById('dte2SearchInput');
+  if (form) form.style.display = 'none';
+  if (inp)  inp.value = '';
+}
+
+// Enregistrer
+async function dte2Save() {
+  if (!_dte2TrackId) return;
+  const tracks = getMyTracks();
+  const t = tracks.find(x => x.id === _dte2TrackId);
+  if (!t) return;
+
+  const saveBtn = document.getElementById('dte2SaveBtn');
+  const errEl   = document.getElementById('dte2Err');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement…'; }
+  if (errEl)   { errEl.style.display = 'none'; }
+
+  try {
+    const newTitle  = (document.getElementById('dte2Title')?.value || '').trim();
+    const newGenre  = (document.getElementById('dte2Genre')?.value || '').trim();
+    const newColor  = document.getElementById('dte2ColorVal')?.value
+                   || document.getElementById('dte2ColorPicker')?.value || '';
+    const newPrompt = document.getElementById('dte2Prompt')?.value || '';
+
+    // Upload cover si nouveau fichier
+    let newCoverUrl = t.coverUrl || null;
+    let newCoverDataUrl = _dte2CoverPrev;
+    if (_dte2CoverFile) {
+      const uploaded = await _uploadTrackCover(_dte2CoverFile, newTitle || t.name);
+      if (uploaded) { newCoverUrl = uploaded; }
+    }
+
+    // PATCH FastAPI
+    if (t.dbId) {
+      const patch = {};
+      if (newTitle && newTitle !== (t.name || '')) patch.title     = newTitle;
+      if (newColor)                                 patch.color     = newColor;
+      if (newCoverUrl && newCoverUrl !== t.coverUrl) patch.cover_url = newCoverUrl;
+      if (newPrompt)                                patch.prompt_id = newPrompt;
+      else if (!newPrompt && t.promptId)            patch.prompt_id = null;
+      if (Object.keys(patch).length > 0) {
+        await apiFetch(`/tracks/${encodeURIComponent(t.dbId)}`, { method: 'PATCH', json: patch });
+      }
+    }
+
+    // Mise à jour localStorage
+    const updated = tracks.map(x => x.id !== _dte2TrackId ? x : {
+      ...x,
+      name:         newTitle || x.name,
+      genre:        newGenre || x.genre,
+      color:        newColor || x.color,
+      coverUrl:     newCoverUrl || x.coverUrl,
+      coverDataUrl: newCoverDataUrl || x.coverDataUrl,
+      promptId:     newPrompt || x.promptId || null,
+    });
+    saveMyTracks(updated);
+    renderMyTracks();
+    renderArtistCard();
+
+    dashToast('✓ Son mis à jour');
+    dte2Cancel();
+  } catch (err) {
+    const msg = (err && err.message) || 'Erreur inconnue';
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Enregistrer les modifications'; }
+  }
+}
+
 async function openTrackEdit(localId) {
   const tracks = getMyTracks();
   const t = tracks.find(x => x.id === localId);
@@ -3527,6 +3757,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStats();
   renderRanking();
   renderMyTracks();   // initialise compteur freemium + état zone upload
+  initTrackEditor();  // cellule édition catalogue (section 1a)
 
   // Section nav
   initSectionNav();
