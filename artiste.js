@@ -1334,6 +1334,35 @@ function renderTracks(artist) {
     list.insertAdjacentElement('afterend', tb);
   }
 
+  // ── Accordéon EXTERNE — fermé par défaut (comme l'onglet Playlists) ─────
+  {
+    const hdr = section.querySelector('.ap-tracks-hdr');
+    if (hdr && !hdr.dataset.acc) {
+      hdr.dataset.acc = '1';
+      hdr.style.cursor = 'pointer';
+      hdr.style.userSelect = 'none';
+      const arrow = document.createElement('span');
+      arrow.className = 'ap-section-arrow';
+      arrow.textContent = '▼';
+      hdr.appendChild(arrow);
+
+      // Enveloppe tout le contenu (list + bouton "Voir tout") dans un body
+      const body = document.createElement('div');
+      body.className = 'ap-tracks-body';
+      // body inséré juste après le header, avant la liste
+      hdr.parentNode.insertBefore(body, list);
+      body.appendChild(list);
+      // "Voir tout" est maintenant frère de body — on le ramène dedans
+      const togBtn = body.parentNode.querySelector('.ap-accordion-toggle');
+      if (togBtn) body.appendChild(togBtn);
+
+      hdr.addEventListener('click', () => {
+        const open = body.classList.toggle('is-open');
+        arrow.style.transform = open ? 'rotate(180deg)' : '';
+      });
+    }
+  }
+
   // Délégation click + gestion robuste de play/pause via pattern promise
   // (suggéré par Tom 2026-05-05 — évite AbortError quand play/pause
   // s'enchaînent rapidement avant la résolution de la promesse de play).
@@ -1643,6 +1672,32 @@ function renderVoices(artist) {
       tbV.textContent = _expV ? 'Réduire ▲' : `Voir tout (${voices.length}) ▼`;
     };
     list.insertAdjacentElement('afterend', tbV);
+  }
+
+  // ── Accordéon EXTERNE — fermé par défaut (comme l'onglet Playlists) ─────
+  {
+    const hdrV = section.querySelector('.ap-voices-hdr');
+    if (hdrV && !hdrV.dataset.acc) {
+      hdrV.dataset.acc = '1';
+      hdrV.style.cursor = 'pointer';
+      hdrV.style.userSelect = 'none';
+      const arrowV = document.createElement('span');
+      arrowV.className = 'ap-section-arrow';
+      arrowV.textContent = '▼';
+      hdrV.appendChild(arrowV);
+
+      const bodyV = document.createElement('div');
+      bodyV.className = 'ap-voices-body';
+      hdrV.parentNode.insertBefore(bodyV, list);
+      bodyV.appendChild(list);
+      const togBtnV = bodyV.parentNode.querySelector('.ap-accordion-toggle');
+      if (togBtnV) bodyV.appendChild(togBtnV);
+
+      hdrV.addEventListener('click', () => {
+        const open = bodyV.classList.toggle('is-open');
+        arrowV.style.transform = open ? 'rotate(180deg)' : '';
+      });
+    }
   }
 
   // Délégation click — un seul listener pour la liste re-rendue souvent.

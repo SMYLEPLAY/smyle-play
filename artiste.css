@@ -3160,11 +3160,31 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   margin: 24px auto 48px;
   padding: 0 32px;
 }
+/* ── Accordéon externe Sons publiés + Voix à vendre ─────────────────── */
+.ap-tracks-body,
+.ap-voices-body {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .35s ease;
+}
+.ap-tracks-body.is-open,
+.ap-voices-body.is-open {
+  max-height: 6000px;
+}
+.ap-section-arrow {
+  font-size: 13px;
+  color: #a09cb8;
+  flex-shrink: 0;
+  transition: transform .25s ease;
+  margin-left: 10px;
+}
+
 .ap-tracks-hdr {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  padding-bottom: 14px;
 }
 .ap-tracks-title {
   font-size: 16px;
@@ -3269,9 +3289,10 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 }
 .ap-voices-hdr {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  padding-bottom: 14px;
 }
 .ap-voices-title {
   font-size: 16px;
