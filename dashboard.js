@@ -779,6 +779,21 @@ async function initTrackEditor() {
   try {
     const tracks = await apiFetch('/tracks/me');
     _dte2AllTracks = Array.isArray(tracks) ? tracks : [];
+    // Synchronise le localStorage avec la réponse API pour cohérence multi-device.
+    // Évite que "Mes Sons" (qui lit smyle_watt_tracks) affiche des données périmées.
+    if (_dte2AllTracks.length > 0) {
+      const localTracks = _dte2AllTracks.map(t => ({
+        id:       t.id,
+        dbId:     t.id,
+        name:     t.title  || '',
+        title:    t.title  || '',
+        plays:    t.plays  || 0,
+        color:    t.color  || '',
+        coverUrl: t.cover_url || '',
+        promptId: t.prompt_id || null,
+      }));
+      saveMyTracks(localTracks);
+    }
   } catch (_) {
     // Fallback localStorage si API indisponible
     _dte2AllTracks = getMyTracks().map(t => ({
@@ -871,9 +886,11 @@ function dte2Select(trackUuid) {
   const titleInp = document.getElementById('dte2Title');
   if (titleInp) titleInp.value = t.title || '';
 
-  // Genre (pas dans l'API — champ libre pour le futur)
+  // Genre : pré-rempli depuis t.genre si l'API le retourne un jour,
+  // sinon on laisse le champ vide (on ne force pas '' pour éviter
+  // d'effacer une saisie déjà faite par l'artiste sur le track courant).
   const genreInp = document.getElementById('dte2Genre');
-  if (genreInp) genreInp.value = '';
+  if (genreInp) genreInp.value = t.genre || '';
 
   // Couleur
   const col    = t.color || '';

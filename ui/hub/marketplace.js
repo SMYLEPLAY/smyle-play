@@ -307,7 +307,7 @@
     }
 
     el.innerHTML = top.map((a, i) => {
-      const href  = '/u/' + (a.slug || '');
+      const href  = a.slug ? '/u/' + a.slug : '#';
       const name  = a.artistName || 'Sans nom';
       const city  = a.city || '';
       const genre = a.genre || '';
@@ -504,7 +504,7 @@
     }
 
     el.innerHTML = items.map(a => {
-      const href  = '/u/' + (a.slug || '');
+      const href  = a.slug ? '/u/' + a.slug : '#';
       const color = a.brandColor || '#7C3AED';
       const name  = a.artistName || 'Sans nom';
       const parts = [a.city, a.genre].filter(Boolean).map(_esc).join(' · ');
