@@ -1973,8 +1973,8 @@ async function uploadTrack() {
     // dans dashTrackPlatform en haut du formulaire).
     const platformVal       = (document.getElementById('dashTrackPlatform')?.value || '').trim();
     const modelVersionVal   = (document.getElementById('dashPromptModelVersion')?.value || '').trim();
-    const weirdnessVal      = (document.getElementById('dashMoodWeirdness')?.value || '50').trim();
-    const styleInfluenceVal = (document.getElementById('dashMoodStyleInfluence')?.value || '50').trim();
+    const weirdnessVal      = (document.getElementById('dashPromptWeirdness')?.value || '').trim();
+    const styleInfluenceVal = (document.getElementById('dashPromptStyleInfluence')?.value || '').trim();
     const vocalGenderVal    = (document.getElementById('dashPromptVocalGender')?.value || '').trim();
 
     const promptErrs = [];
@@ -1982,7 +1982,8 @@ async function uploadTrack() {
     if (promptText.length > 1000)              promptErrs.push('prompt trop long (max 1000)');
     if (price < 3 || price > 500)              promptErrs.push('prix entre 3 et 500 crédits');
     if (!platformVal)                          promptErrs.push('plateforme d\'origine');
-    // weirdness et styleInfluence viennent de sliders (toujours une valeur entre 0-100)
+    if (!weirdnessVal)                         promptErrs.push('weirdness');
+    if (!styleInfluenceVal)                    promptErrs.push('style influence');
     if (!vocalGenderVal)                       promptErrs.push('voix (M/F/Instrumental)');
 
     if (promptErrs.length) {

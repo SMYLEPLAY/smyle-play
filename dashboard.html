@@ -780,10 +780,29 @@
                      placeholder="Suno v4, Udio 1.5, ..." maxlength="50" />
               <div class="dash-help">Optionnel. Si tu connais la version exacte, plus l'acheteur reproduit fidèlement.</div>
 
-              <div class="dash-help" style="background:rgba(136,0,255,.08);border:1px solid rgba(136,0,255,.2);border-radius:8px;padding:8px 10px;color:#c0aae0;margin-bottom:8px">
-                🎛 Les curseurs Weirdness et Style influence sont réglables dans la section <strong>Style / ambiance (mood)</strong> ci-dessus.
+              <label class="dash-label">
+                Weirdness <span class="dash-req">*</span>
+                · <span class="dash-slider-val" id="dashPromptWeirdnessVal">50</span>/100
+              </label>
+              <input type="range" class="dash-slider" id="dashPromptWeirdness"
+                     min="0" max="100" value="50" step="1"
+                     oninput="document.getElementById('dashPromptWeirdnessVal').textContent = this.value" />
+              <div class="dash-mood-extremes">
+                <span>0 — classique</span><span>100 — expérimental</span>
               </div>
-              <label class="dash-label" style="margin-top: 4px;">Références stylistiques</label>
+
+              <label class="dash-label" style="margin-top:12px">
+                Style influence <span class="dash-req">*</span>
+                · <span class="dash-slider-val" id="dashPromptStyleInfluenceVal">50</span>/100
+              </label>
+              <input type="range" class="dash-slider" id="dashPromptStyleInfluence"
+                     min="0" max="100" value="50" step="1"
+                     oninput="document.getElementById('dashPromptStyleInfluenceVal').textContent = this.value" />
+              <div class="dash-mood-extremes">
+                <span>0 — très libre</span><span>100 — très fidèle</span>
+              </div>
+
+              <label class="dash-label" style="margin-top: 12px;">Références stylistiques</label>
               <textarea class="dash-textarea" id="dashPromptStyleRefs" rows="2"
                         maxlength="500"
                         placeholder="D'Angelo + James Blake, soul ralentie 70s..."></textarea>
