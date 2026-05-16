@@ -953,6 +953,42 @@ html { scroll-behavior: smooth; }
   text-align: center;
 }
 
+/* ── Ligne "Recette liée" avec bouton Créer ──────────────────────────────────── */
+.dte2-prompt-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.dte2-prompt-row .dte2-input { flex: 1; min-width: 0; }
+.dte2-create-prompt-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: rgba(136,0,255,.18);
+  border: 1px solid rgba(136,0,255,.45);
+  border-radius: 8px;
+  color: #cc88ff;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.dte2-create-prompt-btn:hover {
+  background: rgba(136,0,255,.32);
+  border-color: rgba(136,0,255,.7);
+  color: #e0aaff;
+}
+
+/* ── Champs du modal "Créer une recette" ─────────────────────────────────────── */
+.dte2-cp-field { display: flex; flex-direction: column; gap: 6px; }
+.dte2-cp-label {
+  font-size: .78rem;
+  font-weight: 600;
+  color: #a09cb8;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
 .dash-track-row-actions {
   display: flex;
   align-items: center;
