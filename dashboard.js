@@ -440,35 +440,35 @@ function getAllArtists() {
   return list;
 }
 
-// Données de démo pour le classement
-function getDemoRanking() {
-  const me = getWattProfile();
-  const myTracks = getMyTracks();
-  const totalPlays = myTracks.reduce((s, t) => s + (t.plays || 0), 0);
+// Cache classement réel — évite un double fetch si renderStats + renderRanking s'enchaînent
+let _rankingCache = null;
 
-  const demo = [
-    { name: 'NightWave', genre: 'Dark Electro IA', plays: 1842, followers: 234 },
-    { name: 'LunaAI',    genre: 'Ambient IA',      plays: 1605, followers: 198 },
-    { name: 'ZephyrIA',  genre: 'Lofi IA',          plays: 1290, followers: 156 },
-    { name: 'Aurora',    genre: 'Cinematic IA',     plays: 987,  followers: 121 },
-    { name: 'NebulaX',   genre: 'Deep House IA',    plays: 742,  followers: 88  },
-    { name: 'EchoBot',   genre: 'Trap IA',          plays: 511,  followers: 67  },
-  ];
+async function fetchRealRanking() {
+  if (_rankingCache) return _rankingCache;
+  try {
+    const data = await apiFetch('/watt/artists');
+    const artists = Array.isArray(data && data.artists) ? data.artists : [];
+    const me = getWattProfile();
+    const mySlug = me ? (me.slug || '') : '';
 
-  const meEntry = {
-    name:      me ? me.artistName : 'Toi',
-    genre:     me ? me.genre      : 'Genre non défini',
-    plays:     totalPlays,
-    followers: me ? (me.followers || 0) : 0,
-    isMe: true,
-  };
+    const ranking = artists.map(a => ({
+      name:      a.artistName || 'Artiste',
+      genre:     a.genre      || 'Genre non défini',
+      plays:     a.plays      || 0,
+      followers: a.followersCount || 0,
+      slug:      a.slug || '',
+      isMe:      mySlug ? a.slug === mySlug : false,
+    })).sort((a, b) => {
+      if (b.plays !== a.plays) return b.plays - a.plays;
+      return b.followers - a.followers;
+    });
 
-  const all = [...demo, meEntry].sort((a, b) => {
-    if (b.plays !== a.plays) return b.plays - a.plays;
-    return b.followers - a.followers;
-  });
-
-  return all;
+    _rankingCache = ranking;
+    return ranking;
+  } catch (err) {
+    console.warn('[dashboard] fetchRealRanking :', err && err.message);
+    return [];
+  }
 }
 
 // Données historique écoutes simulées (7j)
@@ -489,6 +489,12 @@ function getPlaysHistory(period) {
 // Le guard redirige uniquement si l'utilisateur n'est pas connecté.
 
 function checkAccess() {
+  // Vérifie que l'utilisateur est connecté (token JWT présent)
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    const returnUrl = encodeURIComponent('/dashboard');
+    window.location.href = `/?auth=login&return=${returnUrl}`;
+    return false;
+  }
   const guardEl = document.getElementById('dash-guard');
   if (guardEl) guardEl.style.display = 'none';
   return true;
@@ -1412,6 +1418,7 @@ async function deleteTrack(id) {
 
   // Supprimer en localStorage immédiatement
   saveMyTracks(tracks.filter(t => t.id !== id));
+  _rankingCache = null; // invalide le cache pour forcer un refresh du classement réel
   renderArtistCard();
   renderMyTracks();
   renderStats();
@@ -2038,6 +2045,7 @@ async function uploadTrack() {
   await wait(1000);
 
   cancelUpload();
+  _rankingCache = null; // invalide le cache pour forcer un refresh du classement réel
   renderArtistCard();
   renderStats();
   renderRanking();
@@ -3733,14 +3741,13 @@ function switchStatsPeriod(period, btn) {
 function renderStats() {
   const tracks     = getMyTracks();
   const totalPlays = tracks.reduce((s, t) => s + (t.plays || 0), 0);
-  const ranking    = getDemoRanking();
-  const myRank     = ranking.findIndex(a => a.isMe) + 1;
   const profile    = getWattProfile();
 
   setTextById('statsPlays',     totalPlays.toString());
   setTextById('statsTracks',    tracks.length.toString());
   setTextById('statsFollowers', profile ? (profile.followers || 0).toString() : '0');
-  setTextById('statsRank',      myRank > 0 ? `#${myRank}` : '—');
+  // statsRank est mis à jour de façon asynchrone par renderRanking()
+  // (utilise le vrai classement API /watt/artists, pas un mock)
 
   renderChart(_currentPeriod);
 }
@@ -3799,15 +3806,19 @@ function renderChart(period) {
 
 // ── 10. CLASSEMENT ────────────────────────────────────────────────────────────
 
-function renderRanking() {
-  const ranking = getDemoRanking();
+async function renderRanking() {
+  const listEl = document.getElementById('dashRankingList');
+  if (listEl) listEl.innerHTML = '<div class="dash-rank-empty">Chargement du classement…</div>';
+
+  const ranking = await fetchRealRanking();
   const myPos   = ranking.findIndex(a => a.isMe) + 1;
 
-  // Ma position
-  setTextById('mrcRank', myPos > 0 ? `#${myPos}` : '—');
+  // Ma position (mise à jour ici car fetchRealRanking est async)
+  const rankLabel = myPos > 0 ? `#${myPos}` : '—';
+  setTextById('mrcRank',   rankLabel);
+  setTextById('statsRank', rankLabel);
 
   // Liste
-  const listEl = document.getElementById('dashRankingList');
   if (!listEl) return;
 
   if (ranking.length === 0) {
@@ -3829,10 +3840,6 @@ function renderRanking() {
       </div>
     </div>
   `).join('');
-
-  // Ma position — l'ancien KPI "Rang WATT" de #sec-artist a été retiré.
-  // Le rang est désormais affiché uniquement dans #sec-stats (id statsRank),
-  // renseigné par renderStatsCards() via setTextById('statsRank', …).
 }
 
 // ── 11. SECTION NAV INTERSECTION OBSERVER ────────────────────────────────────
