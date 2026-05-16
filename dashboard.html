@@ -528,100 +528,9 @@
       <span class="dash-section-sub">Poste un son · publie ton ADN · WAV · MP3 · FLAC · AAC · M4A · max 100&nbsp;MB</span>
     </div>
 
-    <!-- ═══ MODIFIER UN SON EXISTANT ════════════════════════════════════════
-         Cellule d'édition catalogue — recherche par nom, formulaire inline.
-         Rendu par initTrackEditor() dans dashboard.js au DOMContentLoaded.
-         Placée EN PREMIER dans la section Création pour un accès immédiat. -->
+    <!-- Sous-titre produit : 1a Poster un morceau -->
     <div class="dash-subhdr">
       <span class="dash-subhdr-num">1a</span>
-      <span class="dash-subhdr-title">Modifier un son</span>
-      <span class="dash-subhdr-sub">édite la cover, le titre, la couleur, la recette</span>
-    </div>
-
-    <div class="dash-track-editor" id="dashTrackEditor">
-
-      <!-- Barre de recherche -->
-      <div class="dte2-search-wrap">
-        <input class="dte2-search" id="dte2SearchInput" type="text"
-               placeholder="🔍  Recherche un son par nom…"
-               autocomplete="off"
-               oninput="dte2Filter(this.value)">
-        <ul class="dte2-results" id="dte2Results" style="display:none"></ul>
-      </div>
-
-      <!-- Formulaire d'édition — caché jusqu'à sélection d'un son -->
-      <div class="dte2-form" id="dte2Form" style="display:none">
-
-        <!-- En-tête : cover + infos -->
-        <div class="dte2-form-top">
-          <div class="dte2-cover-wrap" id="dte2CoverWrap" title="Cliquer pour changer la cover">
-            <div class="dte2-cover" id="dte2Cover">
-              <!-- injecté par JS -->
-            </div>
-            <div class="dte2-cover-overlay">📷</div>
-            <input type="file" accept="image/*" id="dte2CoverFile" class="dte2-cover-file-input"
-                   onchange="dte2OnCoverChange(event)">
-          </div>
-          <div class="dte2-form-meta">
-            <span class="dte2-selected-label" id="dte2SelectedLabel">Son sélectionné</span>
-            <span class="dte2-selected-plays" id="dte2SelectedPlays"></span>
-          </div>
-        </div>
-
-        <!-- Champs -->
-        <div class="dte2-fields">
-
-          <div class="dte2-field-group">
-            <label class="dte2-label" for="dte2Title">Titre</label>
-            <input class="dte2-input" id="dte2Title" type="text" maxlength="255" placeholder="Nom du son">
-          </div>
-
-          <div class="dte2-field-group">
-            <label class="dte2-label">Couleur signature</label>
-            <div class="dte2-color-row">
-              <button class="dte2-swatch" data-hex="#FFD700" style="background:#FFD700" onclick="dte2PickColor('#FFD700',this)"></button>
-              <button class="dte2-swatch" data-hex="#cc88ff" style="background:#cc88ff" onclick="dte2PickColor('#cc88ff',this)"></button>
-              <button class="dte2-swatch" data-hex="#00e5ff" style="background:#00e5ff" onclick="dte2PickColor('#00e5ff',this)"></button>
-              <button class="dte2-swatch" data-hex="#ff6b6b" style="background:#ff6b6b" onclick="dte2PickColor('#ff6b6b',this)"></button>
-              <button class="dte2-swatch" data-hex="#00ffaa" style="background:#00ffaa" onclick="dte2PickColor('#00ffaa',this)"></button>
-              <button class="dte2-swatch" data-hex="#ff9f43" style="background:#ff9f43" onclick="dte2PickColor('#ff9f43',this)"></button>
-              <input type="color" id="dte2ColorPicker" class="dte2-color-picker" value="#FFD700"
-                     oninput="dte2OnColorPicker(this.value)" title="Couleur libre">
-              <span class="dte2-color-val" id="dte2ColorVal" style="display:none"></span>
-            </div>
-            <div class="dte2-color-preview" id="dte2ColorPreview"></div>
-          </div>
-
-          <div class="dte2-field-group">
-            <label class="dte2-label" for="dte2Genre">Style / ambiance (mood)</label>
-            <input class="dte2-input" id="dte2Genre" type="text" maxlength="80"
-                   placeholder="Ex : deep house mélancolique, trap cinématique…">
-          </div>
-
-          <div class="dte2-field-group">
-            <label class="dte2-label" for="dte2Prompt">Recette (ADN) liée</label>
-            <select class="dte2-input" id="dte2Prompt">
-              <option value="">— Aucune recette liée —</option>
-            </select>
-          </div>
-
-        </div>
-
-        <div class="dte2-actions">
-          <button class="dash-btn-ghost dte2-cancel-btn" type="button" onclick="dte2Cancel()">Annuler</button>
-          <button class="dash-btn-primary dte2-save-btn" type="button" id="dte2SaveBtn" onclick="dte2Save()">
-            Enregistrer les modifications
-          </button>
-        </div>
-
-        <div class="dte2-err" id="dte2Err" style="display:none"></div>
-
-      </div>
-    </div>
-
-    <!-- Sous-titre produit : rappel du premier sous-bloc -->
-    <div class="dash-subhdr" style="margin-top:32px">
-      <span class="dash-subhdr-num">1b</span>
       <span class="dash-subhdr-title">Poster un morceau</span>
       <span class="dash-subhdr-sub">avec ou sans recette prompt vendable</span>
     </div>
@@ -1013,6 +922,82 @@
       </div>
 
     </div><!-- /dash-upload-layout -->
+
+    <!-- ═══ 1b — MODIFIER UN SON EXISTANT ═══════════════════════════════════
+         Branchée sur GET /tracks/me — trouve TOUS les sons de la plateforme.
+         Formulaire inline : cover · titre · couleur · mood · recette liée. -->
+    <div class="dash-subhdr" style="margin-top:32px">
+      <span class="dash-subhdr-num">1b</span>
+      <span class="dash-subhdr-title">Modifier un son</span>
+      <span class="dash-subhdr-sub">édite la cover, le titre, la couleur, la recette</span>
+    </div>
+
+    <div class="dash-track-editor" id="dashTrackEditor">
+      <div class="dte2-search-wrap">
+        <input class="dte2-search" id="dte2SearchInput" type="text"
+               placeholder="🔍  Recherche un son par nom…"
+               autocomplete="off"
+               oninput="dte2Filter(this.value)">
+        <ul class="dte2-results" id="dte2Results" style="display:none"></ul>
+      </div>
+
+      <div class="dte2-form" id="dte2Form" style="display:none">
+        <div class="dte2-form-top">
+          <div class="dte2-cover-wrap" id="dte2CoverWrap" title="Cliquer pour changer la cover">
+            <div class="dte2-cover" id="dte2Cover"></div>
+            <div class="dte2-cover-overlay">📷</div>
+            <input type="file" accept="image/*" id="dte2CoverFile" class="dte2-cover-file-input"
+                   onchange="dte2OnCoverChange(event)">
+          </div>
+          <div class="dte2-form-meta">
+            <span class="dte2-selected-label" id="dte2SelectedLabel">Son sélectionné</span>
+            <span class="dte2-selected-plays" id="dte2SelectedPlays"></span>
+          </div>
+        </div>
+
+        <div class="dte2-fields">
+          <div class="dte2-field-group">
+            <label class="dte2-label" for="dte2Title">Titre</label>
+            <input class="dte2-input" id="dte2Title" type="text" maxlength="255" placeholder="Nom du son">
+          </div>
+          <div class="dte2-field-group">
+            <label class="dte2-label">Couleur signature</label>
+            <div class="dte2-color-row">
+              <button class="dte2-swatch" data-hex="#FFD700" style="background:#FFD700" onclick="dte2PickColor('#FFD700',this)"></button>
+              <button class="dte2-swatch" data-hex="#cc88ff" style="background:#cc88ff" onclick="dte2PickColor('#cc88ff',this)"></button>
+              <button class="dte2-swatch" data-hex="#00e5ff" style="background:#00e5ff" onclick="dte2PickColor('#00e5ff',this)"></button>
+              <button class="dte2-swatch" data-hex="#ff6b6b" style="background:#ff6b6b" onclick="dte2PickColor('#ff6b6b',this)"></button>
+              <button class="dte2-swatch" data-hex="#00ffaa" style="background:#00ffaa" onclick="dte2PickColor('#00ffaa',this)"></button>
+              <button class="dte2-swatch" data-hex="#ff9f43" style="background:#ff9f43" onclick="dte2PickColor('#ff9f43',this)"></button>
+              <input type="color" id="dte2ColorPicker" class="dte2-color-picker" value="#FFD700"
+                     oninput="dte2OnColorPicker(this.value)" title="Couleur libre">
+              <span class="dte2-color-val" id="dte2ColorVal" style="display:none"></span>
+            </div>
+            <div class="dte2-color-preview" id="dte2ColorPreview"></div>
+          </div>
+          <div class="dte2-field-group">
+            <label class="dte2-label" for="dte2Genre">Style / ambiance (mood)</label>
+            <input class="dte2-input" id="dte2Genre" type="text" maxlength="80"
+                   placeholder="Ex : deep house mélancolique, trap cinématique…">
+          </div>
+          <div class="dte2-field-group">
+            <label class="dte2-label" for="dte2Prompt">Recette (ADN) liée</label>
+            <select class="dte2-input" id="dte2Prompt">
+              <option value="">— Aucune recette liée —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dte2-actions">
+          <button class="dash-btn-ghost dte2-cancel-btn" type="button" onclick="dte2Cancel()">Annuler</button>
+          <button class="dash-btn-primary dte2-save-btn" type="button" id="dte2SaveBtn" onclick="dte2Save()">
+            Enregistrer les modifications
+          </button>
+        </div>
+        <div class="dte2-err" id="dte2Err" style="display:none"></div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────

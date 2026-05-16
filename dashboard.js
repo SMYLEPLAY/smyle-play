@@ -757,18 +757,35 @@ let _editCoverFile     = null;   // fichier cover sélectionné (si nouveau)
 let _editCoverPreview  = null;   // data URL preview
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CELLULE ÉDITION CATALOGUE — Section 1a du WattBoard
+// CELLULE ÉDITION CATALOGUE — Section 1b du WattBoard
+// Branchée sur GET /tracks/me (API) → trouve TOUS les sons de la plateforme.
 // Recherche inline par nom → formulaire d'édition cover/titre/couleur/mood/recette.
-// Partagée par tous les artistes : pas de state global pollutant.
 // ══════════════════════════════════════════════════════════════════════════════
 
-let _dte2TrackId  = null;   // id localStorage en cours d'édition
-let _dte2CoverFile = null;  // nouveau fichier cover sélectionné
-let _dte2CoverPrev = null;  // data-url preview
+let _dte2TrackId   = null;   // UUID DB du track en cours d'édition
+let _dte2CoverFile = null;   // nouveau fichier cover sélectionné
+let _dte2CoverPrev = null;   // data-url preview
+let _dte2AllTracks = [];     // cache API — tous les sons de l'artiste
 
-// Initialisation : charge les prompts et prépare la liste
+// Initialisation : charge depuis l'API les sons + les prompts
 async function initTrackEditor() {
-  // Charge les prompts de l'artiste pour le dropdown recette
+  // 1. Charge TOUS les tracks depuis l'API (source de vérité)
+  try {
+    const tracks = await apiFetch('/tracks/me');
+    _dte2AllTracks = Array.isArray(tracks) ? tracks : [];
+  } catch (_) {
+    // Fallback localStorage si API indisponible
+    _dte2AllTracks = getMyTracks().map(t => ({
+      id:        t.dbId || t.id,
+      title:     t.name || t.title || '',
+      color:     t.color || null,
+      cover_url: t.coverUrl || null,
+      prompt_id: t.promptId || null,
+      plays:     t.plays || 0,
+    }));
+  }
+
+  // 2. Charge les prompts pour le dropdown recette
   try {
     const resp = await apiFetch('/artist/me/prompts');
     const prompts = (resp && Array.isArray(resp.prompts)) ? resp.prompts
@@ -785,73 +802,75 @@ async function initTrackEditor() {
   } catch (_) {}
 }
 
-// Filtre en temps réel
+// Filtre en temps réel — cherche dans _dte2AllTracks (source API)
 function dte2Filter(q) {
   const res = document.getElementById('dte2Results');
   if (!res) return;
-  const tracks = getMyTracks();
   const term = (q || '').trim().toLowerCase();
   if (!term) { res.style.display = 'none'; res.innerHTML = ''; return; }
 
-  const hits = tracks.filter(t => (t.name || '').toLowerCase().includes(term)).slice(0, 8);
+  const hits = _dte2AllTracks
+    .filter(t => (t.title || '').toLowerCase().includes(term))
+    .slice(0, 8);
+
   if (hits.length === 0) {
     res.innerHTML = '<li class="dte2-result-empty">Aucun son trouvé</li>';
     res.style.display = 'block';
     return;
   }
   res.innerHTML = hits.map(t => {
-    const col = t.color || '#FFD700';
-    const cover = t.coverDataUrl
-      ? `<img src="${t.coverDataUrl}" class="dte2-result-cover" alt="">`
+    const col   = t.color || '#FFD700';
+    const cover = t.cover_url
+      ? `<img src="${t.cover_url.replace(/"/g,'&quot;')}" class="dte2-result-cover" alt="">`
       : `<div class="dte2-result-cover" style="background:${col}"></div>`;
     return `<li class="dte2-result-item" data-id="${t.id}" onclick="dte2Select('${t.id}')">
       ${cover}
-      <span class="dte2-result-name" style="color:${col}">${htmlEscape(t.name || 'Sans titre')}</span>
+      <span class="dte2-result-name" style="color:${col}">${htmlEscape(t.title || 'Sans titre')}</span>
       <span class="dte2-result-meta">${t.plays || 0} écoutes</span>
     </li>`;
   }).join('');
   res.style.display = 'block';
 }
 
-// Sélection d'un son → rempli le formulaire
-function dte2Select(localId) {
-  const tracks = getMyTracks();
-  const t = tracks.find(x => x.id === localId);
+// Sélection d'un son → remplit le formulaire (données API)
+function dte2Select(trackUuid) {
+  const t = _dte2AllTracks.find(x => x.id === trackUuid);
   if (!t) return;
 
-  _dte2TrackId  = localId;
+  _dte2TrackId   = trackUuid;
   _dte2CoverFile = null;
-  _dte2CoverPrev = t.coverDataUrl || null;
+  _dte2CoverPrev = t.cover_url || null;
 
-  // Ferme les résultats
+  // Ferme la liste
   const res = document.getElementById('dte2Results');
   const inp = document.getElementById('dte2SearchInput');
   if (res) res.style.display = 'none';
-  if (inp) inp.value = t.name || '';
+  if (inp) inp.value = t.title || '';
 
   // Cover preview
   const coverEl = document.getElementById('dte2Cover');
   if (coverEl) {
-    coverEl.innerHTML = _dte2CoverPrev
-      ? `<img src="${_dte2CoverPrev}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`
+    coverEl.innerHTML = t.cover_url
+      ? `<img src="${t.cover_url.replace(/"/g,'&quot;')}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`
       : `<div style="width:100%;height:100%;background:${t.color||'#FFD700'};border-radius:10px;opacity:.7"></div>`;
   }
 
   // Infos
-  const lbl = document.getElementById('dte2SelectedLabel');
+  const lbl   = document.getElementById('dte2SelectedLabel');
   const plays = document.getElementById('dte2SelectedPlays');
-  if (lbl)   lbl.textContent = t.name || 'Sans titre';
+  if (lbl)   lbl.textContent   = t.title || 'Sans titre';
   if (plays) plays.textContent = `${t.plays || 0} écoutes`;
 
-  // Champs
+  // Titre
   const titleInp = document.getElementById('dte2Title');
-  if (titleInp) titleInp.value = t.name || '';
+  if (titleInp) titleInp.value = t.title || '';
 
+  // Genre (pas dans l'API — champ libre pour le futur)
   const genreInp = document.getElementById('dte2Genre');
-  if (genreInp) genreInp.value = t.genre || '';
+  if (genreInp) genreInp.value = '';
 
   // Couleur
-  const col = t.color || '';
+  const col    = t.color || '';
   const picker = document.getElementById('dte2ColorPicker');
   const colVal = document.getElementById('dte2ColorVal');
   if (picker) picker.value = col || '#FFD700';
@@ -861,15 +880,13 @@ function dte2Select(localId) {
 
   // Recette liée
   const promptSel = document.getElementById('dte2Prompt');
-  if (promptSel) promptSel.value = t.promptId || '';
+  if (promptSel) promptSel.value = t.prompt_id || '';
 
-  // Erreur reset
+  // Reset erreur
   const err = document.getElementById('dte2Err');
   if (err) { err.style.display = 'none'; err.textContent = ''; }
 
-  // Affiche le formulaire
-  const form = document.getElementById('dte2Form');
-  if (form) form.style.display = 'block';
+  document.getElementById('dte2Form').style.display = 'block';
 }
 
 // Cover
@@ -923,11 +940,10 @@ function dte2Cancel() {
   if (inp)  inp.value = '';
 }
 
-// Enregistrer
+// Enregistrer — PATCH direct via UUID API (source de vérité)
 async function dte2Save() {
   if (!_dte2TrackId) return;
-  const tracks = getMyTracks();
-  const t = tracks.find(x => x.id === _dte2TrackId);
+  const t = _dte2AllTracks.find(x => x.id === _dte2TrackId);
   if (!t) return;
 
   const saveBtn = document.getElementById('dte2SaveBtn');
@@ -937,45 +953,48 @@ async function dte2Save() {
 
   try {
     const newTitle  = (document.getElementById('dte2Title')?.value || '').trim();
-    const newGenre  = (document.getElementById('dte2Genre')?.value || '').trim();
     const newColor  = document.getElementById('dte2ColorVal')?.value
                    || document.getElementById('dte2ColorPicker')?.value || '';
     const newPrompt = document.getElementById('dte2Prompt')?.value || '';
 
-    // Upload cover si nouveau fichier
-    let newCoverUrl = t.coverUrl || null;
-    let newCoverDataUrl = _dte2CoverPrev;
+    // Upload cover si nouveau fichier sélectionné
+    let newCoverUrl = t.cover_url || null;
     if (_dte2CoverFile) {
-      const uploaded = await _uploadTrackCover(_dte2CoverFile, newTitle || t.name);
-      if (uploaded) { newCoverUrl = uploaded; }
+      const uploaded = await _uploadTrackCover(_dte2CoverFile, newTitle || t.title);
+      if (uploaded) newCoverUrl = uploaded;
     }
 
-    // PATCH FastAPI
-    if (t.dbId) {
-      const patch = {};
-      if (newTitle && newTitle !== (t.name || '')) patch.title     = newTitle;
-      if (newColor)                                 patch.color     = newColor;
-      if (newCoverUrl && newCoverUrl !== t.coverUrl) patch.cover_url = newCoverUrl;
-      if (newPrompt)                                patch.prompt_id = newPrompt;
-      else if (!newPrompt && t.promptId)            patch.prompt_id = null;
-      if (Object.keys(patch).length > 0) {
-        await apiFetch(`/tracks/${encodeURIComponent(t.dbId)}`, { method: 'PATCH', json: patch });
-      }
+    // PATCH /tracks/{uuid} — champs modifiés uniquement
+    const patch = {};
+    if (newTitle && newTitle !== t.title)            patch.title     = newTitle;
+    if (newColor && newColor !== (t.color || ''))    patch.color     = newColor;
+    if (newCoverUrl && newCoverUrl !== t.cover_url)  patch.cover_url = newCoverUrl;
+    if (newPrompt && newPrompt !== (t.prompt_id||'')) patch.prompt_id = newPrompt;
+    else if (!newPrompt && t.prompt_id)               patch.prompt_id = null;
+
+    if (Object.keys(patch).length > 0) {
+      const updated = await apiFetch(`/tracks/${encodeURIComponent(_dte2TrackId)}`, {
+        method: 'PATCH', json: patch,
+      });
+      // Met à jour le cache local
+      const idx = _dte2AllTracks.findIndex(x => x.id === _dte2TrackId);
+      if (idx !== -1) _dte2AllTracks[idx] = { ..._dte2AllTracks[idx], ...patch, cover_url: newCoverUrl };
     }
 
-    // Mise à jour localStorage
-    const updated = tracks.map(x => x.id !== _dte2TrackId ? x : {
-      ...x,
-      name:         newTitle || x.name,
-      genre:        newGenre || x.genre,
-      color:        newColor || x.color,
-      coverUrl:     newCoverUrl || x.coverUrl,
-      coverDataUrl: newCoverDataUrl || x.coverDataUrl,
-      promptId:     newPrompt || x.promptId || null,
-    });
-    saveMyTracks(updated);
-    renderMyTracks();
-    renderArtistCard();
+    // Sync localStorage si track présente (pour cohérence affichage)
+    const lsTracks = getMyTracks();
+    const lsIdx = lsTracks.findIndex(x => x.dbId === _dte2TrackId);
+    if (lsIdx !== -1) {
+      lsTracks[lsIdx] = {
+        ...lsTracks[lsIdx],
+        name:         newTitle || lsTracks[lsIdx].name,
+        color:        newColor || lsTracks[lsIdx].color,
+        coverUrl:     newCoverUrl || lsTracks[lsIdx].coverUrl,
+        promptId:     newPrompt || lsTracks[lsIdx].promptId || null,
+      };
+      saveMyTracks(lsTracks);
+      renderMyTracks();
+    }
 
     dashToast('✓ Son mis à jour');
     dte2Cancel();
