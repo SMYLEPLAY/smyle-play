@@ -1151,7 +1151,27 @@ function renderTracks(artist) {
 
   const tracks = Array.isArray(artist && artist.tracks) ? artist.tracks : [];
   if (tracks.length === 0) {
-    section.style.display = 'none';
+    if (artist && artist.isSelf) {
+      // L'artiste voit sa propre page vide : on lui propose d'aller poster
+      section.style.display = '';
+      list.innerHTML = `
+        <div class="ap-tracks-empty-state" style="
+          text-align:center;padding:2.5rem 1rem;
+          color:var(--txt-muted,rgba(255,255,255,.45));
+          font-size:.9rem;line-height:1.6;">
+          <div style="font-size:2rem;margin-bottom:.75rem">🎵</div>
+          <p style="margin:0 0 1.25rem">Tu n'as pas encore posté de sons.</p>
+          <a href="/dashboard" style="
+            display:inline-block;padding:.55rem 1.4rem;
+            background:var(--brand,#7C3AED);color:#fff;
+            border-radius:8px;text-decoration:none;font-weight:600;
+            font-size:.85rem;">
+            Poster ton premier son → WATT BOARD
+          </a>
+        </div>`;
+    } else {
+      section.style.display = 'none';
+    }
     return;
   }
   section.style.display = '';
@@ -1435,6 +1455,12 @@ function renderTracks(artist) {
 async function unlockDnaFromProfile() {
   const artist = state.artist;
   if (!artist || !artist.adn || artist.isSelf) return;
+  // Redirige vers la connexion si non authentifié
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/?auth=login&return=${returnUrl}`;
+    return;
+  }
   const btn = $('ap-dna-unlock-btn');
   if (btn) btn.disabled = true;
   try {
@@ -1492,6 +1518,12 @@ async function deleteTrackFromProfile(trackId, btn) {
 // ── Unlock prompt depuis le profil ─────────────────────────────────────
 async function unlockPromptFromProfile(promptId, btn) {
   if (!promptId) return;
+  // Redirige vers la connexion si l'utilisateur n'est pas authentifié
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/?auth=login&return=${returnUrl}`;
+    return;
+  }
   if (btn) btn.disabled = true;
   try {
     const resp = await apiFetch(
@@ -1712,6 +1744,12 @@ function renderVoices(artist) {
 // ── Unlock voix depuis le profil ───────────────────────────────────────
 async function unlockVoiceFromProfile(voiceId, btn) {
   if (!voiceId) return;
+  // Redirige vers la connexion si non authentifié
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/?auth=login&return=${returnUrl}`;
+    return;
+  }
   if (btn) btn.disabled = true;
   try {
     const resp = await apiFetch(
