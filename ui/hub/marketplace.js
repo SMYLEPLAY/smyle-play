@@ -385,7 +385,7 @@
       const coverUrl   = t.coverUrl || t.cover_url || '';
       const coverHTML  = coverUrl
         ? `<img src="${_esc(coverUrl)}" alt="" class="mp-son-card-cover-img" />`
-        : '';
+        : `<div class="mp-son-card-cover-fallback" style="background:${_esc(color)}1a;display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:1.8rem" aria-hidden="true">🎵</div>`;
       // Badge 🧬 si l'artiste a un ADN publié achetable
       // Badge Recette si le track a un prompt achetable
       const promptId    = t.promptId    || null;

@@ -466,7 +466,9 @@ async function _setupFollowButton(artist) {
   }
   if (artist.isSelf) { wrap.style.display = 'none'; return; }
   const isAuth = typeof getAuthToken === 'function' && !!getAuthToken();
-  if (!isAuth) { wrap.style.display = 'block'; btn.style.display = 'none'; return; }
+  // Si non connecté : on masque tout le bloc pour éviter l'espace blanc
+  // (le bouton follow serait caché mais le wrapper resterait visible).
+  if (!isAuth) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   btn.style.display = '';
   const slug = artist.slug || (window.location.pathname.match(/^\/u\/([^/?#]+)/) || [])[1];

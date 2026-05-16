@@ -1510,7 +1510,7 @@
                   // Zone info = DRAWER au clic
                   '<div class="pl-view-row-info pl-view-row-detail-trigger">' +
                     '<div class="pl-view-row-title">' + safe + '</div>' +
-                    '<div class="pl-view-row-hint">' + (adnBadge ? '🧬 ADN · ' : '') + 'Écouter · › détails</div>' +
+                    '<div class="pl-view-row-hint">' + (adnBadge ? '🧬 ADN · ' : '') + 'Écouter' + (t.plays != null ? ' · ▶ ' + t.plays : '') + ' · › détails</div>' +
                   '</div>' +
                   '<div class="pl-view-row-actions">' +
                     adnBadge + likeBtn + addPlBtn +
@@ -1993,8 +1993,7 @@
   function _injectCompactStyles() {
     if (document.getElementById('pl-compact-styles')) return;
     const css = `
-button.add-to-pl-btn, button.like-btn, .mp-son-card button.add-to-pl-btn, .mp-son-card button.like-btn, .mp-son-card-actions button.add-to-pl-btn, .mp-son-card-actions button.like-btn, .mp-ranking-row button.add-to-pl-btn, .mp-ranking-row button.like-btn, .ap-track-card button.add-to-pl-btn, .ap-track-card button.like-btn { width: 28px !important; min-width: 28px !important; max-width: 28px !important; height: 28px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; padding: 0 !important; background: transparent !important; border: 1px solid rgba(255,255,255,.1) !important; color: #a09cb8 !important; border-radius: 7px !important; font-size: 13px !important; line-height: 1 !important; cursor: pointer !important; flex: 0 0 28px !important; box-sizing: border-box !important; vertical-align: middle !important; }
-/* ── Boutons d'action sur cellules track (PR fix UI) ──────────────────────
+/* ── Boutons d'action sur cellules track ─────────────────────────────────
    Design unifié minimaliste : icône carrée 26px, bordure très discrète,
    couleur de base gris doux, hover coloré subtil. Même look sur les 3
    emplacements : Top Sons row, mp-son-card marketplace, ap-track-card profil. */
@@ -2060,14 +2059,20 @@ button.add-to-pl-btn, button.like-btn, .mp-son-card button.add-to-pl-btn, .mp-so
     _injectCompactStyles();
     _wireLikeClicks();
     _applyLikedClass(_readLiked());
+    let freshSet = null;
     if (_isAuth()) {
       try {
-        const set = await loadLikedTrackIds();
-        _applyLikedClass(set);
+        freshSet = await loadLikedTrackIds();
+        _applyLikedClass(freshSet);
       } catch (_) {}
     }
-    setTimeout(() => _applyLikedClass(_readLiked()), 1500);
-    setTimeout(() => _applyLikedClass(_readLiked()), 4000);
+    // Ces timeouts couvrent les cards rendues en async APRÈS le boot
+    // (marketplace, artiste page, etc.). On utilise la donnée API si dispo,
+    // sinon localStorage — jamais de retour en arrière vers localStorage
+    // quand l'API a déjà répondu (ce serait un état périmé).
+    const src = () => freshSet || _readLiked();
+    setTimeout(() => _applyLikedClass(src()), 1500);
+    setTimeout(() => _applyLikedClass(src()), 4000);
   }
 
   if (document.readyState === 'loading') {
