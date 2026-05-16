@@ -43,6 +43,13 @@ function loadTrack(playlistKey, idx) {
   audio._trackRef  = track;          // garde une référence pour le retry
   audio._retried   = false;
 
+  // Stoppe tous les lecteurs inline (<audio controls>) avant de lancer le player global.
+  // Évite le double audio simultané si l'utilisateur a cliqué sur un audio natif
+  // avant d'utiliser le player WATT.
+  document.querySelectorAll('audio').forEach(a => {
+    if (a !== audio) { a.pause(); a.currentTime = 0; }
+  });
+
   // NE PAS appeler audio.load() — sur iOS Safari, load() brise la permission
   // de lecture automatique. Changer audio.src suffit ; play() déclenche le
   // chargement. Sans load() l'auto-avance fonctionne dans les événements 'ended'.

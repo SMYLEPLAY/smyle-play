@@ -253,6 +253,11 @@
 
     // Changer de source audio si nécessaire
     if (_audio !== target) {
+      // Stoppe le player global (smyleAudio) si c'est un audio inline qui prend la main
+      if (window.smyleAudio && !window.smyleAudio.paused && window.smyleAudio !== target) {
+        window.smyleAudio.pause();
+        window.smyleAudio.currentTime = 0;
+      }
       _unbind();
       _audio    = target;
       _dismissed = false;

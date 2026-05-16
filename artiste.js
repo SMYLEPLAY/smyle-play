@@ -1288,7 +1288,7 @@ function renderTracks(artist) {
 
     if (tc) card.style.cssText = `--tc:${tc};--tc-rgb:${tcRgb}`;
     card.innerHTML = `
-      <div class="ap-track-card-inner"${streamAttr}${tc ? ` style="background:rgba(${tcRgb},.07);border-left:3px solid rgba(${tcRgb},.55)"` : ''}>
+      <div class="ap-track-card-inner" data-track-id="${t.id}"${streamAttr}${tc ? ` style="background:rgba(${tcRgb},.07);border-left:3px solid rgba(${tcRgb},.55)"` : ''}>
         ${coverHTML}
         <div class="ap-track-card-body">
           <div class="ap-track-card-top">
