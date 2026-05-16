@@ -1005,6 +1005,212 @@ async function dte2Save() {
   }
 }
 
+// ── Création de prompt depuis "Modifier un son" ───────────────────────────────
+// Ouvre une modale avec tous les champs requis par POST /artist/me/prompts.
+// À la validation : crée le prompt, lie au track sélectionné via PATCH, rafraîchit le dropdown.
+function dte2OpenCreatePrompt() {
+  if (!_dte2TrackId) {
+    dashToast('Sélectionne d\'abord un son à modifier');
+    return;
+  }
+
+  // Empêche double-ouverture
+  if (document.getElementById('dte2CreatePromptOverlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dte2CreatePromptOverlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+    animation:fadeIn .2s ease;
+  `;
+  overlay.innerHTML = `
+    <div id="dte2CreatePromptPanel" style="
+      background:#12101a;border:1px solid rgba(136,0,255,.35);border-radius:18px;
+      box-shadow:0 0 48px rgba(136,0,255,.18),0 8px 40px rgba(0,0,0,.6);
+      width:min(600px,94vw);max-height:90vh;overflow-y:auto;padding:32px 28px;
+      display:flex;flex-direction:column;gap:18px;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <h3 style="color:#e8e0ff;font-size:1.15rem;font-weight:700;margin:0">✨ Créer une recette à vendre</h3>
+        <button onclick="dte2CloseCreatePrompt()" style="
+          background:none;border:none;color:#8a85a0;font-size:1.3rem;cursor:pointer;line-height:1;padding:4px
+        ">✕</button>
+      </div>
+
+      <!-- Titre -->
+      <div class="dte2-cp-field">
+        <label class="dte2-cp-label">Titre de la recette <span style="color:#cc44ff">*</span></label>
+        <input id="cp_title" class="dte2-input" type="text" maxlength="120"
+               placeholder="Ex : Deep Dancehall Sombre" style="width:100%;box-sizing:border-box">
+      </div>
+
+      <!-- Texte du prompt -->
+      <div class="dte2-cp-field">
+        <label class="dte2-cp-label">Texte du prompt <span style="color:#cc44ff">*</span> <span id="cp_charCount" style="color:#6b6780;font-size:.8rem">(0/1000)</span></label>
+        <textarea id="cp_text" class="dte2-input" rows="6"
+                  placeholder="Décris ici la recette musicale complète : style, énergie, instruments, ambiance… (100 caractères minimum)"
+                  oninput="document.getElementById('cp_charCount').textContent='('+this.value.length+'/1000)'"
+                  style="width:100%;box-sizing:border-box;resize:vertical;min-height:120px"></textarea>
+      </div>
+
+      <!-- Plateforme + Prix -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="dte2-cp-field">
+          <label class="dte2-cp-label">Plateforme <span style="color:#cc44ff">*</span></label>
+          <select id="cp_platform" class="dte2-input" style="width:100%">
+            <option value="">— Choisir —</option>
+            <option value="suno">Suno</option>
+            <option value="udio">Udio</option>
+            <option value="riffusion">Riffusion</option>
+            <option value="stable_audio">Stable Audio</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="dte2-cp-field">
+          <label class="dte2-cp-label">Prix (Smyles) <span style="color:#cc44ff">*</span></label>
+          <input id="cp_price" class="dte2-input" type="number" min="3" max="500" value="30"
+                 style="width:100%;box-sizing:border-box">
+        </div>
+      </div>
+
+      <!-- Weirdness + Vocal gender -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="dte2-cp-field">
+          <label class="dte2-cp-label">Weirdness (1 = classique, 10 = expérimental)
+            <span id="cp_weirdVal" style="color:#cc44ff;font-weight:700;margin-left:6px">5</span>
+          </label>
+          <input id="cp_weird" type="range" min="1" max="10" value="5"
+                 oninput="document.getElementById('cp_weirdVal').textContent=this.value"
+                 style="width:100%;accent-color:#8800ff;margin-top:8px">
+        </div>
+        <div class="dte2-cp-field">
+          <label class="dte2-cp-label">Genre vocal <span style="color:#cc44ff">*</span></label>
+          <select id="cp_vocal" class="dte2-input" style="width:100%">
+            <option value="">— Choisir —</option>
+            <option value="male">Masculin</option>
+            <option value="female">Féminin</option>
+            <option value="neutral">Neutre</option>
+            <option value="mixed">Mixte</option>
+            <option value="instrumental">Instrumental</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Style influence -->
+      <div class="dte2-cp-field">
+        <label class="dte2-cp-label">Influences style (artistes, genres, références)</label>
+        <textarea id="cp_style" class="dte2-input" rows="2"
+                  placeholder="Ex : Drake, Afrobeats, prod trap 808 lourd"
+                  style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+
+      <!-- Erreur -->
+      <div id="cp_err" style="display:none;color:#ff6b6b;font-size:.85rem;background:rgba(255,80,80,.08);
+           border:1px solid rgba(255,80,80,.2);border-radius:8px;padding:8px 12px"></div>
+
+      <!-- Footer -->
+      <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:4px">
+        <button class="dash-btn-ghost" onclick="dte2CloseCreatePrompt()">Annuler</button>
+        <button class="dash-btn-primary" id="cp_saveBtn" onclick="dte2SubmitCreatePrompt()">
+          Créer et lier au son
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+function dte2CloseCreatePrompt() {
+  const el = document.getElementById('dte2CreatePromptOverlay');
+  if (el) el.remove();
+}
+
+async function dte2SubmitCreatePrompt() {
+  const titleEl   = document.getElementById('cp_title');
+  const textEl    = document.getElementById('cp_text');
+  const platEl    = document.getElementById('cp_platform');
+  const priceEl   = document.getElementById('cp_price');
+  const weirdEl   = document.getElementById('cp_weird');
+  const vocalEl   = document.getElementById('cp_vocal');
+  const styleEl   = document.getElementById('cp_style');
+  const errEl     = document.getElementById('cp_err');
+  const saveBtn   = document.getElementById('cp_saveBtn');
+
+  const title    = (titleEl?.value || '').trim();
+  const text     = (textEl?.value || '').trim();
+  const platform = platEl?.value || '';
+  const price    = parseInt(priceEl?.value || '30', 10);
+  const weird    = parseInt(weirdEl?.value || '5', 10);
+  const vocal    = vocalEl?.value || '';
+  const style    = (styleEl?.value || '').trim();
+
+  const showErr = (msg) => {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+  };
+
+  // Validations
+  if (title.length < 5)   { showErr('Le titre doit faire au moins 5 caractères.'); return; }
+  if (text.length < 100)  { showErr(`Le texte du prompt doit faire au moins 100 caractères (${text.length}/100).`); return; }
+  if (text.length > 1000) { showErr('Le texte du prompt ne doit pas dépasser 1000 caractères.'); return; }
+  if (!platform)           { showErr('Choisis une plateforme.'); return; }
+  if (price < 3 || price > 500 || isNaN(price)) { showErr('Le prix doit être entre 3 et 500 Smyles.'); return; }
+  if (!vocal)              { showErr('Choisis un genre vocal.'); return; }
+
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Création en cours…'; }
+  if (errEl)   { errEl.style.display = 'none'; }
+
+  try {
+    // 1. Créer le prompt
+    const newPrompt = await apiFetch('/artist/me/prompts', {
+      method: 'POST',
+      json: {
+        title,
+        prompt_text:          text,
+        price_credits:        price,
+        prompt_platform:      platform,
+        prompt_weirdness:     weird,
+        prompt_style_influence: style || null,
+        prompt_vocal_gender:  vocal,
+        is_published:         true,
+      },
+    });
+
+    const promptId = newPrompt.id || newPrompt.prompt_id;
+    if (!promptId) throw new Error('Réponse API inattendue (pas d\'ID)');
+
+    // 2. Lier au track sélectionné
+    await apiFetch(`/tracks/${encodeURIComponent(_dte2TrackId)}`, {
+      method: 'PATCH',
+      json: { prompt_id: promptId },
+    });
+
+    // 3. Mettre à jour le cache track
+    const idx = _dte2AllTracks.findIndex(x => x.id === _dte2TrackId);
+    if (idx !== -1) _dte2AllTracks[idx] = { ..._dte2AllTracks[idx], prompt_id: promptId };
+
+    // 4. Ajouter au dropdown + sélectionner
+    const sel = document.getElementById('dte2Prompt');
+    if (sel) {
+      const opt = document.createElement('option');
+      opt.value = promptId;
+      opt.textContent = `${title} · ${price} Smyles`;
+      sel.appendChild(opt);
+      sel.value = promptId;
+    }
+
+    // 5. Fermer le modal + toast
+    dte2CloseCreatePrompt();
+    dashToast('✨ Recette créée et liée au son !');
+
+  } catch (err) {
+    const msg = (err && err.message) || 'Erreur inconnue';
+    showErr(msg);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Créer et lier au son'; }
+  }
+}
+
 async function openTrackEdit(localId) {
   const tracks = getMyTracks();
   const t = tracks.find(x => x.id === localId);
