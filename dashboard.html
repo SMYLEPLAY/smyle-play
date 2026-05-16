@@ -693,6 +693,36 @@
 
             <label class="dash-label">Description</label>
             <textarea class="dash-textarea" id="dashDesc" placeholder="Raconte l'univers de ce son..." rows="3"></textarea>
+
+            <!-- ── Style / ambiance (mood) ───────────────────────────────── -->
+            <div class="dash-mood-block">
+              <div class="dash-mood-hdr">
+                <span class="dash-mood-title">🎛 Style / ambiance (mood)</span>
+                <span class="dash-mood-sub">Calibre l'énergie et l'originalité de ton son</span>
+              </div>
+
+              <label class="dash-label">
+                Weirdness — variété sonore
+                <span class="dash-slider-val" id="dashMoodWeirdnessVal">50</span>/100
+              </label>
+              <input type="range" class="dash-slider" id="dashMoodWeirdness"
+                     min="0" max="100" value="50" step="1"
+                     oninput="document.getElementById('dashMoodWeirdnessVal').textContent=this.value" />
+              <div class="dash-mood-extremes">
+                <span>0 — classique</span><span>100 — expérimental</span>
+              </div>
+
+              <label class="dash-label" style="margin-top:12px">
+                Style influence — fidélité à la référence
+                <span class="dash-slider-val" id="dashMoodStyleVal">50</span>/100
+              </label>
+              <input type="range" class="dash-slider" id="dashMoodStyleInfluence"
+                     min="0" max="100" value="50" step="1"
+                     oninput="document.getElementById('dashMoodStyleVal').textContent=this.value" />
+              <div class="dash-mood-extremes">
+                <span>0 — très libre</span><span>100 — très fidèle</span>
+              </div>
+            </div>
           </div>
 
           <!-- Col 2 : bloc RECETTE (prompt_text + lyrics + prix) — visible
@@ -750,24 +780,10 @@
                      placeholder="Suno v4, Udio 1.5, ..." maxlength="50" />
               <div class="dash-help">Optionnel. Si tu connais la version exacte, plus l'acheteur reproduit fidèlement.</div>
 
-              <label class="dash-label">
-                Weirdness <span class="dash-req">*</span>
-                · <span class="dash-slider-val" id="dashPromptWeirdnessVal">50</span>/100
-              </label>
-              <input type="range" class="dash-slider" id="dashPromptWeirdness"
-                     min="0" max="100" value="50" step="1"
-                     oninput="document.getElementById('dashPromptWeirdnessVal').textContent = this.value" />
-              <div class="dash-help">Curseur Suno « Weirdness & Variety » — 0 = très contrôlé, 100 = très varié.</div>
-
-              <label class="dash-label">
-                Style influence <span class="dash-req">*</span>
-                · <span class="dash-slider-val" id="dashPromptStyleInfluenceVal">50</span>/100
-              </label>
-              <input type="range" class="dash-slider" id="dashPromptStyleInfluence"
-                     min="0" max="100" value="50" step="1"
-                     oninput="document.getElementById('dashPromptStyleInfluenceVal').textContent = this.value" />
-              <div class="dash-help">Curseur Suno « Style Influence » — 0 = très libre, 100 = très fidèle à la référence.</div>
-              <label class="dash-label" style="margin-top: 12px;">Références stylistiques</label>
+              <div class="dash-help" style="background:rgba(136,0,255,.08);border:1px solid rgba(136,0,255,.2);border-radius:8px;padding:8px 10px;color:#c0aae0;margin-bottom:8px">
+                🎛 Les curseurs Weirdness et Style influence sont réglables dans la section <strong>Style / ambiance (mood)</strong> ci-dessus.
+              </div>
+              <label class="dash-label" style="margin-top: 4px;">Références stylistiques</label>
               <textarea class="dash-textarea" id="dashPromptStyleRefs" rows="2"
                         maxlength="500"
                         placeholder="D'Angelo + James Blake, soul ralentie 70s..."></textarea>
@@ -982,9 +998,16 @@
           </div>
           <div class="dte2-field-group">
             <label class="dte2-label" for="dte2Prompt">Recette (ADN) liée</label>
-            <select class="dte2-input" id="dte2Prompt">
-              <option value="">— Aucune recette liée —</option>
-            </select>
+            <div class="dte2-prompt-row">
+              <select class="dte2-input dte2-prompt-select" id="dte2Prompt">
+                <option value="">— Aucune recette liée —</option>
+              </select>
+              <button type="button" class="dte2-create-prompt-btn" onclick="dte2OpenCreatePrompt()"
+                      title="Créer une nouvelle recette pour ce son">+ Créer</button>
+            </div>
+            <span style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.4">
+              Lier une recette rend ce son achetable sur la marketplace.
+            </span>
           </div>
         </div>
 

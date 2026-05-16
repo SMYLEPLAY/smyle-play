@@ -1074,35 +1074,44 @@ function dte2OpenCreatePrompt() {
         </div>
       </div>
 
-      <!-- Weirdness + Vocal gender -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div class="dte2-cp-field">
-          <label class="dte2-cp-label">Weirdness (1 = classique, 10 = expérimental)
-            <span id="cp_weirdVal" style="color:#cc44ff;font-weight:700;margin-left:6px">5</span>
-          </label>
-          <input id="cp_weird" type="range" min="1" max="10" value="5"
-                 oninput="document.getElementById('cp_weirdVal').textContent=this.value"
-                 style="width:100%;accent-color:#8800ff;margin-top:8px">
-        </div>
-        <div class="dte2-cp-field">
-          <label class="dte2-cp-label">Genre vocal <span style="color:#cc44ff">*</span></label>
-          <select id="cp_vocal" class="dte2-input" style="width:100%">
-            <option value="">— Choisir —</option>
-            <option value="male">Masculin</option>
-            <option value="female">Féminin</option>
-            <option value="neutral">Neutre</option>
-            <option value="mixed">Mixte</option>
-            <option value="instrumental">Instrumental</option>
-          </select>
-        </div>
+      <!-- Weirdness + Style influence (sliders 0-100) -->
+      <div class="dte2-cp-field">
+        <label class="dte2-cp-label">
+          Weirdness — variété sonore
+          <span id="cp_weirdVal" style="color:#cc44ff;font-weight:700;margin-left:8px">50</span>/100
+        </label>
+        <input id="cp_weird" type="range" min="0" max="100" value="50"
+               oninput="document.getElementById('cp_weirdVal').textContent=this.value"
+               style="width:100%;accent-color:#8800ff;margin-top:6px">
+        <span style="display:flex;justify-content:space-between;font-size:.7rem;color:#6b6780;margin-top:2px">
+          <span>0 — classique</span><span>100 — expérimental</span>
+        </span>
       </div>
 
-      <!-- Style influence -->
       <div class="dte2-cp-field">
-        <label class="dte2-cp-label">Influences style (artistes, genres, références)</label>
-        <textarea id="cp_style" class="dte2-input" rows="2"
-                  placeholder="Ex : Drake, Afrobeats, prod trap 808 lourd"
-                  style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+        <label class="dte2-cp-label">
+          Style influence — fidélité à la référence
+          <span id="cp_styleVal" style="color:#cc44ff;font-weight:700;margin-left:8px">50</span>/100
+        </label>
+        <input id="cp_style" type="range" min="0" max="100" value="50"
+               oninput="document.getElementById('cp_styleVal').textContent=this.value"
+               style="width:100%;accent-color:#8800ff;margin-top:6px">
+        <span style="display:flex;justify-content:space-between;font-size:.7rem;color:#6b6780;margin-top:2px">
+          <span>0 — très libre</span><span>100 — très fidèle</span>
+        </span>
+      </div>
+
+      <!-- Vocal gender -->
+      <div class="dte2-cp-field">
+        <label class="dte2-cp-label">Genre vocal <span style="color:#cc44ff">*</span></label>
+        <select id="cp_vocal" class="dte2-input" style="width:100%">
+          <option value="">— Choisir —</option>
+          <option value="male">Masculin</option>
+          <option value="female">Féminin</option>
+          <option value="neutral">Neutre</option>
+          <option value="mixed">Mixte</option>
+          <option value="instrumental">Instrumental</option>
+        </select>
       </div>
 
       <!-- Erreur -->
@@ -1142,9 +1151,9 @@ async function dte2SubmitCreatePrompt() {
   const text     = (textEl?.value || '').trim();
   const platform = platEl?.value || '';
   const price    = parseInt(priceEl?.value || '30', 10);
-  const weird    = parseInt(weirdEl?.value || '5', 10);
+  const weird    = parseInt(weirdEl?.value || '50', 10);
   const vocal    = vocalEl?.value || '';
-  const style    = (styleEl?.value || '').trim();
+  const style    = parseInt(styleEl?.value || '50', 10);
 
   const showErr = (msg) => {
     if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
@@ -1964,8 +1973,8 @@ async function uploadTrack() {
     // dans dashTrackPlatform en haut du formulaire).
     const platformVal       = (document.getElementById('dashTrackPlatform')?.value || '').trim();
     const modelVersionVal   = (document.getElementById('dashPromptModelVersion')?.value || '').trim();
-    const weirdnessVal      = (document.getElementById('dashPromptWeirdness')?.value || '').trim();
-    const styleInfluenceVal = (document.getElementById('dashPromptStyleInfluence')?.value || '').trim();
+    const weirdnessVal      = (document.getElementById('dashMoodWeirdness')?.value || '50').trim();
+    const styleInfluenceVal = (document.getElementById('dashMoodStyleInfluence')?.value || '50').trim();
     const vocalGenderVal    = (document.getElementById('dashPromptVocalGender')?.value || '').trim();
 
     const promptErrs = [];
@@ -1973,8 +1982,7 @@ async function uploadTrack() {
     if (promptText.length > 1000)              promptErrs.push('prompt trop long (max 1000)');
     if (price < 3 || price > 500)              promptErrs.push('prix entre 3 et 500 crédits');
     if (!platformVal)                          promptErrs.push('plateforme d\'origine');
-    if (!weirdnessVal)                         promptErrs.push('weirdness');
-    if (!styleInfluenceVal)                    promptErrs.push('style influence');
+    // weirdness et styleInfluence viennent de sliders (toujours une valeur entre 0-100)
     if (!vocalGenderVal)                       promptErrs.push('voix (M/F/Instrumental)');
 
     if (promptErrs.length) {

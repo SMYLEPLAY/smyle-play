@@ -3000,6 +3000,50 @@ html { scroll-behavior: smooth; }
 }
 .dash-help-suno { opacity: .65; font-size: .62rem; }
 
+/* ── Section Style / ambiance (mood) — Col 1, toujours visible ─────────── */
+.dash-mood-block {
+  margin-top: 18px;
+  padding: 16px 14px 12px;
+  border: 1px solid rgba(136, 0, 255, .22);
+  border-radius: 12px;
+  background: rgba(136, 0, 255, .04);
+}
+.dash-mood-hdr {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+.dash-mood-title {
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(200, 160, 255, .9);
+}
+.dash-mood-sub {
+  font-size: .68rem;
+  color: rgba(255, 255, 255, .45);
+}
+.dash-mood-extremes {
+  display: flex;
+  justify-content: space-between;
+  font-size: .65rem;
+  color: rgba(255, 255, 255, .35);
+  margin-top: 2px;
+}
+.dash-slider {
+  width: 100%;
+  accent-color: #8800ff;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.dash-slider-val {
+  color: #cc88ff;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
 /* ── P1-F4 (2026-05-04) — Réglages génération sous le bloc Recette IA ──── */
 .dash-prompt-settings {
   margin-top: 18px;
