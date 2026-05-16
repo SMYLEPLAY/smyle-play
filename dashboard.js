@@ -190,7 +190,7 @@ class DashNetwork {
   resize() {
     const r = this.canvas.parentElement.getBoundingClientRect();
     this.W = this.canvas.width  = Math.round(r.width);
-    this.H = this.canvas.height = 420;
+    this.H = this.canvas.height = Math.min(420, Math.round(window.innerHeight * 0.6));
   }
 
   nodeColor(type) {
@@ -4115,6 +4115,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Chantier "Création DNA" — charge l'ADN existant si présent pour
   // pré-remplir la section #sec-dna (empty / summary / editor).
   loadMyAdn();
+
+  // Si la page artiste a redirigé avec ?edit=1, scroller vers la section
+  // Identité et l'ouvrir (c'est un <details> accordéon).
+  if (new URLSearchParams(window.location.search).get('edit') === '1') {
+    const secId = document.getElementById('sec-identity');
+    if (secId) {
+      const det = secId.querySelector('details');
+      if (det) det.open = true;
+      setTimeout(() => secId.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    }
+  }
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
