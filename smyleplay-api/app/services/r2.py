@@ -38,13 +38,15 @@ _warned_unconfigured = False
 
 def is_configured() -> bool:
     """
-    Vrai ssi les 3 secrets R2 obligatoires sont définis. Le bucket a un
-    défaut, donc seuls access_key + secret + endpoint_url sont required.
+    Vrai ssi les 3 secrets R2 obligatoires sont définis.
+    Accepte les deux conventions de nommage Railway :
+      - moderne  : R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ENDPOINT_URL
+      - legacy   : R2_ACCESS_KEY / R2_SECRET_KEY / R2_ACCOUNT_ID
     """
     return all([
-        settings.R2_ACCESS_KEY_ID,
-        settings.R2_SECRET_ACCESS_KEY,
-        settings.R2_ENDPOINT_URL,
+        settings.effective_r2_access_key_id,
+        settings.effective_r2_secret_access_key,
+        settings.effective_r2_endpoint_url,
     ])
 
 
@@ -78,9 +80,9 @@ def _get_client() -> Any | None:
 
     return boto3.client(
         "s3",
-        endpoint_url=settings.R2_ENDPOINT_URL,
-        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+        endpoint_url=settings.effective_r2_endpoint_url,
+        aws_access_key_id=settings.effective_r2_access_key_id,
+        aws_secret_access_key=settings.effective_r2_secret_access_key,
         region_name="auto",  # R2 ignore la region mais boto3 l'exige
     )
 
