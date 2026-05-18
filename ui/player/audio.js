@@ -110,6 +110,12 @@ function loadTrack(playlistKey, idx) {
   updatePlayBtn();
   incrementPlay(track.id);
 
+  // Notifier l'API du play (fire-and-forget — ne bloque pas la lecture).
+  // Pas d'auth requis côté backend (/watt/plays est public par design).
+  if (track.id) {
+    fetch(`/watt/plays/${track.id}`, { method: 'POST' }).catch(() => {});
+  }
+
   const playsEl = document.getElementById(`plays-${track.id}`);
   if (playsEl) playsEl.textContent = `${fmtPlays(getPlayCount(track.id))} ▶`;
 
@@ -212,6 +218,12 @@ function loadMixTrack() {
 
   updatePlayBtn();
   incrementPlay(track.id);
+
+  // Notifier l'API du play (fire-and-forget — même pattern que loadTrack).
+  if (track.id) {
+    fetch(`/watt/plays/${track.id}`, { method: 'POST' }).catch(() => {});
+  }
+
   renderMixPanel(); // mettre à jour active
 
   // Push direct vers SmyleMiniBar

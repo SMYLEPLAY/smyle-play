@@ -1847,7 +1847,7 @@ async function uploadTrack() {
     fd.append('name',   name);
     fd.append('userId', user ? String(user.id) : 'guest');
 
-    const res  = await fetch('/api/watt/upload-voice', { method: 'POST', body: fd });
+    const res  = await fetch('/watt/upload', { method: 'POST', body: fd });
     if (res.ok) {
       const data = await res.json();
       uploaded  = !data.mock;
@@ -2949,12 +2949,11 @@ async function _uploadVoiceSample(file, voiceName) {
     // dans le bucket (debug / cleanup batch plus facile).
     fd.append('name', `VOICE-${voiceName || 'sample'}`);
     fd.append('userId', (window.getCurrentUser && window.getCurrentUser() && window.getCurrentUser().id) || 'guest');
-    const res = await fetch('/api/watt/upload', { method: 'POST', body: fd });
+    const res = await fetch('/watt/upload-voice', { method: 'POST', body: fd });
     if (!res.ok) return null;
     const data = await res.json();
     // Le mode dev sans R2 renvoie { mock: true, url: null, key }.
     // Dans ce cas on ne peut pas créer la voix : le backend exige sample_url.
-    // Nouvel endpoint upload-voice renvoie { sample_url, preview_url }.
     // Si data.mock, on est en mode dev sans R2 — null pour signaler échec.
     if (data.mock || !data.sample_url) return null;
     return { sample_url: data.sample_url, preview_url: data.preview_url || null };
@@ -3074,9 +3073,9 @@ async function dashVoiceLoadLinkedTrackOptions() {
   if (!select || typeof apiFetch !== 'function') return;
   if (typeof getAuthToken === 'function' && !getAuthToken()) return;
   try {
-    // Réutilise l'endpoint qui retourne les tracks de l'user (Flask legacy)
-    const data = await apiFetch('/api/watt/tracks');
-    const tracks = (data && data.tracks) || [];
+    // GET /tracks/me (FastAPI) — retourne un array direct de TrackRead
+    const data = await apiFetch('/tracks/me');
+    const tracks = Array.isArray(data) ? data : [];
     // Garder la 1ère option "Aucun" + injecter les tracks
     const baseOpt = select.querySelector('option[value=""]');
     select.innerHTML = '';
@@ -3090,7 +3089,7 @@ async function dashVoiceLoadLinkedTrackOptions() {
     tracks.forEach(t => {
       const opt = document.createElement('option');
       opt.value = t.id;
-      opt.textContent = t.name || 'Sans titre';
+      opt.textContent = t.title || 'Sans titre'; // FastAPI : "title" (pas "name")
       select.appendChild(opt);
     });
   } catch (e) {
@@ -3238,7 +3237,7 @@ async function deleteAdnConfirm() {
   if (!confirm('Supprimer votre ADN du marketplace ? Les acheteurs qui ont déjà acquis votre ADN gardent leur accès en library.')) return;
   if (typeof apiFetch !== 'function') return;
   try {
-    await apiFetch('/api/artist/me/adn', { method: 'DELETE' });
+    await apiFetch('/artist/me/adn', { method: 'DELETE' });
     if (typeof dashToast === 'function') dashToast('ADN supprimé');
     // Recharge la section ADN pour afficher l'état vide
     if (typeof loadMyAdn === 'function') {
