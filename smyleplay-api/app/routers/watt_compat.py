@@ -17,7 +17,10 @@ import re
 import unicodedata
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+import uuid as _uuid_module
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func, select
@@ -1324,3 +1327,151 @@ async def get_prompt(prompt_id: str, db: AsyncSession = Depends(get_db)) -> dict
             "hasLyrics":    bool(prompt.lyrics),
         }
     }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Upload d'image vers R2 — port de l'ancien endpoint Flask /api/watt/upload-image
+# Utilisé par dashboard.js (_uploadTrackCover, _uploadDashIdImage)
+#                  artiste.js (avatar / cover depuis /u/<slug>)
+# kind : 'avatar' | 'cover' | 'track-cover'
+# ──────────────────────────────────────────────────────────────────────────────
+
+_IMAGE_MIME: dict[str, str] = {
+    "jpg":  "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png":  "image/png",
+    "webp": "image/webp",
+    "gif":  "image/gif",
+}
+_IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 Mo (aligné avec la validation client)
+
+
+@router.post("/upload-image")
+async def upload_image(
+    file: UploadFile = File(...),
+    userId: str = Form(default=""),
+    kind: str = Form(default="image"),
+):
+    """
+    Upload d'image vers R2 (avatar, cover, track-cover).
+
+    Remplace l'ancien endpoint Flask /api/watt/upload-image.
+    Le frontend l'appelle via fetch() direct (pas apiFetch) car il
+    envoie un FormData multipart — pas un JSON.
+
+    Retourne : { "url": "/watt/images/<key>", "key": "<key>" }
+    Le front stocke l'URL et la passe ensuite à PATCH /users/me ou
+    PATCH /tracks/{id} selon le contexte.
+    """
+    from app.services.r2 import get_r2_client, is_configured
+
+    if not is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+
+    # ── Validation MIME ───────────────────────────────────────────────────────
+    ct = (file.content_type or "").lower()
+    if not ct.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier doit être une image (image/*).",
+        )
+
+    # ── Lecture + validation taille ───────────────────────────────────────────
+    data = await file.read()
+    if len(data) > _IMAGE_MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Image trop lourde ({len(data) // 1024} KB) — max 5 Mo.",
+        )
+
+    # ── Extension / MIME ──────────────────────────────────────────────────────
+    filename = file.filename or "image.jpg"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+    if ext not in _IMAGE_MIME:
+        ext = "jpg"
+    mime = _IMAGE_MIME[ext]
+
+    # ── Clé R2 unique par kind ────────────────────────────────────────────────
+    uid = _uuid_module.uuid4().hex
+    safe_kind = re.sub(r"[^a-z0-9\-]", "", (kind or "image").lower()) or "image"
+    r2_key = f"images/{safe_kind}/{uid}.{ext}"
+
+    # ── Upload R2 (boto3 sync → executor) ────────────────────────────────────
+    client = get_r2_client()
+    bucket = settings.R2_BUCKET
+
+    def _sync_put() -> None:
+        client.put_object(
+            Bucket=bucket,
+            Key=r2_key,
+            Body=data,
+            ContentType=mime,
+        )
+
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(None, _sync_put)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Upload R2 échoué : {type(exc).__name__}: {str(exc)[:200]}",
+        )
+
+    return {"url": f"/watt/images/{r2_key}", "key": r2_key}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Proxy images R2 — même principe que /watt/stream/{key} pour l'audio.
+# Évite CORS/CSP lorsque l'image est chargée via <img src="/watt/images/…">.
+# Cache 24h côté browser (les images R2 sont immuables par UUID dans la clé).
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.get("/images/{key:path}")
+async def serve_image(key: str):
+    """
+    Proxy une image R2 par sa clé (ex. 'images/avatar/abc123.webp').
+    """
+    from app.services.r2 import get_r2_client, is_configured
+
+    if not is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+
+    client = get_r2_client()
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 client unavailable",
+        )
+
+    try:
+        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Image non trouvée : {type(exc).__name__}",
+        )
+
+    ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
+    mime = _IMAGE_MIME.get(ext, "image/jpeg")
+
+    def _iter_chunks():
+        try:
+            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
+                yield chunk
+        finally:
+            try:
+                obj["Body"].close()
+            except Exception:
+                pass
+
+    headers: dict[str, str] = {"Cache-Control": "public, max-age=86400"}
+    if obj.get("ContentLength"):
+        headers["Content-Length"] = str(obj["ContentLength"])
+
+    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)

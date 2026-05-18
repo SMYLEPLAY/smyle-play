@@ -2120,7 +2120,7 @@ function openOwnerField(fieldName, customLabel) {
 /* ── Upload d'image depuis les fichiers (avatar / cover) ─────────────────
    Flow :
      1. User clique "Importer depuis mes fichiers" → déclenche l'input file
-     2. User sélectionne une image → on POST /api/watt/upload-image
+     2. User sélectionne une image → on POST /watt/upload-image
      3. Backend upload sur R2, retourne { url }
      4. On fait PATCH /users/me avec l'URL (avatar_url ou cover_photo_url)
      5. On ferme le modal + on rafraîchit l'affichage
@@ -2168,9 +2168,8 @@ async function handleImageFileUpload(file) {
     statusEl.className = 'ap-modal-upload-status is-loading';
   }
 
-  // ── POST /api/watt/upload-image (Flask, même origine — pas apiFetch) ──
-  // On tape directement sur Flask car l'upload R2 vit côté Flask (infra
-  // boto3 déjà configurée), pas dans FastAPI. Donc pas d'API_BASE.
+  // ── POST /watt/upload-image (FastAPI, même origine — pas apiFetch) ──
+  // Upload multipart FormData → R2 via l'endpoint FastAPI dédié.
   const kind = (field === 'avatarUrl') ? 'avatar' : 'cover';
   const fd = new FormData();
   fd.append('file',   file);
@@ -2179,7 +2178,7 @@ async function handleImageFileUpload(file) {
 
   let uploadJson;
   try {
-    const resp = await fetch('/api/watt/upload-image', { method: 'POST', body: fd });
+    const resp = await fetch('/watt/upload-image', { method: 'POST', body: fd });
     uploadJson = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       const msg = uploadJson.error || `Upload impossible (HTTP ${resp.status}).`;
