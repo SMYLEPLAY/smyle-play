@@ -489,8 +489,10 @@ function getPlaysHistory(period) {
 // Le guard redirige uniquement si l'utilisateur n'est pas connecté.
 
 function checkAccess() {
-  // Vérifie que l'utilisateur est connecté (token JWT présent)
-  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+  // Vérifie que l'utilisateur est connecté (token JWT présent).
+  // On bloque si getAuthToken n'est pas encore défini (api.js non chargé)
+  // OU si le token est absent — évite l'accès au dashboard sans auth.
+  if (typeof getAuthToken !== 'function' || !getAuthToken()) {
     const returnUrl = encodeURIComponent('/dashboard');
     window.location.href = `/?auth=login&return=${returnUrl}`;
     return false;
@@ -750,7 +752,7 @@ function renderMyTracks() {
 // ── Édition inline d'un son ────────────────────────────────────────────────
 // Panneau modal qui permet à tout artiste de modifier :
 //   - le titre du son
-//   - la cover (upload fichier → R2 via /api/watt/upload-image)
+//   - la cover (upload fichier → R2 via /watt/upload-image)
 //   - la couleur signature
 //   - la recette (prompt) liée
 // Utilise PATCH /tracks/{dbId} (FastAPI) après avoir résolu les assets.
@@ -1722,7 +1724,7 @@ function resetCoverPreview() {
 }
 
 // Sprint 1 PR2 (2026-05-04) — upload cover R2 via endpoint Flask
-// /api/watt/upload-image (existant, déjà utilisé pour avatar/banner profil).
+// /watt/upload-image (existant, déjà utilisé pour avatar/banner profil).
 // Renvoie l'URL R2 publique, ou null si échec / pas de fichier.
 async function _uploadTrackCover(file, trackName) {
   if (!file) return null;
@@ -1731,7 +1733,7 @@ async function _uploadTrackCover(file, trackName) {
     fd.append('file', file);
     fd.append('userId', (window.getCurrentUser && window.getCurrentUser() && window.getCurrentUser().id) || 'guest');
     fd.append('kind', 'track-cover');  // namespace R2 distinct de avatar/banner
-    const res = await fetch('/api/watt/upload-image', { method: 'POST', body: fd });
+    const res = await fetch('/watt/upload-image', { method: 'POST', body: fd });
     if (!res.ok) return null;
     const data = await res.json();
     return data.url || null;
@@ -1859,7 +1861,7 @@ async function uploadTrack() {
   setProgress(80, 'Pochette…');
 
   // ── 1.5 Sprint 1 PR2 — Upload cover R2 (si l'artiste en a sélectionné une)
-  // L'endpoint Flask /api/watt/upload-image est déjà en place pour
+  // L'endpoint Flask /watt/upload-image est déjà en place pour
   // avatar/banner profil ; on le réutilise avec kind=track-cover pour
   // namespace dans le bucket. Échec gracieux : si l'upload cover rate,
   // le track est quand même créé (juste sans pochette persistée R2).
@@ -2751,7 +2753,7 @@ async function unpublishMyProfile() {
 // première fois : un champ rempli = un profil en ligne. La dépublication
 // reste gérée par le switch PLUG WATT (cas rare).
 //
-// Upload avatar/cover : on réutilise l'endpoint Flask /api/watt/upload-image
+// Upload avatar/cover : on réutilise l'endpoint Flask /watt/upload-image
 // déjà déployé (artiste.js en dépend aussi). Le backend renvoie { url } R2,
 // on PATCH /users/me avec avatar_url / cover_photo_url. ══════════════════════
 
@@ -3411,7 +3413,7 @@ function dashIdentityHandleCoverFile(ev) {
   ev.target.value = '';
 }
 
-// Upload vers /api/watt/upload-image (Flask), puis PATCH /users/me avec
+// Upload vers /watt/upload-image (Flask), puis PATCH /users/me avec
 // l'URL R2 renvoyée, puis refresh du preview + du localStorage.
 async function _uploadDashIdImage(file, kind) {
   // Validation client (le backend re-valide)
@@ -3432,7 +3434,7 @@ async function _uploadDashIdImage(file, kind) {
 
   let uploadJson;
   try {
-    const resp = await fetch('/api/watt/upload-image', { method: 'POST', body: fd });
+    const resp = await fetch('/watt/upload-image', { method: 'POST', body: fd });
     uploadJson = await resp.json().catch(() => ({}));
     if (!resp.ok || !uploadJson.url) {
       throw new Error(uploadJson.error || `Upload impossible (HTTP ${resp.status}).`);
