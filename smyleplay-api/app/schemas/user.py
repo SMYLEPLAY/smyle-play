@@ -164,7 +164,10 @@ class UserUpdate(BaseModel):
     def validate_url(cls, v: str | None) -> str | None:
         if v is None or v == "":
             return None
-        # Validation HttpUrl via Pydantic
+        # URLs relatives acceptées (ex. /watt/images/...) — servies en proxy same-origin.
+        # Les URLs absolues https:// sont validées via Pydantic HttpUrl.
+        if v.startswith("/"):
+            return v
         HttpUrl(v)
         return v
 

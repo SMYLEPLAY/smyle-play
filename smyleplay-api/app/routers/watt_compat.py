@@ -18,6 +18,7 @@ import unicodedata
 from typing import Optional
 
 import asyncio
+import re as _re_slug
 import uuid as _uuid_module
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -1475,3 +1476,132 @@ async def serve_image(key: str):
         headers["Content-Length"] = str(obj["ContentLength"])
 
     return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Upload audio — port des anciens endpoints Flask /api/watt/upload
+# et /api/watt/upload-voice.
+#
+# /watt/upload       → upload d'un fichier audio de track (wav/mp3/m4a…)
+#                       Retourne { url, key, mock }
+# /watt/upload-voice → upload d'un sample voix (même pipeline R2, prefix différent)
+#                       Retourne { sample_url, preview_url, url, key, mock }
+#
+# Les URLs retournées pointent vers /watt/stream/{key} (proxy same-origin).
+# ──────────────────────────────────────────────────────────────────────────────
+
+_AUDIO_MAX_BYTES = 50 * 1024 * 1024  # 50 Mo (tracks peuvent être lourdes)
+_VOICE_MAX_BYTES = 20 * 1024 * 1024  # 20 Mo pour les samples voix
+_AUDIO_EXTS = {"mp3", "wav", "m4a", "ogg", "flac", "aac", "webm"}
+_AUDIO_MIME_UPLOAD = {
+    "mp3":  "audio/mpeg",
+    "wav":  "audio/wav",
+    "m4a":  "audio/mp4",
+    "ogg":  "audio/ogg",
+    "flac": "audio/flac",
+    "aac":  "audio/aac",
+    "webm": "audio/webm",
+}
+
+
+def _slugify_name(name: str, max_len: int = 40) -> str:
+    """Slugifie un nom pour l'utiliser dans une clé R2 (ASCII safe)."""
+    s = unicodedata.normalize("NFD", name.lower())
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    s = _re_slug.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s[:max_len] or "track"
+
+
+async def _upload_audio_to_r2(
+    file: UploadFile,
+    name: str,
+    r2_prefix: str,
+    max_bytes: int,
+) -> dict:
+    """
+    Logique commune d'upload audio vers R2.
+    Retourne { url, key } ou lève HTTPException.
+    """
+    from app.services.r2 import get_r2_client, is_configured
+
+    # Mode sans R2 (dev local) — renvoie un mock pour ne pas bloquer l'UI
+    if not is_configured():
+        return {"url": None, "key": f"{r2_prefix}/mock.wav", "mock": True}
+
+    # Validation MIME
+    ct = (file.content_type or "").lower()
+    if not (ct.startswith("audio/") or ct in ("application/octet-stream", "video/webm")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier doit être un fichier audio.",
+        )
+
+    data = await file.read()
+    if len(data) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Fichier trop lourd ({len(data) // (1024*1024)} Mo) — max {max_bytes // (1024*1024)} Mo.",
+        )
+
+    filename = file.filename or "audio.wav"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "wav"
+    if ext not in _AUDIO_EXTS:
+        ext = "wav"
+    mime = _AUDIO_MIME_UPLOAD.get(ext, "audio/wav")
+
+    slug = _slugify_name(name)
+    uid = _uuid_module.uuid4().hex[:12]
+    r2_key = f"{r2_prefix}/{slug}-{uid}.{ext}"
+
+    client = get_r2_client()
+    bucket = settings.R2_BUCKET
+
+    def _sync_put() -> None:
+        client.put_object(Bucket=bucket, Key=r2_key, Body=data, ContentType=mime)
+
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(None, _sync_put)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Upload R2 échoué : {type(exc).__name__}: {str(exc)[:200]}",
+        )
+
+    stream_url = f"/watt/stream/{r2_key}"
+    return {"url": stream_url, "key": r2_key, "mock": False}
+
+
+@router.post("/upload")
+async def upload_audio(
+    file: UploadFile = File(...),
+    name: str = Form(default="track"),
+    userId: str = Form(default=""),
+):
+    """
+    Upload d'un fichier audio de track vers R2.
+    Remplace Flask /api/watt/upload.
+    Retourne { url, key, mock }.
+    """
+    result = await _upload_audio_to_r2(file, name, r2_prefix="tracks", max_bytes=_AUDIO_MAX_BYTES)
+    return result
+
+
+@router.post("/upload-voice")
+async def upload_voice_sample(
+    file: UploadFile = File(...),
+    name: str = Form(default="voice"),
+    userId: str = Form(default=""),
+):
+    """
+    Upload d'un sample voix vers R2.
+    Remplace Flask /api/watt/upload-voice.
+    Retourne { sample_url, preview_url, url, key, mock }.
+    preview_url = null (génération 30s non implémentée — à faire avec FFmpeg).
+    """
+    result = await _upload_audio_to_r2(file, name, r2_prefix="voices", max_bytes=_VOICE_MAX_BYTES)
+    return {
+        **result,
+        "sample_url":  result["url"],
+        "preview_url": None,  # TODO: générer clip 30s via FFmpeg
+    }
