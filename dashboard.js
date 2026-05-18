@@ -811,14 +811,14 @@ async function initTrackEditor() {
   // 2. Charge les prompts pour le dropdown recette
   try {
     const resp = await apiFetch('/artist/me/prompts');
-    const prompts = (resp && Array.isArray(resp.prompts)) ? resp.prompts
+    const prompts = (resp && Array.isArray(resp.items)) ? resp.items
                   : (Array.isArray(resp) ? resp : []);
     const sel = document.getElementById('dte2Prompt');
     if (sel && prompts.length > 0) {
       prompts.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
-        opt.textContent = `${p.title} · ${p.priceCredits} Smyles`;
+        opt.textContent = `${p.title} · ${p.price_credits} Smyles`;
         sel.appendChild(opt);
       });
     }
@@ -1257,7 +1257,7 @@ async function openTrackEdit(localId) {
   let myPrompts = [];
   try {
     const resp = await apiFetch('/artist/me/prompts');
-    myPrompts = (resp && Array.isArray(resp.prompts)) ? resp.prompts
+    myPrompts = (resp && Array.isArray(resp.items)) ? resp.items
               : (Array.isArray(resp) ? resp : []);
   } catch (_) {}
 
@@ -1265,7 +1265,7 @@ async function openTrackEdit(localId) {
   const promptOptions = [
     `<option value="">— Aucune recette liée —</option>`,
     ...myPrompts.map(p =>
-      `<option value="${p.id}"${t.promptId === p.id ? ' selected' : ''}>${htmlEscape(p.title)} (${p.priceCredits} crédits)</option>`
+      `<option value="${p.id}"${t.promptId === p.id ? ' selected' : ''}>${htmlEscape(p.title)} (${p.price_credits} crédits)</option>`
     ),
   ].join('');
 
@@ -1447,7 +1447,7 @@ async function deleteTrack(id) {
   // Supprimer en DB si l'on a un dbId (shim FastAPI)
   if (trackToDelete?.dbId) {
     try {
-      await apiFetch(`/watt/tracks/${encodeURIComponent(trackToDelete.dbId)}`, { method: 'DELETE' });
+      await apiFetch(`/tracks/${encodeURIComponent(trackToDelete.dbId)}`, { method: 'DELETE' });
     } catch (_) { /* silencieux */ }
   }
 }
@@ -2251,24 +2251,7 @@ async function saveProfile() {
   // 1. Sauvegarder en localStorage (immédiat, toujours)
   saveWattProfile(profile);
 
-  // 2. Sync avec la DB (principal pour la communauté)
-  try {
-    const res = await fetch('/api/watt/profile', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(profile),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      // Mettre à jour le slug avec le slug validé par le serveur
-      if (data.artist?.slug) {
-        profile.slug = data.artist.slug;
-        saveWattProfile(profile);
-      }
-    }
-  } catch (_) { /* mode hors-ligne — localStorage suffit */ }
-
-  // 3. Sync FastAPI (artist_name + bio + socials + brand_color). Indispensable
+  // 2. Sync FastAPI (artist_name + bio + socials + brand_color). Indispensable
   // pour que le bouton "Publier mon profil" valide (ces champs sont lus depuis
   // la DB FastAPI) ET pour que la page artiste publique /artiste/<slug> rende
   // la bonne couleur de marque.
