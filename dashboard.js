@@ -489,8 +489,10 @@ function getPlaysHistory(period) {
 // Le guard redirige uniquement si l'utilisateur n'est pas connecté.
 
 function checkAccess() {
-  // Vérifie que l'utilisateur est connecté (token JWT présent)
-  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+  // Vérifie que l'utilisateur est connecté (token JWT présent).
+  // On bloque si getAuthToken n'est pas encore défini (api.js non chargé)
+  // OU si le token est absent — évite l'accès au dashboard sans auth.
+  if (typeof getAuthToken !== 'function' || !getAuthToken()) {
     const returnUrl = encodeURIComponent('/dashboard');
     window.location.href = `/?auth=login&return=${returnUrl}`;
     return false;
