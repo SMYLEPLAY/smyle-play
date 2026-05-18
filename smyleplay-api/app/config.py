@@ -33,15 +33,34 @@ class Settings(BaseSettings):
     )
 
     # --- Cloudflare R2 (stockage audio) ---
-    # Toutes nullable pour rester dev-friendly : si aucune var n'est définie
-    # côté FastAPI, le service R2 dégrade gracieusement (les opérations de
-    # delete/upload deviennent des no-ops loggés). En prod (Railway), les 4
-    # vars doivent être définies sinon l'audit `services.r2.is_configured()`
-    # retourne False et on log un warning au startup.
-    R2_ACCESS_KEY_ID: str | None = None
-    R2_SECRET_ACCESS_KEY: str | None = None
-    R2_ENDPOINT_URL: str | None = None
+    # Deux conventions de nommage coexistent :
+    #   - Noms "modernes" FastAPI  : R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ENDPOINT_URL
+    #   - Noms legacy Railway      : R2_ACCESS_KEY / R2_SECRET_KEY / R2_ACCOUNT_ID
+    # Les propriétés ci-dessous résolvent automatiquement les deux formes pour
+    # ne jamais avoir à retoucher les secrets Railway.
+    R2_ACCESS_KEY_ID: str | None = None      # nom moderne (prioritaire)
+    R2_ACCESS_KEY: str | None = None          # alias legacy Railway
+    R2_SECRET_ACCESS_KEY: str | None = None  # nom moderne (prioritaire)
+    R2_SECRET_KEY: str | None = None          # alias legacy Railway
+    R2_ENDPOINT_URL: str | None = None       # URL complète (prioritaire)
+    R2_ACCOUNT_ID: str | None = None         # alias legacy → construit l'URL
     R2_BUCKET: str = "smyle-play-audio"
+
+    @property
+    def effective_r2_access_key_id(self) -> str | None:
+        return self.R2_ACCESS_KEY_ID or self.R2_ACCESS_KEY
+
+    @property
+    def effective_r2_secret_access_key(self) -> str | None:
+        return self.R2_SECRET_ACCESS_KEY or self.R2_SECRET_KEY
+
+    @property
+    def effective_r2_endpoint_url(self) -> str | None:
+        if self.R2_ENDPOINT_URL:
+            return self.R2_ENDPOINT_URL
+        if self.R2_ACCOUNT_ID:
+            return f"https://{self.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        return None
 
     @property
     def cors_origins_list(self) -> list[str]:
