@@ -704,14 +704,14 @@
         const fd = new FormData();
         fd.append('file', file);
         fd.append('userId', userId);
-        fd.append('name', (plName ? plName.textContent : 'cover').slice(0, 40));
+        fd.append('kind', 'playlist');  // réutilise /watt/upload-image (kind=playlist)
         const headers = {};
         if (token) headers['Authorization'] = 'Bearer ' + token;
-        const resp = await fetch('/api/watt/upload-playlist-cover', { method: 'POST', body: fd, headers, credentials: 'same-origin' });
+        const resp = await fetch('/watt/upload-image', { method: 'POST', body: fd, headers, credentials: 'same-origin' });
         const data = await resp.json();
         if (!resp.ok || data.error) throw new Error(data.error || 'Upload échoué');
-        // PATCH playlist avec la nouvelle cover_url
-        await _req('/playlists/' + encodeURIComponent(id), { method: 'PATCH', body: { cover_video_url: data.cover_url } });
+        // PATCH playlist avec la nouvelle cover_url (data.url = "/watt/images/<key>")
+        await _req('/playlists/' + encodeURIComponent(id), { method: 'PATCH', body: { cover_video_url: data.url } });
         await reload();
       } catch (e) {
         if (label) label.textContent = '📎';
