@@ -73,6 +73,23 @@
     dropOpen: false,
   };
 
+  // État notifications
+  const _notifState = {
+    count:      0,
+    open:       false,
+    items:      [],
+    pollTimer:  null,
+  };
+
+  const NOTIF_META = {
+    purchase: { icon: '💸', color: '#22c55e' },
+    like:     { icon: '❤️', color: '#ef4444' },
+    follow:   { icon: '👤', color: '#3b82f6' },
+    message:  { icon: '✉️', color: '#a855f7' },
+    trade:    { icon: '🔄', color: '#f97316' },
+    system:   { icon: '⚙️', color: '#6b7280' },
+  };
+
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -129,6 +146,35 @@
   }
 
 
+  // ── Helpers notifications ─────────────────────────────────────────────────
+
+  function _timeAgo(iso) {
+    if (!iso) return '';
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 60)   return 'à l\'instant';
+    if (diff < 3600) return Math.floor(diff / 60) + ' min';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' h';
+    return Math.floor(diff / 86400) + ' j';
+  }
+
+  function _notifText(n) {
+    const actor = _esc(n.actor_name || 'Quelqu\'un');
+    switch (n.type) {
+      case 'purchase': {
+        const item = (n.metadata_json && n.metadata_json.item_type) || 'item';
+        const amt  = (n.metadata_json && n.metadata_json.amount)    || '';
+        return `${actor} a acheté votre ${item === 'prompt' ? 'prompt' : item === 'adn' ? 'ADN' : 'voix'}${amt ? ' · <strong>' + amt + ' Smyles</strong>' : ''}`;
+      }
+      case 'like':    return `${actor} a liké votre son`;
+      case 'follow':  return `${actor} vous suit`;
+      case 'message': return `${actor} vous a envoyé un message`;
+      case 'trade':   return `${actor} vous propose un échange d'ADN`;
+      case 'system':  return _esc((n.metadata_json && n.metadata_json.text) || 'Notification système');
+      default:        return `Notification de ${actor}`;
+    }
+  }
+
+
   // ── Fetchers ─────────────────────────────────────────────────────────────
 
   async function _fetchMe() {
@@ -140,6 +186,41 @@
       // 401 / token invalide → on traite comme anonyme, silencieusement.
       _state.user = null;
     }
+  }
+
+  async function _fetchUnreadCount() {
+    try {
+      if (!(window.getAuthToken && window.getAuthToken())) return;
+      const data = await apiFetch('/me/notifications/unread-count');
+      _notifState.count = data.count || 0;
+      _updateBellBadge();
+    } catch (_) {}
+  }
+
+  async function _fetchNotifs() {
+    try {
+      if (!(window.getAuthToken && window.getAuthToken())) return;
+      const data = await apiFetch('/me/notifications?limit=30');
+      _notifState.items      = data.items      || [];
+      _notifState.count      = data.unread_count || 0;
+    } catch (_) {}
+  }
+
+  function _startNotifPoll() {
+    _stopNotifPoll();
+    _notifState.pollTimer = setInterval(_fetchUnreadCount, 30000);
+  }
+
+  function _stopNotifPoll() {
+    if (_notifState.pollTimer) { clearInterval(_notifState.pollTimer); _notifState.pollTimer = null; }
+  }
+
+  function _updateBellBadge() {
+    const badge = document.getElementById('stb-notif-badge');
+    if (!badge) return;
+    const n = _notifState.count;
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.style.display = n > 0 ? 'flex' : 'none';
   }
 
 
@@ -175,6 +256,23 @@
     // Auth chip : connecté ou anonyme.
     const authHtml = user ? _renderUserChip(user, mySlug) : _renderAnonChip();
 
+    // Cloche notifications (connecté uniquement)
+    const bellHtml = user ? `
+      <div class="stb-notif-wrap" id="stb-notif-wrap">
+        <button class="stb-notif-btn" type="button"
+                onclick="window.SmyleTopbar.toggleNotif(event)"
+                title="Notifications" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
+               stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="stb-notif-badge" id="stb-notif-badge"
+                style="display:none">0</span>
+        </button>
+        <div class="stb-notif-panel" id="stb-notif-panel" hidden></div>
+      </div>` : '';
+
     return `
       <a href="/" class="stb-logo" aria-label="Accueil WATT">
         ${LOGO_SVG}
@@ -188,9 +286,135 @@
       <div class="stb-right">
         <div id="smyle-balance" class="stb-balance-slot"></div>
         ${mixHtml}
+        ${bellHtml}
         ${authHtml}
       </div>
     `;
+  }
+
+  // ── Notifications panel ───────────────────────────────────────────────────
+
+  function _renderNotifItems() {
+    if (!_notifState.items.length) {
+      return `<div class="stb-notif-empty">Aucune notification</div>`;
+    }
+    return _notifState.items.map(n => {
+      const meta    = NOTIF_META[n.type] || NOTIF_META.system;
+      const unread  = !n.read_at;
+      const text    = _notifText(n);
+      const time    = _timeAgo(n.created_at);
+
+      // Lien contextuel selon la cible
+      let href = '#';
+      let extraClick = '';
+      if (n.type === 'message' && n.actor_id) {
+        // Ouvre le panel messaging si dispo sur la page, sinon ignore
+        extraClick = `if(window.SmyleMessaging){event.preventDefault();window.SmyleMessaging.open('${_esc(n.actor_id)}');}`;
+      } else if (n.type === 'follow' && n.actor_id) {
+        href = `/u/${_esc((n.actor_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-'))}`;
+      } else if (n.type === 'trade') {
+        href = '/dashboard#sec-trades';
+      } else if (n.type === 'purchase' && n.target_type === 'prompt') {
+        href = '/dashboard';
+      }
+
+      const followBtn = (n.type === 'follow' && n.actor_id) ? `
+        <button class="stb-notif-followback" type="button"
+                data-actor="${_esc(n.actor_id)}"
+                onclick="window.SmyleTopbar.followBack(event, '${_esc(n.actor_id)}')">
+          + Suivre
+        </button>` : '';
+
+      return `
+        <a class="stb-notif-item${unread ? ' stb-notif-unread' : ''}"
+           href="${href}"
+           onclick="window.SmyleTopbar.markRead(event, '${_esc(n.id)}');${extraClick}">
+          <span class="stb-notif-icon" style="--ni-color:${meta.color}">${meta.icon}</span>
+          <span class="stb-notif-body">
+            <span class="stb-notif-text">${text}</span>
+            <span class="stb-notif-time">${time}</span>
+          </span>
+          ${followBtn}
+        </a>`;
+    }).join('');
+  }
+
+  async function _openNotifPanel() {
+    await _fetchNotifs();
+    const panel = document.getElementById('stb-notif-panel');
+    if (!panel) return;
+    panel.innerHTML = `
+      <div class="stb-notif-header">
+        <span class="stb-notif-title">Notifications</span>
+        <button class="stb-notif-readall" type="button"
+                onclick="window.SmyleTopbar.markAllRead(event)">
+          Tout marquer lu
+        </button>
+      </div>
+      <div class="stb-notif-list" id="stb-notif-list">
+        ${_renderNotifItems()}
+      </div>`;
+    panel.hidden = false;
+    _notifState.open = true;
+    _updateBellBadge();
+  }
+
+  function _closeNotifPanel() {
+    const panel = document.getElementById('stb-notif-panel');
+    if (panel) panel.hidden = true;
+    _notifState.open = false;
+  }
+
+  async function _toggleNotifPanel(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    if (_notifState.open) {
+      _closeNotifPanel();
+    } else {
+      await _openNotifPanel();
+    }
+  }
+
+  async function _markAllRead(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    try {
+      await apiFetch('/me/notifications/read-all', { method: 'POST' });
+      _notifState.count = 0;
+      _notifState.items = _notifState.items.map(n => ({ ...n, read_at: new Date().toISOString() }));
+      _updateBellBadge();
+      const list = document.getElementById('stb-notif-list');
+      if (list) list.innerHTML = _renderNotifItems();
+    } catch (_) {}
+  }
+
+  async function _markRead(ev, id) {
+    // Mark read silently, don't interrupt navigation
+    try {
+      apiFetch(`/me/notifications/${id}/read`, { method: 'PATCH' }).catch(() => {});
+      _notifState.items = _notifState.items.map(n =>
+        n.id === id ? { ...n, read_at: new Date().toISOString() } : n);
+      _notifState.count = Math.max(0, _notifState.count - 1);
+      _updateBellBadge();
+    } catch (_) {}
+    _closeNotifPanel();
+  }
+
+  async function _followBack(ev, actorId) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    const btn = ev && ev.currentTarget;
+    if (btn) { btn.textContent = '...'; btn.disabled = true; }
+    try {
+      await apiFetch(`/users/${actorId}/follow`, { method: 'POST' });
+      if (btn) { btn.textContent = 'Suivi ✓'; btn.classList.add('stb-notif-followback-done'); }
+    } catch (_) {
+      if (btn) { btn.textContent = 'Déjà suivi'; btn.disabled = true; }
+    }
+  }
+
+  function _closeNotifOnOutside(ev) {
+    if (!_notifState.open) return;
+    const wrap = document.getElementById('stb-notif-wrap');
+    if (wrap && wrap.contains(ev.target)) return;
+    _closeNotifPanel();
   }
 
   function _renderUserChip(user, mySlug) {
@@ -336,6 +560,9 @@
     const c = document.getElementById('stb-mix-count');
     if (c) c.textContent = String(_state.mixCount);
 
+    // Sync badge notif sans refetch (count déjà en mémoire).
+    _updateBellBadge();
+
     // Post-rendu : smyle-balance.js s'auto-injecte dans #smyle-balance s'il
     // est déjà chargé. Si le widget est déjà en place on le laisse, sinon
     // on lui demande un refresh pour qu'il (re)prenne sa place dans le slot.
@@ -354,6 +581,13 @@
     // Login / logout → re-fetch + re-render (le chip user change d'état).
     bus.on('smyle:auth-changed', async () => {
       await _fetchMe();
+      if (_state.user) {
+        await _fetchUnreadCount();
+        _startNotifPoll();
+      } else {
+        _stopNotifPoll();
+        _notifState.count = 0;
+      }
       _render();
     });
     // Mix modifié → on met à jour juste le compteur, pas tout le DOM.
@@ -365,11 +599,17 @@
   }
 
   function _bindGlobal() {
-    // Clic outside → ferme le dropdown. On le pose une seule fois.
-    document.addEventListener('click', _closeDropOnOutside);
+    // Clic outside → ferme les dropdowns. On le pose une seule fois.
+    document.addEventListener('click', (ev) => {
+      _closeDropOnOutside(ev);
+      _closeNotifOnOutside(ev);
+    });
     // Échap → idem.
     document.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Escape' && _state.dropOpen) _closeDropOnOutside(ev);
+      if (ev.key === 'Escape') {
+        if (_state.dropOpen)  _closeDropOnOutside(ev);
+        if (_notifState.open) _closeNotifPanel();
+      }
     });
     // Synchronisation cross-tabs du mix via storage event : si une autre
     // fenêtre modifie smyle_mix, on met à jour le compteur.
@@ -393,20 +633,27 @@
     const hasToken = !!((window.getAuthToken && window.getAuthToken()));
     if (hasToken) {
       await _fetchMe();
+      await _fetchUnreadCount();
+      _startNotifPoll();
     }
     _render();
   }
 
   // API publique minimale (appelée depuis les onclick inlines du template).
   window.SmyleTopbar = {
-    refresh:    _render,
-    clickMix:   _clickMix,
-    clickLogin: _clickLogin,
-    logout:     _logout,
-    toggleDrop: _toggleDrop,
+    refresh:     _render,
+    clickMix:    _clickMix,
+    clickLogin:  _clickLogin,
+    logout:      _logout,
+    toggleDrop:  _toggleDrop,
+    // Notifications
+    toggleNotif: _toggleNotifPanel,
+    markRead:    _markRead,
+    markAllRead: _markAllRead,
+    followBack:  _followBack,
     // Pour que l'app puisse forcer un refresh après login manuel sans
     // attendre un event (ex. depuis modals/auth.js).
-    reloadUser: async () => { await _fetchMe(); _render(); },
+    reloadUser:  async () => { await _fetchMe(); _render(); },
   };
 
   if (document.readyState === 'loading') {

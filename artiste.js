@@ -1110,6 +1110,14 @@ function renderPrompts(artist) {
       : `<button type="button" class="ap-prompt-unlock-btn"
                  data-prompt-id="${p.id}" data-price="${p.priceCredits}">
           🧬 Recette · ${priceStr} crédits
+        </button>
+        <button type="button" class="ap-prompt-trade-btn"
+                data-prompt-id="${p.id}"
+                data-prompt-title="${(p.title||'').replace(/"/g,'&quot;')}"
+                data-prompt-price="${p.priceCredits || 0}"
+                data-artist-id="${artist.id || ''}"
+                data-artist-name="${(artist.artistName||'').replace(/"/g,'&quot;')}">
+          🔄 Échanger
         </button>`;
     // Audio player du track lié (revert 2026-05-05) — pré-écoute avant
     // achat pour augmenter la conversion. Si pas de track lié, pas
@@ -1139,11 +1147,126 @@ function renderPrompts(artist) {
 
   // Délégation : un seul listener pour toute la liste (re-rendue souvent)
   list.onclick = (ev) => {
-    const btn = ev.target.closest('.ap-prompt-unlock-btn');
-    if (!btn) return;
-    const id = btn.dataset.promptId;
-    if (id) unlockPromptFromProfile(id, btn);
+    const unlockBtn = ev.target.closest('.ap-prompt-unlock-btn');
+    if (unlockBtn) {
+      const id = unlockBtn.dataset.promptId;
+      if (id) unlockPromptFromProfile(id, unlockBtn);
+      return;
+    }
+    const tradeBtn = ev.target.closest('.ap-prompt-trade-btn');
+    if (tradeBtn) {
+      openTradeModal({
+        promptId:    tradeBtn.dataset.promptId,
+        promptTitle: tradeBtn.dataset.promptTitle,
+        promptPrice: parseInt(tradeBtn.dataset.promptPrice, 10) || 0,
+        receiverId:  tradeBtn.dataset.artistId,
+        receiverName:tradeBtn.dataset.artistName,
+      });
+    }
   };
+}
+
+// ── Modal d'échange ADN ────────────────────────────────────────────────────
+
+async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, receiverName }) {
+  // Vérifie auth
+  if (typeof window.getAuthToken === 'function' && !window.getAuthToken()) {
+    if (window.openAuthModal) window.openAuthModal('login');
+    return;
+  }
+
+  // Supprime modal précédente si existe
+  const prev = document.getElementById('smyle-trade-modal');
+  if (prev) prev.remove();
+
+  // Charge les propres prompts de l'utilisateur pour l'offre
+  let myPrompts = [];
+  try {
+    const data = await apiFetch('/artist/me/prompts?limit=50');
+    myPrompts = data.items || data || [];
+  } catch (_) {}
+
+  const promptOptions = myPrompts.length
+    ? myPrompts.map(p => `<option value="${p.id}">${p.title || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+    : '<option value="" disabled>Aucun prompt à proposer</option>';
+
+  const el = document.createElement('div');
+  el.id = 'smyle-trade-modal';
+  el.className = 'trade-modal-backdrop';
+  el.innerHTML = `
+    <div class="trade-modal-box" role="dialog" aria-label="Proposer un échange">
+      <div class="trade-modal-header">
+        <span class="trade-modal-title">🔄 Proposer un échange</span>
+        <button class="trade-modal-close" onclick="document.getElementById('smyle-trade-modal').remove()">✕</button>
+      </div>
+      <div class="trade-modal-body">
+        <div class="trade-field">
+          <label class="trade-label">Tu demandes</label>
+          <div class="trade-target-info">
+            <strong>${promptTitle || 'Prompt sans titre'}</strong>
+            <span class="trade-price-tag">${promptPrice} crédits</span>
+          </div>
+          <span class="trade-from">de <strong>${receiverName || 'l\'artiste'}</strong></span>
+        </div>
+        <div class="trade-field">
+          <label class="trade-label">Tu proposes</label>
+          <select class="trade-select" id="trade-offered-id">
+            <option value="">-- Choisir un de tes prompts --</option>
+            ${promptOptions}
+          </select>
+        </div>
+        <div class="trade-field">
+          <label class="trade-label">Complément en crédits <span class="trade-hint">(optionnel · 0 si équitable)</span></label>
+          <input type="number" class="trade-input" id="trade-supplement" min="0" value="0" />
+        </div>
+        <div class="trade-field">
+          <label class="trade-label">Message <span class="trade-hint">(optionnel)</span></label>
+          <textarea class="trade-textarea" id="trade-message" rows="2"
+            placeholder="Pourquoi tu veux échanger…"></textarea>
+        </div>
+        <p class="trade-rules">
+          ⚠️ Les échanges sont limités à tes propres créations. L'offre expire sous 7 jours.
+        </p>
+        <button class="trade-submit-btn" id="trade-submit-btn"
+                onclick="submitTradeOffer('${promptId}', '${receiverId}')">
+          Envoyer la proposition
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(el);
+  el.addEventListener('click', ev => { if (ev.target === el) el.remove(); });
+}
+
+async function submitTradeOffer(requestedPromptId, receiverId) {
+  const offeredId   = (document.getElementById('trade-offered-id')  || {}).value || '';
+  const supplement  = parseInt((document.getElementById('trade-supplement') || {}).value || '0', 10);
+  const message     = ((document.getElementById('trade-message') || {}).value || '').trim();
+  const btn         = document.getElementById('trade-submit-btn');
+
+  if (!offeredId) { alert('Choisis un prompt à proposer.'); return; }
+
+  if (btn) { btn.textContent = 'Envoi…'; btn.disabled = true; }
+
+  try {
+    await apiFetch('/trades/offers', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        receiver_id:          receiverId,
+        offered_prompt_id:    offeredId,
+        requested_prompt_id:  requestedPromptId,
+        credit_supplement:    Math.max(0, supplement || 0),
+        message:              message || null,
+      }),
+    });
+    document.getElementById('smyle-trade-modal').remove();
+    alert('✅ Proposition envoyée ! L\'artiste recevra une notification.');
+  } catch (err) {
+    if (btn) { btn.textContent = 'Envoyer la proposition'; btn.disabled = false; }
+    const detail = (err && err.body && err.body.detail) || err.message || 'Erreur inconnue';
+    alert('Erreur : ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)));
+  }
 }
 
 function renderTracks(artist) {

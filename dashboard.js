@@ -4110,6 +4110,15 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => secId.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
     }
   }
+
+  // Section échanges — chargement initial + scroll auto si #trades dans l'URL
+  loadTrades();
+  if (location.hash === '#trades' || location.hash === '#sec-trades') {
+    setTimeout(() => {
+      const sec = document.getElementById('sec-trades');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
+  }
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -4480,3 +4489,147 @@ document.addEventListener('DOMContentLoaded', function() {
     dashUpdateEurPreview('dashVoicePrice', 'dashVoicePriceEur');
   }, 100);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION ÉCHANGES ADN
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function loadTrades() {
+  const root = document.getElementById('dash-trades-root');
+  if (!root) return;
+  try {
+    const data = await apiFetch('/trades/offers/me');
+    renderTrades(root, data || []);
+  } catch (_) {
+    root.innerHTML = '<p class="dash-empty-hint">Impossible de charger les échanges.</p>';
+  }
+}
+
+function _tradeStatusLabel(status) {
+  const map = {
+    pending:   { label: '⏳ En attente', cls: 'trade-status-pending' },
+    accepted:  { label: '✅ Accepté',    cls: 'trade-status-accepted' },
+    rejected:  { label: '❌ Refusé',     cls: 'trade-status-rejected' },
+    cancelled: { label: '🚫 Annulé',     cls: 'trade-status-cancelled' },
+    expired:   { label: '⌛ Expiré',     cls: 'trade-status-expired' },
+  };
+  return map[status] || { label: status, cls: '' };
+}
+
+function _tradeTimeLeft(expiresAt) {
+  if (!expiresAt) return '';
+  const diff = Math.floor((new Date(expiresAt) - Date.now()) / 1000);
+  if (diff <= 0) return 'Expiré';
+  if (diff < 3600) return `Expire dans ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `Expire dans ${Math.floor(diff / 3600)} h`;
+  return `Expire dans ${Math.floor(diff / 86400)} j`;
+}
+
+function renderTrades(root, trades) {
+  if (!trades.length) {
+    root.innerHTML = `
+      <div class="trades-empty">
+        <p>Aucun échange en cours.</p>
+        <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:6px">
+          Visite la boutique d'un artiste et clique sur 🔄 Échanger pour proposer un trade.
+        </p>
+      </div>`;
+    return;
+  }
+
+  const currentUserId = _dashCurrentUserId();
+
+  const html = trades.map(t => {
+    const isSender   = t.sender_id === currentUserId;
+    const direction  = isSender ? 'Envoyé à' : 'Reçu de';
+    const otherName  = isSender ? (t.receiver_name || 'Artiste') : (t.sender_name || 'Artiste');
+    const { label: statusLabel, cls: statusCls } = _tradeStatusLabel(t.status);
+    const timeLeft   = t.status === 'pending' ? _tradeTimeLeft(t.expires_at) : '';
+
+    const offered   = t.offered_prompt  || {};
+    const requested = t.requested_prompt || {};
+
+    const actions = t.status === 'pending' ? (
+      isSender
+        ? `<button class="trade-action-btn trade-cancel-btn"
+                   onclick="cancelTrade('${t.id}', this)">Annuler</button>`
+        : `<button class="trade-action-btn trade-accept-btn"
+                   onclick="acceptTrade('${t.id}', this)">✅ Accepter</button>
+           <button class="trade-action-btn trade-reject-btn"
+                   onclick="rejectTrade('${t.id}', this)">❌ Refuser</button>`
+    ) : '';
+
+    const supplement = t.credit_supplement > 0
+      ? `<span class="trade-supp">+ ${t.credit_supplement} crédits</span>` : '';
+
+    return `
+      <div class="trade-card">
+        <div class="trade-card-header">
+          <span class="trade-direction">${direction} <strong>${otherName}</strong></span>
+          <span class="trade-status ${statusCls}">${statusLabel}</span>
+        </div>
+        <div class="trade-card-body">
+          <div class="trade-prompt-box">
+            <span class="trade-prompt-lbl">${isSender ? 'Tu proposes' : 'Il/elle propose'}</span>
+            <span class="trade-prompt-name">${offered.title || '—'}</span>
+            <span class="trade-prompt-price">${offered.price_credits || 0} crédits</span>
+          </div>
+          <span class="trade-arrow">⇄</span>
+          <div class="trade-prompt-box">
+            <span class="trade-prompt-lbl">${isSender ? 'Tu demandes' : 'Tu recevrais'}</span>
+            <span class="trade-prompt-name">${requested.title || '—'}</span>
+            <span class="trade-prompt-price">${requested.price_credits || 0} crédits</span>
+          </div>
+          ${supplement}
+        </div>
+        ${t.message ? `<p class="trade-message">"${t.message}"</p>` : ''}
+        ${timeLeft   ? `<p class="trade-expires">${timeLeft}</p>` : ''}
+        ${actions    ? `<div class="trade-actions">${actions}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  root.innerHTML = `<div class="trades-list">${html}</div>`;
+}
+
+function _dashCurrentUserId() {
+  try {
+    const tok = window.getAuthToken && window.getAuthToken();
+    if (!tok) return null;
+    const p = JSON.parse(atob(tok.split('.')[1]));
+    return p.sub || p.user_id || null;
+  } catch (_) { return null; }
+}
+
+async function acceptTrade(id, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await apiFetch(`/trades/offers/${id}/accept`, { method: 'PATCH' });
+    loadTrades();
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter'; }
+    const d = (err && err.body && err.body.detail) || err.message || '';
+    alert('Erreur : ' + (typeof d === 'string' ? d : JSON.stringify(d)));
+  }
+}
+
+async function rejectTrade(id, btn) {
+  if (!confirm('Refuser cet échange ?')) return;
+  if (btn) { btn.disabled = true; }
+  try {
+    await apiFetch(`/trades/offers/${id}/reject`, { method: 'PATCH' });
+    loadTrades();
+  } catch (_) {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function cancelTrade(id, btn) {
+  if (!confirm('Annuler ta proposition ?')) return;
+  if (btn) { btn.disabled = true; }
+  try {
+    await apiFetch(`/trades/offers/${id}/cancel`, { method: 'PATCH' });
+    loadTrades();
+  } catch (_) {
+    if (btn) btn.disabled = false;
+  }
+}
