@@ -1,6 +1,6 @@
 """0037 — tables notifications, message_threads, messages, trade_offers
 
-Revision ID: 0037_notifications_messages_trades
+Revision ID: 0037_notifs_msgs_trades
 Revises: 0036_owned_playlist_adns
 Create Date: 2026-05-19
 
@@ -17,7 +17,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "0037_notifications_messages_trades"
+revision = "0037_notifs_msgs_trades"
 down_revision = "0036_owned_playlist_adns"
 branch_labels = None
 depends_on = None
