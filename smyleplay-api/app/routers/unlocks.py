@@ -24,7 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.database import get_db
+from app.models.notification import NotificationType
 from app.models.user import User
+from app.services.notifications import create_notification
 from app.schemas.unlock import (
     OwnedAdnRead,
     UnlockAdnResponse,
@@ -104,6 +106,24 @@ async def unlock_prompt(
         await db.commit()
         await db.refresh(result.unlocked_prompt)
         await db.refresh(result.transaction)
+
+        # Notif 💸 au vendeur (fire-and-forget)
+        if result.unlocked_prompt.original_artist_id:
+            await create_notification(
+                db,
+                user_id=result.unlocked_prompt.original_artist_id,
+                type=NotificationType.PURCHASE,
+                actor_id=current_user.id,
+                target_type="prompt",
+                target_id=prompt_id,
+                metadata={
+                    "amount": result.paid,
+                    "buyer_name": current_user.artist_name or "Artiste",
+                    "item_type": "prompt",
+                },
+            )
+            await db.commit()
+
         return UnlockPromptResponse(
             unlocked_prompt=UnlockedPromptRead.model_validate(result.unlocked_prompt),
             transaction=result.transaction,
@@ -156,6 +176,24 @@ async def unlock_adn(
         await db.commit()
         await db.refresh(result.owned_adn)
         await db.refresh(result.transaction)
+
+        # Notif 💸 au vendeur ADN (seller_id dans la transaction)
+        if result.transaction.seller_id:
+            await create_notification(
+                db,
+                user_id=result.transaction.seller_id,
+                type=NotificationType.PURCHASE,
+                actor_id=current_user.id,
+                target_type="adn",
+                target_id=adn_id,
+                metadata={
+                    "amount": result.paid,
+                    "buyer_name": current_user.artist_name or "Artiste",
+                    "item_type": "adn",
+                },
+            )
+            await db.commit()
+
         return UnlockAdnResponse(
             owned_adn=OwnedAdnRead.model_validate(result.owned_adn),
             transaction=result.transaction,
@@ -209,6 +247,24 @@ async def unlock_voice(
         await db.commit()
         await db.refresh(result.owned_voice)
         await db.refresh(result.transaction)
+
+        # Notif 💸 au vendeur voix
+        if result.transaction.seller_id:
+            await create_notification(
+                db,
+                user_id=result.transaction.seller_id,
+                type=NotificationType.PURCHASE,
+                actor_id=current_user.id,
+                target_type="voice",
+                target_id=voice_id,
+                metadata={
+                    "amount": result.paid,
+                    "buyer_name": current_user.artist_name or "Artiste",
+                    "item_type": "voice",
+                },
+            )
+            await db.commit()
+
         return UnlockVoiceResponse(
             owned_voice=OwnedVoiceRead.model_validate(result.owned_voice),
             transaction=result.transaction,

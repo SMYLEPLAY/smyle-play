@@ -40,9 +40,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.database import get_db
+from app.models.notification import NotificationType
 from app.models.track import Track
 from app.models.user import User
 from app.models.user_follow import UserFollow
+from app.services.notifications import create_notification
 
 # On réutilise les helpers existants de watt_compat pour ne pas duppliquer la
 # logique de slugification (qui doit rester strictement identique pour que
@@ -262,6 +264,18 @@ async def follow_artist(
             "followersCount": followers,
             "artistSlug": slug,
         }
+
+    # Notif 👤 à l'artiste suivi (fire-and-forget)
+    await create_notification(
+        db,
+        user_id=target.id,
+        type=NotificationType.FOLLOW,
+        actor_id=current_user.id,
+        target_type="user",
+        target_id=current_user.id,
+        metadata={"follower_name": current_user.artist_name or "Artiste"},
+    )
+    await db.commit()
 
     followers = await _count_followers(db, target.id)
     return {
