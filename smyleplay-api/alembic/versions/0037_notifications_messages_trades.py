@@ -27,148 +27,103 @@ def upgrade() -> None:
     # ── 1. NOTIFICATIONS ─────────────────────────────────────────────────────
     # Types : purchase (💸), like (❤️), follow (👤), message (✉️),
     #         trade (🔄), system (⚙️)
+    # Utilise DO $$ BEGIN ... EXCEPTION pour être idempotent (migration partielle possible)
     op.execute("""
-        CREATE TYPE notification_type AS ENUM (
-            'purchase', 'like', 'follow', 'message', 'trade', 'system'
-        )
+        DO $$ BEGIN
+            CREATE TYPE notification_type AS ENUM (
+                'purchase', 'like', 'follow', 'message', 'trade', 'system'
+            );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
     """)
 
-    op.create_table(
-        "notifications",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="CASCADE"),
-                  nullable=False),
-        sa.Column("type", sa.Enum(
-            "purchase", "like", "follow", "message", "trade", "system",
-            name="notification_type", create_type=False,
-        ), nullable=False),
-        # actor = qui a déclenché la notif (peut être null si système)
-        sa.Column("actor_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="SET NULL"),
-                  nullable=True),
-        # target = entité concernée (track_id, prompt_id, trade_id, etc.)
-        sa.Column("target_type", sa.String(30), nullable=True),
-        sa.Column("target_id", postgresql.UUID(as_uuid=True), nullable=True),
-        # Extra data lisible par le front (ex: nom de la track, prix payé)
-        sa.Column("metadata_json", postgresql.JSONB, nullable=True),
-        sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("NOW()")),
-    )
-    # Index filtré sur unread — hyper-rapide pour GET /me/notifications?unread=true
-    op.create_index(
-        "idx_notifications_user_unread",
-        "notifications",
-        ["user_id", "created_at"],
-        postgresql_where=sa.text("read_at IS NULL"),
-    )
-    op.create_index("idx_notifications_user_created",
-                    "notifications", ["user_id", "created_at"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            type notification_type NOT NULL,
+            actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+            target_type VARCHAR(30),
+            target_id UUID,
+            metadata_json JSONB,
+            read_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
+        ON notifications (user_id, created_at)
+        WHERE read_at IS NULL
+    """)
+    op.execute("""
+        CREATE INDEX IF NOT EXISTS idx_notifications_user_created
+        ON notifications (user_id, created_at)
+    """)
 
     # ── 2. MESSAGE THREADS ───────────────────────────────────────────────────
-    # 1 thread par paire (participant_a < participant_b pour garantir unicité)
-    op.create_table(
-        "message_threads",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
-        sa.Column("participant_a", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="CASCADE"),
-                  nullable=False),
-        sa.Column("participant_b", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="CASCADE"),
-                  nullable=False),
-        sa.Column("last_message_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("NOW()")),
-        # Contrainte : unicité de la paire (ordre canonique imposé par le service)
-        sa.UniqueConstraint("participant_a", "participant_b",
-                            name="uq_message_threads_pair"),
-        # Auto-message interdit
-        sa.CheckConstraint("participant_a != participant_b",
-                           name="ck_message_threads_no_self"),
-    )
-    op.create_index("idx_message_threads_a", "message_threads", ["participant_a"])
-    op.create_index("idx_message_threads_b", "message_threads", ["participant_b"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS message_threads (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            participant_a UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            participant_b UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            last_message_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT uq_message_threads_pair UNIQUE (participant_a, participant_b),
+            CONSTRAINT ck_message_threads_no_self CHECK (participant_a != participant_b)
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS idx_message_threads_a ON message_threads (participant_a)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_message_threads_b ON message_threads (participant_b)")
 
     # ── 3. MESSAGES ──────────────────────────────────────────────────────────
-    op.create_table(
-        "messages",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
-        sa.Column("thread_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("message_threads.id", ondelete="CASCADE"),
-                  nullable=False),
-        sa.Column("sender_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="CASCADE"),
-                  nullable=False),
-        sa.Column("content", sa.Text, nullable=False),
-        sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("NOW()")),
-        sa.CheckConstraint("length(trim(content)) > 0",
-                           name="ck_messages_content_nonempty"),
-    )
-    op.create_index("idx_messages_thread_created",
-                    "messages", ["thread_id", "created_at"])
-    op.create_index("idx_messages_sender", "messages", ["sender_id"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            thread_id UUID NOT NULL REFERENCES message_threads(id) ON DELETE CASCADE,
+            sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            read_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT ck_messages_content_nonempty CHECK (length(trim(content)) > 0)
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS idx_messages_thread_created ON messages (thread_id, created_at)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages (sender_id)")
 
     # ── 4. TRADE OFFERS ──────────────────────────────────────────────────────
     # Trade entre créateurs uniquement — chacun cède l'accès à sa propre création.
     # Pas de resale (pas de current_owner_id swap) — on crée simplement
     # un UnlockedPrompt pour chaque side lors de l'acceptation.
     op.execute("""
-        CREATE TYPE trade_status AS ENUM (
-            'pending', 'accepted', 'rejected', 'cancelled', 'expired'
-        )
+        DO $$ BEGIN
+            CREATE TYPE trade_status AS ENUM (
+                'pending', 'accepted', 'rejected', 'cancelled', 'expired'
+            );
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
     """)
 
-    op.create_table(
-        "trade_offers",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True,
-                  server_default=sa.text("gen_random_uuid()")),
-        sa.Column("sender_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="CASCADE"),
-                  nullable=False),
-        sa.Column("receiver_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("users.id", ondelete="CASCADE"),
-                  nullable=False),
-        # Ce que le sender offre (son prompt, dont il est le créateur)
-        sa.Column("offered_prompt_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("prompts.id", ondelete="SET NULL"),
-                  nullable=True),
-        # Ce que le sender demande (prompt du receiver, dont le receiver est créateur)
-        sa.Column("requested_prompt_id", postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey("prompts.id", ondelete="SET NULL"),
-                  nullable=True),
-        # Supplément crédits offert par le sender si échange asymétrique
-        # (ex: mon prompt vaut 50, le tien vaut 80 → j'ajoute 30 crédits)
-        sa.Column("credit_supplement", sa.Integer, nullable=False,
-                  server_default="0"),
-        sa.Column("status", sa.Enum(
-            "pending", "accepted", "rejected", "cancelled", "expired",
-            name="trade_status", create_type=False,
-        ), nullable=False, server_default="pending"),
-        # Message optionnel du sender pour contextualiser l'offre
-        sa.Column("message", sa.Text, nullable=True),
-        # Expire automatiquement après 7 jours (nettoyé par cron ou au fetch)
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("NOW()")),
-        sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
-        # Garde un snap du prix des deux prompts au moment du trade
-        sa.Column("offered_price_at_trade", sa.Integer, nullable=True),
-        sa.Column("requested_price_at_trade", sa.Integer, nullable=True),
-        sa.CheckConstraint("sender_id != receiver_id",
-                           name="ck_trade_offers_no_self"),
-        sa.CheckConstraint("credit_supplement >= 0",
-                           name="ck_trade_offers_supplement_nonneg"),
-    )
-    op.create_index("idx_trade_offers_sender",
-                    "trade_offers", ["sender_id", "status"])
-    op.create_index("idx_trade_offers_receiver",
-                    "trade_offers", ["receiver_id", "status"])
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS trade_offers (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            offered_prompt_id UUID REFERENCES prompts(id) ON DELETE SET NULL,
+            requested_prompt_id UUID REFERENCES prompts(id) ON DELETE SET NULL,
+            credit_supplement INTEGER NOT NULL DEFAULT 0,
+            status trade_status NOT NULL DEFAULT 'pending',
+            message TEXT,
+            expires_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            resolved_at TIMESTAMPTZ,
+            offered_price_at_trade INTEGER,
+            requested_price_at_trade INTEGER,
+            CONSTRAINT ck_trade_offers_no_self CHECK (sender_id != receiver_id),
+            CONSTRAINT ck_trade_offers_supplement_nonneg CHECK (credit_supplement >= 0)
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS idx_trade_offers_sender ON trade_offers (sender_id, status)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_trade_offers_receiver ON trade_offers (receiver_id, status)")
 
 
 def downgrade() -> None:
