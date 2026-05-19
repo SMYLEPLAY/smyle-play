@@ -287,6 +287,203 @@
 }
 
 
+/* ── Cloche notifications ───────────────────────────────────────── */
+
+.stb-notif-wrap {
+  position: relative;
+}
+
+.stb-notif-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.70);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.stb-notif-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.stb-notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.stb-notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-height: 440px;
+  background: rgba(16, 8, 36, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.stb-notif-panel[hidden] { display: none; }
+
+.stb-notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.stb-notif-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+
+.stb-notif-readall {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  font-family: inherit;
+  transition: color 0.15s;
+}
+
+.stb-notif-readall:hover { color: rgba(255, 255, 255, 0.8); }
+
+.stb-notif-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.stb-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.75);
+  transition: background 0.12s;
+  cursor: pointer;
+}
+
+.stb-notif-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stb-notif-unread {
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.stb-notif-unread:hover {
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.stb-notif-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--ni-color, #6b7280) 30%, transparent);
+}
+
+.stb-notif-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.stb-notif-text {
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.stb-notif-time {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.02em;
+}
+
+.stb-notif-followback {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.stb-notif-followback:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.stb-notif-followback-done {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #86efac;
+  cursor: default;
+}
+
+.stb-notif-empty {
+  padding: 28px 14px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 480px) {
+  .stb-notif-panel {
+    width: calc(100vw - 24px);
+    right: -12px;
+  }
+}
+
+
 /* ── CTA anonyme ────────────────────────────────────────────────── */
 
 .stb-auth-cta {

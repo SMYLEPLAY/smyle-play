@@ -175,6 +175,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Analytique
     </a>
+    <a class="dash-snav-pill" href="#sec-trades" data-sec="sec-trades" id="pill-trades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
+      Échanges
+    </a>
     <!-- P1-B3 (2026-04-22) — pill "PLUG WATT" retirée : la présence publique
          sur la marketplace (switch ON/OFF + preview cellule) est désormais
          intégrée à la cellule 01 Identité, pour ne pas fragmenter le flow
@@ -1510,6 +1514,18 @@
     <div id="dash-playlists-root"></div>
   </section>
 
+  <!-- ═══ Section Échanges ADN (trades) ═══════════════════════════════════ -->
+  <section class="dash-section" id="sec-trades" aria-label="Mes échanges">
+    <div class="dash-section-hdr">
+      <div class="dash-section-num">🔄</div>
+      <h2 class="dash-section-title">Échanges ADN</h2>
+      <span class="dash-section-sub">Tes offres d'échange envoyées et reçues</span>
+    </div>
+    <div id="dash-trades-root">
+      <p class="dash-empty-hint">Chargement…</p>
+    </div>
+  </section>
+
   <section class="dash-section" id="sec-stats">
     <div class="dash-section-hdr">
       <div class="dash-section-num">03</div>
@@ -1751,6 +1767,116 @@
   .dash-section .dash-section-hdr:hover::after,
   .dash-section .dash-subhdr:hover::after {
     opacity: .8;
+  }
+
+  /* ── Section Échanges ADN ─────────────────────────────────────── */
+  .trades-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 4px 0 20px;
+  }
+  .trade-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .trade-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .trade-direction { font-size: 13px; color: rgba(255,255,255,0.6); }
+  .trade-direction strong { color: #fff; }
+  .trade-status {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.07);
+  }
+  .trade-status-pending  { color: #fbbf24; background: rgba(251,191,36,0.12); }
+  .trade-status-accepted { color: #4ade80; background: rgba(74,222,128,0.12); }
+  .trade-status-rejected,
+  .trade-status-cancelled { color: #f87171; background: rgba(248,113,113,0.12); }
+  .trade-status-expired  { color: rgba(255,255,255,0.35); }
+
+  .trade-card-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .trade-prompt-box {
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 9px;
+    padding: 9px 12px;
+  }
+  .trade-prompt-lbl  { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing:0.06em; }
+  .trade-prompt-name { font-size: 13px; color: #fff; font-weight: 600; }
+  .trade-prompt-price { font-size: 11px; color: #ffd700; }
+  .trade-arrow { font-size: 18px; color: rgba(255,255,255,0.3); flex-shrink: 0; }
+  .trade-supp { font-size: 12px; color: #fbbf24; font-weight: 600; }
+
+  .trade-message {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    font-style: italic;
+    margin: 0;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 7px;
+  }
+  .trade-expires { font-size: 11px; color: rgba(255,255,255,0.3); margin: 0; }
+
+  .trade-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .trade-action-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    border: 1px solid;
+    transition: opacity 0.15s;
+  }
+  .trade-action-btn:disabled { opacity: 0.4; cursor: default; }
+  .trade-accept-btn {
+    background: rgba(74,222,128,0.12);
+    border-color: rgba(74,222,128,0.35);
+    color: #4ade80;
+  }
+  .trade-reject-btn {
+    background: rgba(248,113,113,0.10);
+    border-color: rgba(248,113,113,0.3);
+    color: #f87171;
+  }
+  .trade-cancel-btn {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.55);
+  }
+
+  .trades-empty {
+    text-align: center;
+    padding: 32px 20px;
+    color: rgba(255,255,255,0.35);
+    font-size: 14px;
   }
 </style>
 <script>
