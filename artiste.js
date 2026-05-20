@@ -454,10 +454,11 @@ function renderHeader(artist) {
   _setupFollowButton(artist).catch(e => console.warn('[follow]', e));
 }
 
-// ── Follow button logic (Phase A1) ────────────────────────────────────────
+// ── Follow + Message buttons (Phase A1 + U1) ─────────────────────────────
 async function _setupFollowButton(artist) {
-  const wrap = document.getElementById('ap-social-actions');
-  const btn = document.getElementById('ap-follow-btn');
+  const wrap    = document.getElementById('ap-social-actions');
+  const btn     = document.getElementById('ap-follow-btn');
+  const msgBtn  = document.getElementById('ap-message-btn');
   const countEl = document.getElementById('ap-followers-count');
   if (!wrap || !btn) return;
   if (countEl) {
@@ -467,10 +468,21 @@ async function _setupFollowButton(artist) {
   if (artist.isSelf) { wrap.style.display = 'none'; return; }
   const isAuth = typeof getAuthToken === 'function' && !!getAuthToken();
   // Si non connecté : on masque tout le bloc pour éviter l'espace blanc
-  // (le bouton follow serait caché mais le wrapper resterait visible).
   if (!isAuth) { wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
+  wrap.style.display = 'flex';
   btn.style.display = '';
+
+  // ── Bouton Message ──────────────────────────────────────────────────────
+  if (msgBtn && artist.id) {
+    msgBtn.style.display = '';
+    msgBtn.onclick = () => {
+      if (window.SmyleMessaging) {
+        window.SmyleMessaging.open(artist.id);
+      } else if (window.openAuthModal) {
+        window.openAuthModal('login');
+      }
+    };
+  }
   const slug = artist.slug || (window.location.pathname.match(/^\/u\/([^/?#]+)/) || [])[1];
   if (!slug) { wrap.style.display = 'none'; return; }
   function _hdr() {
