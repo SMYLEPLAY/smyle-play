@@ -452,6 +452,66 @@ img { max-width: 100%; display: block; }
   max-width: 980px; margin: 0 auto;
 }
 
+/* ── Boutons Follow + Message dans le hero (droite, même hauteur que le nom) */
+.ap-hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+
+.ap-hero-action-btn {
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.ap-hero-action-btn:active { transform: scale(0.96); }
+
+.ap-follow-hero-btn {
+  background: rgba(204, 136, 255, .14);
+  color: #cc88ff;
+  border: 1px solid rgba(204, 136, 255, .4);
+}
+
+.ap-follow-hero-btn:hover {
+  background: rgba(204, 136, 255, .22);
+}
+
+.ap-message-hero-btn {
+  background: rgba(124, 58, 237, .14);
+  color: #a78bfa;
+  border: 1px solid rgba(124, 58, 237, .4);
+}
+
+.ap-message-hero-btn:hover {
+  background: rgba(124, 58, 237, .22);
+}
+
+.ap-hero-followers {
+  font-size: 11px;
+  color: rgba(255, 255, 255, .4);
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .ap-hero-actions {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: unset;
+    width: 100%;
+    justify-content: center;
+    padding-top: 0;
+  }
+}
+
 /* Avatar */
 .ap-avatar-wrap { flex-shrink: 0; text-align: center; }
 

@@ -470,6 +470,7 @@ async function _setupFollowButton(artist) {
   // Si non connecté : on masque tout le bloc pour éviter l'espace blanc
   if (!isAuth) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
   btn.style.display = '';
 
   // ── Bouton Message ──────────────────────────────────────────────────────
