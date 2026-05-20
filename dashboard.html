@@ -11,6 +11,7 @@
   <title>Dashboard Artiste · WATT</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="/topbar.css" />
 
 <style>
 /* SLIDER PROMPT SETTINGS */
@@ -74,6 +75,39 @@
   </div>
 
   <div class="dash-topbar-right">
+
+    <!-- ── Icônes messagerie + notifs ─────────────────────────────────────── -->
+    <div class="page-icon-services" id="page-icon-services" style="display:none">
+
+      <!-- Enveloppe -->
+      <div class="page-icon-wrap">
+        <button class="page-icon-btn" id="page-msg-btn" type="button"
+                title="Messages" onclick="pageToggleMsg(event)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+               stroke="currentColor" stroke-width="2.2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          <span class="page-icon-badge" id="page-msg-badge" style="display:none">0</span>
+        </button>
+        <div class="stb-msg-panel" id="page-msg-panel" hidden></div>
+      </div>
+
+      <!-- Cloche -->
+      <div class="page-icon-wrap">
+        <button class="page-icon-btn" id="page-notif-btn" type="button"
+                title="Notifications" onclick="pageToggleNotif(event)">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none"
+               stroke="currentColor" stroke-width="2.2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="page-icon-badge" id="page-notif-badge" style="display:none">0</span>
+        </button>
+        <div class="stb-notif-panel" id="page-notif-panel" hidden></div>
+      </div>
+    </div>
+
     <!-- Bulle Smyles (à gauche du chip profil) -->
     <div id="smyle-balance"></div>
 
@@ -1937,5 +1971,6 @@
 <!-- Messagerie 1:1 (Phase C) -->
 <link rel="stylesheet" href="/ui/messaging/messaging.css" />
 <script src="/ui/messaging/messaging.js" defer></script>
+<script src="/ui/core/page-services.js" defer></script>
 </body>
 </html>
