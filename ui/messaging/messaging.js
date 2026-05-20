@@ -23,10 +23,11 @@
   const _s = {
     open:           false,
     threads:        [],
-    activeThread:   null,   // { id, other_user_id, other_user_name, messages:[] }
+    activeThread:   null,   // { id, other_user_id, other_user_name, myColor, otherColor, messages:[] }
     sending:        false,
     loadingThreads: false,
     loadingMsgs:    false,
+    myColor:        null,   // couleur de marque de l'utilisateur courant (cachée)
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -34,6 +35,38 @@
     const d = document.createElement('div');
     d.textContent = s == null ? '' : String(s);
     return d.innerHTML;
+  }
+
+  // Couleur déterministe à partir d'un ID (fallback si pas de brand_color)
+  function _colorFromId(id) {
+    let h = 0;
+    for (let i = 0; i < (id || '').length; i++) {
+      h = ((h << 5) - h) + (id || '').charCodeAt(i);
+      h |= 0;
+    }
+    return `hsl(${Math.abs(h) % 360}, 60%, 55%)`;
+  }
+
+  // Fetch + cache de ma propre couleur de marque
+  async function _getMyColor() {
+    if (_s.myColor) return _s.myColor;
+    try {
+      const me = await apiFetch('/users/me');
+      _s.myColor = me.brandColor || me.brand_color || '#7C3AED';
+    } catch (_) {
+      _s.myColor = '#7C3AED';
+    }
+    return _s.myColor;
+  }
+
+  // Fetch couleur de marque d'un autre utilisateur
+  async function _getUserColor(userId) {
+    try {
+      const u = await apiFetch(`/users/${userId}`);
+      return u.brandColor || u.brand_color || _colorFromId(userId);
+    } catch (_) {
+      return _colorFromId(userId);
+    }
   }
 
   function _timeAgo(iso) {
@@ -68,14 +101,20 @@
     _s.loadingMsgs = true;
     _renderThreadView();
     try {
-      // Crée ou récupère le thread
+      // Crée ou récupère le thread + fetch couleurs en parallèle
       const thread = await apiFetch(`/messages/threads/${userId}`, { method: 'POST' });
-      const msgs   = await apiFetch(`/messages/threads/${thread.id}`);
+      const [msgs, myColor, otherColor] = await Promise.all([
+        apiFetch(`/messages/threads/${thread.id}`),
+        _getMyColor(),
+        _getUserColor(thread.other_user_id || userId),
+      ]);
       _s.activeThread = {
-        id:             thread.id,
-        other_user_id:  thread.other_user_id  || userId,
+        id:              thread.id,
+        other_user_id:   thread.other_user_id  || userId,
         other_user_name: thread.other_user_name || userName || 'Utilisateur',
-        messages:       msgs.messages || [],
+        messages:        msgs.messages || [],
+        myColor,
+        otherColor,
       };
       // Marquer lu en background
       apiFetch(`/messages/threads/${thread.id}/read`, { method: 'POST' }).catch(() => {});
@@ -207,16 +246,24 @@
   function _renderMessages() {
     const el = document.getElementById('msg-messages');
     if (!el || !_s.activeThread) return;
-    const myId = _currentUserId();
+    const myId      = _currentUserId();
+    const myColor   = _s.activeThread.myColor    || '#7C3AED';
+    const otherColor = _s.activeThread.otherColor || '#4B5563';
+
     if (!_s.activeThread.messages.length) {
       el.innerHTML = `<div class="msg-empty">Démarrez la conversation !</div>`;
       return;
     }
     el.innerHTML = _s.activeThread.messages.map(m => {
       const mine = m.sender_id === myId;
+      const color = mine ? myColor : otherColor;
+      // Moi : bulle solide ma couleur — Autre : bulle tintée sa couleur
+      const bubbleStyle = mine
+        ? `background:${color}; color:#fff; border-bottom-right-radius:4px;`
+        : `background:${color}22; border:1px solid ${color}55; color:rgba(255,255,255,.9); border-bottom-left-radius:4px;`;
       return `
         <div class="msg-bubble ${mine ? 'msg-bubble-me' : 'msg-bubble-other'}">
-          <span class="msg-bubble-text">${_esc(m.content)}</span>
+          <span class="msg-bubble-text" style="${bubbleStyle}">${_esc(m.content)}</span>
           <span class="msg-bubble-time">${_timeAgo(m.created_at)}</span>
         </div>`;
     }).join('');
