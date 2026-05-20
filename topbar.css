@@ -3,15 +3,59 @@
    -------------------------------------------------------------
    Styles du composant topbar partagé (ui/topbar/topbar.js).
    Appliqué sur les pages qui exposent <div id="smyle-topbar"></div>.
-
-   Design tokens
-   -------------
-   On reprend les mêmes couleurs de fond / glass que style.css pour que
-   l'œil perçoive une topbar commune entre pages (même hauteur, même
-   padding, même backdrop-filter). Les pages qui gardent leur topbar
-   propre (index.html pour l'instant) auront une future passe visuelle
-   pour s'aligner dessus.
+   Aussi chargé sur index.html + dashboard.html pour les icônes
+   messagerie/notifs via page-services.js.
    ============================================================= */
+
+/* ── Icônes services (page-services.js — index + dashboard) ── */
+
+.page-icon-services {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-icon-wrap {
+  position: relative;
+}
+
+.page-icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.page-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+}
+
+.page-icon-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
 
 .stb-root {
   position: sticky;
