@@ -189,6 +189,18 @@
                 data-placeholder="Ville">—</span>
         </div>
       </div>
+
+      <!-- Actions sociales — alignées à droite du hero, même hauteur que le nom -->
+      <div id="ap-social-actions" class="ap-hero-actions" style="display:none;">
+        <button id="ap-follow-btn" type="button" class="ap-hero-action-btn ap-follow-hero-btn">
+          Suivre
+        </button>
+        <button id="ap-message-btn" type="button" class="ap-hero-action-btn ap-message-hero-btn" style="display:none;">
+          ✉️ Message
+        </button>
+        <span id="ap-followers-count" class="ap-hero-followers"></span>
+      </div>
+
     </div>
   </section>
 
@@ -271,20 +283,6 @@
     <!-- Rendu par renderSocials() -->
   </section>
 
-  <!-- Actions sociales — Follow + Message (non-self uniquement) -->
-  <div id="ap-social-actions" style="text-align: center; margin: 16px auto 24px; display: none; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
-    <button id="ap-follow-btn" type="button"
-            style="background: rgba(204,136,255,.14); color: #cc88ff; border: 1px solid rgba(204,136,255,.4); padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: .02em;">
-      Suivre
-    </button>
-    <button id="ap-message-btn" type="button" style="display:none;
-            background: rgba(124,58,237,.14); color: #a78bfa; border: 1px solid rgba(124,58,237,.4);
-            padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 600;
-            cursor: pointer; letter-spacing: .02em;">
-      ✉️ Message
-    </button>
-    <span id="ap-followers-count" style="color: #a09cb8; font-size: 13px;"></span>
-  </div>
 
   <!-- ═══ Playlists publiques — après les réseaux sociaux ═══════════════ -->
   <div id="ap-playlists-root" style="display:none"></div>
