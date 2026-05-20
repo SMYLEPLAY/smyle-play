@@ -271,13 +271,19 @@
     <!-- Rendu par renderSocials() -->
   </section>
 
-  <!-- Bouton Follow — entre réseaux sociaux et playlists -->
-  <div id="ap-social-actions" style="text-align: center; margin: 16px auto 24px; display: none;">
+  <!-- Actions sociales — Follow + Message (non-self uniquement) -->
+  <div id="ap-social-actions" style="text-align: center; margin: 16px auto 24px; display: none; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
     <button id="ap-follow-btn" type="button"
             style="background: rgba(204,136,255,.14); color: #cc88ff; border: 1px solid rgba(204,136,255,.4); padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: .02em;">
       Suivre
     </button>
-    <span id="ap-followers-count" style="margin-left: 14px; color: #a09cb8; font-size: 13px;"></span>
+    <button id="ap-message-btn" type="button" style="display:none;
+            background: rgba(124,58,237,.14); color: #a78bfa; border: 1px solid rgba(124,58,237,.4);
+            padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 600;
+            cursor: pointer; letter-spacing: .02em;">
+      ✉️ Message
+    </button>
+    <span id="ap-followers-count" style="color: #a09cb8; font-size: 13px;"></span>
   </div>
 
   <!-- ═══ Playlists publiques — après les réseaux sociaux ═══════════════ -->
