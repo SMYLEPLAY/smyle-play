@@ -73,11 +73,19 @@
     dropOpen: false,
   };
 
-  // État notifications
+  // État notifications (hors messages)
   const _notifState = {
     count:      0,
     open:       false,
     items:      [],
+    pollTimer:  null,
+  };
+
+  // État messagerie topbar
+  const _msgState = {
+    count:      0,
+    open:       false,
+    threads:    [],
     pollTimer:  null,
   };
 
@@ -188,11 +196,16 @@
     }
   }
 
+  // ── Fetchers notifications (cloche — hors messages) ──────────────────────
+
   async function _fetchUnreadCount() {
     try {
       if (!(window.getAuthToken && window.getAuthToken())) return;
-      const data = await apiFetch('/me/notifications/unread-count');
-      _notifState.count = data.count || 0;
+      const data = await apiFetch('/me/notifications?limit=50');
+      const items = data.items || [];
+      // Cloche = tout sauf messages (messages vont dans l'enveloppe)
+      _notifState.items = items.filter(n => n.type !== 'message');
+      _notifState.count = _notifState.items.filter(n => !n.read_at).length;
       _updateBellBadge();
     } catch (_) {}
   }
@@ -200,9 +213,10 @@
   async function _fetchNotifs() {
     try {
       if (!(window.getAuthToken && window.getAuthToken())) return;
-      const data = await apiFetch('/me/notifications?limit=30');
-      _notifState.items      = data.items      || [];
-      _notifState.count      = data.unread_count || 0;
+      const data = await apiFetch('/me/notifications?limit=50');
+      const items = data.items || [];
+      _notifState.items = items.filter(n => n.type !== 'message');
+      _notifState.count = _notifState.items.filter(n => !n.read_at).length;
     } catch (_) {}
   }
 
@@ -221,6 +235,104 @@
     const n = _notifState.count;
     badge.textContent = n > 99 ? '99+' : String(n);
     badge.style.display = n > 0 ? 'flex' : 'none';
+  }
+
+  // ── Fetchers messagerie topbar (enveloppe) ────────────────────────────────
+
+  async function _fetchMsgThreads() {
+    try {
+      if (!(window.getAuthToken && window.getAuthToken())) return;
+      const data = await apiFetch('/messages/threads');
+      _msgState.threads = Array.isArray(data) ? data : [];
+      _msgState.count   = _msgState.threads.reduce((s, t) => s + (t.unread_count || 0), 0);
+      _updateMsgBadge();
+    } catch (_) {}
+  }
+
+  function _startMsgPoll() {
+    _stopMsgPoll();
+    _msgState.pollTimer = setInterval(_fetchMsgThreads, 15000);
+  }
+
+  function _stopMsgPoll() {
+    if (_msgState.pollTimer) { clearInterval(_msgState.pollTimer); _msgState.pollTimer = null; }
+  }
+
+  function _updateMsgBadge() {
+    const badge = document.getElementById('stb-msg-badge');
+    if (!badge) return;
+    const n = _msgState.count;
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.style.display = n > 0 ? 'flex' : 'none';
+  }
+
+  function _renderMsgDropdown() {
+    const panel = document.getElementById('stb-msg-panel');
+    if (!panel) return;
+    let html;
+    if (!_msgState.threads.length) {
+      html = `<div class="stb-msg-empty">Aucune conversation</div>`;
+    } else {
+      html = _msgState.threads.map(t => {
+        const init    = (t.other_user_name || '?')[0].toUpperCase();
+        const unread  = t.unread_count > 0;
+        const preview = t.last_message_preview || '';
+        const time    = _timeAgo(t.last_message_at);
+        return `
+          <button class="stb-msg-thread${unread ? ' stb-msg-unread' : ''}" type="button"
+                  onclick="window.SmyleTopbar.openMsgThread('${_esc(t.other_user_id)}','${_esc(t.other_user_name || '')}')">
+            <span class="stb-msg-avatar">${_esc(init)}</span>
+            <span class="stb-msg-info">
+              <span class="stb-msg-name">${_esc(t.other_user_name || 'Utilisateur')}</span>
+              <span class="stb-msg-preview">${_esc(preview)}</span>
+            </span>
+            <span class="stb-msg-meta">
+              <span class="stb-msg-time">${_esc(time)}</span>
+              ${unread ? `<span class="stb-msg-dot"></span>` : ''}
+            </span>
+          </button>`;
+      }).join('');
+    }
+    panel.innerHTML = `
+      <div class="stb-msg-header">
+        <span class="stb-msg-title">Messages</span>
+      </div>
+      <div class="stb-msg-list">${html}</div>`;
+    panel.hidden = false;
+    _msgState.open = true;
+    // Réinitialise le badge quand on ouvre le dropdown
+    _msgState.count = 0;
+    _updateMsgBadge();
+  }
+
+  function _closeMsgPanel() {
+    const panel = document.getElementById('stb-msg-panel');
+    if (panel) panel.hidden = true;
+    _msgState.open = false;
+  }
+
+  async function _toggleMsgPanel(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    if (_msgState.open) {
+      _closeMsgPanel();
+    } else {
+      await _fetchMsgThreads();
+      _renderMsgDropdown();
+    }
+  }
+
+  function _openMsgThread(userId, userName) {
+    _closeMsgPanel();
+    if (window.SmyleMessaging) {
+      window.SmyleMessaging.open(userId);
+    }
+  }
+
+  function _closeMsgOnOutside(ev) {
+    if (!_msgState.open) return;
+    const wrap = document.getElementById('stb-msg-wrap');
+    if (wrap && wrap.contains(ev.target)) return;
+    _closeMsgPanel();
   }
 
 
@@ -256,7 +368,23 @@
     // Auth chip : connecté ou anonyme.
     const authHtml = user ? _renderUserChip(user, mySlug) : _renderAnonChip();
 
-    // Cloche notifications (connecté uniquement)
+    // Enveloppe messagerie (connecté uniquement)
+    const msgHtml = user ? `
+      <div class="stb-msg-wrap" id="stb-msg-wrap">
+        <button class="stb-msg-btn" type="button"
+                onclick="window.SmyleTopbar.toggleMsg(event)"
+                title="Messages" aria-label="Messages">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+               stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          <span class="stb-msg-badge" id="stb-msg-badge" style="display:none">0</span>
+        </button>
+        <div class="stb-msg-panel" id="stb-msg-panel" hidden></div>
+      </div>` : '';
+
+    // Cloche notifications (connecté uniquement — hors messages)
     const bellHtml = user ? `
       <div class="stb-notif-wrap" id="stb-notif-wrap">
         <button class="stb-notif-btn" type="button"
@@ -286,6 +414,7 @@
       <div class="stb-right">
         <div id="smyle-balance" class="stb-balance-slot"></div>
         ${mixHtml}
+        ${msgHtml}
         ${bellHtml}
         ${authHtml}
       </div>
@@ -346,16 +475,14 @@
     panel.innerHTML = `
       <div class="stb-notif-header">
         <span class="stb-notif-title">Notifications</span>
-        <button class="stb-notif-readall" type="button"
-                onclick="window.SmyleTopbar.markAllRead(event)">
-          Tout marquer lu
-        </button>
       </div>
       <div class="stb-notif-list" id="stb-notif-list">
         ${_renderNotifItems()}
       </div>`;
     panel.hidden = false;
     _notifState.open = true;
+    // Badge disparaît à l'ouverture — les highlights bleus restent sur les items
+    _notifState.count = 0;
     _updateBellBadge();
   }
 
@@ -387,15 +514,16 @@
   }
 
   async function _markRead(ev, id) {
-    // Mark read silently, don't interrupt navigation
-    try {
-      apiFetch(`/me/notifications/${id}/read`, { method: 'PATCH' }).catch(() => {});
-      _notifState.items = _notifState.items.map(n =>
-        n.id === id ? { ...n, read_at: new Date().toISOString() } : n);
-      _notifState.count = Math.max(0, _notifState.count - 1);
-      _updateBellBadge();
-    } catch (_) {}
-    _closeNotifPanel();
+    // Retire le highlight bleu sur l'item cliqué sans fermer le panneau
+    if (ev && ev.currentTarget) {
+      const item = ev.currentTarget;
+      item.classList.remove('stb-notif-unread');
+    }
+    // Marque lu en arrière-plan
+    apiFetch(`/me/notifications/${id}/read`, { method: 'PATCH' }).catch(() => {});
+    _notifState.items = _notifState.items.map(n =>
+      n.id === id ? { ...n, read_at: new Date().toISOString() } : n);
+    // Badge déjà à 0 depuis l'ouverture — on ne le touche pas
   }
 
   async function _followBack(ev, actorId) {
@@ -583,10 +711,14 @@
       await _fetchMe();
       if (_state.user) {
         await _fetchUnreadCount();
+        await _fetchMsgThreads();
         _startNotifPoll();
+        _startMsgPoll();
       } else {
         _stopNotifPoll();
+        _stopMsgPoll();
         _notifState.count = 0;
+        _msgState.count   = 0;
       }
       _render();
     });
@@ -603,12 +735,14 @@
     document.addEventListener('click', (ev) => {
       _closeDropOnOutside(ev);
       _closeNotifOnOutside(ev);
+      _closeMsgOnOutside(ev);
     });
     // Échap → idem.
     document.addEventListener('keydown', (ev) => {
       if (ev.key === 'Escape') {
         if (_state.dropOpen)  _closeDropOnOutside(ev);
         if (_notifState.open) _closeNotifPanel();
+        if (_msgState.open)   _closeMsgPanel();
       }
     });
     // Synchronisation cross-tabs du mix via storage event : si une autre
@@ -634,7 +768,9 @@
     if (hasToken) {
       await _fetchMe();
       await _fetchUnreadCount();
+      await _fetchMsgThreads();
       _startNotifPoll();
+      _startMsgPoll();
     }
     _render();
   }
@@ -646,11 +782,14 @@
     clickLogin:  _clickLogin,
     logout:      _logout,
     toggleDrop:  _toggleDrop,
-    // Notifications
+    // Notifications (cloche)
     toggleNotif: _toggleNotifPanel,
     markRead:    _markRead,
     markAllRead: _markAllRead,
     followBack:  _followBack,
+    // Messagerie (enveloppe)
+    toggleMsg:       _toggleMsgPanel,
+    openMsgThread:   _openMsgThread,
     // Pour que l'app puisse forcer un refresh après login manuel sans
     // attendre un event (ex. depuis modals/auth.js).
     reloadUser:  async () => { await _fetchMe(); _render(); },
