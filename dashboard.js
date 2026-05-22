@@ -10,6 +10,15 @@
 // Limite freemium — version gratuite bêta
 const FREE_LIMIT = 6;
 
+// Comptes officiels exemptés de la limite freemium
+const OFFICIAL_SLUGS = ['smyle'];
+function _isOfficialAccount() {
+  const p = getWattProfile ? getWattProfile() : null;
+  if (!p) return false;
+  const slug = (p.slug || '').toLowerCase().trim();
+  return OFFICIAL_SLUGS.includes(slug);
+}
+
 // ── Wrapper sécurisé localStorage (Safari Private Mode / quota 0 octet) ──────
 const safeStorage = {
   getItem(key) {
@@ -672,19 +681,21 @@ function _initUserDropdown() {
 function renderUploadState() {
   const tracks  = getMyTracks();
   const count   = tracks.length;
-  const limited = count >= FREE_LIMIT;
+  const limited = count >= FREE_LIMIT && !_isOfficialAccount();
 
   // Compteur freemium
   const counterVal = document.getElementById('dashFreeCounterVal');
   const barFill    = document.getElementById('dashFreeBarFill');
   if (counterVal) {
-    counterVal.textContent = limited
-      ? 'Playlist complète ✓'
-      : `${count} / ${FREE_LIMIT} sons utilisés`;
+    counterVal.textContent = _isOfficialAccount()
+      ? `${count} sons publiés`
+      : limited
+        ? 'Playlist complète ✓'
+        : `${count} / ${FREE_LIMIT} sons utilisés`;
     counterVal.style.color = limited ? '#FFD700' : '';
   }
   if (barFill) {
-    const pct = Math.min((count / FREE_LIMIT) * 100, 100);
+    const pct = _isOfficialAccount() ? 0 : Math.min((count / FREE_LIMIT) * 100, 100);
     barFill.style.width = pct + '%';
     barFill.style.background = limited
       ? 'linear-gradient(90deg, #FFD700, #FFEC6B)'
@@ -706,8 +717,10 @@ function renderMyTracks() {
 
   // Compteur "X / 6 sons" dans l'en-tête "Mes Sons"
   if (countEl) {
-    const limited = tracks.length >= FREE_LIMIT;
-    countEl.textContent = `${tracks.length}\u202f/\u202f${FREE_LIMIT} son${tracks.length !== 1 ? 's' : ''}`;
+    const limited = tracks.length >= FREE_LIMIT && !_isOfficialAccount();
+    countEl.textContent = _isOfficialAccount()
+      ? `${tracks.length} son${tracks.length !== 1 ? 's' : ''}`
+      : `${tracks.length}\u202f/\u202f${FREE_LIMIT} son${tracks.length !== 1 ? 's' : ''}`;
     countEl.style.color = limited ? '#FFD700' : '';
   }
 
@@ -1802,9 +1815,9 @@ async function uploadTrack() {
   if (!name) { dashToast('⚠ Le titre est obligatoire.'); return; }
   if (!_pendingFile) { dashToast('⚠ Aucun fichier sélectionné.'); return; }
 
-  // ── Vérification limite freemium ─────────────────────────────────────────
+  // ── Vérification limite freemium (comptes officiels exemptés) ───────────
   const _existing = getMyTracks();
-  if (_existing.length >= FREE_LIMIT) {
+  if (_existing.length >= FREE_LIMIT && !_isOfficialAccount()) {
     dashToast('Ta playlist gratuite est complète (6 / 6). PLUG WATT illimité arrive bientôt !');
     renderUploadState();
     cancelUpload();
