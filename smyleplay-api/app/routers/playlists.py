@@ -47,6 +47,9 @@ from app.models.track import Track as _Track
 from app.schemas.track import TrackRead
 from app.services import playlists as svc
 from app.services.marketplace import user_owns_playlist_adn
+from app.services.notifications import create_notification
+from app.models.notification import NotificationType
+from app.models.track import Track as _TrackModel
 
 
 router = APIRouter(prefix="/playlists", tags=["playlists"])
@@ -236,6 +239,29 @@ async def add_track_endpoint(
                 "code": "public_owner_mismatch",
             },
         )
+    # Notif ❤️ au propriétaire du track si c'est la wishlist de l'user
+    # (et que l'user n'est pas le propriétaire du track lui-même)
+    try:
+        playlist = await svc.get_playlist(db, playlist_id)
+        if playlist.title == svc.WISHLIST_TITLE and playlist.owner_id == current_user.id:
+            track_res = await db.execute(
+                _select(_TrackModel).where(_TrackModel.id == body.track_id)
+            )
+            track = track_res.scalar_one_or_none()
+            if track and track.artist_id and track.artist_id != current_user.id:
+                await create_notification(
+                    db,
+                    user_id=track.artist_id,
+                    type=NotificationType.LIKE,
+                    actor_id=current_user.id,
+                    target_type="track",
+                    target_id=body.track_id,
+                    metadata={"track_title": track.title or ""},
+                )
+                await db.commit()
+    except Exception:
+        pass  # fire-and-forget, ne bloque jamais l'ajout
+
     return {
         "ok": True,
         "playlistId": str(link.playlist_id),
