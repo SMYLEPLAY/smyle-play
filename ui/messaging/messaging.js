@@ -23,11 +23,13 @@
   const _s = {
     open:           false,
     threads:        [],
-    activeThread:   null,   // { id, other_user_id, other_user_name, myColor, otherColor, messages:[] }
+    activeThread:   null,   // { id, other_user_id, other_user_name, myId, myColor, otherColor, messages:[] }
     sending:        false,
     loadingThreads: false,
     loadingMsgs:    false,
-    myColor:        null,   // couleur de marque de l'utilisateur courant (cachée)
+    // Cache utilisateur courant (évite un fetch par thread)
+    _myId:    null,
+    _myColor: null,
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -47,23 +49,25 @@
     return `hsl(${Math.abs(h) % 360}, 60%, 55%)`;
   }
 
-  // Fetch + cache de ma propre couleur de marque
-  async function _getMyColor() {
-    if (_s.myColor) return _s.myColor;
+  // Fetch + cache ID réel et couleur de l'utilisateur courant
+  // IMPORTANT : le JWT sub = email (pas UUID), on lit donc /users/me
+  async function _getMyInfo() {
+    if (_s._myId && _s._myColor) return { id: _s._myId, color: _s._myColor };
     try {
       const me = await apiFetch('/users/me');
-      _s.myColor = me.brandColor || me.brand_color || '#7C3AED';
+      _s._myId    = me.id    ? String(me.id)    : null;
+      _s._myColor = me.brand_color || me.brandColor || '#7C3AED';
     } catch (_) {
-      _s.myColor = '#7C3AED';
+      _s._myColor = '#7C3AED';
     }
-    return _s.myColor;
+    return { id: _s._myId, color: _s._myColor };
   }
 
   // Fetch couleur de marque d'un autre utilisateur
   async function _getUserColor(userId) {
     try {
       const u = await apiFetch(`/users/${userId}`);
-      return u.brandColor || u.brand_color || _colorFromId(userId);
+      return u.brand_color || u.brandColor || _colorFromId(userId);
     } catch (_) {
       return _colorFromId(userId);
     }
@@ -101,24 +105,31 @@
     _s.loadingMsgs = true;
     _renderThreadView();
     try {
-      // Crée ou récupère le thread + fetch couleurs en parallèle
+      // 1. Crée ou récupère le thread
       const thread = await apiFetch(`/messages/threads/${userId}`, { method: 'POST' });
-      const [msgs, myColor, otherColor] = await Promise.all([
+      const otherUid = thread.other_user_id || userId;
+
+      // 2. Messages (critique) + infos utilisateurs (couleurs) en parallèle
+      const [msgs, myInfo, otherColor] = await Promise.all([
         apiFetch(`/messages/threads/${thread.id}`),
-        _getMyColor(),
-        _getUserColor(thread.other_user_id || userId),
+        _getMyInfo().catch(() => ({ id: null, color: '#7C3AED' })),
+        _getUserColor(otherUid).catch(() => _colorFromId(otherUid)),
       ]);
+
       _s.activeThread = {
         id:              thread.id,
-        other_user_id:   thread.other_user_id  || userId,
+        other_user_id:   otherUid,
         other_user_name: thread.other_user_name || userName || 'Utilisateur',
         messages:        msgs.messages || [],
-        myColor,
+        myId:            myInfo.id,       // UUID réel pour comparer sender_id
+        myColor:         myInfo.color,
         otherColor,
       };
       // Marquer lu en background
       apiFetch(`/messages/threads/${thread.id}/read`, { method: 'POST' }).catch(() => {});
-    } catch (_) {}
+    } catch (e) {
+      console.error('[SmyleMessaging] _openThread error', e);
+    }
     _s.loadingMsgs = false;
     _renderThreadView();
     _scrollBottom();
@@ -246,21 +257,28 @@
   function _renderMessages() {
     const el = document.getElementById('msg-messages');
     if (!el || !_s.activeThread) return;
-    const myId      = _currentUserId();
-    const myColor   = _s.activeThread.myColor    || '#7C3AED';
+
+    // Utilise myId stocké dans activeThread (UUID réel depuis /users/me)
+    // NE PAS lire le JWT sub qui contient l'email, pas l'UUID
+    const myId       = _s.activeThread.myId;
+    const myColor    = _s.activeThread.myColor    || '#7C3AED';
     const otherColor = _s.activeThread.otherColor || '#4B5563';
 
     if (!_s.activeThread.messages.length) {
       el.innerHTML = `<div class="msg-empty">Démarrez la conversation !</div>`;
       return;
     }
+
     el.innerHTML = _s.activeThread.messages.map(m => {
-      const mine = m.sender_id === myId;
+      // Comparaison en String() pour éviter les bugs de type UUID vs string
+      const mine = myId && String(m.sender_id) === String(myId);
       const color = mine ? myColor : otherColor;
-      // Moi : bulle solide ma couleur — Autre : bulle tintée sa couleur
+
+      // Moi : bulle solide ma couleur (droite) — Autre : bulle tintée sa couleur (gauche)
       const bubbleStyle = mine
         ? `background:${color}; color:#fff; border-bottom-right-radius:4px;`
         : `background:${color}22; border:1px solid ${color}55; color:rgba(255,255,255,.9); border-bottom-left-radius:4px;`;
+
       return `
         <div class="msg-bubble ${mine ? 'msg-bubble-me' : 'msg-bubble-other'}">
           <span class="msg-bubble-text" style="${bubbleStyle}">${_esc(m.content)}</span>
@@ -274,17 +292,6 @@
       const el = document.getElementById('msg-messages');
       if (el) el.scrollTop = el.scrollHeight;
     }, 30);
-  }
-
-  function _currentUserId() {
-    // SmyleTopbar expose _state.user via window.SmyleTopbar
-    // On lit depuis le token JWT si disponible, sinon on parse l'objet user
-    try {
-      const tok = window.getAuthToken && window.getAuthToken();
-      if (!tok) return null;
-      const payload = JSON.parse(atob(tok.split('.')[1]));
-      return payload.sub || payload.user_id || null;
-    } catch (_) { return null; }
   }
 
   // ── Navigation ─────────────────────────────────────────────────────────────
