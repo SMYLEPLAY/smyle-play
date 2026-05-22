@@ -4263,3 +4263,7 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 .trade-submit-btn:hover { opacity: 0.88; }
 .trade-submit-btn:active { transform: scale(0.97); }
 .trade-submit-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* ── Topbar overrides — spécifiques à la page artiste ───────────────────── */
+/* MY MIX n'a pas de sens sur un profil artiste (mix-panel absent de la page) */
+.stb-mymix { display: none !important; }
