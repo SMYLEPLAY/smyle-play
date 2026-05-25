@@ -730,8 +730,18 @@
             <label class="dash-label">Genre</label>
             <input class="dash-input" id="dashGenre" placeholder="Ambient · Lofi · Electro · Dark · Trap..." />
 
-            <label class="dash-label">Tags (séparés par des virgules)</label>
-            <input class="dash-input" id="dashTags" placeholder="électro, ia, deep house, chill..." />
+            <label class="dash-label">Tags de recherche</label>
+            <div class="dte2-mood-chips" id="dashMoodChips" style="margin-bottom:8px">
+              <button type="button" class="dte2-chip" data-tag="chill"        onclick="dashToggleChip(this)">chill</button>
+              <button type="button" class="dte2-chip" data-tag="énergique"    onclick="dashToggleChip(this)">énergique</button>
+              <button type="button" class="dte2-chip" data-tag="dark"         onclick="dashToggleChip(this)">dark</button>
+              <button type="button" class="dte2-chip" data-tag="festif"       onclick="dashToggleChip(this)">festif</button>
+              <button type="button" class="dte2-chip" data-tag="romantique"   onclick="dashToggleChip(this)">romantique</button>
+              <button type="button" class="dte2-chip" data-tag="mélancolique" onclick="dashToggleChip(this)">mélancolique</button>
+              <button type="button" class="dte2-chip" data-tag="instrumental" onclick="dashToggleChip(this)">instrumental</button>
+              <button type="button" class="dte2-chip" data-tag="vocal"        onclick="dashToggleChip(this)">vocal</button>
+            </div>
+            <input class="dash-input" id="dashTags" placeholder="chill, dark, guitare, 90bpm, nuit…" maxlength="500" />
 
             <label class="dash-label">Description</label>
             <textarea class="dash-textarea" id="dashDesc" placeholder="Raconte l'univers de ce son..." rows="3"></textarea>
@@ -764,6 +774,7 @@
               <div class="dash-mood-extremes">
                 <span>0 — très libre</span><span>100 — très fidèle</span>
               </div>
+
             </div>
           </div>
 
@@ -1053,9 +1064,23 @@
             <div class="dte2-color-preview" id="dte2ColorPreview"></div>
           </div>
           <div class="dte2-field-group">
-            <label class="dte2-label" for="dte2Genre">Style / ambiance (mood)</label>
-            <input class="dte2-input" id="dte2Genre" type="text" maxlength="80"
-                   placeholder="Ex : deep house mélancolique, trap cinématique…">
+            <label class="dte2-label" for="dte2Tags">Tags de recherche</label>
+            <div class="dte2-mood-chips" id="dte2MoodChips">
+              <button type="button" class="dte2-chip" data-tag="chill"     onclick="dte2ToggleChip(this)">chill</button>
+              <button type="button" class="dte2-chip" data-tag="énergique" onclick="dte2ToggleChip(this)">énergique</button>
+              <button type="button" class="dte2-chip" data-tag="dark"      onclick="dte2ToggleChip(this)">dark</button>
+              <button type="button" class="dte2-chip" data-tag="festif"    onclick="dte2ToggleChip(this)">festif</button>
+              <button type="button" class="dte2-chip" data-tag="romantique" onclick="dte2ToggleChip(this)">romantique</button>
+              <button type="button" class="dte2-chip" data-tag="mélancolique" onclick="dte2ToggleChip(this)">mélancolique</button>
+              <button type="button" class="dte2-chip" data-tag="instrumental" onclick="dte2ToggleChip(this)">instrumental</button>
+              <button type="button" class="dte2-chip" data-tag="vocal"     onclick="dte2ToggleChip(this)">vocal</button>
+            </div>
+            <input class="dte2-input" id="dte2Tags" type="text" maxlength="500"
+                   placeholder="Ex : chill, dark, guitare, 90bpm, nuit…"
+                   style="margin-top:8px">
+            <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px">
+              Séparés par des virgules. Utilisés par les fans pour trouver ton son.
+            </div>
           </div>
           <div class="dte2-field-group">
             <label class="dte2-label" for="dte2Prompt">Recette (ADN) liée</label>

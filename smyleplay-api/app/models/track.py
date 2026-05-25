@@ -86,6 +86,11 @@ class Track(Base):
         index=True,
     )
 
+    # --- Champ ajouté migration 0038 — tags libres pour la recherche ---
+    # Texte libre séparé par des virgules ("chill, dark, guitare, 90bpm").
+    # ILIKE dans /watt/search/tracks. NULL = pas de tags.
+    tags: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # Soft-delete (migration 0028) : TRUE = artiste a retiré ce track.
     # Le track disparaît des listings publics.
     is_deleted: Mapped[bool] = mapped_column(

@@ -4241,3 +4241,31 @@ html { scroll-behavior: smooth; }
 .tph-progress-txt { font-size: 10px; color: rgba(255,255,255,.4); }
 
 .tph-loading { padding: 40px; text-align: center; color: rgba(255,255,255,.4); font-size: 13px; }
+
+
+/* ── Chips mood / tags (dte2 + création) ────────────────────────────────── */
+.dte2-mood-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dte2-chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(204,136,255,.25);
+  background: rgba(204,136,255,.08);
+  color: rgba(255,255,255,.65);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.dte2-chip:hover {
+  border-color: rgba(204,136,255,.5);
+  color: #fff;
+}
+.dte2-chip.is-active {
+  background: rgba(204,136,255,.22);
+  border-color: #cc88ff;
+  color: #fff;
+  font-weight: 600;
+}

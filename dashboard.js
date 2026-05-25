@@ -901,11 +901,11 @@ function dte2Select(trackUuid) {
   const titleInp = document.getElementById('dte2Title');
   if (titleInp) titleInp.value = t.title || '';
 
-  // Genre : pré-rempli depuis t.genre si l'API le retourne un jour,
-  // sinon on laisse le champ vide (on ne force pas '' pour éviter
-  // d'effacer une saisie déjà faite par l'artiste sur le track courant).
-  const genreInp = document.getElementById('dte2Genre');
-  if (genreInp) genreInp.value = t.genre || '';
+  // Tags : pré-rempli depuis t.tags (migration 0038)
+  const tagsInp = document.getElementById('dte2Tags');
+  if (tagsInp) tagsInp.value = t.tags || '';
+  // Synchronise les chips avec les tags existants
+  _dte2SyncChips(t.tags || '');
 
   // Couleur
   const col    = t.color || '';
@@ -978,6 +978,41 @@ function dte2Cancel() {
   if (inp)  inp.value = '';
 }
 
+// ── Chips mood — edit form ────────────────────────────────────────────────
+function dte2ToggleChip(btn) {
+  btn.classList.toggle('is-active');
+  _dte2UpdateTagsFromChips();
+}
+function _dte2UpdateTagsFromChips() {
+  const active = [...document.querySelectorAll('#dte2MoodChips .dte2-chip.is-active')]
+    .map(c => c.dataset.tag);
+  const inp = document.getElementById('dte2Tags');
+  if (!inp) return;
+  // Fusion chips activées + tags libres déjà tapés (sans doublon)
+  const typed = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+  const merged = [...new Set([...active, ...typed.filter(t => !active.some(a => a === t))])];
+  inp.value = merged.join(', ');
+}
+function _dte2SyncChips(tagsStr) {
+  const tags = tagsStr.split(',').map(s => s.trim().toLowerCase());
+  document.querySelectorAll('#dte2MoodChips .dte2-chip').forEach(c => {
+    c.classList.toggle('is-active', tags.includes(c.dataset.tag));
+  });
+}
+
+// ── Chips mood — création (alimente dashTags) ─────────────────────────────
+function dashToggleChip(btn) {
+  btn.classList.toggle('is-active');
+  const active = [...document.querySelectorAll('#dashMoodChips .dte2-chip.is-active')]
+    .map(c => c.dataset.tag);
+  const inp = document.getElementById('dashTags');
+  if (!inp) return;
+  // Fusionne les chips activées avec les tags libres déjà tapés (sans doublon)
+  const typed = inp.value.split(',').map(s => s.trim()).filter(Boolean);
+  const merged = [...new Set([...active, ...typed.filter(t => !active.some(a => a === t))])];
+  inp.value = merged.join(', ');
+}
+
 // Enregistrer — PATCH direct via UUID API (source de vérité)
 async function dte2Save() {
   if (!_dte2TrackId) return;
@@ -994,6 +1029,7 @@ async function dte2Save() {
     const newColor  = document.getElementById('dte2ColorVal')?.value
                    || document.getElementById('dte2ColorPicker')?.value || '';
     const newPrompt = document.getElementById('dte2Prompt')?.value || '';
+    const newTags   = (document.getElementById('dte2Tags')?.value || '').trim();
 
     // Upload cover si nouveau fichier sélectionné
     let newCoverUrl = t.cover_url || null;
@@ -1009,6 +1045,7 @@ async function dte2Save() {
     if (newCoverUrl && newCoverUrl !== t.cover_url)  patch.cover_url = newCoverUrl;
     if (newPrompt && newPrompt !== (t.prompt_id||'')) patch.prompt_id = newPrompt;
     else if (!newPrompt && t.prompt_id)               patch.prompt_id = null;
+    if (newTags !== (t.tags || ''))                   patch.tags      = newTags || null;
 
     if (Object.keys(patch).length > 0) {
       const updated = await apiFetch(`/tracks/${encodeURIComponent(_dte2TrackId)}`, {
@@ -1606,6 +1643,8 @@ function cancelUpload() {
   document.getElementById('dashGenre').value     = '';
   document.getElementById('dashTags').value      = '';
   document.getElementById('dashDesc').value      = '';
+  // Reset chips mood création
+  document.querySelectorAll('#dashMoodChips .dte2-chip').forEach(c => c.classList.remove('is-active'));
   // Reset bloc Recette IA (prompt_text, paroles, prix)
   ['dashPromptText', 'dashPromptLyrics'].forEach(id => {
     const el = document.getElementById(id);
@@ -1769,7 +1808,7 @@ async function _uploadTrackCover(file, trackName) {
 // associée. Le DNA per-track devient secondaire dans le nouveau
 // modèle (l'ADN par artiste reprend le rôle), mais le champ reste
 // obligatoire en DB tant qu'on n'a pas migré la contrainte.
-async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt }) {
+async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt, tags }) {
   if (typeof apiFetch !== 'function') {
     throw new Error('apiFetch indisponible');
   }
@@ -1783,6 +1822,7 @@ async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cove
         audio_url: audio_url || null,
         r2_key: r2_key || null,
         cover_url: cover_url || null,
+        tags: tags || null,
       },
     });
     // result = TrackWithDNA { track: TrackRead, dna: DNARead }
@@ -1920,6 +1960,7 @@ async function uploadTrack() {
       color:       _pendingTrackColor,
       cover_url:   coverUrl,
       full_prompt: name,  // placeholder requis par TrackCreate (DNA per-track)
+      tags:        tags || null,   // dashTags — lu plus haut (ligne ~1865)
     });
   } catch (e) {
     // PR A — gestion fine des erreurs FastAPI. Cas spéciaux :
