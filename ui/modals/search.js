@@ -182,6 +182,31 @@
   }
   .smyle-search-tab:hover:not(.is-active) { color: rgba(255,255,255,.75); }
 
+  .smyle-search-moods {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .smyle-search-moods.is-visible { display: flex; }
+  .smyle-mood-chip {
+    padding: 3px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(204,136,255,.22);
+    background: rgba(204,136,255,.07);
+    color: rgba(255,255,255,.6);
+    font-size: 11px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .smyle-mood-chip:hover,
+  .smyle-mood-chip.is-active {
+    background: rgba(204,136,255,.2);
+    border-color: #cc88ff;
+    color: #fff;
+  }
+
   .smyle-search-results {
     max-height: 60vh;
     overflow-y: auto;
@@ -306,9 +331,11 @@
   let modalRoot = null;
   let inputEl   = null;
   let resultsEl = null;
+  let moodsEl   = null;
   let currentTab = 'artists'; // 'artists' | 'tracks'
   let debounceTimer = null;
   let lastQuery = '';
+  let activeChip = null; // chip mood actuellement sélectionnée
 
   function buildModal() {
     if (modalRoot) return;
@@ -335,6 +362,16 @@
             ${ICO_DISC}<span>DNA — morceaux</span>
           </button>
         </div>
+        <div class="smyle-search-moods" aria-label="Filtres mood">
+          <button type="button" class="smyle-mood-chip" data-mood="chill">chill</button>
+          <button type="button" class="smyle-mood-chip" data-mood="énergique">énergique</button>
+          <button type="button" class="smyle-mood-chip" data-mood="dark">dark</button>
+          <button type="button" class="smyle-mood-chip" data-mood="festif">festif</button>
+          <button type="button" class="smyle-mood-chip" data-mood="romantique">romantique</button>
+          <button type="button" class="smyle-mood-chip" data-mood="mélancolique">mélancolique</button>
+          <button type="button" class="smyle-mood-chip" data-mood="instrumental">instrumental</button>
+          <button type="button" class="smyle-mood-chip" data-mood="vocal">vocal</button>
+        </div>
         <div class="smyle-search-results" aria-live="polite"></div>
       </div>
     `;
@@ -343,6 +380,7 @@
     // Refs
     inputEl   = modalRoot.querySelector('.smyle-search-input');
     resultsEl = modalRoot.querySelector('.smyle-search-results');
+    moodsEl   = modalRoot.querySelector('.smyle-search-moods');
 
     // Events
     modalRoot.addEventListener('click', (e) => {
@@ -358,6 +396,28 @@
     inputEl.addEventListener('input', onInputChange);
     inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { e.preventDefault(); closeModal(); }
+    });
+
+    // Chips mood — sélection exclusive, déclenche une recherche sur le tag
+    moodsEl.querySelectorAll('.smyle-mood-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        if (activeChip === chip) {
+          // Désélectionner si on reclique
+          chip.classList.remove('is-active');
+          activeChip = null;
+          inputEl.value = '';
+          lastQuery = '';
+          runSearch('');
+        } else {
+          if (activeChip) activeChip.classList.remove('is-active');
+          chip.classList.add('is-active');
+          activeChip = chip;
+          const tag = chip.dataset.mood;
+          inputEl.value = tag;
+          lastQuery = tag;
+          runSearch(tag);
+        }
+      });
     });
 
     document.addEventListener('keydown', onGlobalKey);
@@ -391,10 +451,22 @@
       t.classList.toggle('is-active', active);
       t.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+    // Chips mood — visibles uniquement sur l'onglet DNA
+    if (moodsEl) moodsEl.classList.toggle('is-visible', tab === 'tracks');
+    // Reset chip actif quand on change d'onglet
+    if (activeChip) { activeChip.classList.remove('is-active'); activeChip = null; }
     runSearch(lastQuery);
   }
 
   function onInputChange() {
+    // Si l'utilisateur tape manuellement, désactiver le chip sélectionné
+    if (activeChip) {
+      const current = (inputEl.value || '').trim();
+      if (current !== activeChip.dataset.mood) {
+        activeChip.classList.remove('is-active');
+        activeChip = null;
+      }
+    }
     const q = (inputEl.value || '').trim();
     lastQuery = q;
     clearTimeout(debounceTimer);
@@ -485,8 +557,15 @@
     const color = t.color || '#FFD700';
     const sub   = [t.artistName, t.universe].filter(Boolean).join(' · ');
     const meta  = `${t.plays || 0} écoutes`;
-    // Deep-link vers la page artiste, ancre sur la track — /u/slug existe ;
-    // l'ancre sera supportée quand Étape 5 rendra les cellules tracks.
+    // Tags — affichés comme petites pills sous le sous-titre si présents
+    const tagsHtml = t.tags
+      ? t.tags.split(',').slice(0, 4).map(tag =>
+          `<span style="display:inline-block;padding:1px 6px;border-radius:99px;
+           background:rgba(204,136,255,.1);border:1px solid rgba(204,136,255,.2);
+           font-size:10px;color:rgba(204,136,255,.9);margin:0 2px 0 0">${escapeHtml(tag.trim())}</span>`
+        ).join('')
+      : '';
+    // Deep-link vers la page artiste, ancre sur la track
     const href = t.artistSlug
       ? `/u/${encodeURIComponent(t.artistSlug)}#track-${encodeURIComponent(t.id)}`
       : '#';
@@ -497,6 +576,7 @@
         <span class="smyle-search-row-body">
           <span class="smyle-search-row-title">${escapeHtml(t.title || 'Sans titre')}</span>
           <span class="smyle-search-row-sub">${escapeHtml(sub)}</span>
+          ${tagsHtml ? `<span style="display:block;margin-top:3px">${tagsHtml}</span>` : ''}
         </span>
         <span class="smyle-search-row-meta">${escapeHtml(meta)}</span>
       </a>

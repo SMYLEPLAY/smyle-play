@@ -26,6 +26,8 @@ class TrackCreate(BaseModel):
     r2_key: str | None = Field(default=None, max_length=500)
     cover_url: str | None = Field(default=None, max_length=2048)
     prompt_id: UUID | None = None
+    # Tags libres — séparés par des virgules ("chill, dark, guitare, 90bpm")
+    tags: str | None = Field(default=None, max_length=500)
 
 
 class TrackUpdate(BaseModel):
@@ -39,6 +41,8 @@ class TrackUpdate(BaseModel):
     color: str | None = Field(default=None, pattern=HEX_COLOR_RE)
     cover_url: str | None = Field(default=None, max_length=2048)
     prompt_id: UUID | None = None
+    # Tags libres — séparés par des virgules ("chill, dark, guitare, 90bpm")
+    tags: str | None = Field(default=None, max_length=500)
 
 
 class DNARead(BaseModel):
@@ -60,6 +64,7 @@ class TrackRead(BaseModel):
     # Prix du prompt lié — None si pas de prompt ou non injecté.
     # Peuplé uniquement dans les endpoints playlist detail.
     prompt_price_credits: int | None = None
+    tags: str | None = None
     created_at: datetime
 
     @computed_field  # type: ignore[misc]

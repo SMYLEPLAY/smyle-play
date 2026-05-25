@@ -177,8 +177,7 @@ async def search_tracks(
     """
     Recherche de tracks dont l'artiste est publié. Renvoie {tracks, count}.
 
-    Matche sur title + universe côté serveur ; les tags sont laissés au
-    filtrage client (pas de colonne normalisée côté tracks aujourd'hui).
+    Matche sur title + universe + tags côté serveur (migration 0038).
 
     Paramètres :
       - q        : texte libre (title, universe)
@@ -200,7 +199,8 @@ async def search_tracks(
     )
 
     if q and len(q) >= _MIN_QUERY_LEN:
-        stmt = _apply_text_search(stmt, q, Track.title, Track.universe)
+        # tags ajouté migration 0038 — permet de chercher "chill", "dark", etc.
+        stmt = _apply_text_search(stmt, q, Track.title, Track.universe, Track.tags)
 
     if universe:
         stmt = stmt.where(Track.universe == universe)
@@ -219,6 +219,7 @@ async def search_tracks(
             "legacyId":    track.legacy_id,
             "title":       track.title,
             "universe":    track.universe or "",
+            "tags":        track.tags or "",
             "color":       track.color or user.brand_color or "",
             "audioUrl":    track.audio_url or "",
             "plays":       int(track.plays or 0),
