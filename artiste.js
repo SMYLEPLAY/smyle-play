@@ -1527,6 +1527,12 @@ function renderTracks(artist) {
   // Une seule track joue à la fois sur la page (les autres se mettent
   // en pause automatiquement).
   list.onclick = (ev) => {
+    // Cas 0 : like-btn et add-to-pl-btn — délégués à playlists.js (capture)
+    // On interrompt ici pour éviter que le play/pause de la card se déclenche.
+    if (ev.target.closest('[data-like-btn]') || ev.target.closest('[data-add-to-playlist]')) {
+      ev.stopPropagation();
+      return;
+    }
     // Cas 1 : bouton supprimer track (owner uniquement)
     const delBtn = ev.target.closest('.ap-track-delete-btn');
     if (delBtn) {

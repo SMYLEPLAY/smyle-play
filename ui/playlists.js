@@ -396,6 +396,10 @@
       '.ap-pl-qp svg { width:15px; height:15px; fill:currentColor; margin-left:2px; }' +
       '.ap-playlist-card:hover .ap-pl-qp { opacity:1; transform:translate(-50%,-50%) scale(1); }' +
       '.ap-playlist-card:hover .ap-pl-qp:hover { transform:translate(-50%,-50%) scale(1.1); background:rgba(var(--nc-rgb,204,136,255),.45); border-color:rgba(var(--nc-rgb,204,136,255),.55); }' +
+      // Boutons like + add-to-pl sur la card playlist du profil public
+      '.ap-pl-card-actions { position:absolute; top:7px; right:7px; display:flex; gap:5px; z-index:11; opacity:0; transition:opacity .18s; }' +
+      '.ap-playlist-card:hover .ap-pl-card-actions { opacity:1; }' +
+      '.ap-pl-card-actions .like-btn, .ap-pl-card-actions .add-to-pl-btn { width:26px !important; height:26px !important; background:rgba(5,5,8,.65) !important; border:1px solid rgba(255,255,255,.18) !important; backdrop-filter:blur(6px); }' +
       // Badge ADN sur les rows de tracks dans la modale playlist
       '.pl-row-adn-badge { font-size:10px; font-weight:700; color:#cc88ff; background:rgba(204,136,255,.1); border:1px solid rgba(204,136,255,.3); border-radius:999px; padding:2px 8px; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }' +
       '.pl-row-adn-badge:hover { background:rgba(204,136,255,.2); }'
@@ -760,6 +764,14 @@
                 const adnBadge = p.adn_for_sale
                   ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
                   : '';
+                // Tracks de la playlist pour les boutons like/add
+                const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
+                const plActionsHtml = firstTrackId
+                  ? '<div class="ap-pl-card-actions" onclick="event.stopPropagation()">' +
+                      '<button type="button" class="like-btn ap-pl-like" data-like-btn="' + firstTrackId + '" title="J\'aime"></button>' +
+                      '<button type="button" class="add-to-pl-btn ap-pl-addpl" data-add-to-playlist="' + firstTrackId + '" title="+">+</button>' +
+                    '</div>'
+                  : '';
                 return (
                   '<li class="ap-playlist-card" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
                     mediaBg +
@@ -767,6 +779,7 @@
                       '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' +
                     '</button>' +
                     adnBadge +
+                    plActionsHtml +
                     '<div class="ap-playlist-card-info">' +
                       '<div class="ap-pl-neon">' + _esc(p.title) + '</div>' +
                       '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
