@@ -1,24 +1,18 @@
 /**
- * SMYLE SEARCH — Modal recherche globale Connect + DNA
+ * SMYLE SEARCH — Panneau de recherche unifié (loupe topbar)
  *
- * Usage :
- *   <script src="/ui/modals/search.js" defer></script>
+ * Design : panneau large deux colonnes
+ *   Gauche  — CONNECT : profils artistes  (/watt/search/artists)
+ *   Droite  — DNA     : morceaux / sons   (/watt/search/tracks)
  *
- * Auto-injection au DOMContentLoaded :
- *   1. un bouton loupe dans la topbar (détection multi-classes : .dash-topbar-right,
- *      .ap-topbar-right, .lib-topbar-right, .topbar-right).
- *   2. un modal fullscreen qui s'ouvre au clic (overlay + close ESC + click fond).
+ * Les deux colonnes se mettent à jour en parallèle à chaque frappe.
+ * Chips de filtre :
+ *   - CONNECT : rôle (producteur, beatmaker, vocalist…)
+ *   - DNA     : mood (chill, dark, énergique…)
  *
- * Le modal a deux onglets :
- *   - CONNECT : recherche de profils artistes (/watt/search/artists)
- *   - DNA     : recherche de morceaux / signatures (/watt/search/tracks)
- *
- * Convention : consomme window.API_BASE s'il existe (injecté par
- * /ui/core/api.js), sinon fallback sur http://localhost:8000.
- *
- * Feature flag : on n'injecte pas le bouton si le DOM déjà contient
- * [data-smyle-search] — permet à une page de s'opt-out explicitement
- * (ex : homepage qui aurait déjà sa propre barre de recherche).
+ * Auto-injection : bouton loupe dans .dash-topbar-right / .ap-topbar-right /
+ *   .lib-topbar-right / .topbar-right. Présent sur toutes les pages.
+ * Raccourci : Ctrl+K / Cmd+K ouvre le panneau.
  */
 (function () {
   'use strict';
@@ -26,404 +20,384 @@
   if (window.__smyleSearchInstalled) return;
   window.__smyleSearchInstalled = true;
 
-  // ── Config ────────────────────────────────────────────────────────────
   const API_BASE = (typeof window !== 'undefined' && window.API_BASE)
     ? String(window.API_BASE).replace(/\/+$/, '')
     : 'http://localhost:8000';
 
-  const DEBOUNCE_MS = 280;
-  const MIN_CHARS   = 0; // 0 = on déclenche aussi au focus (liste "top")
+  const DEBOUNCE_MS = 260;
 
-  // ── Icônes SVG ────────────────────────────────────────────────────────
-  const ICO_SEARCH = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="7"/>
-      <line x1="16.65" y1="16.65" x2="21" y2="21"/>
-    </svg>`;
-  const ICO_CLOSE = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18"/>
-      <line x1="6" y1="6" x2="18" y2="18"/>
-    </svg>`;
-  const ICO_USER = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
-    </svg>`;
-  const ICO_DISC = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>`;
+  // ── SVG icons ─────────────────────────────────────────────────────────
+  const ICO_SEARCH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>`;
+  const ICO_CLOSE  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  const ICO_USER   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+  const ICO_DISC   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const ICO_PLAY   = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="12" height="12"><polygon points="5,3 19,12 5,21"/></svg>`;
 
-  // ── Styles injectés ───────────────────────────────────────────────────
-  // On injecte un <style> plutôt que de toucher aux feuilles de chaque
-  // page : zéro couplage avec dashboard.css / artiste.css / etc.
-  const STYLES = `
-  .smyle-search-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,.1);
-    background: rgba(255,255,255,.04);
-    color: rgba(255,255,255,.72);
-    cursor: pointer;
-    transition: all .15s ease;
-    padding: 0;
-  }
-  .smyle-search-btn:hover {
-    background: rgba(255,215,0,.1);
-    border-color: rgba(255,215,0,.3);
-    color: #FFD700;
-  }
-  .smyle-search-btn svg { width: 18px; height: 18px; }
+  // Chips connect (rôles artistes)
+  const CONNECT_CHIPS = [
+    { label: 'Producteur',  val: 'producer'   },
+    { label: 'Beatmaker',   val: 'beatmaker'  },
+    { label: 'Vocalist',    val: 'vocalist'   },
+    { label: 'Rappeur',     val: 'rapper'     },
+    { label: 'DJ',          val: 'dj'         },
+    { label: 'Compositeur', val: 'composer'   },
+  ];
 
-  .smyle-search-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 9998;
-    background: rgba(0,0,0,.78);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: none;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 56px 16px 16px;
-    overflow: auto;
-  }
-  .smyle-search-overlay.is-open { display: flex; }
+  // Chips DNA (moods)
+  const DNA_CHIPS = [
+    { label: 'chill',        val: 'chill'        },
+    { label: 'énergique',    val: 'énergique'    },
+    { label: 'dark',         val: 'dark'         },
+    { label: 'festif',       val: 'festif'       },
+    { label: 'romantique',   val: 'romantique'   },
+    { label: 'mélancolique', val: 'mélancolique' },
+    { label: 'instrumental', val: 'instrumental' },
+    { label: 'vocal',        val: 'vocal'        },
+  ];
 
-  .smyle-search-panel {
-    width: 100%;
-    max-width: 720px;
-    background: #0d0a1a;
-    border: 1px solid rgba(255,215,0,.22);
-    border-radius: 10px;
-    box-shadow: 0 40px 80px rgba(0,0,0,.6);
-    overflow: hidden;
-    color: #fff;
-    animation: smyleSearchIn .18s ease-out;
-  }
-  @keyframes smyleSearchIn {
-    from { transform: translateY(-8px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
-  }
-
-  .smyle-search-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-  .smyle-search-input {
-    flex: 1 1 auto;
-    min-width: 0;
-    padding: 10px 14px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.1);
-    border-radius: 6px;
-    color: #fff;
-    font-size: 15px;
-    outline: none;
-    transition: border-color .15s ease;
-  }
-  .smyle-search-input::placeholder { color: rgba(255,255,255,.35); }
-  .smyle-search-input:focus { border-color: rgba(255,215,0,.5); }
-  .smyle-search-close {
-    flex: 0 0 auto;
-    width: 36px;
-    height: 36px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 0;
-    color: rgba(255,255,255,.55);
-    cursor: pointer;
-    border-radius: 6px;
-  }
-  .smyle-search-close:hover { color: #fff; background: rgba(255,255,255,.06); }
-  .smyle-search-close svg { width: 18px; height: 18px; }
-
-  .smyle-search-tabs {
-    display: flex;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-  .smyle-search-tab {
-    flex: 1 1 0;
-    padding: 12px 16px;
-    background: transparent;
-    border: 0;
-    color: rgba(255,255,255,.45);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: .5px;
-    text-transform: uppercase;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border-bottom: 2px solid transparent;
-    transition: color .15s ease, border-color .15s ease;
-  }
-  .smyle-search-tab svg { width: 14px; height: 14px; }
-  .smyle-search-tab.is-active {
-    color: #FFD700;
-    border-bottom-color: #FFD700;
-  }
-  .smyle-search-tab:hover:not(.is-active) { color: rgba(255,255,255,.75); }
-
-  .smyle-search-moods {
-    display: none;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 10px 16px;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-  .smyle-search-moods.is-visible { display: flex; }
-  .smyle-mood-chip {
-    padding: 3px 11px;
-    border-radius: 999px;
-    border: 1px solid rgba(204,136,255,.22);
-    background: rgba(204,136,255,.07);
-    color: rgba(255,255,255,.6);
-    font-size: 11px;
-    cursor: pointer;
-    transition: background .12s, border-color .12s, color .12s;
-  }
-  .smyle-mood-chip:hover,
-  .smyle-mood-chip.is-active {
-    background: rgba(204,136,255,.2);
-    border-color: #cc88ff;
-    color: #fff;
-  }
-
-  .smyle-search-results {
-    max-height: 60vh;
-    overflow-y: auto;
-    padding: 8px 0;
-  }
-  .smyle-search-empty,
-  .smyle-search-loading {
-    padding: 32px 20px;
-    text-align: center;
-    color: rgba(255,255,255,.4);
-    font-size: 13px;
-  }
-
-  .smyle-search-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 18px;
-    cursor: pointer;
-    transition: background .12s ease;
-    text-decoration: none;
-    color: inherit;
-  }
-  .smyle-search-row:hover { background: rgba(255,215,0,.05); }
-  .smyle-search-avatar {
-    flex: 0 0 auto;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(255,215,0,.2);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    color: #0d0a1a;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,.08);
-  }
-  .smyle-search-avatar img {
-    width: 100%; height: 100%; object-fit: cover;
-  }
-  .smyle-search-row-body {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .smyle-search-row-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .smyle-search-row-sub {
-    font-size: 12px;
-    color: rgba(255,255,255,.48);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .smyle-search-row-meta {
-    flex: 0 0 auto;
-    font-size: 11px;
-    color: rgba(255,255,255,.35);
-    text-align: right;
-  }
-
-  @media (max-width: 560px) {
-    .smyle-search-overlay { padding: 20px 10px; }
-    .smyle-search-header { padding: 10px 12px; }
-    .smyle-search-input { font-size: 14px; }
-  }
-  `;
-
+  // ── Styles ────────────────────────────────────────────────────────────
   function injectStyles() {
     if (document.getElementById('smyle-search-styles')) return;
     const s = document.createElement('style');
     s.id = 'smyle-search-styles';
-    s.textContent = STYLES;
+    s.textContent = `
+/* ── Bouton loupe ────────────────────────────────────────────────────── */
+.smyle-search-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.72); cursor: pointer;
+  transition: all .15s ease; padding: 0;
+}
+.smyle-search-btn:hover {
+  background: rgba(255,215,0,.1); border-color: rgba(255,215,0,.3); color: #FFD700;
+}
+.smyle-search-btn svg { width: 18px; height: 18px; }
+
+/* ── Overlay ─────────────────────────────────────────────────────────── */
+.smyle-search-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,.82);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 48px 16px 24px; overflow: auto;
+}
+.smyle-search-overlay.is-open { display: flex; }
+
+/* ── Panneau principal ───────────────────────────────────────────────── */
+.smyle-search-panel {
+  background: #0f0c18;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  width: 100%; max-width: 960px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(204,136,255,.06);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* ── Header : barre de recherche ─────────────────────────────────────── */
+.smyle-search-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.02);
+}
+.smyle-search-header-ico {
+  color: rgba(255,255,255,.35); flex-shrink: 0;
+}
+.smyle-search-header-ico svg { width: 18px; height: 18px; display: block; }
+.smyle-search-input {
+  flex: 1; background: transparent; border: 0; outline: none;
+  font-size: 17px; font-weight: 500; color: #fff;
+  font-family: inherit; letter-spacing: -.01em;
+}
+.smyle-search-input::placeholder { color: rgba(255,255,255,.28); }
+.smyle-search-kbd {
+  font-size: 11px; color: rgba(255,255,255,.25);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 5px;
+  padding: 2px 6px; flex-shrink: 0; letter-spacing: .04em;
+}
+.smyle-search-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.5); cursor: pointer; flex-shrink: 0;
+  transition: all .12s ease; padding: 0;
+}
+.smyle-search-close:hover { background: rgba(255,255,255,.1); color: #fff; }
+.smyle-search-close svg { width: 14px; height: 14px; }
+
+/* ── Corps deux colonnes ─────────────────────────────────────────────── */
+.smyle-search-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 480px;
+  max-height: 70vh;
+  overflow: hidden;
+}
+@media (max-width: 680px) {
+  .smyle-search-body { grid-template-columns: 1fr; max-height: none; }
+}
+
+/* ── Colonne commune ─────────────────────────────────────────────────── */
+.smyle-search-col {
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid rgba(255,255,255,.05);
+}
+.smyle-search-col:last-child { border-right: 0; }
+
+.smyle-search-col-hdr {
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 16px 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: rgba(255,255,255,.35);
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  flex-shrink: 0;
+}
+.smyle-search-col-hdr svg { width: 12px; height: 12px; }
+.smyle-search-col-hdr.connect { color: rgba(100,200,255,.6); }
+.smyle-search-col-hdr.dna     { color: rgba(204,136,255,.7); }
+
+/* Chips filtre */
+.smyle-search-chips {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  padding: 8px 14px 6px; border-bottom: 1px solid rgba(255,255,255,.04);
+  flex-shrink: 0;
+}
+.smyle-search-chip {
+  padding: 3px 10px; border-radius: 999px; font-size: 11px;
+  cursor: pointer; transition: all .12s ease; border: 1px solid;
+}
+.smyle-search-chip.connect-chip {
+  border-color: rgba(100,200,255,.2); background: rgba(100,200,255,.06);
+  color: rgba(100,200,255,.7);
+}
+.smyle-search-chip.connect-chip:hover,
+.smyle-search-chip.connect-chip.is-active {
+  border-color: rgba(100,200,255,.6); background: rgba(100,200,255,.16);
+  color: #64C8FF;
+}
+.smyle-search-chip.dna-chip {
+  border-color: rgba(204,136,255,.2); background: rgba(204,136,255,.06);
+  color: rgba(204,136,255,.7);
+}
+.smyle-search-chip.dna-chip:hover,
+.smyle-search-chip.dna-chip.is-active {
+  border-color: rgba(204,136,255,.6); background: rgba(204,136,255,.18);
+  color: #cc88ff;
+}
+
+/* Liste résultats (scrollable) */
+.smyle-search-results {
+  flex: 1; overflow-y: auto; padding: 6px 0;
+}
+.smyle-search-results::-webkit-scrollbar { width: 4px; }
+.smyle-search-results::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+/* ── Cards artistes ──────────────────────────────────────────────────── */
+.ss-artist-card {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 14px; text-decoration: none;
+  transition: background .1s ease; cursor: pointer;
+}
+.ss-artist-card:hover { background: rgba(255,255,255,.04); }
+.ss-artist-avatar {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: #fff;
+  overflow: hidden;
+}
+.ss-artist-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ss-artist-body { flex: 1; min-width: 0; }
+.ss-artist-name {
+  font-size: 13px; font-weight: 600; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ss-artist-sub {
+  font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ss-artist-meta { font-size: 10px; color: rgba(255,255,255,.28); flex-shrink: 0; text-align: right; }
+
+/* ── Cards sons ──────────────────────────────────────────────────────── */
+.ss-track-card {
+  display: flex; align-items: center; gap: 11px;
+  padding: 8px 14px; text-decoration: none;
+  transition: background .1s ease; cursor: pointer;
+}
+.ss-track-card:hover { background: rgba(255,255,255,.04); }
+.ss-track-cover {
+  width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+}
+.ss-track-cover img { width: 100%; height: 100%; object-fit: cover; }
+.ss-track-cover-fallback {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.ss-track-play-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .12s;
+  color: #fff; border-radius: 8px;
+}
+.ss-track-card:hover .ss-track-play-overlay { opacity: 1; }
+.ss-track-body { flex: 1; min-width: 0; }
+.ss-track-title {
+  font-size: 13px; font-weight: 600; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ss-track-sub {
+  font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ss-track-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.ss-track-tag {
+  font-size: 10px; padding: 0 5px; border-radius: 99px;
+  background: rgba(204,136,255,.1); border: 1px solid rgba(204,136,255,.18);
+  color: rgba(204,136,255,.85);
+}
+.ss-track-meta { font-size: 10px; color: rgba(255,255,255,.28); flex-shrink: 0; text-align: right; }
+
+/* ── États vide / chargement ─────────────────────────────────────────── */
+.ss-empty {
+  padding: 32px 16px; text-align: center;
+  color: rgba(255,255,255,.3); font-size: 12px; line-height: 1.6;
+}
+.ss-loading { padding: 28px 16px; text-align: center; }
+.ss-loading-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,.25); margin: 0 3px;
+  animation: ssPulse 1.2s ease-in-out infinite;
+}
+.ss-loading-dot:nth-child(2) { animation-delay: .2s; }
+.ss-loading-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes ssPulse { 0%,80%,100%{transform:scale(.8);opacity:.4} 40%{transform:scale(1);opacity:1} }
+    `;
     document.head.appendChild(s);
   }
 
-  // ── Bouton loupe (topbar) ─────────────────────────────────────────────
-  // On essaie chaque classe de topbar connue et on injecte dans la
-  // première trouvée. On place le bouton EN PREMIER dans le conteneur
-  // (flex order) pour rester visible à côté du dropdown profil / balance.
-  const TOPBAR_CONTAINERS = [
-    '.dash-topbar-right',
-    '.ap-topbar-right',
-    '.lib-topbar-right',
-    '.topbar-right',
-  ];
-
+  // ── Injection bouton ──────────────────────────────────────────────────
   function injectButton() {
-    // Escape hatch : une page peut placer un marker pour bloquer l'injection
-    if (document.querySelector('[data-smyle-search-skip]')) return;
-    // Évite les doublons si plusieurs scripts se relancent
-    if (document.querySelector('.smyle-search-btn')) return;
-
-    let host = null;
-    for (const sel of TOPBAR_CONTAINERS) {
-      const el = document.querySelector(sel);
-      if (el) { host = el; break; }
-    }
-    if (!host) return;
+    const container = document.querySelector(
+      '.dash-topbar-right, .ap-topbar-right, .lib-topbar-right, .topbar-right'
+    );
+    if (!container || container.querySelector('.smyle-search-btn')) return;
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'smyle-search-btn';
     btn.setAttribute('aria-label', 'Rechercher');
-    btn.title = 'Rechercher';
+    btn.title = 'Rechercher  (Ctrl+K)';
     btn.innerHTML = ICO_SEARCH;
     btn.addEventListener('click', openModal);
-    // Flex order négatif : s'affiche en premier dans la topbar.
-    btn.style.order = '-1';
-    host.prepend(btn);
+    container.insertBefore(btn, container.firstChild);
   }
 
-  // ── Modal ─────────────────────────────────────────────────────────────
-  let modalRoot = null;
-  let inputEl   = null;
-  let resultsEl = null;
-  let moodsEl   = null;
-  let currentTab = 'artists'; // 'artists' | 'tracks'
-  let debounceTimer = null;
-  let lastQuery = '';
-  let activeChip = null; // chip mood actuellement sélectionnée
+  // ── State ─────────────────────────────────────────────────────────────
+  let modalRoot    = null;
+  let inputEl      = null;
+  let connectEl    = null; // résultats gauche
+  let dnaEl        = null; // résultats droite
+  let debounce     = null;
+  let lastQuery    = '';
+  let activeConnectChip = null;
+  let activeDnaChip     = null;
 
+  // ── Build modal ───────────────────────────────────────────────────────
   function buildModal() {
     if (modalRoot) return;
     modalRoot = document.createElement('div');
     modalRoot.className = 'smyle-search-overlay';
     modalRoot.setAttribute('role', 'dialog');
     modalRoot.setAttribute('aria-modal', 'true');
+    modalRoot.setAttribute('aria-label', 'Recherche WATT');
+
+    const connectChipsHtml = CONNECT_CHIPS.map(c =>
+      `<button type="button" class="smyle-search-chip connect-chip" data-val="${c.val}">${c.label}</button>`
+    ).join('');
+
+    const dnaChipsHtml = DNA_CHIPS.map(c =>
+      `<button type="button" class="smyle-search-chip dna-chip" data-val="${c.val}">${c.label}</button>`
+    ).join('');
+
     modalRoot.innerHTML = `
       <div class="smyle-search-panel" role="document">
+
+        <!-- Barre de recherche -->
         <div class="smyle-search-header">
+          <span class="smyle-search-header-ico">${ICO_SEARCH}</span>
           <input type="search" class="smyle-search-input"
-                 placeholder="Rechercher un artiste, un son, un univers…"
+                 placeholder="Artiste, son, mood, ville…"
                  autocomplete="off" spellcheck="false" />
-          <button type="button" class="smyle-search-close"
-                  aria-label="Fermer">${ICO_CLOSE}</button>
+          <span class="smyle-search-kbd">ESC</span>
+          <button type="button" class="smyle-search-close" aria-label="Fermer">${ICO_CLOSE}</button>
         </div>
-        <div class="smyle-search-tabs" role="tablist">
-          <button type="button" class="smyle-search-tab is-active"
-                  data-tab="artists" role="tab" aria-selected="true">
-            ${ICO_USER}<span>Connect — artistes</span>
-          </button>
-          <button type="button" class="smyle-search-tab"
-                  data-tab="tracks" role="tab" aria-selected="false">
-            ${ICO_DISC}<span>DNA — morceaux</span>
-          </button>
+
+        <!-- Corps 2 colonnes -->
+        <div class="smyle-search-body">
+
+          <!-- Colonne CONNECT -->
+          <div class="smyle-search-col" id="ss-col-connect">
+            <div class="smyle-search-col-hdr connect">
+              ${ICO_USER} CONNECT — Artistes
+            </div>
+            <div class="smyle-search-chips" id="ss-connect-chips">${connectChipsHtml}</div>
+            <div class="smyle-search-results" id="ss-results-connect" aria-live="polite"></div>
+          </div>
+
+          <!-- Colonne DNA -->
+          <div class="smyle-search-col" id="ss-col-dna">
+            <div class="smyle-search-col-hdr dna">
+              ${ICO_DISC} DNA — Sons
+            </div>
+            <div class="smyle-search-chips" id="ss-dna-chips">${dnaChipsHtml}</div>
+            <div class="smyle-search-results" id="ss-results-dna" aria-live="polite"></div>
+          </div>
+
         </div>
-        <div class="smyle-search-moods" aria-label="Filtres mood">
-          <button type="button" class="smyle-mood-chip" data-mood="chill">chill</button>
-          <button type="button" class="smyle-mood-chip" data-mood="énergique">énergique</button>
-          <button type="button" class="smyle-mood-chip" data-mood="dark">dark</button>
-          <button type="button" class="smyle-mood-chip" data-mood="festif">festif</button>
-          <button type="button" class="smyle-mood-chip" data-mood="romantique">romantique</button>
-          <button type="button" class="smyle-mood-chip" data-mood="mélancolique">mélancolique</button>
-          <button type="button" class="smyle-mood-chip" data-mood="instrumental">instrumental</button>
-          <button type="button" class="smyle-mood-chip" data-mood="vocal">vocal</button>
-        </div>
-        <div class="smyle-search-results" aria-live="polite"></div>
       </div>
     `;
+
     document.body.appendChild(modalRoot);
 
     // Refs
     inputEl   = modalRoot.querySelector('.smyle-search-input');
-    resultsEl = modalRoot.querySelector('.smyle-search-results');
-    moodsEl   = modalRoot.querySelector('.smyle-search-moods');
+    connectEl = modalRoot.querySelector('#ss-results-connect');
+    dnaEl     = modalRoot.querySelector('#ss-results-dna');
 
-    // Events
-    modalRoot.addEventListener('click', (e) => {
-      if (e.target === modalRoot) closeModal();
-    });
-    modalRoot.querySelector('.smyle-search-close')
-      .addEventListener('click', closeModal);
+    // Events — overlay
+    modalRoot.addEventListener('click', e => { if (e.target === modalRoot) closeModal(); });
+    modalRoot.querySelector('.smyle-search-close').addEventListener('click', closeModal);
 
-    modalRoot.querySelectorAll('.smyle-search-tab').forEach((tab) => {
-      tab.addEventListener('click', () => setTab(tab.dataset.tab));
-    });
+    // Input
+    inputEl.addEventListener('input', onInput);
+    inputEl.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); closeModal(); } });
 
-    inputEl.addEventListener('input', onInputChange);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); closeModal(); }
+    // Chips CONNECT
+    modalRoot.querySelectorAll('#ss-connect-chips .smyle-search-chip').forEach(chip => {
+      chip.addEventListener('click', () => onChipClick(chip, 'connect'));
     });
 
-    // Chips mood — sélection exclusive, déclenche une recherche sur le tag
-    moodsEl.querySelectorAll('.smyle-mood-chip').forEach((chip) => {
-      chip.addEventListener('click', () => {
-        if (activeChip === chip) {
-          // Désélectionner si on reclique
-          chip.classList.remove('is-active');
-          activeChip = null;
-          inputEl.value = '';
-          lastQuery = '';
-          runSearch('');
-        } else {
-          if (activeChip) activeChip.classList.remove('is-active');
-          chip.classList.add('is-active');
-          activeChip = chip;
-          const tag = chip.dataset.mood;
-          inputEl.value = tag;
-          lastQuery = tag;
-          runSearch(tag);
-        }
-      });
+    // Chips DNA
+    modalRoot.querySelectorAll('#ss-dna-chips .smyle-search-chip').forEach(chip => {
+      chip.addEventListener('click', () => onChipClick(chip, 'dna'));
     });
 
     document.addEventListener('keydown', onGlobalKey);
   }
 
   function onGlobalKey(e) {
+    // Ctrl+K / Cmd+K — ouvre le panneau
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      if (modalRoot && modalRoot.classList.contains('is-open')) closeModal();
+      else openModal();
+      return;
+    }
     if (!modalRoot || !modalRoot.classList.contains('is-open')) return;
     if (e.key === 'Escape') { e.preventDefault(); closeModal(); }
   }
@@ -433,7 +407,6 @@
     modalRoot.classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(() => inputEl && inputEl.focus(), 30);
-    // Premier run : liste "top" (q="")
     runSearch('');
   }
 
@@ -443,153 +416,163 @@
     document.body.style.overflow = '';
   }
 
-  function setTab(tab) {
-    if (tab !== 'artists' && tab !== 'tracks') return;
-    currentTab = tab;
-    modalRoot.querySelectorAll('.smyle-search-tab').forEach((t) => {
-      const active = t.dataset.tab === tab;
-      t.classList.toggle('is-active', active);
-      t.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-    // Chips mood — visibles uniquement sur l'onglet DNA
-    if (moodsEl) moodsEl.classList.toggle('is-visible', tab === 'tracks');
-    // Reset chip actif quand on change d'onglet
-    if (activeChip) { activeChip.classList.remove('is-active'); activeChip = null; }
-    runSearch(lastQuery);
-  }
-
-  function onInputChange() {
-    // Si l'utilisateur tape manuellement, désactiver le chip sélectionné
-    if (activeChip) {
-      const current = (inputEl.value || '').trim();
-      if (current !== activeChip.dataset.mood) {
-        activeChip.classList.remove('is-active');
-        activeChip = null;
-      }
-    }
+  function onInput() {
+    // Désactive le chip si l'utilisateur tape autre chose
     const q = (inputEl.value || '').trim();
+    if (activeConnectChip && q !== activeConnectChip.dataset.val) {
+      activeConnectChip.classList.remove('is-active');
+      activeConnectChip = null;
+    }
+    if (activeDnaChip && q !== activeDnaChip.dataset.val) {
+      activeDnaChip.classList.remove('is-active');
+      activeDnaChip = null;
+    }
     lastQuery = q;
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => runSearch(q), DEBOUNCE_MS);
+    clearTimeout(debounce);
+    debounce = setTimeout(() => runSearch(q), DEBOUNCE_MS);
   }
 
-  // ── Fetch + render ────────────────────────────────────────────────────
+  function onChipClick(chip, side) {
+    const isSame = (side === 'connect' ? activeConnectChip : activeDnaChip) === chip;
+    // Reset tous les chips du côté concerné
+    modalRoot.querySelectorAll(side === 'connect' ? '#ss-connect-chips .smyle-search-chip' : '#ss-dna-chips .smyle-search-chip')
+      .forEach(c => c.classList.remove('is-active'));
+
+    if (isSame) {
+      // Désélection
+      if (side === 'connect') activeConnectChip = null;
+      else activeDnaChip = null;
+      inputEl.value = '';
+      lastQuery = '';
+      runSearch('');
+    } else {
+      chip.classList.add('is-active');
+      if (side === 'connect') activeConnectChip = chip;
+      else activeDnaChip = chip;
+      const q = chip.dataset.val;
+      inputEl.value = q;
+      lastQuery = q;
+      runSearch(q);
+    }
+  }
+
+  // ── Fetch parallèle ───────────────────────────────────────────────────
   async function runSearch(q) {
-    if (!resultsEl) return;
-    if (q.length < MIN_CHARS) {
-      resultsEl.innerHTML = emptyState('Tape quelques lettres pour chercher.');
-      return;
-    }
-    resultsEl.innerHTML = `<div class="smyle-search-loading">Recherche…</div>`;
+    setLoading(connectEl);
+    setLoading(dnaEl);
+    const [artists, tracks] = await Promise.all([
+      fetchArtists(q),
+      fetchTracks(q),
+    ]);
+    if (connectEl) renderArtists(artists, q);
+    if (dnaEl)     renderTracks(tracks, q);
+  }
 
-    const endpoint = currentTab === 'artists'
-      ? '/watt/search/artists'
-      : '/watt/search/tracks';
-    const url = `${API_BASE}${endpoint}?q=${encodeURIComponent(q)}`;
-
+  async function fetchArtists(q) {
     try {
+      const url = `${API_BASE}/watt/search/artists?q=${encodeURIComponent(q)}&limit=12`;
       const res = await fetch(url, { credentials: 'omit' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok) return [];
       const data = await res.json();
-      // L'utilisateur a peut-être tapé entretemps — on n'écrase pas si
-      // la query n'est plus d'actualité.
-      if (lastQuery !== q) return;
-      if (currentTab === 'artists') renderArtists(data.artists || []);
-      else                          renderTracks(data.tracks || []);
-    } catch (err) {
-      console.warn('[smyle-search] fetch échoué', err);
-      if (lastQuery === q) {
-        resultsEl.innerHTML = emptyState(
-          'Impossible de joindre le moteur de recherche pour le moment.'
-        );
-      }
-    }
+      return data.artists || [];
+    } catch { return []; }
   }
 
-  function emptyState(msg) {
-    return `<div class="smyle-search-empty">${escapeHtml(msg)}</div>`;
+  async function fetchTracks(q) {
+    try {
+      const url = `${API_BASE}/watt/search/tracks?q=${encodeURIComponent(q)}&limit=12`;
+      const res = await fetch(url, { credentials: 'omit' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.tracks || [];
+    } catch { return []; }
   }
 
-  function renderArtists(list) {
+  // ── Render ────────────────────────────────────────────────────────────
+  function setLoading(el) {
+    if (!el) return;
+    el.innerHTML = `<div class="ss-loading"><span class="ss-loading-dot"></span><span class="ss-loading-dot"></span><span class="ss-loading-dot"></span></div>`;
+  }
+
+  function renderArtists(list, q) {
+    if (!connectEl) return;
     if (!list.length) {
-      resultsEl.innerHTML = emptyState(
-        'Aucun artiste trouvé — essaie un autre terme.'
-      );
+      connectEl.innerHTML = `<div class="ss-empty">${q ? `Aucun artiste pour "${escHtml(q)}"` : 'Explore les artistes WATT'}</div>`;
       return;
     }
-    resultsEl.innerHTML = list.map(artistRowHtml).join('');
+    connectEl.innerHTML = list.map(a => artistCardHtml(a)).join('');
   }
 
-  function renderTracks(list) {
+  function renderTracks(list, q) {
+    if (!dnaEl) return;
     if (!list.length) {
-      resultsEl.innerHTML = emptyState(
-        'Aucun morceau trouvé — essaie un autre terme.'
-      );
+      dnaEl.innerHTML = `<div class="ss-empty">${q ? `Aucun son pour "${escHtml(q)}"` : 'Explore les sons du catalogue'}</div>`;
       return;
     }
-    resultsEl.innerHTML = list.map(trackRowHtml).join('');
+    dnaEl.innerHTML = list.map(t => trackCardHtml(t)).join('');
   }
 
-  function artistRowHtml(a) {
-    const initials = (a.artistName || '?').trim().slice(0, 2).toUpperCase();
-    const color    = a.brandColor || '#FFD700';
+  function artistCardHtml(a) {
+    const color    = a.brandColor || '#7C3AED';
+    const initials = (a.artistName || '?').slice(0, 2).toUpperCase();
     const avatar   = a.avatarUrl
-      ? `<img src="${escapeAttr(a.avatarUrl)}" alt="" />`
+      ? `<img src="${escAttr(a.avatarUrl)}" alt="" />`
       : initials;
-    const sub = [a.genre, a.city].filter(Boolean).join(' · ')
-             || (a.bio ? a.bio.slice(0, 80) : 'Artiste WATT');
-    const meta = `${a.plays || 0} écoutes · ${a.followersCount || 0} abonnés`;
+    const sub  = [a.genre, a.city].filter(Boolean).join(' · ') || (a.bio || '').slice(0, 60) || 'Artiste WATT';
+    const meta = `${_fmt(a.plays || 0)} écoutes`;
     const href = `/u/${encodeURIComponent(a.slug || '')}`;
     return `
-      <a class="smyle-search-row" href="${escapeAttr(href)}">
-        <span class="smyle-search-avatar"
-              style="background:${escapeAttr(color)}">${avatar}</span>
-        <span class="smyle-search-row-body">
-          <span class="smyle-search-row-title">${escapeHtml(a.artistName || 'Sans nom')}</span>
-          <span class="smyle-search-row-sub">${escapeHtml(sub)}</span>
+      <a class="ss-artist-card" href="${escAttr(href)}">
+        <span class="ss-artist-avatar" style="background:${escAttr(color)};color:#fff">${avatar}</span>
+        <span class="ss-artist-body">
+          <span class="ss-artist-name">${escHtml(a.artistName || 'Artiste')}</span>
+          <span class="ss-artist-sub">${escHtml(sub)}</span>
         </span>
-        <span class="smyle-search-row-meta">${escapeHtml(meta)}</span>
-      </a>
-    `;
+        <span class="ss-artist-meta">${escHtml(meta)}</span>
+      </a>`;
   }
 
-  function trackRowHtml(t) {
-    const color = t.color || '#FFD700';
-    const sub   = [t.artistName, t.universe].filter(Boolean).join(' · ');
-    const meta  = `${t.plays || 0} écoutes`;
-    // Tags — affichés comme petites pills sous le sous-titre si présents
-    const tagsHtml = t.tags
-      ? t.tags.split(',').slice(0, 4).map(tag =>
-          `<span style="display:inline-block;padding:1px 6px;border-radius:99px;
-           background:rgba(204,136,255,.1);border:1px solid rgba(204,136,255,.2);
-           font-size:10px;color:rgba(204,136,255,.9);margin:0 2px 0 0">${escapeHtml(tag.trim())}</span>`
+  function trackCardHtml(t) {
+    const color = t.color || '#7C3AED';
+    const cover = t.coverUrl
+      ? `<img src="${escAttr(t.coverUrl)}" alt="" />`
+      : `<div class="ss-track-cover-fallback" style="background:${escAttr(color)}33">🎵</div>`;
+    const sub  = [t.artistName, t.universe].filter(Boolean).join(' · ');
+    const meta = `${_fmt(t.plays || 0)} écoutes`;
+    const tags = t.tags
+      ? t.tags.split(',').slice(0, 3).map(tag =>
+          `<span class="ss-track-tag">${escHtml(tag.trim())}</span>`
         ).join('')
       : '';
-    // Deep-link vers la page artiste, ancre sur la track
     const href = t.artistSlug
       ? `/u/${encodeURIComponent(t.artistSlug)}#track-${encodeURIComponent(t.id)}`
       : '#';
     return `
-      <a class="smyle-search-row" href="${escapeAttr(href)}">
-        <span class="smyle-search-avatar"
-              style="background:${escapeAttr(color)}">${ICO_DISC}</span>
-        <span class="smyle-search-row-body">
-          <span class="smyle-search-row-title">${escapeHtml(t.title || 'Sans titre')}</span>
-          <span class="smyle-search-row-sub">${escapeHtml(sub)}</span>
-          ${tagsHtml ? `<span style="display:block;margin-top:3px">${tagsHtml}</span>` : ''}
+      <a class="ss-track-card" href="${escAttr(href)}">
+        <span class="ss-track-cover" style="background:${escAttr(color)}22">
+          ${cover}
+          <span class="ss-track-play-overlay">${ICO_PLAY}</span>
         </span>
-        <span class="smyle-search-row-meta">${escapeHtml(meta)}</span>
-      </a>
-    `;
+        <span class="ss-track-body">
+          <span class="ss-track-title">${escHtml(t.title || 'Sans titre')}</span>
+          <span class="ss-track-sub">${escHtml(sub)}</span>
+          ${tags ? `<span class="ss-track-tags">${tags}</span>` : ''}
+        </span>
+        <span class="ss-track-meta">${escHtml(meta)}</span>
+      </a>`;
   }
 
-  // ── Escaping helpers ──────────────────────────────────────────────────
-  function escapeHtml(s) {
-    return String(s == null ? '' : s)
+  // ── Utils ─────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
-  function escapeAttr(s) { return escapeHtml(s); }
+  function escAttr(s) { return escHtml(s); }
+  function _fmt(n) {
+    const num = parseInt(n, 10) || 0;
+    return num >= 1000 ? (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(num);
+  }
 
   // ── Init ──────────────────────────────────────────────────────────────
   function init() {
@@ -597,13 +580,8 @@
     injectButton();
   }
 
-  // API publique minimale (utile pour les tests ou l'ouverture depuis
-  // un autre script — ex : shortcut Ctrl+K si on l'ajoute plus tard).
-  window.SmyleSearch = {
-    open:  openModal,
-    close: closeModal,
-    setTab,
-  };
+  // API publique — ouverture depuis un autre script ou raccourci
+  window.SmyleSearch = { open: openModal, close: closeModal };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
