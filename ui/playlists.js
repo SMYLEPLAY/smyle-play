@@ -1836,9 +1836,9 @@
       }
 
       // Open playlist view from profil public card
-      // Exclure le bouton quick-play et le badge ADN pour ne pas intercepter leurs clicks
+      // Exclure quick-play, badge ADN, like-btn et add-to-pl-btn
       const apCard = ev.target.closest('.ap-playlist-card[data-pl-id]');
-      if (apCard && !ev.target.closest('.ap-pl-qp') && !ev.target.closest('.ap-pl-adn-badge')) {
+      if (apCard && !ev.target.closest('.ap-pl-qp') && !ev.target.closest('.ap-pl-adn-badge') && !ev.target.closest('[data-like-btn]') && !ev.target.closest('[data-add-to-playlist]')) {
         const id = apCard.dataset.plId;
         if (id) openPlaylistViewModal(id);
       }
