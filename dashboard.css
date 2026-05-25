@@ -4183,3 +4183,61 @@ html { scroll-behavior: smooth; }
 #sec-identity .dash-subhdr:first-of-type {
   margin-top: 0;
 }
+
+/* ── Trophées ────────────────────────────────────────────────────────────── */
+
+.tph-axes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+@media (max-width: 600px) { .tph-axes { grid-template-columns: 1fr; } }
+
+.tph-axis-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  padding: 18px 14px;
+  text-align: center;
+}
+.tph-axis-icon { font-size: 24px; margin-bottom: 6px; }
+.tph-axis-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-bottom: 8px; }
+.tph-axis-val { font-size: 28px; font-weight: 900; color: #cc88ff; line-height: 1; }
+.tph-axis-sub { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 4px; }
+
+.tph-axis-group { margin-bottom: 28px; }
+.tph-axis-group-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: 14px; padding-left: 2px; }
+.tph-badges-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+
+.tph-badge {
+  border-radius: 14px;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid;
+  transition: transform .15s;
+}
+.tph-badge:hover { transform: translateY(-2px); }
+.tph-badge-done {
+  background: rgba(204,136,255,.08);
+  border-color: rgba(204,136,255,.3);
+}
+.tph-badge-locked {
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.06);
+  opacity: .75;
+}
+.tph-badge-icon { font-size: 22px; }
+.tph-badge-name { font-size: 13px; font-weight: 700; color: #fff; }
+.tph-badge-desc { font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.45; }
+.tph-badge-reward { font-size: 11px; font-weight: 700; color: #FFD700; margin-top: 2px; }
+.tph-badge-unlocked-at { font-size: 10px; color: rgba(204,136,255,.8); margin-top: 4px; }
+
+.tph-badge-progress { margin-top: 6px; }
+.tph-progress-bar { height: 4px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+.tph-progress-fill { height: 100%; background: linear-gradient(90deg, #cc88ff, #7C3AED); border-radius: 99px; transition: width .4s; }
+.tph-progress-txt { font-size: 10px; color: rgba(255,255,255,.4); }
+
+.tph-loading { padding: 40px; text-align: center; color: rgba(255,255,255,.4); font-size: 13px; }

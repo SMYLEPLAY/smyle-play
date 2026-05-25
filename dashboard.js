@@ -4126,9 +4126,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Section échanges — chargement initial + scroll auto si #trades dans l'URL
   loadTrades();
+  loadTrophees();
   if (location.hash === '#trades' || location.hash === '#sec-trades') {
     setTimeout(() => {
       const sec = document.getElementById('sec-trades');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
+  }
+  if (location.hash === '#trophees' || location.hash === '#sec-trophees') {
+    setTimeout(() => {
+      const sec = document.getElementById('sec-trophees');
       if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 200);
   }
@@ -4644,5 +4651,88 @@ async function cancelTrade(id, btn) {
     loadTrades();
   } catch (_) {
     if (btn) btn.disabled = false;
+  }
+}
+
+// ── TROPHÉES ──────────────────────────────────────────────────────────────────
+
+const AXIS_LABEL = { buyer: 'Collectionneur', fan: 'Fan', artist: 'Artiste' };
+const AXIS_ICON  = { buyer: '🛒', fan: '🎚', artist: '🎵' };
+
+async function loadTrophees() {
+  const grid = document.getElementById('tphGrid');
+  if (!grid) return;
+
+  try {
+    // Catalog + progression en parallèle
+    const [catalog, me] = await Promise.all([
+      apiFetch('/achievements'),
+      apiFetch('/me/achievements').catch(() => null),
+    ]);
+
+    // Mise à jour compteurs par axe
+    if (me && me.progress) {
+      const p = me.progress;
+      const bv = document.getElementById('tphBuyerVal');
+      const fv = document.getElementById('tphFanVal');
+      const av = document.getElementById('tphArtistVal');
+      if (bv) bv.textContent = p.buyer ?? '0';
+      if (fv) fv.textContent = p.fan ?? '0';
+      if (av) av.textContent = p.artist ?? '0';
+    }
+
+    // Index des items débloqués par code
+    const unlockedMap = {};
+    if (me && me.items) {
+      me.items.forEach(item => {
+        unlockedMap[item.achievement.code] = {
+          unlocked: item.unlocked,
+          unlocked_at: item.unlocked_at,
+        };
+      });
+    }
+
+    // Grouper par axe
+    const items = catalog.items || [];
+    const byAxis = { buyer: [], fan: [], artist: [] };
+    items.forEach(a => { if (byAxis[a.axis]) byAxis[a.axis].push(a); });
+
+    // Valeur de progression par axe
+    const currentVal = me && me.progress
+      ? { buyer: me.progress.buyer, fan: me.progress.fan, artist: me.progress.artist }
+      : { buyer: 0, fan: 0, artist: 0 };
+
+    let html = '';
+    ['buyer', 'fan', 'artist'].forEach(axis => {
+      const group = byAxis[axis];
+      if (!group.length) return;
+      html += `<div class="tph-axis-group">
+        <div class="tph-axis-group-title">${AXIS_ICON[axis]} ${AXIS_LABEL[axis]}</div>
+        <div class="tph-badges-row">`;
+
+      group.sort((a, b) => a.display_order - b.display_order).forEach(a => {
+        const state = unlockedMap[a.code] || { unlocked: false };
+        const cur   = currentVal[axis] || 0;
+        const pct   = Math.min(Math.round((cur / a.threshold) * 100), 100);
+        const done  = state.unlocked;
+
+        html += `<div class="tph-badge ${done ? 'tph-badge-done' : 'tph-badge-locked'}">
+          <div class="tph-badge-icon">${done ? '🏆' : '🔒'}</div>
+          <div class="tph-badge-name">${htmlEscape(a.name)}</div>
+          <div class="tph-badge-desc">${htmlEscape(a.description)}</div>
+          ${a.credit_reward > 0 ? `<div class="tph-badge-reward">+${a.credit_reward} Smyles</div>` : ''}
+          ${!done ? `<div class="tph-badge-progress">
+            <div class="tph-progress-bar"><div class="tph-progress-fill" style="width:${pct}%"></div></div>
+            <span class="tph-progress-txt">${cur} / ${a.threshold}</span>
+          </div>` : `<div class="tph-badge-unlocked-at">${state.unlocked_at ? '✓ ' + new Date(state.unlocked_at).toLocaleDateString('fr-FR') : '✓ Débloqué'}</div>`}
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    });
+
+    grid.innerHTML = html || '<div class="tph-loading">Aucun trophée disponible.</div>';
+  } catch (e) {
+    if (grid) grid.innerHTML = '<div class="tph-loading">Impossible de charger les trophées.</div>';
   }
 }
