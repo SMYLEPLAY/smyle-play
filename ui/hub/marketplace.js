@@ -63,10 +63,7 @@
       topArtists:       document.getElementById('mp-top-artists'),
       gridSons:         document.getElementById('mp-grid-sons'),
       gridArtists:      document.getElementById('mp-grid-artists'),
-      searchDna:        document.getElementById('mp-search-dna'),
-      searchConnect:    document.getElementById('mp-search-connect'),
-      searchBarDna:     document.querySelector('.mp-search-bar-dna'),
-      searchBarConnect: document.querySelector('.mp-search-bar-connect'),
+      // Barres DNA + CONNECT supprimées — recherche migrée dans la loupe topbar (search.js)
     };
   }
 
@@ -536,27 +533,15 @@
     _renderVitrine();
     _renderTopSons();
     _renderTopArtists();
-    _renderGridSons(_state.dom.searchDna ? _state.dom.searchDna.value : '');
-    _renderGridArtists(_state.dom.searchConnect ? _state.dom.searchConnect.value : '');
+    _renderGridSons('');
+    _renderGridArtists('');
   }
 
 
   // ── Bindings ─────────────────────────────────────────────────────────────
 
   function _bindSearch() {
-    const { searchDna, searchConnect } = _state.dom;
-
-    if (searchDna) {
-      searchDna.addEventListener('input', (ev) => {
-        _renderGridSons(ev.target.value || '');
-      });
-    }
-
-    if (searchConnect) {
-      searchConnect.addEventListener('input', (ev) => {
-        _renderGridArtists(ev.target.value || '');
-      });
-    }
+    // Barres inline supprimées — la recherche vit dans la loupe topbar (search.js)
   }
 
   function _bindBus() {

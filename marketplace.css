@@ -56,6 +56,14 @@
   font-weight: 500;
 }
 
+/* Hint loupe (remplace les barres supprimées) */
+.mp-hero-search-hint {
+  font-size: 13px;
+  color: rgba(255,255,255,.38);
+  margin: 4px 0 0;
+  letter-spacing: .02em;
+}
+
 /* Bloc des 2 barres de recherche côte à côte (puis verticales en mobile) */
 .mp-search-wrap {
   display: grid;
