@@ -146,14 +146,33 @@
                 style="display:none">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
         </button>
+        <!-- U8 — Bouton Écouter tout (visible uniquement si tracks disponibles) -->
+        <button type="button" id="ap-play-all-btn" class="ap-play-all-btn" style="display:none"
+                onclick="playAllTracks()">
+          <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Écouter tout
+        </button>
       </div>
 
       <div class="ap-hero-info">
-        <h1 class="ap-artist-name ap-editable"
-            id="ap-artist-name"
-            data-field="artistName"
-            data-placeholder="Ton nom d'artiste"
-            spellcheck="false">Nom d'artiste</h1>
+        <!-- U8 — Nom + chip ADN inline -->
+        <div class="ap-name-adn-row">
+          <h1 class="ap-artist-name ap-editable"
+              id="ap-artist-name"
+              data-field="artistName"
+              data-placeholder="Ton nom d'artiste"
+              spellcheck="false">Nom d'artiste</h1>
+          <!-- Chip ADN carré — visible si l'artiste vend son ADN -->
+          <button type="button" id="ap-adn-chip" class="ap-adn-chip" style="display:none"
+                  onclick="scrollToAdnCard()">
+            <span class="ap-adn-chip-icon">🧬</span>
+            <span class="ap-adn-chip-label">ADN</span>
+            <span class="ap-adn-chip-price" id="ap-adn-chip-price"></span>
+          </button>
+        </div>
+
+        <!-- U8 — Bio preview inline (2 lignes max, tronquée) -->
+        <p id="ap-bio-preview" class="ap-hero-bio-preview" style="display:none"></p>
 
         <!-- Tagline courte dans le hero : casquettes déclarées + genre +
              ville. Les casquettes sont les rôles que l'utilisateur a
