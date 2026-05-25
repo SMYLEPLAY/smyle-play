@@ -213,6 +213,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
       Échanges
     </a>
+    <a class="dash-snav-pill" href="#sec-trophees" data-sec="sec-trophees" id="pill-trophees">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M6 9H4a2 2 0 0 1-2-2V5h4M18 9h2a2 2 0 0 0 2-2V5h-4"/><path d="M12 17v4m-4 0h8M6 9a6 6 0 0 0 12 0V3H6v6z"/></svg>
+      Trophées
+    </a>
     <!-- P1-B3 (2026-04-22) — pill "PLUG WATT" retirée : la présence publique
          sur la marketplace (switch ON/OFF + preview cellule) est désormais
          intégrée à la cellule 01 Identité, pour ne pas fragmenter le flow
@@ -1713,6 +1717,44 @@
           <span class="dnl-dot dnl-watt"></span> Toi
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ═══ TROPHÉES ══════════════════════════════════════════════════════════ -->
+  <section class="dash-section" id="sec-trophees" aria-label="Mes trophées">
+    <div class="dash-section-hdr">
+      <span class="dash-section-num">5</span>
+      <div>
+        <div class="dash-section-title">Trophées</div>
+        <div class="dash-section-sub">Débloque des badges et gagne des Smyles</div>
+      </div>
+    </div>
+
+    <!-- Progression par axe -->
+    <div class="tph-axes" id="tphAxes">
+      <div class="tph-axis-card" id="tphAxisBuyer">
+        <div class="tph-axis-icon">🛒</div>
+        <div class="tph-axis-label">Collectionneur</div>
+        <div class="tph-axis-val" id="tphBuyerVal">—</div>
+        <div class="tph-axis-sub">prompts débloqués</div>
+      </div>
+      <div class="tph-axis-card" id="tphAxisFan">
+        <div class="tph-axis-icon">🎚</div>
+        <div class="tph-axis-label">Fan</div>
+        <div class="tph-axis-val" id="tphFanVal">—</div>
+        <div class="tph-axis-sub">ADN possédés</div>
+      </div>
+      <div class="tph-axis-card" id="tphAxisArtist">
+        <div class="tph-axis-icon">🎵</div>
+        <div class="tph-axis-label">Artiste</div>
+        <div class="tph-axis-val" id="tphArtistVal">—</div>
+        <div class="tph-axis-sub">crédits gagnés</div>
+      </div>
+    </div>
+
+    <!-- Grille des trophées -->
+    <div class="tph-grid" id="tphGrid">
+      <div class="tph-loading">Chargement des trophées…</div>
     </div>
   </section>
 
