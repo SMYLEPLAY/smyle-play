@@ -284,6 +284,9 @@ function renderProfile() {
   // voit un fan "pur". Cf. discussion vision / organisation.
   renderPlaylistsAdn(artist);
   renderDna(artist);
+  renderAdnChip(artist);      // U8 — chip ADN inline hero
+  renderBioPreview(artist);   // U8 — bio preview hero
+  renderPlayAllBtn(artist);   // U8 — bouton écouter tout
   renderPrompts(artist);
   renderVoices(artist);
   renderTracks(artist);
@@ -948,6 +951,74 @@ async function boutiqueDrawerUnlock(type, id) {
     handleUnlockError(err);
     if (btn) btn.disabled = false;
   }
+}
+
+// ── U8 — Bouton "Écouter tout" ────────────────────────────────────────────────
+function renderPlayAllBtn(artist) {
+  const btn = document.getElementById('ap-play-all-btn');
+  if (!btn) return;
+  const tracks = (artist && artist.tracks || []).filter(t => t.streamUrl);
+  // Masqué pour l'owner (il gère depuis le dashboard) et si pas de tracks audio
+  if (artist.isSelf || tracks.length === 0) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+}
+
+window.playAllTracks = function() {
+  const artist = state.artist;
+  if (!artist) return;
+  const tracks = (artist.tracks || []).filter(t => t.streamUrl);
+  if (!tracks.length) return;
+  const list = document.getElementById('ap-tracks-list');
+  if (!list) return;
+  // Joue les audios en séquence : quand un se termine, on lance le suivant
+  const audios = tracks.map(t => {
+    const inner = list.querySelector(`[data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"]`);
+    return inner ? inner.querySelector('audio') : null;
+  }).filter(Boolean);
+  if (!audios.length) return;
+  // Stoppe tout d'abord
+  list.querySelectorAll('audio').forEach(a => { try { a.pause(); a.currentTime = 0; } catch(_){} });
+  let idx = 0;
+  function playNext() {
+    if (idx >= audios.length) return;
+    const a = audios[idx++];
+    a.play().catch(() => { playNext(); }); // skip si bloqué
+    a.onended = playNext;
+  }
+  playNext();
+  toast('Lecture en cours ▶ ' + tracks.length + ' sons');
+};
+
+// ── U8 — Chip ADN inline dans le hero ────────────────────────────────────────
+function renderAdnChip(artist) {
+  const chip = document.getElementById('ap-adn-chip');
+  const priceEl = document.getElementById('ap-adn-chip-price');
+  if (!chip) return;
+  const adn = artist && artist.adn;
+  if (!adn || artist.isSelf) { chip.style.display = 'none'; return; }
+  chip.style.display = '';
+  if (priceEl) priceEl.textContent = formatCount(adn.priceCredits) + ' cr.';
+}
+
+window.scrollToAdnCard = function() {
+  const card = document.getElementById('ap-dna-card');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Highlight bref
+  card.style.transition = 'box-shadow .3s';
+  card.style.boxShadow = '0 0 0 2px rgba(204,136,255,.6), 0 0 32px rgba(204,136,255,.25)';
+  setTimeout(() => { card.style.boxShadow = ''; }, 1200);
+};
+
+// ── U8 — Bio preview dans le hero ────────────────────────────────────────────
+function renderBioPreview(artist) {
+  const el = document.getElementById('ap-bio-preview');
+  if (!el) return;
+  const bio = (artist && artist.bio || '').trim();
+  if (!bio) { el.style.display = 'none'; return; }
+  const MAX = 160;
+  el.textContent = bio.length > MAX ? bio.slice(0, MAX).trimEnd() + '…' : bio;
+  el.style.display = '';
 }
 
 function renderDna(artist) {
