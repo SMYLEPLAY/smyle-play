@@ -304,8 +304,9 @@
   let dnaEl        = null; // résultats droite
   let debounce     = null;
   let lastQuery    = '';
-  let activeConnectChip = null;
-  let activeDnaChip     = null;
+  // Multi-select : Sets de valeurs actives par colonne
+  let activeConnectChips = new Set();
+  let activeDnaChips     = new Set();
 
   // ── Build modal ───────────────────────────────────────────────────────
   function buildModal() {
@@ -407,70 +408,64 @@
     modalRoot.classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(() => inputEl && inputEl.focus(), 30);
-    runSearch('');
+    _trigger();
   }
 
   function closeModal() {
     if (!modalRoot) return;
     modalRoot.classList.remove('is-open');
     document.body.style.overflow = '';
+    // Reset chips à la fermeture
+    activeConnectChips.clear();
+    activeDnaChips.clear();
+    if (inputEl) inputEl.value = '';
+    lastQuery = '';
   }
 
   function onInput() {
-    // Désactive le chip si l'utilisateur tape autre chose
-    const q = (inputEl.value || '').trim();
-    if (activeConnectChip && q !== activeConnectChip.dataset.val) {
-      activeConnectChip.classList.remove('is-active');
-      activeConnectChip = null;
-    }
-    if (activeDnaChip && q !== activeDnaChip.dataset.val) {
-      activeDnaChip.classList.remove('is-active');
-      activeDnaChip = null;
-    }
-    lastQuery = q;
+    lastQuery = (inputEl.value || '').trim();
     clearTimeout(debounce);
-    debounce = setTimeout(() => runSearch(q), DEBOUNCE_MS);
+    debounce = setTimeout(_trigger, DEBOUNCE_MS);
   }
 
   function onChipClick(chip, side) {
-    const isSame = (side === 'connect' ? activeConnectChip : activeDnaChip) === chip;
-    // Reset tous les chips du côté concerné
-    modalRoot.querySelectorAll(side === 'connect' ? '#ss-connect-chips .smyle-search-chip' : '#ss-dna-chips .smyle-search-chip')
-      .forEach(c => c.classList.remove('is-active'));
-
-    if (isSame) {
-      // Désélection
-      if (side === 'connect') activeConnectChip = null;
-      else activeDnaChip = null;
-      inputEl.value = '';
-      lastQuery = '';
-      runSearch('');
+    const val = chip.dataset.val;
+    const set  = side === 'connect' ? activeConnectChips : activeDnaChips;
+    if (set.has(val)) {
+      set.delete(val);
+      chip.classList.remove('is-active');
     } else {
+      set.add(val);
       chip.classList.add('is-active');
-      if (side === 'connect') activeConnectChip = chip;
-      else activeDnaChip = chip;
-      const q = chip.dataset.val;
-      inputEl.value = q;
-      lastQuery = q;
-      runSearch(q);
     }
+    _trigger();
+  }
+
+  // Lance la recherche avec le texte + les chips actifs
+  function _trigger() {
+    clearTimeout(debounce);
+    runSearch(lastQuery, activeConnectChips, activeDnaChips);
   }
 
   // ── Fetch parallèle ───────────────────────────────────────────────────
-  async function runSearch(q) {
+  async function runSearch(q, connectChips, dnaChips) {
     setLoading(connectEl);
     setLoading(dnaEl);
     const [artists, tracks] = await Promise.all([
-      fetchArtists(q),
-      fetchTracks(q),
+      fetchArtists(q, connectChips),
+      fetchTracks(q, dnaChips),
     ]);
     if (connectEl) renderArtists(artists, q);
     if (dnaEl)     renderTracks(tracks, q);
   }
 
-  async function fetchArtists(q) {
+  async function fetchArtists(q, rolesSet) {
     try {
-      const url = `${API_BASE}/watt/search/artists?q=${encodeURIComponent(q)}&limit=12`;
+      const params = new URLSearchParams({ q, limit: '12' });
+      if (rolesSet && rolesSet.size > 0) {
+        rolesSet.forEach(r => params.append('roles', r));
+      }
+      const url = `${API_BASE}/watt/search/artists?${params}`;
       const res = await fetch(url, { credentials: 'omit' });
       if (!res.ok) return [];
       const data = await res.json();
@@ -478,9 +473,13 @@
     } catch { return []; }
   }
 
-  async function fetchTracks(q) {
+  async function fetchTracks(q, moodsSet) {
     try {
-      const url = `${API_BASE}/watt/search/tracks?q=${encodeURIComponent(q)}&limit=12`;
+      const params = new URLSearchParams({ q, limit: '12' });
+      if (moodsSet && moodsSet.size > 0) {
+        moodsSet.forEach(m => params.append('moods', m));
+      }
+      const url = `${API_BASE}/watt/search/tracks?${params}`;
       const res = await fetch(url, { credentials: 'omit' });
       if (!res.ok) return [];
       const data = await res.json();
