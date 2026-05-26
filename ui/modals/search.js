@@ -33,14 +33,16 @@
   const ICO_DISC   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>`;
   const ICO_PLAY   = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none" width="12" height="12"><polygon points="5,3 19,12 5,21"/></svg>`;
 
-  // Chips connect (rôles artistes)
+  // Chips connect (rôles artistes) — valeurs = ROLE_CODES backend (schemas/user.py)
   const CONNECT_CHIPS = [
-    { label: 'Producteur',  val: 'producer'   },
-    { label: 'Beatmaker',   val: 'beatmaker'  },
-    { label: 'Vocalist',    val: 'vocalist'   },
-    { label: 'Rappeur',     val: 'rapper'     },
-    { label: 'DJ',          val: 'dj'         },
-    { label: 'Compositeur', val: 'composer'   },
+    { label: 'Producteur',    val: 'producteur'    },
+    { label: 'Beatmaker',     val: 'beatmaker'     },
+    { label: 'Compositeur',   val: 'compositeur'   },
+    { label: 'Topliner',      val: 'topliner'      },
+    { label: 'DJ',            val: 'dj'            },
+    { label: 'Ghostwriter',   val: 'ghostwriter'   },
+    { label: 'Ingé son',      val: 'ingenieur_son' },
+    { label: 'Artiste',       val: 'artiste'       },
   ];
 
   // Chips DNA (moods)
