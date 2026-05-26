@@ -159,6 +159,25 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
   display: none; align-items: center; justify-content: center; }
 .mix-count.visible { display: flex; }
 
+/* ── DÉCONNEXION — bouton icône visible dans le header ──────────────────
+   Rendu visible par page-services.js dès que l'utilisateur est connecté.
+   Teinté rouge discret pour signaler l'action destructive, mais pas
+   agressif — juste une légère différence par rapport aux autres icônes. */
+.header-logout-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 9px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,100,100,.18);
+  color: rgba(255,140,140,.65);
+  cursor: pointer; flex-shrink: 0;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.header-logout-btn:hover {
+  background: rgba(255,60,80,.12);
+  border-color: rgba(255,60,80,.4);
+  color: #ff8a9a;
+}
+
 /* ── BIBLIOTHÈQUE — bouton header (accès rapide aux achats) ─────────────
    Style aligné sur .mix-toggle-btn pour la cohérence, mais accent bleu
    électrique (brand DNA PLUG WATT) pour différencier visuellement les

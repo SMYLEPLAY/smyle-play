@@ -88,17 +88,7 @@
     <span class="logo-text">WATT</span>
   </div>
 
-  <!-- Zone auth (remplie dynamiquement par renderAuthArea) -->
-  <div id="authArea"></div>
-
-  <!-- Solde Smyle (widget auto-injecté par smyle-balance.js)
-       Placé juste à côté du chip profil — éléments "compte" regroupés à
-       gauche des actions (WATT, MY MIX). Mirror du layout wattboard. -->
-  <div id="smyle-balance"></div>
-
-  <!-- Bouton WATT BOARD — ouvre directement l'espace artiste.
-       DNA + CONNECT ne sont plus dans le panneau : ils vivent dans les deux
-       barres de recherche du hero marketplace (plus discret, plus uni). -->
+  <!-- Bouton WATT BOARD — ouvre directement l'espace artiste. -->
   <button class="watt-toggle-btn" onclick="toggleWattPanel()" title="Espace artiste · WATT BOARD">
     <svg viewBox="0 0 24 24" width="11" height="11" fill="#FFD700"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
     WATT BOARD
@@ -115,6 +105,17 @@
     </svg>
     BIBLIOTHÈQUE
   </a>
+
+  <!-- Bouton MY MIX — à côté de BIBLIOTHÈQUE (navigation groupée) -->
+  <button class="mix-toggle-btn" onclick="toggleMixPanel()">
+    MY MIX
+    <span class="mix-count" id="mix-count">0</span>
+  </button>
+
+  <!-- ── Groupe utilitaires : loupe · messagerie · notifs ─────────────────
+       Ordre : 🔍 recherche · ✉ messages · 🔔 notifs — juste avant le profil. -->
+  <!-- Point d'ancrage loupe — search.js injecte le bouton ici -->
+  <div class="topbar-right" id="mp-search-anchor" style="display:inline-flex;align-items:center"></div>
 
   <!-- ── Icônes messagerie + notifs ──────────────────────────────── -->
   <div class="page-icon-services" id="page-icon-services" style="display:none">
@@ -144,14 +145,24 @@
     </div>
   </div>
 
-  <!-- Bouton MY MIX -->
-  <button class="mix-toggle-btn" onclick="toggleMixPanel()">
-    MY MIX
-    <span class="mix-count" id="mix-count">0</span>
-  </button>
+  <!-- ── Compte : solde · profil · déconnexion ──────────────────────────
+       authArea est rempli dynamiquement par renderAuthArea() (auth.js).
+       smyle-balance est injecté par smyle-balance.js.
+       Le bouton déconnexion est rendu visible par page-services.js au login. -->
+  <div id="smyle-balance"></div>
+  <div id="authArea"></div>
 
-  <!-- Point d'ancrage loupe — search.js injecte le bouton ici -->
-  <div class="topbar-right" id="mp-search-anchor" style="display:inline-flex;align-items:center;margin-left:8px"></div>
+  <!-- Bouton déconnexion visible — icône "sortie" cohérente avec les autres
+       icônes utilitaires. Affiché/masqué par page-services.js selon auth. -->
+  <button class="header-logout-btn" id="header-logout-btn"
+          onclick="doLogout()" style="display:none" title="Déconnexion">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  </button>
 </header>
 
 <!-- Bouton Contact / Support — en position flottante bas-droite -->
