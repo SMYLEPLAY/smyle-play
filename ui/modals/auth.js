@@ -148,6 +148,7 @@ function doLogout() {
     try { window.SmyleSessionGuard.dismiss(); } catch (_) { /* noop */ }
   }
   renderAuthArea();
+  if (window.SmylePageServices) window.SmylePageServices.refresh();
   // Cache la bulle crédit immédiatement
   if (window.SmyleBalance && typeof window.SmyleBalance.refresh === 'function') {
     try { window.SmyleBalance.refresh(); } catch (_) { /* noop */ }
@@ -346,8 +347,11 @@ async function submitLogin() {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
   const result = await doLogin(email, password, { onAttempt });
-  if (result.ok) { closeAuthModal(); renderAuthArea(); }
-  else msg.textContent = result.msg;
+  if (result.ok) {
+    closeAuthModal();
+    renderAuthArea();
+    if (window.SmylePageServices) window.SmylePageServices.refresh();
+  } else msg.textContent = result.msg;
 }
 
 async function submitSignup() {
@@ -363,8 +367,11 @@ async function submitSignup() {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
   const result = await doSignup(email, password, { onAttempt });
-  if (result.ok) { closeAuthModal(); renderAuthArea(); }
-  else msg.textContent = result.msg;
+  if (result.ok) {
+    closeAuthModal();
+    renderAuthArea();
+    if (window.SmylePageServices) window.SmylePageServices.refresh();
+  } else msg.textContent = result.msg;
 }
 
 // ── 7. Bootstrap : si un JWT existe déjà au chargement, resynchroniser ──────
