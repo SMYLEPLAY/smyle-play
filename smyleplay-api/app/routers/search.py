@@ -24,7 +24,7 @@ Choix design :
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, func, or_, select
@@ -70,6 +70,7 @@ def _apply_text_search(stmt, q: str, *columns):
 async def search_artists(
     q: str = Query(default="", max_length=100),
     role: Optional[str] = Query(default=None, max_length=50),
+    roles: List[str] = Query(default=[]),
     genre: Optional[str] = Query(default=None, max_length=50),
     limit: int = Query(default=_MAX_RESULTS, ge=1, le=_MAX_RESULTS),
     db: AsyncSession = Depends(get_db),
@@ -129,11 +130,14 @@ async def search_artists(
     if genre:
         stmt = stmt.where(User.genre.ilike(genre))
 
-    if role:
-        # JSON array stocké en texte — ILIKE '"<role>"' attrape les entrées
-        # exactes du type ["producer","beatmaker"]. Approximatif mais OK
-        # au MVP : on re-filtrera côté Python si besoin d'exactitude.
-        stmt = stmt.where(User.roles.cast(func.text()).ilike(f'%"{role}"%'))  # type: ignore[attr-defined]
+    # Multi-select rôles — rétrocompat avec ?role=xxx (singulier)
+    effective_roles = list({r for r in roles if r} | ({role} if role else set()))
+    if effective_roles:
+        role_filters = [
+            User.roles.cast(func.text()).ilike(f'%"{r}"%')  # type: ignore[attr-defined]
+            for r in effective_roles
+        ]
+        stmt = stmt.where(or_(*role_filters))
 
     stmt = stmt.order_by(
         desc("plays"), desc("followers"), desc(User.created_at)
@@ -171,6 +175,7 @@ async def search_tracks(
     q: str = Query(default="", max_length=100),
     universe: Optional[str] = Query(default=None, max_length=50),
     genre: Optional[str] = Query(default=None, max_length=50),
+    moods: List[str] = Query(default=[]),
     limit: int = Query(default=_MAX_RESULTS, ge=1, le=_MAX_RESULTS),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -207,6 +212,12 @@ async def search_tracks(
 
     if genre:
         stmt = stmt.where(User.genre.ilike(genre))
+
+    # Multi-select moods — OR entre les moods sélectionnés, match sur tags
+    effective_moods = [m for m in moods if m]
+    if effective_moods:
+        mood_filters = [Track.tags.ilike(f"%{m}%") for m in effective_moods]
+        stmt = stmt.where(or_(*mood_filters))
 
     stmt = stmt.order_by(desc(Track.plays), desc(Track.created_at)).limit(limit)
 
