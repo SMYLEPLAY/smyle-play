@@ -243,8 +243,10 @@
 
   async function _boot() {
     if (!_auth()) return;
-    const services = document.getElementById('page-icon-services');
-    if (services) services.style.display = 'flex';
+    const services  = document.getElementById('page-icon-services');
+    const logoutBtn = document.getElementById('header-logout-btn');
+    if (services)  services.style.display  = 'flex';
+    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
     await _poll();
     _s.pollTimer = setInterval(_poll, 30000);
   }
@@ -257,16 +259,19 @@
   // Permet d'afficher (ou masquer) les icônes sans recharger la page, même
   // si _boot() avait déjà tourné à froid sans token.
   function _refreshAuth() {
-    const services = document.getElementById('page-icon-services');
+    const services  = document.getElementById('page-icon-services');
+    const logoutBtn = document.getElementById('header-logout-btn');
     if (_auth()) {
-      if (services) services.style.display = 'flex';
+      if (services)  services.style.display  = 'flex';
+      if (logoutBtn) logoutBtn.style.display = 'inline-flex';
       // Lance le polling si pas encore démarré
       if (!_s.pollTimer) {
         _poll();
         _s.pollTimer = setInterval(_poll, 30000);
       }
     } else {
-      if (services) services.style.display = 'none';
+      if (services)  services.style.display  = 'none';
+      if (logoutBtn) logoutBtn.style.display = 'none';
       if (_s.pollTimer) { clearInterval(_s.pollTimer); _s.pollTimer = null; }
     }
   }
