@@ -806,6 +806,7 @@ async function initTrackEditor() {
         color:    t.color  || '',
         coverUrl: t.cover_url || '',
         promptId: t.prompt_id || null,
+        tags:     t.tags   || null,
       }));
       saveMyTracks(localTracks);
     }
@@ -1371,6 +1372,15 @@ async function openTrackEdit(localId) {
           <input type="hidden" id="dteColorVal" value="${t.color || ''}">
         </div>
 
+        <!-- Tags / Mood -->
+        <div class="dte-field">
+          <label class="dte-label" for="dteTags">Mood &amp; Tags</label>
+          <input class="dte-input" id="dteTags" type="text" maxlength="500"
+                 value="${htmlEscape(t.tags || '')}"
+                 placeholder="ex: chill, dark, instrumental, vocal">
+          <span class="dte-hint">Mots-clés séparés par des virgules — améliorent la recherche.</span>
+        </div>
+
         <!-- Recette liée -->
         <div class="dte-field">
           <label class="dte-label" for="dtePrompt">Recette (ADN) liée</label>
@@ -1437,6 +1447,7 @@ async function _saveTrackEdit() {
     const newTitle  = (document.getElementById('dteTitle')?.value || '').trim();
     const newColor  = document.getElementById('dteColorVal')?.value || '';
     const newPrompt = document.getElementById('dtePrompt')?.value || '';
+    const newTags   = (document.getElementById('dteTags')?.value || '').trim();
 
     // 1. Upload cover si nouveau fichier
     let newCoverUrl = t.coverUrl || null;
@@ -1453,6 +1464,7 @@ async function _saveTrackEdit() {
       if (newCoverUrl)                               patch.cover_url  = newCoverUrl;
       if (newPrompt)                                 patch.prompt_id  = newPrompt;
       else if (!newPrompt && t.promptId)             patch.prompt_id  = null;
+      if (newTags !== (t.tags || ''))                patch.tags       = newTags || null;
       if (Object.keys(patch).length > 0) {
         await apiFetch(`/tracks/${encodeURIComponent(t.dbId)}`, { method: 'PATCH', json: patch });
       }
@@ -1468,6 +1480,7 @@ async function _saveTrackEdit() {
         coverUrl:     newCoverUrl || x.coverUrl,
         coverDataUrl: _editCoverPreview || x.coverDataUrl,
         promptId:     newPrompt || x.promptId || null,
+        tags:         newTags || x.tags || null,
       };
     });
     saveMyTracks(updated);
