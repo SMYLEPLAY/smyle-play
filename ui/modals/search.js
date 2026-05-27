@@ -35,17 +35,21 @@
 
   // Chips connect (rôles artistes) — valeurs = ROLE_CODES backend (schemas/user.py)
   const CONNECT_CHIPS = [
+    { label: 'Artiste',       val: 'artiste'       },
     { label: 'Producteur',    val: 'producteur'    },
     { label: 'Beatmaker',     val: 'beatmaker'     },
     { label: 'Compositeur',   val: 'compositeur'   },
     { label: 'Topliner',      val: 'topliner'      },
-    { label: 'DJ',            val: 'dj'            },
+    { label: 'Parolier',      val: 'parolier'      },
     { label: 'Ghostwriter',   val: 'ghostwriter'   },
+    { label: 'Arrangeur',     val: 'arrangeur'     },
+    { label: 'DJ',            val: 'dj'            },
     { label: 'Ingé son',      val: 'ingenieur_son' },
-    { label: 'Artiste',       val: 'artiste'       },
+    { label: 'Éditeur',       val: 'editeur'       },
+    { label: 'Auditeur',      val: 'auditeur'      },
   ];
 
-  // Chips DNA (moods)
+  // Chips DNA (moods) — alignées sur les data-tag de dashboard.html + étendues
   const DNA_CHIPS = [
     { label: 'chill',        val: 'chill'        },
     { label: 'énergique',    val: 'énergique'    },
@@ -55,6 +59,14 @@
     { label: 'mélancolique', val: 'mélancolique' },
     { label: 'instrumental', val: 'instrumental' },
     { label: 'vocal',        val: 'vocal'        },
+    { label: 'groovy',       val: 'groovy'       },
+    { label: 'hypnotique',   val: 'hypnotique'   },
+    { label: 'agressif',     val: 'agressif'     },
+    { label: 'nostalgique',  val: 'nostalgique'  },
+    { label: 'euphorique',   val: 'euphorique'   },
+    { label: 'cinématique',  val: 'cinématique'  },
+    { label: 'loop',         val: 'loop'         },
+    { label: 'acapella',     val: 'acapella'     },
   ];
 
   // ── Styles ────────────────────────────────────────────────────────────
