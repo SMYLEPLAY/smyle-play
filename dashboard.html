@@ -205,6 +205,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/></svg>
       Création
     </a>
+    <a class="dash-snav-pill" href="#sec-playlists" data-sec="sec-playlists" id="pill-playlists">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+      Playlists
+    </a>
     <a class="dash-snav-pill" href="#sec-stats" data-sec="sec-stats">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Analytique
@@ -1578,10 +1582,17 @@
          2b  Statistiques         (écoutes, abonnés, courbe)
          2c  Classement + Réseau  (rang WATT + ranking global + canvas — ex sec-ranking, fusionné en continu visuel)
        ────────────────────────────────────────────────────────────────────────── -->
-  <!-- ═══ Playlists user (chantier #2 — câblage frontend) ═════════════
-       Container vide rempli par ui/playlists.js au DOMContentLoaded.
-       Si l'user n'est pas connecté, affiche un empty state. ═══ -->
+  <!-- ═══ Playlists user — onglet dédié ═══════════════════════════════════
+       Container rempli par ui/playlists.js au DOMContentLoaded.
+       Pill nav "Playlists" → #sec-playlists. ═══ -->
   <section class="dash-section" id="sec-playlists" aria-label="Mes playlists">
+    <div class="dash-section-hdr">
+      <div class="dash-section-num">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <h2 class="dash-section-title">Playlists</h2>
+      <span class="dash-section-sub">Organise tes sons en collections · publiques ou privées</span>
+    </div>
     <div id="dash-playlists-root"></div>
   </section>
 
