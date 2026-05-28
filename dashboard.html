@@ -2036,8 +2036,8 @@
     })();
 
     document.querySelectorAll('.dash-section').forEach(function(sec) {
-      // Jamais pliées par défaut : identité (gérée par <details>) + container playlists
-      if (sec.id === 'sec-identity' || sec.id === 'sec-playlists') return;
+      // Jamais pliée par défaut : identité uniquement (gérée par <details> natif)
+      if (sec.id === 'sec-identity') return;
       var hdr = sec.querySelector(':scope > .dash-section-hdr');
       var subhdr = sec.querySelector(':scope > .dash-subhdr');
       var target = hdr || subhdr;
