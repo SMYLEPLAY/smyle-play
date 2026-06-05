@@ -80,6 +80,21 @@ def create_app(config_class=None):
 
     app.r2_client = r2_client
 
+    # ── Anti-cache des assets front (HTML / JS / CSS) ──────────────────────
+    # Force le navigateur à toujours récupérer la dernière version après un
+    # déploiement (fini les pages "qui ne s'actualisent plus" à cause d'un
+    # vieux fichier en cache). On ne cible QUE le HTML/JS/CSS via le
+    # Content-Type : l'audio et les images (servis par FastAPI) ne sont pas
+    # affectés et restent mis en cache normalement.
+    @app.after_request
+    def _no_cache_front_assets(resp):
+        ct = (resp.headers.get('Content-Type') or '').lower()
+        if ('text/html' in ct) or ('javascript' in ct) or ('text/css' in ct):
+            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            resp.headers['Pragma'] = 'no-cache'
+            resp.headers['Expires'] = '0'
+        return resp
+
     # ── Routes statiques ──────────────────────────────────────────────────
 
     @app.route('/')
