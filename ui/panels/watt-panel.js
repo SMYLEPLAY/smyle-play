@@ -321,50 +321,74 @@ function _renderArtistTab(container) {
     </div>
   `;
 
-  // Menu items for the artist section
+  // Menu items for the artist section.
+  // mode 'link'  → navigue vers le wattboard complet.
+  // mode 'panel' → se déplie EN ACCORDÉON dans la cellule (_wattCellToggle),
+  //                le contenu est chargé à l'ouverture (_wattCellLoad).
   const menuItems = [
     {
+      key: 'dashboard',
+      mode: 'link',
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
       name: 'Dashboard',
-      desc: 'Gère tes sons, stats et profil',
+      desc: 'Ouvrir le wattboard complet',
       action: 'window.location.href="/dashboard"',
     },
     {
+      key: 'upload',
+      mode: 'panel',
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
       name: 'Upload',
       desc: 'Publie un nouveau son',
-      action: 'window.location.href="/dashboard#sec-upload"',
     },
     {
+      key: 'profil',
+      mode: 'panel',
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
       name: 'Profil',
       desc: 'Modifie ta bio, liens et style',
-      action: 'window.location.href="/dashboard#sec-identity"',
     },
     {
+      key: 'tracks',
+      mode: 'panel',
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
       name: 'Mes Sons',
       desc: 'Écouter et gérer ta discographie',
-      action: 'window.location.href="/dashboard#myTracksList"',
     },
     {
+      key: 'stats',
+      mode: 'panel',
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
       name: 'Statistiques',
       desc: 'Écoutes, abonnés, évolution',
-      action: 'window.location.href="/dashboard#sec-stats"',
     },
   ];
 
-  const menuHTML = menuItems.map(m => `
-    <div class="artist-menu-item" onclick="${m.action}">
+  const menuHTML = menuItems.map(m => {
+    if (m.mode === 'link') {
+      return `
+    <div class="artist-menu-item" onclick='${m.action}'>
       <div class="artist-menu-icon">${m.icon}</div>
       <div class="artist-menu-info">
         <div class="artist-menu-name">${m.name}</div>
         <div class="artist-menu-desc">${m.desc}</div>
       </div>
       <span class="artist-menu-arrow">›</span>
-    </div>
-  `).join('');
+    </div>`;
+    }
+    return `
+    <div class="artist-menu-block" data-key="${m.key}">
+      <div class="artist-menu-item" onclick="_wattCellToggle('${m.key}')" role="button" tabindex="0">
+        <div class="artist-menu-icon">${m.icon}</div>
+        <div class="artist-menu-info">
+          <div class="artist-menu-name">${m.name}</div>
+          <div class="artist-menu-desc">${m.desc}</div>
+        </div>
+        <span class="artist-menu-arrow" id="wcell-arrow-${m.key}" style="transition:transform .2s">›</span>
+      </div>
+      <div class="artist-menu-content" id="wcell-content-${m.key}" style="display:none;padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;line-height:1.5;"></div>
+    </div>`;
+  }).join('');
 
   if (isLoggedIn) {
     // Connected state — la prise DEVIENT le bouton principal vers le wattboard
@@ -430,4 +454,86 @@ function _fetchArtistStats() {
   }).catch(() => {
     // Silently fail — stats will show "—" (user probably not logged in)
   });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  CELLULE WATT BOARD — sections dépliables + actions inline
+//  Chaque section "panel" s'ouvre en accordéon DANS la cellule (pas de
+//  navigation). Incrément 1 : Statistiques + Mes Sons (affichage direct).
+//  Upload + Profil : aperçu + bouton (formulaires inline = incrément 2).
+// ══════════════════════════════════════════════════════════════════════════
+
+function _wattCellToggle(key) {
+  const content = document.getElementById('wcell-content-' + key);
+  if (!content) return;
+  const arrow = document.getElementById('wcell-arrow-' + key);
+  const isOpen = content.style.display !== 'none';
+
+  // Accordéon : referme les autres sections déjà ouvertes.
+  document.querySelectorAll('.artist-menu-content').forEach(c => {
+    if (c !== content) c.style.display = 'none';
+  });
+  document.querySelectorAll('.artist-menu-arrow').forEach(a => {
+    if (a !== arrow) a.style.transform = '';
+  });
+
+  if (isOpen) {
+    content.style.display = 'none';
+    if (arrow) arrow.style.transform = '';
+    return;
+  }
+  content.style.display = 'block';
+  if (arrow) arrow.style.transform = 'rotate(90deg)';
+  _wattCellLoad(key, content);
+}
+
+function _wattCellLoad(key, content) {
+  if (key === 'stats') {
+    content.innerHTML = '<div style="opacity:.6">Chargement…</div>';
+    apiFetch('/watt/me/stats').then(d => {
+      content.innerHTML = `
+        <div style="display:flex;gap:18px;flex-wrap:wrap">
+          <div><strong style="font-size:18px">${d.tracks || 0}</strong><br><span style="opacity:.6">Sons</span></div>
+          <div><strong style="font-size:18px">${d.plays || 0}</strong><br><span style="opacity:.6">Écoutes</span></div>
+          <div><strong style="font-size:18px">${d.rank ? '#' + d.rank : '—'}</strong><br><span style="opacity:.6">Rang</span></div>
+        </div>`;
+    }).catch(() => { content.innerHTML = '<div style="opacity:.6">Stats indisponibles.</div>'; });
+    return;
+  }
+
+  if (key === 'tracks') {
+    content.innerHTML = '<div style="opacity:.6">Chargement…</div>';
+    apiFetch('/tracks/me').then(list => {
+      if (!Array.isArray(list) || list.length === 0) {
+        content.innerHTML = '<div style="opacity:.6">Aucun son publié pour l\'instant.</div>';
+        return;
+      }
+      content.innerHTML = list.map(t => `
+        <div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title || 'Sans titre'}</span>
+          <span style="opacity:.6;white-space:nowrap">▶ ${t.plays || 0}</span>
+        </div>`).join('');
+    }).catch(() => { content.innerHTML = '<div style="opacity:.6">Liste indisponible.</div>'; });
+    return;
+  }
+
+  if (key === 'upload') {
+    content.innerHTML = `
+      <div style="opacity:.8;margin-bottom:8px">Poster un son directement ici arrive bientôt.</div>
+      <button onclick='window.location.href="/dashboard#sec-upload"' style="background:#FFD700;color:#000;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Ouvrir l'upload →</button>`;
+    return;
+  }
+
+  if (key === 'profil') {
+    content.innerHTML = `
+      <div style="opacity:.8;margin-bottom:8px">Éditer ton profil directement ici arrive bientôt.</div>
+      <button onclick='window.location.href="/dashboard#sec-identity"' style="background:#FFD700;color:#000;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Éditer le profil →</button>`;
+    return;
+  }
+}
+
+// Exposition globale pour les onclick inline du menu de la cellule.
+if (typeof window !== 'undefined') {
+  window._wattCellToggle = _wattCellToggle;
+  window._wattCellLoad = _wattCellLoad;
 }
