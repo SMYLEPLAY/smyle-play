@@ -4193,6 +4193,35 @@ document.addEventListener('DOMContentLoaded', () => {
       if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 200);
   }
+
+  // ── Deep-link depuis la cellule WATT BOARD (marketplace) ──────────────────
+  // Les entrées Dashboard / Upload / Profil / Mes Sons / Statistiques du
+  // panneau pointent désormais vers les vraies ancres (#sec-upload, …). On
+  // tolère aussi les anciennes ancres (#upload, #profile, #tracks, #stats)
+  // par sécurité, et on ouvre l'accordéon Identité s'il est la cible.
+  (function _wattBoardDeepLink() {
+    const raw = (location.hash || '').slice(1);
+    if (!raw) return;
+    const ALIAS = {
+      upload:  'sec-upload',
+      profile: 'sec-identity',
+      profil:  'sec-identity',
+      tracks:  'myTracksList',
+      stats:   'sec-stats',
+    };
+    const targetId = ALIAS[raw] || raw;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    // Identité est un <details> accordéon : on l'ouvre avant de scroller.
+    if (targetId === 'sec-identity') {
+      const det = el.querySelector('details');
+      if (det) det.open = true;
+    }
+    setTimeout(
+      () => el.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      250,
+    );
+  })();
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

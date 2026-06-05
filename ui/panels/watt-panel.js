@@ -333,25 +333,25 @@ function _renderArtistTab(container) {
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
       name: 'Upload',
       desc: 'Publie un nouveau son',
-      action: 'window.location.href="/dashboard#upload"',
+      action: 'window.location.href="/dashboard#sec-upload"',
     },
     {
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
       name: 'Profil',
       desc: 'Modifie ta bio, liens et style',
-      action: 'window.location.href="/dashboard#profile"',
+      action: 'window.location.href="/dashboard#sec-identity"',
     },
     {
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
       name: 'Mes Sons',
       desc: 'Écouter et gérer ta discographie',
-      action: 'window.location.href="/dashboard#tracks"',
+      action: 'window.location.href="/dashboard#myTracksList"',
     },
     {
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
       name: 'Statistiques',
       desc: 'Écoutes, abonnés, évolution',
-      action: 'window.location.href="/dashboard#stats"',
+      action: 'window.location.href="/dashboard#sec-stats"',
     },
   ];
 
