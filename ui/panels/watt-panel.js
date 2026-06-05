@@ -508,11 +508,19 @@ function _wattCellLoad(key, content) {
         content.innerHTML = '<div style="opacity:.6">Aucun son publié pour l\'instant.</div>';
         return;
       }
-      content.innerHTML = list.map(t => `
-        <div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title || 'Sans titre'}</span>
+      const rows = list.map(t => {
+        const title = String(t.title || 'Sans titre').replace(/"/g, '&quot;');
+        return `
+        <div class="wcell-track-row" data-title="${title.toLowerCase()}" style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title}</span>
           <span style="opacity:.6;white-space:nowrap">▶ ${t.plays || 0}</span>
-        </div>`).join('');
+        </div>`;
+      }).join('');
+      content.innerHTML = `
+        <input type="text" placeholder="Rechercher un son…" oninput="_wattCellFilterTracks(this.value)"
+          style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:inherit;font-size:13px;outline:none" />
+        <div id="wcell-tracks-list">${rows}</div>
+        <div id="wcell-tracks-empty" style="display:none;opacity:.6;padding:6px 0">Aucun son ne correspond.</div>`;
     }).catch(() => { content.innerHTML = '<div style="opacity:.6">Liste indisponible.</div>'; });
     return;
   }
@@ -532,8 +540,24 @@ function _wattCellLoad(key, content) {
   }
 }
 
+// Filtre la liste "Mes Sons" par titre (recherche live, sans re-fetch).
+function _wattCellFilterTracks(value) {
+  const q = String(value || '').trim().toLowerCase();
+  const rows = document.querySelectorAll('#wcell-tracks-list .wcell-track-row');
+  let visible = 0;
+  rows.forEach(r => {
+    const title = r.getAttribute('data-title') || '';
+    const show = !q || title.includes(q);
+    r.style.display = show ? 'flex' : 'none';
+    if (show) visible++;
+  });
+  const empty = document.getElementById('wcell-tracks-empty');
+  if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+}
+
 // Exposition globale pour les onclick inline du menu de la cellule.
 if (typeof window !== 'undefined') {
   window._wattCellToggle = _wattCellToggle;
   window._wattCellLoad = _wattCellLoad;
+  window._wattCellFilterTracks = _wattCellFilterTracks;
 }
