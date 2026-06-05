@@ -4222,6 +4222,26 @@ document.addEventListener('DOMContentLoaded', () => {
       250,
     );
   })();
+
+  // ── Ouverture de l'éditeur "Modifier le son" via ?edit-track=<id> ─────────
+  // Déclenché par un clic sur un son dans la cellule WATT BOARD (marketplace).
+  // La liste des sons se charge en async → on réessaie quelques fois.
+  (function _openTrackEditFromUrl() {
+    const editId = new URLSearchParams(window.location.search).get('edit-track');
+    if (!editId) return;
+    let tries = 0;
+    const tryOpen = () => {
+      tries++;
+      const tracks = (typeof getMyTracks === 'function') ? getMyTracks() : [];
+      const found = tracks.find(x => x.id === editId || x.dbId === editId);
+      if (found && typeof openTrackEdit === 'function') {
+        openTrackEdit(found.id);
+        return;
+      }
+      if (tries < 15) setTimeout(tryOpen, 300); // ~4,5s max le temps du sync
+    };
+    setTimeout(tryOpen, 400);
+  })();
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
