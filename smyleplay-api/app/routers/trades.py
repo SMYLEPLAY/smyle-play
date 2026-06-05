@@ -28,6 +28,7 @@ from app.database import get_db
 from app.models.notification import NotificationType
 from app.models.prompt import Prompt
 from app.models.trade import TradeOffer, TradeStatus
+from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 from app.schemas.trade import PromptSnap, TradeOfferCreate, TradeOfferRead
@@ -71,11 +72,25 @@ async def _enrich_offer(offer: TradeOffer, db: AsyncSession) -> TradeOfferRead:
         if not p:
             return None
         prompt, artist_name = p
+        # Audio du track lié (pour écouter avant d'accepter). On prend le
+        # premier track non supprimé pointant sur ce prompt. audio_url direct
+        # si présent, sinon le proxy /watt/stream à partir de la clé R2.
+        trow = (await db.execute(
+            select(Track.audio_url, Track.r2_key)
+            .where(Track.prompt_id == pid, Track.is_deleted.is_(False))
+            .limit(1)
+        )).first()
+        audio_url = None
+        if trow:
+            audio_url = trow.audio_url or (
+                f"/watt/stream/{trow.r2_key}" if trow.r2_key else None
+            )
         return PromptSnap(
             id=prompt.id,
             title=prompt.title,
             price_credits=prompt.price_credits,
             artist_name=artist_name,
+            audio_url=audio_url,
         )
 
     sender_name, sender_avatar = await _user_snap(offer.sender_id)

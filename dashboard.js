@@ -4696,12 +4696,14 @@ function renderTrades(root, trades) {
             <span class="trade-prompt-lbl">${isSender ? 'Tu proposes' : 'Il/elle propose'}</span>
             <span class="trade-prompt-name">${offered.title || '—'}</span>
             <span class="trade-prompt-price">${offered.price_credits || 0} crédits</span>
+            ${offered.audio_url ? `<audio controls preload="none" src="${offered.audio_url}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           <span class="trade-arrow">⇄</span>
           <div class="trade-prompt-box">
             <span class="trade-prompt-lbl">${isSender ? 'Tu demandes' : 'Tu recevrais'}</span>
             <span class="trade-prompt-name">${requested.title || '—'}</span>
             <span class="trade-prompt-price">${requested.price_credits || 0} crédits</span>
+            ${requested.audio_url ? `<audio controls preload="none" src="${requested.audio_url}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           ${supplement}
         </div>

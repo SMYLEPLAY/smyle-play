@@ -21,6 +21,8 @@ class PromptSnap(BaseModel):
     price_credits: int
     artist_name: str | None = None
     artist_slug: str | None = None
+    # Audio du track lié au prompt → "écouter avant d'accepter" l'échange.
+    audio_url: str | None = None
 
 
 class TradeOfferRead(BaseModel):
