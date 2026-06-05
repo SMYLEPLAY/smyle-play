@@ -293,22 +293,57 @@ async def accept_trade(
                 original_artist_id=offer.sender_id,
             ))
 
-    # 3. Transférer credit_supplement (sender → receiver)
-    if offer.credit_supplement > 0:
-        sender = (await db.execute(
-            select(User).where(User.id == offer.sender_id)
-        )).scalar_one()
-        if sender.credits_balance < offer.credit_supplement:
-            raise HTTPException(
-                status.HTTP_402_PAYMENT_REQUIRED,
-                detail="Le sender n'a plus assez de crédits"
-            )
-        sender.credits_balance -= offer.credit_supplement
-        receiver = (await db.execute(
-            select(User).where(User.id == current_user.id)
-        )).scalar_one()
-        receiver.credits_balance += offer.credit_supplement
-        receiver.credits_earned_total += offer.credit_supplement
+    # 3. Frais d'échange (BRÛLÉS) + transfert du credit_supplement.
+    #
+    # Frais = 20% du prix du prompt REÇU par chaque partie, plancher 2 crédits,
+    # débité de chaque côté et retiré de la circulation (burn). Brûler des
+    # crédits pré-achetés en € = la plateforme garde la valeur (rien n'est
+    # reversé). Un échange coûte donc bien moins cher qu'acheter les deux
+    # prompts (100%), ce qui pousse à l'échange tout en protégeant l'économie.
+    #
+    # NB v1 : pas d'écriture Transaction d'audit pour le burn (à ajouter lors
+    # de l'audit global de fin de site). Royalties artiste d'origine = phase 2.
+    TRADE_FEE_RATE = 0.20
+    TRADE_FEE_FLOOR = 2
+
+    def _trade_fee(price: int | None) -> int:
+        if not price or price <= 0:
+            return TRADE_FEE_FLOOR
+        return max(TRADE_FEE_FLOOR, round(price * TRADE_FEE_RATE))
+
+    sender = (await db.execute(
+        select(User).where(User.id == offer.sender_id)
+    )).scalar_one()
+    receiver = (await db.execute(
+        select(User).where(User.id == current_user.id)
+    )).scalar_one()
+
+    # Le sender reçoit le prompt DEMANDÉ ; le receiver reçoit le prompt OFFERT.
+    sender_fee = _trade_fee(offer.requested_price_at_trade)
+    receiver_fee = _trade_fee(offer.offered_price_at_trade)
+    supplement = offer.credit_supplement if offer.credit_supplement > 0 else 0
+
+    # Gardes de solde : le sender couvre son frais + le supplément.
+    if sender.credits_balance < sender_fee + supplement:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Le sender n'a plus assez de crédits (frais + supplément)",
+        )
+    if receiver.credits_balance < receiver_fee:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Tu n'as pas assez de crédits pour le frais d'échange",
+        )
+
+    # Débit des frais (burn — aucun crédit reversé en face).
+    sender.credits_balance -= sender_fee
+    receiver.credits_balance -= receiver_fee
+
+    # Transfert du supplément (sender → receiver), si présent.
+    if supplement > 0:
+        sender.credits_balance -= supplement
+        receiver.credits_balance += supplement
+        receiver.credits_earned_total += supplement
 
     # 4. Clore l'offre
     offer.status = TradeStatus.ACCEPTED
