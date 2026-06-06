@@ -20,11 +20,12 @@ from app.models.base import Base
 
 
 class AchievementAxis(str, enum.Enum):
-    """Trois axes d'achievements indépendants pour ne pas tout mélanger."""
+    """Axes d'achievements indépendants pour ne pas tout mélanger."""
 
     BUYER = "buyer"   # Collection : nb de prompts unlockés
     FAN = "fan"       # Engagement profond : nb d'ADN possédées
     ARTIST = "artist" # Création : nb de ventes ou crédits gagnés
+    TRADER = "trader" # Échanges : nb d'échanges acceptés (envoyés ou reçus)
 
 
 class Achievement(Base):

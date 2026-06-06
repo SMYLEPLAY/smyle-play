@@ -376,6 +376,18 @@ async def accept_trade(
                   "receiver_name": current_user.artist_name or "Artiste"},
     )
 
+    # 6. Trophées d'échange (axe TRADER) — pour les DEUX parties.
+    # L'offre est déjà passée ACCEPTED ci-dessus → le compteur la voit (autoflush).
+    # check_and_grant ne commit pas (le caller commit) ; il grant les Smyles bonus.
+    from app.models.achievement import AchievementAxis
+    from app.services.achievements import check_and_grant_achievements
+    await check_and_grant_achievements(
+        db, user_id=offer.sender_id, axis=AchievementAxis.TRADER
+    )
+    await check_and_grant_achievements(
+        db, user_id=offer.receiver_id, axis=AchievementAxis.TRADER
+    )
+
     await db.commit()
     await db.refresh(offer)
     return await _enrich_offer(offer, db)

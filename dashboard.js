@@ -4761,8 +4761,8 @@ async function cancelTrade(id, btn) {
 
 // ── TROPHÉES ──────────────────────────────────────────────────────────────────
 
-const AXIS_LABEL = { buyer: 'Collectionneur', fan: 'Fan', artist: 'Artiste' };
-const AXIS_ICON  = { buyer: '🛒', fan: '🎚', artist: '🎵' };
+const AXIS_LABEL = { buyer: 'Collectionneur', fan: 'Fan', artist: 'Artiste', trader: 'Échanges' };
+const AXIS_ICON  = { buyer: '🛒', fan: '🎚', artist: '🎵', trader: '🔄' };
 
 async function loadTrophees() {
   const grid = document.getElementById('tphGrid');
@@ -4799,16 +4799,16 @@ async function loadTrophees() {
 
     // Grouper par axe
     const items = catalog.items || [];
-    const byAxis = { buyer: [], fan: [], artist: [] };
+    const byAxis = { buyer: [], fan: [], artist: [], trader: [] };
     items.forEach(a => { if (byAxis[a.axis]) byAxis[a.axis].push(a); });
 
     // Valeur de progression par axe
     const currentVal = me && me.progress
-      ? { buyer: me.progress.buyer, fan: me.progress.fan, artist: me.progress.artist }
-      : { buyer: 0, fan: 0, artist: 0 };
+      ? { buyer: me.progress.buyer, fan: me.progress.fan, artist: me.progress.artist, trader: me.progress.trader }
+      : { buyer: 0, fan: 0, artist: 0, trader: 0 };
 
     let html = '';
-    ['buyer', 'fan', 'artist'].forEach(axis => {
+    ['buyer', 'fan', 'artist', 'trader'].forEach(axis => {
       const group = byAxis[axis];
       if (!group.length) return;
       html += `<div class="tph-axis-group">
