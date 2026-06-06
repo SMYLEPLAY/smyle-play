@@ -55,7 +55,7 @@ class Prompt(Base):
         ),
         CheckConstraint(
             "prompt_vocal_gender IS NULL OR prompt_vocal_gender IN "
-            "('masculin', 'feminin', 'instrumental')",
+            "('masculin', 'feminin', 'instrumental', 'neutre', 'mixte')",
             name="ck_prompts_vocal_gender_enum",
         ),
     )
