@@ -230,10 +230,16 @@
     }
 
     pane.innerHTML = `
-      <div class="msg-header">
+      <div class="msg-header" style="position:relative">
         <button class="msg-back-btn" type="button" onclick="SmyleMessaging._backToInbox()">←</button>
         <span class="msg-title">${_esc(_s.activeThread.other_user_name)}</span>
+        <button class="msg-menu-btn" type="button" title="Actions" onclick="SmyleMessaging._toggleConvMenu(event)"
+                style="background:none;border:none;color:inherit;font-size:18px;cursor:pointer;padding:0 6px;line-height:1">⋮</button>
         <button class="msg-close-btn" onclick="SmyleMessaging.close()">✕</button>
+        <div id="msg-conv-menu" style="display:none;position:absolute;top:100%;right:8px;z-index:100;min-width:190px;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px;box-shadow:0 6px 20px rgba(0,0,0,.45)">
+          <button type="button" onclick="SmyleMessaging._openTradeFromConv()"
+                  style="display:block;width:100%;text-align:left;background:none;border:none;color:#eee;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px">🔄 Proposer un échange</button>
+        </div>
       </div>
       <div class="msg-messages" id="msg-messages"></div>
       <div class="msg-composer">
@@ -364,6 +370,100 @@
   }
 
   // ── Public API ─────────────────────────────────────────────────────────────
+  // ── Menu ⋮ de conversation + commande "Proposer un échange" ──────────────
+  // Extensible : d'autres commandes pourront s'ajouter dans le même menu.
+  function _toggleConvMenu(ev) {
+    if (ev) ev.stopPropagation();
+    const menu = document.getElementById('msg-conv-menu');
+    if (!menu) return;
+    const show = menu.style.display === 'none';
+    menu.style.display = show ? 'block' : 'none';
+    if (show) {
+      const close = () => { menu.style.display = 'none'; document.removeEventListener('click', close); };
+      setTimeout(() => document.addEventListener('click', close), 0);
+    }
+  }
+
+  async function _openTradeFromConv() {
+    const menu = document.getElementById('msg-conv-menu');
+    if (menu) menu.style.display = 'none';
+    const th = _s.activeThread;
+    if (!th || !th.other_user_id) return;
+    const receiverId = th.other_user_id;
+    const receiverName = th.other_user_name || 'cet artiste';
+
+    let theirs = [], mine = [];
+    try {
+      const d = await apiFetch(`/catalog/prompts?artist_id=${encodeURIComponent(receiverId)}&per_page=50`);
+      theirs = (d && d.items) || d || [];
+    } catch (_) {}
+    try {
+      const d = await apiFetch('/artist/me/prompts?limit=50');
+      mine = (d && d.items) || d || [];
+    } catch (_) {}
+
+    if (!theirs.length) { alert(`${receiverName} n'a pas encore de prompt échangeable.`); return; }
+
+    const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const theirOpts = theirs.map(p => `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('');
+    const myOpts = mine.length
+      ? mine.map(p => `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+      : '<option value="" disabled>Aucun prompt à proposer</option>';
+
+    const prev = document.getElementById('msg-trade-modal');
+    if (prev) prev.remove();
+    const sel = 'width:100%;padding:8px;border-radius:8px;background:#0e0e14;color:#eee;border:1px solid rgba(255,255,255,.15)';
+    const el = document.createElement('div');
+    el.id = 'msg-trade-modal';
+    el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+    el.innerHTML = `
+      <div style="background:#15151c;border:1px solid rgba(255,255,255,.12);border-radius:14px;max-width:420px;width:100%;padding:18px;color:#eee;font-size:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <strong>🔄 Échange avec ${esc(receiverName)}</strong>
+          <button onclick="document.getElementById('msg-trade-modal').remove()" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <label style="display:block;margin:8px 0 4px;opacity:.8">Tu demandes (son prompt)</label>
+        <select id="msg-trade-req" style="${sel}"><option value="">-- Choisir --</option>${theirOpts}</select>
+        <label style="display:block;margin:12px 0 4px;opacity:.8">Tu proposes (ton prompt)</label>
+        <select id="msg-trade-off" style="${sel}"><option value="">-- Choisir --</option>${myOpts}</select>
+        <label style="display:block;margin:12px 0 4px;opacity:.8">Complément en crédits (optionnel)</label>
+        <input id="msg-trade-supp" type="number" min="0" value="0" style="${sel}" />
+        <p style="opacity:.6;font-size:12px;margin:12px 0">⚠️ Frais de 20% (brûlé) par côté. Offre valable 7 jours.</p>
+        <button id="msg-trade-send" onclick="SmyleMessaging._submitTradeFromConv('${receiverId}')"
+                style="width:100%;padding:10px;border:none;border-radius:8px;background:#7C3AED;color:#fff;font-weight:600;cursor:pointer">Envoyer la proposition</button>
+      </div>`;
+    el.addEventListener('click', ev => { if (ev.target === el) el.remove(); });
+    document.body.appendChild(el);
+  }
+
+  async function _submitTradeFromConv(receiverId) {
+    const req  = (document.getElementById('msg-trade-req')  || {}).value || '';
+    const off  = (document.getElementById('msg-trade-off')  || {}).value || '';
+    const supp = parseInt((document.getElementById('msg-trade-supp') || {}).value || '0', 10);
+    const btn  = document.getElementById('msg-trade-send');
+    if (!req) { alert('Choisis le prompt que tu veux récupérer.'); return; }
+    if (!off) { alert('Choisis un de tes prompts à proposer.'); return; }
+    if (btn) { btn.textContent = 'Envoi…'; btn.disabled = true; }
+    try {
+      await apiFetch('/trades/offers', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiver_id:         receiverId,
+          offered_prompt_id:   off,
+          requested_prompt_id: req,
+          credit_supplement:   Math.max(0, supp || 0),
+          message:             null,
+        }),
+      });
+      const m = document.getElementById('msg-trade-modal'); if (m) m.remove();
+      alert('✅ Proposition envoyée !');
+    } catch (err) {
+      if (btn) { btn.textContent = 'Envoyer la proposition'; btn.disabled = false; }
+      const detail = (err && err.body && err.body.detail) || err.message || 'Erreur';
+      alert('Erreur : ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)));
+    }
+  }
+
   window.SmyleMessaging = {
     open:          _open,
     close:         _close,
@@ -373,6 +473,9 @@
     _onKey:        _onKey,
     _autoGrow:     _autoGrow,
     _onSend:       _onSend,
+    _toggleConvMenu:      _toggleConvMenu,
+    _openTradeFromConv:   _openTradeFromConv,
+    _submitTradeFromConv: _submitTradeFromConv,
   };
 
 })();
