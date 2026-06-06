@@ -475,24 +475,21 @@ img { max-width: 100%; display: block; }
 
 .ap-hero-action-btn:active { transform: scale(0.96); }
 
-.ap-follow-hero-btn {
-  background: rgba(204, 136, 255, .14);
-  color: #cc88ff;
-  border: 1px solid rgba(204, 136, 255, .4);
+/* Suivre · Message · Proposer un échange — unifiés sur la couleur de marque
+   du profil (--brand / --brand-rgb posés par applyTheme). Fallback violet WATT.
+   → les 3 boutons prennent automatiquement la couleur du profil consulté. */
+.ap-follow-hero-btn,
+.ap-message-hero-btn,
+.ap-trade-hero-btn {
+  background: rgba(var(--brand-rgb, 136, 0, 255), .14);
+  color: var(--brand, #cc88ff);
+  border: 1px solid rgba(var(--brand-rgb, 136, 0, 255), .42);
 }
 
-.ap-follow-hero-btn:hover {
-  background: rgba(204, 136, 255, .22);
-}
-
-.ap-message-hero-btn {
-  background: rgba(124, 58, 237, .14);
-  color: #a78bfa;
-  border: 1px solid rgba(124, 58, 237, .4);
-}
-
-.ap-message-hero-btn:hover {
-  background: rgba(124, 58, 237, .22);
+.ap-follow-hero-btn:hover,
+.ap-message-hero-btn:hover,
+.ap-trade-hero-btn:hover {
+  background: rgba(var(--brand-rgb, 136, 0, 255), .24);
 }
 
 .ap-hero-followers {
