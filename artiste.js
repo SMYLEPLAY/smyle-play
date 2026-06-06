@@ -487,6 +487,17 @@ async function _setupFollowButton(artist) {
       }
     };
   }
+
+  // ── Bouton "Proposer un échange" (entrée principale du trade) ────────────
+  // Visible sur le profil d'un autre artiste connecté. Le clic ouvre le modal
+  // à double sélection. Si l'artiste n'a aucun prompt échangeable, le modal
+  // l'explique (au lieu de disparaître silencieusement).
+  const tradeBtn = document.getElementById('ap-trade-btn');
+  if (tradeBtn && artist.id) {
+    tradeBtn.style.display = '';
+    tradeBtn.onclick = () => openTradeModalProfile();
+  }
+
   const slug = artist.slug || (window.location.pathname.match(/^\/u\/([^/?#]+)/) || [])[1];
   if (!slug) { wrap.style.display = 'none'; return; }
   function _hdr() {
@@ -1340,6 +1351,122 @@ async function submitTradeOffer(requestedPromptId, receiverId) {
         receiver_id:          receiverId,
         offered_prompt_id:    offeredId,
         requested_prompt_id:  requestedPromptId,
+        credit_supplement:    Math.max(0, supplement || 0),
+        message:              message || null,
+      }),
+    });
+    document.getElementById('smyle-trade-modal').remove();
+    alert('✅ Proposition envoyée ! L\'artiste recevra une notification.');
+  } catch (err) {
+    if (btn) { btn.textContent = 'Envoyer la proposition'; btn.disabled = false; }
+    const detail = (err && err.body && err.body.detail) || err.message || 'Erreur inconnue';
+    alert('Erreur : ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)));
+  }
+}
+
+// ── Modal d'échange depuis le PROFIL (double sélection) ──────────────────────
+// Entrée principale du trade : on choisit un prompt de l'artiste consulté ET
+// un des siens. Gère explicitement le cas "aucun prompt échangeable".
+async function openTradeModalProfile() {
+  const artist = state && state.artist;
+  if (!artist) return;
+  if (artist.isSelf) { alert("C'est ton profil — tu ne peux pas échanger avec toi-même."); return; }
+
+  if (typeof window.getAuthToken === 'function' && !window.getAuthToken()) {
+    if (window.openAuthModal) window.openAuthModal('login');
+    return;
+  }
+
+  const theirPrompts = Array.isArray(artist.prompts) ? artist.prompts : [];
+  if (theirPrompts.length === 0) {
+    alert("Cet artiste n'a pas encore de prompt échangeable. Reviens quand il en aura publié un.");
+    return;
+  }
+
+  const prev = document.getElementById('smyle-trade-modal');
+  if (prev) prev.remove();
+
+  let myPrompts = [];
+  try {
+    const data = await apiFetch('/artist/me/prompts?limit=50');
+    myPrompts = data.items || data || [];
+  } catch (_) {}
+
+  const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const theirOptions = theirPrompts.map(p =>
+    `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.priceCredits || 0} crédits</option>`
+  ).join('');
+  const myOptions = myPrompts.length
+    ? myPrompts.map(p => `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+    : '<option value="" disabled>Aucun prompt à proposer — publie d\'abord une recette</option>';
+
+  const el = document.createElement('div');
+  el.id = 'smyle-trade-modal';
+  el.className = 'trade-modal-backdrop';
+  el.innerHTML = `
+    <div class="trade-modal-box" role="dialog" aria-label="Proposer un échange">
+      <div class="trade-modal-header">
+        <span class="trade-modal-title">🔄 Proposer un échange à ${esc(artist.artistName) || 'cet artiste'}</span>
+        <button class="trade-modal-close" onclick="document.getElementById('smyle-trade-modal').remove()">✕</button>
+      </div>
+      <div class="trade-modal-body">
+        <div class="trade-field">
+          <label class="trade-label">Tu demandes <span class="trade-hint">(son prompt)</span></label>
+          <select class="trade-select" id="trade-requested-id">
+            <option value="">-- Choisir un de ses prompts --</option>
+            ${theirOptions}
+          </select>
+        </div>
+        <div class="trade-field">
+          <label class="trade-label">Tu proposes <span class="trade-hint">(ton prompt)</span></label>
+          <select class="trade-select" id="trade-offered-id">
+            <option value="">-- Choisir un de tes prompts --</option>
+            ${myOptions}
+          </select>
+        </div>
+        <div class="trade-field">
+          <label class="trade-label">Complément en crédits <span class="trade-hint">(optionnel · 0 si équitable)</span></label>
+          <input type="number" class="trade-input" id="trade-supplement" min="0" value="0" />
+        </div>
+        <div class="trade-field">
+          <label class="trade-label">Message <span class="trade-hint">(optionnel)</span></label>
+          <textarea class="trade-textarea" id="trade-message" rows="2"
+            placeholder="Pourquoi tu veux échanger…"></textarea>
+        </div>
+        <p class="trade-rules">
+          ⚠️ Échanges limités à tes propres créations. Un frais de 20% (brûlé) s'applique de chaque côté. L'offre expire sous 7 jours.
+        </p>
+        <button class="trade-submit-btn" id="trade-submit-btn"
+                onclick="submitTradeOfferProfile('${artist.id || ''}')">
+          Envoyer la proposition
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(el);
+  el.addEventListener('click', ev => { if (ev.target === el) el.remove(); });
+}
+
+async function submitTradeOfferProfile(receiverId) {
+  const requestedId = (document.getElementById('trade-requested-id') || {}).value || '';
+  const offeredId   = (document.getElementById('trade-offered-id')   || {}).value || '';
+  const supplement  = parseInt((document.getElementById('trade-supplement') || {}).value || '0', 10);
+  const message     = ((document.getElementById('trade-message') || {}).value || '').trim();
+  const btn         = document.getElementById('trade-submit-btn');
+
+  if (!requestedId) { alert('Choisis le prompt que tu veux récupérer.'); return; }
+  if (!offeredId)   { alert('Choisis un de tes prompts à proposer.'); return; }
+
+  if (btn) { btn.textContent = 'Envoi…'; btn.disabled = true; }
+
+  try {
+    await apiFetch('/trades/offers', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        receiver_id:          receiverId,
+        offered_prompt_id:    offeredId,
+        requested_prompt_id:  requestedId,
         credit_supplement:    Math.max(0, supplement || 0),
         message:              message || null,
       }),
