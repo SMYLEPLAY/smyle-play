@@ -480,6 +480,8 @@
     panel.innerHTML = `
       <div class="stb-notif-header">
         <span class="stb-notif-title">Notifications</span>
+        <button type="button" onclick="window.SmyleTopbar.markAllRead(event)"
+                style="margin-left:auto;background:none;border:none;color:#cc88ff;font-size:12px;cursor:pointer">Tout effacer</button>
       </div>
       <div class="stb-notif-list" id="stb-notif-list">
         ${_renderNotifItems()}
