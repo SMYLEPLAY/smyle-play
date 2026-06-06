@@ -519,13 +519,11 @@ async function _setupFollowButton(artist) {
   function _setBtnState(isFollowing) {
     btn.textContent = isFollowing ? 'Suivi ✓' : 'Suivre';
     btn.dataset.following = isFollowing ? '1' : '0';
-    if (isFollowing) {
-      btn.style.background = 'rgba(204,136,255,.06)';
-      btn.style.color = 'rgba(204,136,255,.7)';
-    } else {
-      btn.style.background = 'rgba(204,136,255,.14)';
-      btn.style.color = '#cc88ff';
-    }
+    // On ne force PLUS background/border en inline → le contour couleur-profil
+    // (CSS, --brand) reste visible comme sur Message/Échange. On distingue
+    // seulement l'état suivi/non-suivi par l'opacité du texte (plateforme).
+    btn.style.background = '';
+    btn.style.color = isFollowing ? 'rgba(204,136,255,.6)' : '#cc88ff';
   }
   _setBtnState(following);
   btn.onclick = async () => {
