@@ -213,19 +213,22 @@ async def create_trade_offer(
     db.add(offer)
     await db.flush()
 
-    # Notif au receiver
-    await create_notification(
-        db,
-        user_id=payload.receiver_id,
-        type=NotificationType.TRADE,
-        actor_id=current_user.id,
-        target_type="trade",
-        target_id=offer.id,
-        metadata={
-            "action": "offer_received",
-            "sender_name": current_user.artist_name or "Artiste",
-        },
-    )
+    # Notif au receiver — sauf si proposé depuis une conversation (notify=False) :
+    # dans ce cas la proposition apparaît comme une carte dans le fil de messages,
+    # pas besoin de doubler en notification.
+    if payload.notify:
+        await create_notification(
+            db,
+            user_id=payload.receiver_id,
+            type=NotificationType.TRADE,
+            actor_id=current_user.id,
+            target_type="trade",
+            target_id=offer.id,
+            metadata={
+                "action": "offer_received",
+                "sender_name": current_user.artist_name or "Artiste",
+            },
+        )
 
     await db.commit()
     await db.refresh(offer)

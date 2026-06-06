@@ -12,6 +12,8 @@ class TradeOfferCreate(BaseModel):
     requested_prompt_id: UUID | None = None
     credit_supplement: int = Field(default=0, ge=0)
     message: str | None = Field(default=None, max_length=500)
+    # False = proposé depuis une conversation → carte dans le fil, pas de notif.
+    notify: bool = True
 
 
 class PromptSnap(BaseModel):
