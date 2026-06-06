@@ -166,7 +166,7 @@ class AdnRead(BaseModel):
 PromptPlatform = Literal[
     "suno", "udio", "riffusion", "stable_audio", "autre"
 ]
-PromptVocalGender = Literal["masculin", "feminin", "instrumental"]
+PromptVocalGender = Literal["masculin", "feminin", "instrumental", "neutre", "mixte"]
 
 
 class PromptCreate(BaseModel):

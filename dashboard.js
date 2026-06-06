@@ -1182,10 +1182,10 @@ function dte2OpenCreatePrompt() {
         <label class="dte2-cp-label">Genre vocal <span style="color:#cc44ff">*</span></label>
         <select id="cp_vocal" class="dte2-input" style="width:100%">
           <option value="">— Choisir —</option>
-          <option value="male">Masculin</option>
-          <option value="female">Féminin</option>
-          <option value="neutral">Neutre</option>
-          <option value="mixed">Mixte</option>
+          <option value="masculin">Masculin</option>
+          <option value="feminin">Féminin</option>
+          <option value="neutre">Neutre</option>
+          <option value="mixte">Mixte</option>
           <option value="instrumental">Instrumental</option>
         </select>
       </div>
@@ -1290,7 +1290,9 @@ async function dte2SubmitCreatePrompt() {
     dashToast('✨ Recette créée et liée au son !');
 
   } catch (err) {
-    const msg = (err && err.message) || 'Erreur inconnue';
+    const msg = (typeof _humanizeApiError === 'function')
+      ? _humanizeApiError(err)
+      : ((err && err.message) || 'Erreur inconnue');
     showErr(msg);
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Créer et lier au son'; }
   }
