@@ -233,8 +233,8 @@
       <div class="msg-header" style="position:relative">
         <button class="msg-back-btn" type="button" onclick="SmyleMessaging._backToInbox()">←</button>
         <span class="msg-title">${_esc(_s.activeThread.other_user_name)}</span>
-        <button class="msg-menu-btn" type="button" title="Actions" onclick="SmyleMessaging._toggleConvMenu(event)"
-                style="background:none;border:none;color:inherit;font-size:18px;cursor:pointer;padding:0 6px;line-height:1">⋮</button>
+        <button class="msg-menu-btn" type="button" title="Actions sur cette conversation" onclick="SmyleMessaging._toggleConvMenu(event)"
+                style="background:none;border:none;color:rgba(255,255,255,.8);font-size:22px;font-weight:700;cursor:pointer;padding:2px 8px;line-height:1">⋮</button>
         <button class="msg-close-btn" onclick="SmyleMessaging.close()">✕</button>
         <div id="msg-conv-menu" style="display:none;position:absolute;top:100%;right:8px;z-index:100;min-width:190px;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px;box-shadow:0 6px 20px rgba(0,0,0,.45)">
           <button type="button" onclick="SmyleMessaging._openTradeFromConv()"
