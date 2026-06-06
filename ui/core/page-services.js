@@ -141,6 +141,8 @@
     panel.innerHTML = `
       <div class="stb-notif-header">
         <span class="stb-notif-title">Notifications</span>
+        <button type="button" onclick="window.__pageMarkAllRead(event)"
+                style="margin-left:auto;background:none;border:none;color:#cc88ff;font-size:12px;cursor:pointer">Tout effacer</button>
       </div>
       <div class="stb-notif-list">${html}</div>`;
     panel.hidden = false;
@@ -166,6 +168,16 @@
     if (el) el.classList.remove('stb-notif-unread');
     fetch(`/me/notifications/${id}/read`, { method: 'PATCH', headers: _hdr(), credentials: 'same-origin' }).catch(() => {});
     _s.notifItems = _s.notifItems.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n);
+  };
+
+  // "Tout effacer" : marque toutes les notifs comme lues (enlève le rouge).
+  window.__pageMarkAllRead = function(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    fetch('/me/notifications/read-all', { method: 'POST', headers: _hdr(), credentials: 'same-origin' }).catch(() => {});
+    _s.notifItems = (_s.notifItems || []).map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() }));
+    _s.notifCount = 0;
+    _updateNotifBadge();
+    _renderNotifPanel();
   };
 
   // ── Panel messages ────────────────────────────────────────────────────────
