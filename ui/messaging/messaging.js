@@ -200,7 +200,7 @@
             <span class="msg-thread-avatar">${_esc((t.other_user_name || '?')[0].toUpperCase())}</span>
             <span class="msg-thread-info">
               <span class="msg-thread-name">${_esc(t.other_user_name || 'Utilisateur')}</span>
-              <span class="msg-thread-preview">${_esc(t.last_message_preview || '')}</span>
+              <span class="msg-thread-preview">${(t.last_message_preview || '').indexOf('__TRADE_OFFER__') === 0 ? '🔄 Proposition d\'échange' : _esc(t.last_message_preview || '')}</span>
             </span>
             ${t.unread_count ? `<span class="msg-thread-badge">${t.unread_count}</span>` : ''}
             <span class="msg-thread-time">${_timeAgo(t.last_message_at)}</span>
@@ -278,6 +278,23 @@
     el.innerHTML = _s.activeThread.messages.map(m => {
       // Comparaison en String() pour éviter les bugs de type UUID vs string
       const mine = myId && String(m.sender_id) === String(myId);
+
+      // Carte d'échange : message marqueur "__TRADE_OFFER__<id>" → carte cliquable
+      // qui ouvre l'écran de proposition (au lieu d'un texte brut).
+      const content0 = m.content || '';
+      if (content0.indexOf('__TRADE_OFFER__') === 0) {
+        const offerId = content0.slice('__TRADE_OFFER__'.length);
+        return `
+          <div class="msg-bubble ${mine ? 'msg-bubble-me' : 'msg-bubble-other'}">
+            <button type="button" onclick="if(window.SmyleTradeView){SmyleTradeView.open('${offerId}');}"
+                    style="display:block;text-align:left;background:rgba(124,58,237,.16);border:1px solid rgba(124,58,237,.55);color:#cdb4ff;border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px;line-height:1.4">
+              🔄 <strong>Proposition d'échange</strong><br>
+              <span style="opacity:.75;font-size:12px">Cliquer pour voir et répondre</span>
+            </button>
+            <span class="msg-bubble-time">${_timeAgo(m.created_at)}</span>
+          </div>`;
+      }
+
       const color = mine ? myColor : otherColor;
 
       // Moi : bulle solide ma couleur (droite) — Autre : bulle tintée sa couleur (gauche)
@@ -445,7 +462,9 @@
     if (!off) { alert('Choisis un de tes prompts à proposer.'); return; }
     if (btn) { btn.textContent = 'Envoi…'; btn.disabled = true; }
     try {
-      await apiFetch('/trades/offers', {
+      // notify:false → pas de notification, la proposition apparaît comme
+      // une carte directement dans le fil de la conversation.
+      const offer = await apiFetch('/trades/offers', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiver_id:         receiverId,
@@ -453,10 +472,23 @@
           requested_prompt_id: req,
           credit_supplement:   Math.max(0, supp || 0),
           message:             null,
+          notify:              false,
         }),
       });
       const m = document.getElementById('msg-trade-modal'); if (m) m.remove();
-      alert('✅ Proposition envoyée !');
+      // Poste une carte d'échange dans la conversation (marqueur détecté au rendu).
+      const offerId = offer && offer.id;
+      if (offerId && _s.activeThread) {
+        try {
+          const msg = await apiFetch(`/messages/threads/${_s.activeThread.id}/send`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: '__TRADE_OFFER__' + offerId }),
+          });
+          _s.activeThread.messages.push(msg);
+          _renderMessages();
+          _scrollBottom();
+        } catch (_) {}
+      }
     } catch (err) {
       if (btn) { btn.textContent = 'Envoyer la proposition'; btn.disabled = false; }
       const detail = (err && err.body && err.body.detail) || err.message || 'Erreur';
