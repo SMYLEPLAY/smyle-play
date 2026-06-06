@@ -76,6 +76,7 @@ class AchievementProgressByAxis(BaseModel):
     buyer: int
     fan: int
     artist: int
+    trader: int = 0
 
 
 class MyAchievementsResponse(BaseModel):

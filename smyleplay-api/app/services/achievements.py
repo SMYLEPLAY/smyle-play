@@ -27,7 +27,7 @@ l'autre se prend une IntegrityError qu'on catch et skip.
 """
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,6 +82,21 @@ async def get_user_progress(
         if user is None:
             return 0
         return int(user.credits_earned_total or 0)
+
+    if axis == AchievementAxis.TRADER:
+        # Nb d'échanges ACCEPTÉS où le user est sender OU receiver.
+        # Import local : évite un cycle services.achievements ↔ models.trade.
+        from app.models.trade import TradeOffer, TradeStatus
+        result = await db.execute(
+            select(func.count(TradeOffer.id)).where(
+                TradeOffer.status == TradeStatus.ACCEPTED,
+                or_(
+                    TradeOffer.sender_id == user_id,
+                    TradeOffer.receiver_id == user_id,
+                ),
+            )
+        )
+        return int(result.scalar() or 0)
 
     return 0  # axis inconnu — pas de crash
 
@@ -226,6 +241,9 @@ async def list_user_achievements_with_progress(
         ),
         "artist": await get_user_progress(
             db, user_id=user_id, axis=AchievementAxis.ARTIST
+        ),
+        "trader": await get_user_progress(
+            db, user_id=user_id, axis=AchievementAxis.TRADER
         ),
     }
 
