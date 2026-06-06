@@ -123,9 +123,13 @@
         const unread = !n.read_at;
         const text   = _notifText(n);
         const time   = _timeAgo(n.created_at);
+        // Notif d'échange → ouvre l'écran de proposition (voir + écouter + accepter).
+        const tradeClick = (n.type === 'trade' && n.target_id)
+          ? `;if(window.SmyleTradeView){SmyleTradeView.open('${_esc(n.target_id)}');}`
+          : '';
         return `
           <div class="stb-notif-item${unread ? ' stb-notif-unread' : ''}"
-               onclick="window.__pageMarkRead('${_esc(n.id)}', this)">
+               onclick="window.__pageMarkRead('${_esc(n.id)}', this)${tradeClick}">
             <span class="stb-notif-icon" style="--ni-color:${meta.color}">${meta.icon}</span>
             <span class="stb-notif-body">
               <span class="stb-notif-text">${text}</span>
