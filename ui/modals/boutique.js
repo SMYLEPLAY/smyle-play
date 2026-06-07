@@ -119,6 +119,17 @@
         </div>
         <div style="color:#6c4cf0;font-size:20px;">›</div>
       </div>`;
+    // Marché secondaire — acheter des prompts revendus par d'autres.
+    html += `
+      <div id="bqMarketCard" style="cursor:pointer;background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:18px;display:flex;gap:14px;align-items:center;margin-top:10px;transition:border-color .15s;"
+           onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='#2c2440'">
+        <div style="font-size:38px;line-height:1;">💱</div>
+        <div style="flex:1;">
+          <div style="font-size:17px;font-weight:800;">Marché secondaire</div>
+          <div style="font-size:12px;color:#9990ad;margin-top:3px;">Achète des sons revendus par d'autres. L'artiste d'origine touche une royaltie.</div>
+        </div>
+        <div style="color:#6c4cf0;font-size:20px;">›</div>
+      </div>`;
 
     html += _sectionTitle('Recharger tes Smyles');
     html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">`;
@@ -155,6 +166,8 @@
       if (typeof window.openReferralPanel === 'function') window.openReferralPanel();
     });
     body.querySelector('#bqPackCard').addEventListener('click', _onPackCardClick);
+    const marketCard = body.querySelector('#bqMarketCard');
+    if (marketCard) marketCard.addEventListener('click', _openMarket);
     body.querySelectorAll('.bqSoon').forEach(el => el.addEventListener('click', () => {
       _toast('Bientôt disponible — on y travaille 🛠️', { type: 'info', duration: 2600 });
     }));
@@ -307,6 +320,74 @@
         const back = document.getElementById('bqBackBtn');
         if (back) back.addEventListener('click', _renderPackIntro);
       }
+    }
+  }
+
+  // ── Marché secondaire : parcourir + acheter ────────────────────────────────
+  async function _openMarket() {
+    const body = document.getElementById('bqBody');
+    if (!body) return;
+    body.innerHTML = `<div style="font-size:13px;color:#9990ad;">Chargement du marché…</div>`;
+    try {
+      const items = await _api('/resale/market');
+      if (!items || !items.length) {
+        body.innerHTML = `
+          <div style="text-align:center;padding:10px 0;">
+            <div style="font-size:40px;margin-bottom:8px;">💱</div>
+            <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Marché vide</div>
+            <p style="font-size:13px;color:#9990ad;">Aucun son en revente pour l'instant. Reviens plus tard.</p>
+            <button id="bqMarketBack" style="margin-top:14px;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:9px 16px;cursor:pointer;font-size:13px;">← Retour</button>
+          </div>`;
+        const b = document.getElementById('bqMarketBack');
+        if (b) b.addEventListener('click', _renderBoutiqueBody);
+        return;
+      }
+      const rows = items.map(it => {
+        const ltd = (it.max_supply != null)
+          ? `<span style="font-size:10px;color:#FBBF24;margin-left:6px;">édition limitée</span>` : '';
+        return `
+          <div style="display:flex;align-items:center;gap:10px;background:#0d0a16;border:1px solid #2c2440;border-radius:12px;padding:12px;margin-bottom:8px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title || 'Un son'}${ltd}</div>
+              <div style="font-size:11px;color:#9990ad;">revente · royaltie artiste incluse</div>
+            </div>
+            <button class="bqBuyResale" data-id="${it.unlocked_prompt_id}" style="background:#6c4cf0;border:none;color:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:700;white-space:nowrap;">Acheter · ${it.resale_price}</button>
+          </div>`;
+      }).join('');
+      body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:16px;font-weight:800;">💱 Marché secondaire</div>
+          <button id="bqMarketBack" style="background:none;border:none;color:#9990ad;cursor:pointer;font-size:13px;">← Retour</button>
+        </div>
+        ${rows}`;
+      const b = document.getElementById('bqMarketBack');
+      if (b) b.addEventListener('click', _renderBoutiqueBody);
+      body.querySelectorAll('.bqBuyResale').forEach(btn => {
+        btn.addEventListener('click', () => _buyResale(btn.getAttribute('data-id')));
+      });
+    } catch (e) {
+      body.innerHTML = `<p style="color:#e58;">Impossible de charger le marché. ${(e && e.status === 401) ? 'Reconnecte-toi.' : 'Réessaie.'}</p>`;
+    }
+  }
+
+  async function _buyResale(unlockedId) {
+    if (!_isLoggedIn()) {
+      _closeBoutique();
+      if (typeof window.openAuthModal === 'function') window.openAuthModal('login');
+      return;
+    }
+    try {
+      const r = await _api(`/resale/${unlockedId}/buy`, { method: 'POST' });
+      _refreshBalance();
+      _toast(`Acheté ✓ (−${r.price_paid} Smyles)`, { type: 'success', duration: 3000 });
+      await _openMarket();   // rafraîchit la liste (le son acheté disparaît)
+    } catch (e) {
+      let msg = 'Achat impossible. Réessaie.';
+      if (e && e.status === 402) msg = 'Solde insuffisant pour cet achat.';
+      else if (e && e.status === 409) msg = 'Tu possèdes déjà ce son.';
+      else if (e && e.status === 404) msg = 'Ce son n\'est plus en vente.';
+      _toast(msg, { type: 'error', duration: 3000 });
+      await _openMarket();
     }
   }
 

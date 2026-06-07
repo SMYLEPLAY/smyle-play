@@ -252,6 +252,21 @@ function renderPrompts(items) {
         </div>
       </div>` : '';
 
+    // Marché secondaire — mettre en vente / retirer (transfert de propriété).
+    const resaleBlock = `
+      <div class="lib-content-block">
+        <div class="lib-content-header"><span class="lib-content-label">💱 Revente</span></div>
+        ${p.resale_price != null
+          ? `<div class="lib-content-body" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+               <span style="color:#4ADE80;font-weight:700;">En vente : ${p.resale_price} Smyles</span>
+               <button class="lib-copy-btn" onclick="libUnlistResale('${p.prompt_id}')">Retirer de la vente</button>
+             </div>`
+          : `<div class="lib-content-body" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+               <button class="lib-copy-btn" onclick="libListResale('${p.prompt_id}')">Mettre en vente</button>
+               <span style="font-size:11px;color:#a09cb8;">Transfert : tu cèdes ce son. L'artiste d'origine touche une royaltie.</span>
+             </div>`}
+      </div>`;
+
     const cellStyle = p.track_color ? ` style="border-left:3px solid ${esc(p.track_color)}"` : '';
     const playBtn = p.audio_url ? `
       <audio id="lib-audio-${i}" src="${esc(p.audio_url)}" preload="none" class="lib-hidden-audio"></audio>
@@ -282,9 +297,43 @@ function renderPrompts(items) {
           ${weirdnessBlock}
           ${styleInfluenceBlock}
           ${lyricsBlock}
+          ${resaleBlock}
         </div>
       </details>`;
   }).join('');
+}
+
+// ── Marché secondaire : mettre en vente / retirer (transfert de propriété) ──
+async function libListResale(promptId) {
+  const raw = window.prompt('Prix de revente en Smyles ?\n(Attention : revente = transfert, tu cèdes ce son.)');
+  if (raw == null) return;
+  const price = parseInt(raw, 10);
+  if (!Number.isInteger(price) || price < 1) {
+    if (window.smyleToast) window.smyleToast('Prix invalide.', { type: 'error' });
+    return;
+  }
+  try {
+    await apiFetch(`/resale/prompts/${promptId}/list`, { method: 'POST', json: { price } });
+    if (window.smyleToast) window.smyleToast('Mis en vente sur le marché secondaire ✓', { type: 'success' });
+    location.reload();
+  } catch (e) {
+    if (window.smyleToast) window.smyleToast('Échec de la mise en vente.', { type: 'error' });
+  }
+}
+
+async function libUnlistResale(promptId) {
+  try {
+    await apiFetch(`/resale/prompts/${promptId}/list`, { method: 'DELETE' });
+    if (window.smyleToast) window.smyleToast('Retiré de la vente ✓', { type: 'success' });
+    location.reload();
+  } catch (e) {
+    if (window.smyleToast) window.smyleToast('Échec du retrait.', { type: 'error' });
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.libListResale = libListResale;
+  window.libUnlistResale = libUnlistResale;
 }
 
 

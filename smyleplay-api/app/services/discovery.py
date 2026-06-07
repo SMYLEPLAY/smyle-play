@@ -406,6 +406,8 @@ async def list_user_library_prompts(
             "cover_url": cover_url,
             # Couleur du track lié — repère visuel cohérent avec la marketplace.
             "track_color": track_color,
+            # Marché secondaire — prix de revente courant (None = pas en vente).
+            "resale_price": up.resale_price,
         }
         for up, p, u, audio_url, cover_url, track_color in rows
     ]
