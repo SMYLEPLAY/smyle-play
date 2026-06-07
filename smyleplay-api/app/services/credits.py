@@ -67,28 +67,39 @@ PLAYLIST_PERK_NUMERATOR = 8
 PLAYLIST_PERK_DENOMINATOR = 10
 
 
-def compute_effective_price(base_price: int, has_perk: bool) -> int:
+def compute_effective_price(
+    base_price: int,
+    has_perk: bool,
+    has_playlist_perk: bool = False,
+) -> int:
     """
-    Calcule le prix effectif d'un prompt après application éventuelle du
-    perk -30% (détenteur d'ADN du même artiste).
+    Prix effectif après application de la PYRAMIDE ADN en CASCADE (cumul
+    multiplicatif, décision Tom 2026-06-08) :
+      - has_perk          : détenteur de l'ADN profil de l'artiste → -30%
+      - has_playlist_perk : détenteur de l'ADN d'une playlist contenant ce
+                            son → -20%
+    Les deux se CUMULENT (appliqués l'un après l'autre) : -30% puis -20%
+    = -44% effectif. Arithmétique entière, arrondi inférieur (favorise
+    l'acheteur), plancher à 1.
 
-    Arithmétique strictement entière. Arrondi inférieur (favorise l'acheteur,
-    prévisible). Plancher à 1 pour empêcher tout prix nul ou négatif même
-    sur cas pathologique (base_price=1).
+    Rétro-compatible : has_playlist_perk absent → comportement identique à
+    l'ancienne signature (base, has_perk).
 
     Exemples:
-        compute_effective_price(3, False) == 3
-        compute_effective_price(3, True)  == 2   # 3*7//10 = 2
-        compute_effective_price(5, True)  == 3   # 5*7//10 = 3
-        compute_effective_price(7, True)  == 4   # 7*7//10 = 4
-        compute_effective_price(10, True) == 7   # 10*7//10 = 7
-        compute_effective_price(50, True) == 35  # 50*7//10 = 35
+        compute_effective_price(3, False)          == 3
+        compute_effective_price(50, True)          == 35   # -30%
+        compute_effective_price(50, False, True)   == 40   # -20%
+        compute_effective_price(50, True, True)    == 28   # -30% puis -20%
+        compute_effective_price(80, True, True)    == 44   # 80→56→44
     """
     if base_price <= 0:
         raise ValueError("base_price must be positive")
+    price = base_price
     if has_perk:
-        return max(1, (base_price * PERK_NUMERATOR) // PERK_DENOMINATOR)
-    return base_price
+        price = max(1, (price * PERK_NUMERATOR) // PERK_DENOMINATOR)
+    if has_playlist_perk:
+        price = max(1, (price * PLAYLIST_PERK_NUMERATOR) // PLAYLIST_PERK_DENOMINATOR)
+    return price
 
 
 def compute_adn_price_with_playlist_perk(base_price: int, has_perk: bool) -> int:

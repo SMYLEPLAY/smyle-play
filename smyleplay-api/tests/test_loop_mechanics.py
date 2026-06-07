@@ -80,6 +80,19 @@ def test_rarity_from_supply_mapping():
     assert rarity_from_supply(10001) == "commun"     # open
 
 
+def test_pyramid_cascade_pricing():
+    # Pyramide ADN en cascade : cumul multiplicatif -30% (profil) puis -20%
+    # (playlist). Décision Tom 2026-06-08.
+    from app.services.credits import compute_effective_price
+    assert compute_effective_price(50, False, False) == 50
+    assert compute_effective_price(50, True, False) == 35    # -30% profil
+    assert compute_effective_price(50, False, True) == 40    # -20% playlist
+    assert compute_effective_price(50, True, True) == 28     # 50→35→28 (cumul)
+    assert compute_effective_price(80, True, True) == 44     # 80→56→44 (-45%)
+    # Rétro-compat : ancienne signature 2 arguments inchangée.
+    assert compute_effective_price(10, True) == 7
+
+
 def test_compute_rarity_tier_prompt():
     # Le tier "édition" partagé avec les ADN, appliqué aux prompts.
     assert compute_rarity_tier(None) == "unlimited"

@@ -187,6 +187,32 @@ async def get_playlist_containing_adn_track(
     return row[0] if row else None
 
 
+async def user_owns_playlist_adn_for_prompt(
+    db: AsyncSession, *, user_id: UUID, prompt_id: UUID
+) -> bool:
+    """
+    Pyramide ADN — cascade : True si user_id possède l'ADN d'une playlist qui
+    contient un track lié à ce prompt → éligible perk -20% sur le prompt
+    (cumulable avec le perk -30% de l'ADN profil). Mirror de
+    get_playlist_containing_adn_track mais sur Track.prompt_id.
+    """
+    from app.models.track import Track
+    result = await db.execute(
+        select(OwnedPlaylistAdn.playlist_id)
+        .join(
+            PlaylistTrack,
+            PlaylistTrack.playlist_id == OwnedPlaylistAdn.playlist_id,
+        )
+        .join(Track, Track.id == PlaylistTrack.track_id)
+        .where(
+            OwnedPlaylistAdn.user_id == user_id,
+            Track.prompt_id == prompt_id,
+        )
+        .limit(1)
+    )
+    return result.first() is not None
+
+
 async def _adn_has_been_sold(db: AsyncSession, adn_id: UUID) -> bool:
     """True si au moins un OwnedAdn existe pour cet ADN."""
     result = await db.execute(

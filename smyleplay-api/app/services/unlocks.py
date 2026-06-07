@@ -206,13 +206,19 @@ async def unlock_prompt_atomic(
         # 3. Locks ordonnés (tri UUID dans _acquire_user_locks)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
-        # 4. Perk = buyer possède l'ADN de cet artiste ?
+        # 4. Perks PYRAMIDE en cascade (cumul multiplicatif) :
+        #    - profil  : buyer possède l'ADN de l'artiste → -30%
+        #    - playlist: buyer possède l'ADN d'une playlist contenant ce son → -20%
         perk_applied = await user_owns_artist_adn(
             db, user_id=buyer_id, artist_id=artist_id
         )
+        from app.services.marketplace import user_owns_playlist_adn_for_prompt
+        playlist_perk = await user_owns_playlist_adn_for_prompt(
+            db, user_id=buyer_id, prompt_id=prompt_id
+        )
 
-        # 5. Pricing entier
-        paid = compute_effective_price(base_price, perk_applied)
+        # 5. Pricing entier (cumul -30% puis -20% si les deux).
+        paid = compute_effective_price(base_price, perk_applied, playlist_perk)
         artist_revenue, platform_fee = compute_split(paid)
         # Sanity check (devrait être impossible vu compute_split garanti) :
         assert artist_revenue + platform_fee == paid
@@ -500,6 +506,14 @@ async def unlock_playlist_adn_atomic(
     )).scalar_one_or_none()
     if existing is not None:
         raise AlreadyOwned("Tu possèdes déjà l'ADN de cette playlist")
+
+    # Pyramide en CASCADE (décision Tom 2026-06-08) : -30% si le buyer possède
+    # l'ADN PROFIL de l'artiste propriétaire → le profil réduit AUSSI ses ADN
+    # playlist (pas seulement ses prompts).
+    from app.services.marketplace import user_owns_artist_adn as _owns_artist_adn
+    from app.services.credits import compute_effective_price as _eff_price
+    profil_perk = await _owns_artist_adn(db, user_id=buyer_id, artist_id=owner_id)
+    paid = _eff_price(paid, profil_perk)
 
     async with db.begin_nested():
         await _acquire_user_locks(db, [buyer_id, owner_id])
