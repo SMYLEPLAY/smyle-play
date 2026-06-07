@@ -837,6 +837,16 @@
           <div class="dash-help" id="dashPromptPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
             <div class="dash-help">Min. 3 · Max. 500 crédits. Si l'acheteur possède ton ADN il a -30&nbsp;% automatique.</div>
 
+            <!-- Édition limitée (rareté par nb d'exemplaires) — comme les ADN. -->
+            <label class="dash-label" style="margin-top:14px;">Nombre d'exemplaires <span style="color:#a09cb8;font-weight:400;">(optionnel)</span></label>
+            <input class="dash-input" id="dashPromptMaxSupply" type="number" min="1"
+                   placeholder="Laisse vide = illimité"
+                   oninput="dashPromptUpdateRarityPreview()" />
+            <div class="dash-help" id="dashPromptRarityPreview" style="margin-top:4px;font-style:italic;">
+              <span style="color:#a09cb8;">Édition illimitée (pas de badge de rareté)</span>
+            </div>
+            <div class="dash-help">1 = pièce unique 👑 · 2–10 = légendaire ⭐ · 11–10 000 = limitée 💎 · plus = ouverte 🟢. La rareté valorise ton prompt ; le prix reste libre.</div>
+
             <!-- ──────────────────────────────────────────────────────────────
                  P1-F4 (2026-05-04) — Réglages de génération (4 obligatoires + 1 optionnel)
                  Sans ces réglages, l'acheteur tape le prompt dans Suno mais

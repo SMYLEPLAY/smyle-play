@@ -2072,6 +2072,14 @@ async function uploadTrack() {
     const styleInfluenceVal = (document.getElementById('dashPromptStyleInfluence')?.value || '').trim();
     const vocalGenderVal    = (document.getElementById('dashPromptVocalGender')?.value || '').trim();
 
+    // Rareté/supply (comme les ADN) : nb d'exemplaires. Vide = illimité.
+    const supRaw = (document.getElementById('dashPromptMaxSupply')?.value || '').trim();
+    let promptMaxSupply = null;
+    if (supRaw !== '') {
+      const n = parseInt(supRaw, 10);
+      if (Number.isInteger(n) && n >= 1) promptMaxSupply = n;
+    }
+
     const promptErrs = [];
     if (promptText.length < 100)               promptErrs.push('prompt trop court (min 100 caractères)');
     if (promptText.length > 1000)              promptErrs.push('prompt trop long (max 1000)');
@@ -2100,6 +2108,8 @@ async function uploadTrack() {
             prompt_weirdness:       weirdnessVal,
             prompt_style_influence: styleInfluenceVal,
             prompt_vocal_gender:    vocalGenderVal,
+            // Édition limitée (null = illimité) — rareté dérivée côté backend.
+            ...(promptMaxSupply !== null ? { max_supply: promptMaxSupply } : {}),
           },
         });
         dashToast(`💎 Recette IA "${name}" publiée sur la marketplace.`);
@@ -4406,6 +4416,29 @@ function dashAdnUpdateRarityPreview() {
   else if (n <= 10)   { tier='Legendary'; emoji='⭐'; label=`Drop VIP (${n} exemplaires)`; color='#FBBF24'; }
   else if (n <= 10000) { tier='Limited';  emoji='💎'; label=`Édition limitée (${n} exemplaires)`; color='#A78BFA'; }
   else                { tier='Open';      emoji='🟢'; label=`Édition ouverte (${n} exemplaires)`; color='#4ADE80'; }
+  out.innerHTML = `<span style="color:${color};">${emoji} <strong>${tier}</strong> — ${label}</span>`;
+}
+
+// Preview live de la rareté d'un PROMPT (miroir de compute_rarity_tier backend).
+function dashPromptUpdateRarityPreview() {
+  const inp = document.getElementById('dashPromptMaxSupply');
+  const out = document.getElementById('dashPromptRarityPreview');
+  if (!inp || !out) return;
+  const raw = (inp.value || '').trim();
+  if (raw === '') {
+    out.innerHTML = '<span style="color:#a09cb8;">Édition illimitée (pas de badge de rareté)</span>';
+    return;
+  }
+  const n = parseInt(raw, 10);
+  if (!Number.isInteger(n) || n < 1) {
+    out.innerHTML = '<span style="color:#f87171;">Nombre invalide</span>';
+    return;
+  }
+  let tier, emoji, label, color;
+  if (n === 1)         { tier='Mythic';    emoji='👑'; label='Pièce unique (1/1)';            color='#FFD700'; }
+  else if (n <= 10)    { tier='Legendary'; emoji='⭐'; label=`Drop VIP (${n} exemplaires)`;   color='#FBBF24'; }
+  else if (n <= 10000) { tier='Limited';   emoji='💎'; label=`Édition limitée (${n} ex.)`;    color='#A78BFA'; }
+  else                 { tier='Open';      emoji='🟢'; label=`Édition ouverte (${n} ex.)`;    color='#4ADE80'; }
   out.innerHTML = `<span style="color:${color};">${emoji} <strong>${tier}</strong> — ${label}</span>`;
 }
 
