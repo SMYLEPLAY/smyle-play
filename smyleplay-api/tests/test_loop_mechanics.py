@@ -335,6 +335,37 @@ async def test_pack_pool_empty_when_only_own_prompts():
         await _cleanup_users(artist)
 
 
+async def test_pack_topup_full_price_for_legendary():
+    # Un son legendary (2–10 ex.) tiré en pack → l'artiste touche le PRIX PLEIN.
+    artist = await _make_user(initial_balance=0, artist_name="RareArtist")
+    buyer = await _make_user(initial_balance=100)
+    try:
+        await _make_prompt(artist, price=80, max_supply=5)  # legendary
+        async with SessionLocal() as db:
+            res = await open_mystery_pack_atomic(db, buyer)
+            await db.commit()
+        assert res["rarity"] == "epique"
+        assert await _balance(artist) == 80                 # prix plein, pas 6
+        assert await _balance(buyer) == 100 - MYSTERY_PACK_PRICE
+    finally:
+        await _cleanup_users(artist, buyer)
+
+
+async def test_pack_no_topup_for_limited_tier():
+    # Un son "limited" (11–10 000 ex.) NE déclenche PAS le top-up (garde-fou).
+    artist = await _make_user(initial_balance=0, artist_name="LimArtist")
+    buyer = await _make_user(initial_balance=100)
+    try:
+        await _make_prompt(artist, price=80, max_supply=50)  # limited (>10)
+        async with SessionLocal() as db:
+            res = await open_mystery_pack_atomic(db, buyer)
+            await db.commit()
+        assert res["rarity"] == "rare"
+        assert await _balance(artist) == 6                  # juste la part des 8
+    finally:
+        await _cleanup_users(artist, buyer)
+
+
 # =============================================================================
 # Stock-out édition limitée (achat direct prompt)
 # =============================================================================

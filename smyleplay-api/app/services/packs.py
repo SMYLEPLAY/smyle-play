@@ -31,7 +31,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.prompt import Prompt
 from app.models.transaction import Transaction, TransactionStatus, TransactionType
 from app.models.unlocked_prompt import UnlockedPrompt
-from app.services.credits import _acquire_user_locks, compute_split
+from app.services.credits import (
+    _acquire_user_locks,
+    compute_split,
+    grant_credits_atomic,
+)
 
 # Prix fixe d'un tirage (Smyles). Modéré au lancement, à affiner avec les
 # données réelles (prix moyen des prompts pack_eligible).
@@ -243,6 +247,25 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         tx.status = TransactionStatus.COMPLETED
         tx.completed_at = func.now()
         await db.flush()
+
+    # Top-up "prix fort" pour les éditions RARES tirées en pack (décision Tom
+    # 2026-06-08) : si le son tiré est mythic (1/1) ou legendary (2–10),
+    # l'artiste touche le PRIX PLEIN du prompt, pas juste sa part des 8 Smyles.
+    # La plateforme comble la différence (BONUS minté). RESTREINT aux 2 tiers
+    # les plus rares (PAS "limited" 11–10 000) pour borner l'inflation —
+    # garde-fou anti-saignée. Hors savepoint (grant pose son propre nested).
+    if pick.max_supply is not None and pick.max_supply <= 10:
+        already_paid = compute_split(price)[0]           # part artiste déjà versée
+        topup = int(pick.price_credits) - already_paid
+        if topup > 0:
+            await grant_credits_atomic(
+                db,
+                artist_id,
+                topup,
+                reason="pack_limited_topup",
+                tx_type=TransactionType.BONUS,
+                metadata={"prompt_id": str(pick.id), "tier": rarity, "source": "mystery_pack"},
+            )
 
     # Trophées packs (paliers 1/10/50/100 ouvertures). Hors savepoint principal,
     # le service achievements gère ses propres begin_nested. Le caller commit.
