@@ -76,8 +76,8 @@
 
   <div class="dash-topbar-right">
 
-    <!-- Bouton BOUTIQUE — vitrine (Pack Mystère, etc.). Logique autonome dans
-         ui/modals/boutique.js (chargé en bas de page). -->
+    <!-- Bouton BOUTIQUE — hub unique (dépenser ET gagner des Smyles).
+         Logique autonome dans ui/modals/boutique.js + engagement.js. -->
     <button type="button" onclick="if(window.openBoutique)window.openBoutique()" title="Boutique"
             style="display:inline-flex;align-items:center;gap:6px;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700;margin-right:10px;">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 13h6"/></svg>
@@ -1856,6 +1856,7 @@
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>
+<script src="/ui/modals/engagement.js" defer></script>
 <script src="/ui/modals/search.js" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 
