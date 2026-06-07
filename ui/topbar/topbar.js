@@ -413,6 +413,10 @@
 
       <div class="stb-right">
         <div id="smyle-balance" class="stb-balance-slot"></div>
+        <button class="stb-mymix" type="button" onclick="if(window.openBoutique)window.openBoutique()" title="Boutique" style="gap:6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 13h6"/></svg>
+          <span class="stb-mymix-label">Boutique</span>
+        </button>
         ${mixHtml}
         ${msgHtml}
         ${bellHtml}
