@@ -124,6 +124,16 @@ async def unlock_prompt(
             )
             await db.commit()
 
+        # Parrainage (mécanique 1) : 1er achat = action qualifiante qui
+        # débloque la récompense si le buyer a été parrainé. Idempotent et
+        # best-effort — un échec ici ne casse jamais l'achat déjà committé.
+        try:
+            from app.services.referrals import maybe_reward_referral
+            if await maybe_reward_referral(db, current_user.id):
+                await db.commit()
+        except Exception:
+            await db.rollback()
+
         return UnlockPromptResponse(
             unlocked_prompt=UnlockedPromptRead.model_validate(result.unlocked_prompt),
             transaction=result.transaction,

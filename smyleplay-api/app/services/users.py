@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.schemas.user import UserCreate
+from app.services.referrals import generate_referral_code
 
 
 def hash_password(password: str) -> str:
@@ -23,6 +24,7 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
     db_user = User(
         email=user.email,
         password_hash=hash_password(user.password),
+        referral_code=await generate_referral_code(db),
     )
     db.add(db_user)
     await db.commit()

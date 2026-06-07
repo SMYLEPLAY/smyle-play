@@ -5,6 +5,7 @@ from app.auth.jwt import create_access_token
 from app.database import get_db
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services.playlists import ensure_default_wishlist
+from app.services.referrals import attach_referral_at_signup
 from app.services.users import authenticate_user, create_user, get_user_by_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -23,6 +24,15 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
             detail="Email already registered",
         )
     new_user = await create_user(db, user)
+    # Lien de parrainage — best-effort, silencieux. Un code invalide / absent
+    # ne casse jamais l'inscription. Aucun crédit versé ici : seulement le lien
+    # PENDING, débloqué plus tard à la 1ère action du filleul.
+    try:
+        referral = await attach_referral_at_signup(db, new_user, user.referral_code)
+        if referral is not None:
+            await db.commit()
+    except Exception:
+        await db.rollback()
     # Seed wishlist par défaut — best-effort, idempotent. Une erreur ici
     # ne doit pas casser l'inscription : la wishlist pourra être recréée
     # paresseusement au premier GET /playlists/wishlist.

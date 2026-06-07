@@ -45,6 +45,9 @@ ROLE_CODES: tuple[str, ...] = (
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+    # Code de parrainage optionnel saisi à l'inscription (mécanique 1).
+    # Best-effort : un code invalide n'empêche pas l'inscription.
+    referral_code: str | None = Field(default=None, max_length=16)
 
 
 class UserLogin(BaseModel):

@@ -6,6 +6,7 @@ from .owned_adn import OwnedAdn
 from .owned_playlist_adn import OwnedPlaylistAdn
 from .playlist import Playlist, PlaylistTrack
 from .prompt import Prompt
+from .referral import Referral, ReferralStatus
 from .track import Track
 from .transaction import Transaction, TransactionStatus, TransactionType
 from .unlocked_prompt import UnlockedPrompt
@@ -25,6 +26,8 @@ __all__ = [
     "Playlist",
     "PlaylistTrack",
     "Prompt",
+    "Referral",
+    "ReferralStatus",
     "Track",
     "Transaction",
     "TransactionStatus",
