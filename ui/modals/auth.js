@@ -639,27 +639,59 @@ async function openPack() {
   const body = document.getElementById('packBody');
   const btn = document.getElementById('packOpenBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Ouverture…'; }
-  // Petite animation de suspense avant la révélation.
-  if (body) body.innerHTML = `<div style="font-size:64px;margin:24px 0;animation:packShake .5s ease-in-out infinite;">🎁</div>
-    <style>@keyframes packShake{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}@keyframes packPop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}</style>
-    <p style="font-size:13px;color:#9990ad;">Tirage en cours…</p>`;
+  // ── Phase 1 : suspense — la boîte tremble et pulse pendant l'appel API.
+  if (body) body.innerHTML = `
+    <style>
+      @keyframes packShake{0%,100%{transform:rotate(-7deg) translateY(0)}25%{transform:rotate(7deg) translateY(-5px)}50%{transform:rotate(-5deg) translateY(0)}75%{transform:rotate(6deg) translateY(-4px)}}
+      @keyframes packGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(108,76,240,.5))}50%{filter:drop-shadow(0 0 28px rgba(108,76,240,.95))}}
+      @keyframes packBurst{0%{transform:scale(1);opacity:1}55%{transform:scale(1.55);opacity:1}100%{transform:scale(2.3);opacity:0}}
+      @keyframes cardReveal{0%{transform:scale(.3) translateY(24px);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1) translateY(0);opacity:1}}
+      @keyframes ringPulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+      @keyframes shineSweep{0%{left:-60%}100%{left:150%}}
+      @keyframes sparkFloat{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-46px) scale(.3);opacity:0}}
+    </style>
+    <div style="height:150px;display:flex;align-items:center;justify-content:center;">
+      <div id="packBox" style="font-size:74px;animation:packShake .42s ease-in-out infinite, packGlow 1s ease-in-out infinite;">🎁</div>
+    </div>
+    <p style="font-size:13px;color:#9990ad;">Ouverture du pack…</p>`;
   try {
     const r = await apiFetch('/packs/mystery/open', { method: 'POST' });
     // Rafraîchit la bulle de solde.
     if (window.SmyleBalance && typeof window.SmyleBalance.refresh === 'function') {
       try { window.SmyleBalance.refresh(); } catch (_) {}
     }
-    await new Promise((res) => setTimeout(res, 650)); // laisse le suspense respirer
     const title = (r && r.title) || 'Un son';
     const rar = PACK_RARITY[r && r.rarity] || { label: 'Commun', color: '#9aa0aa' };
     const isTop = r && (r.rarity === 'epique' || r.rarity === 'legendaire');
+
+    // ── Phase 2 : la boîte explose après un court suspense.
+    await new Promise((res) => setTimeout(res, 700));
+    const boxEl = document.getElementById('packBox');
+    if (boxEl) boxEl.style.animation = 'packBurst .45s ease-out forwards';
+    await new Promise((res) => setTimeout(res, 430));
+
+    // ── Phase 3 : révélation de la carte, colorée selon la rareté.
+    const sparks = isTop
+      ? ['✨', '🌟', '✨', '💫', '✨']
+          .map((s, i) => `<span style="position:absolute;left:${8 + i * 21}%;top:${15 + (i % 2) * 32}%;font-size:22px;animation:sparkFloat ${0.8 + i * 0.12}s ease-out forwards;animation-delay:${i * 0.06}s;">${s}</span>`)
+          .join('')
+      : '';
     if (body) body.innerHTML = `
-      <div style="animation:packPop .4s ease-out;">
-        <div style="font-size:48px;margin:6px 0 4px;">${isTop ? '🌟' : '🎉'}</div>
-        <div style="display:inline-block;background:${rar.color}22;border:1px solid ${rar.color};color:${rar.color};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:999px;margin-bottom:10px;">${rar.label}</div>
-        <div style="font-size:22px;font-weight:800;margin:4px 0 16px;color:${isTop ? rar.color : '#fff'};">${title}</div>
-        <a href="/library" style="display:block;background:#6c4cf0;color:#fff;border-radius:12px;padding:12px;text-decoration:none;font-weight:700;margin-bottom:8px;">Voir dans ma bibliothèque</a>
-        <button onclick="_renderPackIntro()" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;">Ouvrir un autre pack</button>
+      <div style="position:relative;">
+        ${sparks}
+        <div style="position:relative;display:inline-block;margin:4px auto 12px;">
+          <div style="position:absolute;inset:-14px;border-radius:50%;border:2px solid ${rar.color};animation:ringPulse .7s ease-out forwards;"></div>
+          <div style="font-size:52px;animation:cardReveal .5s cubic-bezier(.2,1.3,.4,1) both;filter:drop-shadow(0 0 18px ${rar.color});">${isTop ? '🌟' : '🎉'}</div>
+        </div>
+        <div style="animation:cardReveal .5s cubic-bezier(.2,1.3,.4,1) both;animation-delay:.08s;">
+          <div style="position:relative;overflow:hidden;display:inline-block;background:${rar.color}22;border:1px solid ${rar.color};color:${rar.color};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:5px 14px;border-radius:999px;margin-bottom:10px;">
+            ${rar.label}
+            <span style="position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:shineSweep 1s ease-in-out .3s both;"></span>
+          </div>
+          <div style="font-size:22px;font-weight:800;margin:4px 0 16px;color:${isTop ? rar.color : '#fff'};">${title}</div>
+          <a href="/library" style="display:block;background:#6c4cf0;color:#fff;border-radius:12px;padding:12px;text-decoration:none;font-weight:700;margin-bottom:8px;">Voir dans ma bibliothèque</a>
+          <button onclick="_renderPackIntro()" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;">Ouvrir un autre pack</button>
+        </div>
       </div>`;
     if (typeof window.smyleToast === 'function') {
       window.smyleToast(`${isTop ? '🌟' : '🎁'} ${rar.label} — « ${title} » !`, { type: 'success', duration: 3400 });

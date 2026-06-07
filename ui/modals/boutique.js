@@ -22,16 +22,12 @@ const SMYLE_PACKS = [
   { credits: 200, eur: 120, best: false },
 ];
 
-// Aperçu d'abonnement — PROVISOIRE, à valider/affiner avant tout branchement.
-const SUB_PREVIEW = {
-  name: 'Smyle+',
-  priceLabel: '≈ 9,99 € / mois',
-  perks: [
-    'Des Smyles offerts chaque mois',
-    'Accès anticipé aux nouveaux sons',
-    'Badge membre sur ton profil',
-  ],
-};
+// Abonnement — 3 paliers décidés. Avantages à définir plus tard.
+const SUB_TIERS = [
+  { name: 'Standard', icon: '🎫', accent: '#9aa0aa' },
+  { name: 'Premium',  icon: '⭐', accent: '#6c4cf0' },
+  { name: 'Mythique', icon: '👑', accent: '#ffb627' },
+];
 
 function _ensureBoutiqueModal() {
   let modal = document.getElementById('boutiqueModal');
@@ -92,23 +88,17 @@ function _renderBoutiqueBody() {
   html += `</div>`;
   html += `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${_soonBadge('Bientôt')}<span style="font-size:12px;color:#9990ad;">Le paiement arrive prochainement.</span></div>`;
 
-  // ── 3. ABONNEMENT — aperçu provisoire (bientôt) ─────────────────────
+  // ── 3. ABONNEMENT — 3 paliers (bientôt, avantages à venir) ──────────
   html += _sectionTitle('Abonnement');
-  html += `
-    <div style="background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:18px;opacity:.9;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:22px;">⭐</span>
-          <span style="font-size:17px;font-weight:800;">${SUB_PREVIEW.name}</span>
-        </div>
-        ${_soonBadge('Aperçu')}
-      </div>
-      <div style="font-size:13px;color:#cfc6e6;margin-bottom:10px;">${SUB_PREVIEW.priceLabel}</div>
-      <ul style="margin:0;padding-left:18px;font-size:12px;color:#9990ad;line-height:1.7;">
-        ${SUB_PREVIEW.perks.map(p => `<li>${p}</li>`).join('')}
-      </ul>
-      <div style="font-size:11px;color:#6b6480;margin-top:10px;font-style:italic;">Offre en préparation — contenu provisoire, susceptible d'évoluer.</div>
-    </div>`;
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">`;
+  html += SUB_TIERS.map(t => `
+    <div onclick="_boutiqueSoon()" style="cursor:default;background:#0d0a16;border:1px solid ${t.accent};border-radius:14px;padding:16px 12px;text-align:center;opacity:.85;">
+      <div style="font-size:28px;line-height:1;margin-bottom:6px;">${t.icon}</div>
+      <div style="font-size:15px;font-weight:800;color:${t.accent};">${t.name}</div>
+      <div style="font-size:11px;color:#9990ad;margin-top:4px;">Avantages à venir</div>
+    </div>`).join('');
+  html += `</div>`;
+  html += `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${_soonBadge('Bientôt')}<span style="font-size:12px;color:#9990ad;">Trois formules — détails en préparation.</span></div>`;
 
   body.innerHTML = html;
 }
