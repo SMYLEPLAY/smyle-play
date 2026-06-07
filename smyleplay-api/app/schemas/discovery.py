@@ -176,6 +176,9 @@ class LibraryPromptItem(BaseModel):
     # Couleur du track lié — repère visuel cohérent avec la marketplace.
     # NULL si aucun track lié ou si le track n'a pas de couleur définie.
     track_color: str | None = None
+    # Marché secondaire (2026-06-08) : prix de revente courant. NULL = pas en
+    # vente. Permet à la bibliothèque d'afficher l'état "en vente" + le prix.
+    resale_price: int | None = None
 
 
 class LibraryPromptsResponse(BaseModel):
