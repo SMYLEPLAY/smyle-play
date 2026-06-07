@@ -41,14 +41,17 @@ async function _fetchMeAndSync() {
   }
 }
 
-async function doSignup(email, password, { onAttempt } = {}) {
+async function doSignup(email, password, { onAttempt, referralCode } = {}) {
   try {
-    // Signup minimal : email + password uniquement.
+    // Signup minimal : email + password (+ code de parrainage optionnel).
     // Le profil artiste (artist_name, bio, slug) se crée via le WATT board
     // après connexion (voir /dashboard#profile).
+    const payload = { email, password };
+    const ref = (referralCode || '').trim();
+    if (ref) payload.referral_code = ref;   // mécanique 1 — best-effort côté API
     await apiFetch('/auth/register', {
       method: 'POST',
-      json: { email, password },
+      json: payload,
       auth: false,
       retries:      1,
       retryDelayMs: 700,
@@ -273,6 +276,10 @@ function renderAuthArea() {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           WATT BOARD
         </a>
+        <button class="user-menu-item" onclick="openReferralModal()" role="menuitem">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+          Parrainage
+        </button>
         <div class="user-menu-sep"></div>
         <button class="user-menu-item user-menu-item-danger" onclick="doLogout()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -357,6 +364,8 @@ async function submitLogin() {
 async function submitSignup() {
   const email    = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
+  const refEl    = document.getElementById('signup-referral');
+  const referralCode = refEl ? refEl.value.trim() : '';
   const msg      = document.getElementById('authMsg');
   if (!email || !password) {
     msg.textContent = 'Email et mot de passe requis.';
@@ -366,12 +375,91 @@ async function submitSignup() {
   const onAttempt = ({ willRetry }) => {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
-  const result = await doSignup(email, password, { onAttempt });
+  const result = await doSignup(email, password, { onAttempt, referralCode });
   if (result.ok) {
     closeAuthModal();
     renderAuthArea();
     if (window.SmylePageServices) window.SmylePageServices.refresh();
   } else msg.textContent = result.msg;
+}
+
+// ── Parrainage (mécanique 1) — modal "Mon parrainage" ───────────────────────
+// Affiche le code de l'utilisateur + lien partageable + stats (GET /referrals/me).
+// Modal injecté à la demande pour ne pas alourdir le DOM initial.
+
+function _ensureReferralModal() {
+  let modal = document.getElementById('referralModal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'referralModal';
+  modal.className = 'modal-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:420px;width:92%;background:#14101f;border:1px solid #2c2440;border-radius:16px;padding:22px;color:#eee;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:18px;">Parraine tes amis</h3>
+        <button onclick="closeReferralModal()" aria-label="Fermer" style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <p style="margin:0 0 14px;font-size:13px;color:#b9b2cc;">Partage ton code. Quand ton filleul poste son 1er son ou fait son 1er achat, vous gagnez <strong>10 Smyles chacun</strong>.</p>
+      <div id="referralBody" style="font-size:14px;">Chargement…</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeReferralModal(); });
+  return modal;
+}
+
+async function openReferralModal() {
+  _closeUserMenu();
+  const modal = _ensureReferralModal();
+  modal.style.display = 'flex';
+  const body = document.getElementById('referralBody');
+  body.textContent = 'Chargement…';
+  try {
+    const data = await apiFetch('/referrals/me');
+    const code = (data && data.referral_code) || '—';
+    const link = `${location.origin}/?ref=${encodeURIComponent(code)}`;
+    const total   = (data && data.total_referred) || 0;
+    const rewarded = (data && data.rewarded) || 0;
+    const pending  = (data && data.pending) || 0;
+    const earned   = (data && data.credits_earned) || 0;
+    body.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <code style="flex:1;background:#0d0a16;border:1px solid #2c2440;border-radius:10px;padding:10px 12px;font-size:18px;letter-spacing:2px;text-align:center;">${code}</code>
+        <button onclick="copyReferral('${code}')" style="background:#6c4cf0;border:none;color:#fff;border-radius:10px;padding:10px 12px;cursor:pointer;font-size:13px;">Copier le code</button>
+      </div>
+      <button onclick="copyReferral('${link.replace(/'/g, "\\'")}')" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:9px;cursor:pointer;font-size:12px;margin-bottom:16px;">Copier le lien d'invitation</button>
+      <div style="display:flex;text-align:center;gap:8px;">
+        <div style="flex:1;background:#0d0a16;border-radius:10px;padding:10px;"><div style="font-size:20px;font-weight:700;">${total}</div><div style="font-size:11px;color:#9990ad;">filleuls</div></div>
+        <div style="flex:1;background:#0d0a16;border-radius:10px;padding:10px;"><div style="font-size:20px;font-weight:700;">${rewarded}</div><div style="font-size:11px;color:#9990ad;">validés</div></div>
+        <div style="flex:1;background:#0d0a16;border-radius:10px;padding:10px;"><div style="font-size:20px;font-weight:700;">${earned}</div><div style="font-size:11px;color:#9990ad;">Smyles gagnés</div></div>
+      </div>
+      ${pending ? `<p style="margin:12px 0 0;font-size:12px;color:#9990ad;text-align:center;">${pending} filleul${pending > 1 ? 's' : ''} en attente de leur 1ère action.</p>` : ''}`;
+  } catch (e) {
+    body.innerHTML = `<p style="color:#e58;">Impossible de charger ton parrainage. ${(e && e.status === 401) ? 'Reconnecte-toi.' : 'Réessaie dans un instant.'}</p>`;
+  }
+}
+
+function closeReferralModal() {
+  const modal = document.getElementById('referralModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function copyReferral(text) {
+  const done = () => { if (typeof window.smyleToast === 'function') window.smyleToast('Copié ✓', { type: 'success', duration: 1800 }); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => done());
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (_) {}
+    document.body.removeChild(ta); done();
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.openReferralModal = openReferralModal;
+  window.closeReferralModal = closeReferralModal;
+  window.copyReferral = copyReferral;
 }
 
 // ── 7. Bootstrap : si un JWT existe déjà au chargement, resynchroniser ──────
@@ -397,11 +485,19 @@ function _maybeAutoOpenFromQuery() {
     // Si déjà connecté, on ne ré-ouvre rien.
     if (typeof getAuthToken === 'function' && getAuthToken()) return;
     const params = new URLSearchParams(location.search || '');
-    const tab = params.get('auth');
+    // Lien de parrainage : ?ref=CODE → on ouvre directement le signup et on
+    // pré-remplit le champ code (mécanique 1). Le ref prime sur ?auth=.
+    const ref = (params.get('ref') || '').trim();
+    let tab = params.get('auth');
+    if (ref) tab = 'signup';
     if (tab !== 'login' && tab !== 'signup') return;
     // Attend un micro-tick pour laisser le DOM du modal être injecté.
     setTimeout(() => {
       if (typeof openAuthModal === 'function') openAuthModal(tab);
+      if (ref) {
+        const refEl = document.getElementById('signup-referral');
+        if (refEl) refEl.value = ref.toUpperCase();
+      }
     }, 50);
   } catch (_) { /* noop */ }
 }
