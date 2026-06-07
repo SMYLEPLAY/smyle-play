@@ -87,7 +87,25 @@
   function _renderBoutiqueBody() {
     const body = document.getElementById('bqBody');
     if (!body) return;
-    let html = _sectionTitle('Dépenser tes Smyles');
+
+    // ── 0. GAGNER des Smyles — Récompense du jour + Parrainage ──────────
+    let html = _sectionTitle('Gagner des Smyles');
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div id="bqEarnStreak" style="cursor:pointer;background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:16px;text-align:center;transition:border-color .15s;"
+           onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='#2c2440'">
+        <div style="font-size:30px;line-height:1;margin-bottom:6px;">🔥</div>
+        <div style="font-size:14px;font-weight:800;">Récompense du jour</div>
+        <div style="font-size:11px;color:#9990ad;margin-top:3px;">Reviens chaque jour</div>
+      </div>
+      <div id="bqEarnRef" style="cursor:pointer;background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:16px;text-align:center;transition:border-color .15s;"
+           onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='#2c2440'">
+        <div style="font-size:30px;line-height:1;margin-bottom:6px;">🤝</div>
+        <div style="font-size:14px;font-weight:800;">Parrainage</div>
+        <div style="font-size:11px;color:#9990ad;margin-top:3px;">Invite, gagnez à deux</div>
+      </div>
+    </div>`;
+
+    html += _sectionTitle('Dépenser tes Smyles');
     html += `
       <div id="bqPackCard" style="cursor:pointer;background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:18px;display:flex;gap:14px;align-items:center;transition:border-color .15s;"
            onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='#2c2440'">
@@ -126,6 +144,16 @@
     html += `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${_soonBadge('Bientôt')}<span style="font-size:12px;color:#9990ad;">Trois formules — détails en préparation.</span></div>`;
 
     body.innerHTML = html;
+    const earnStreak = body.querySelector('#bqEarnStreak');
+    const earnRef = body.querySelector('#bqEarnRef');
+    if (earnStreak) earnStreak.addEventListener('click', () => {
+      _closeBoutique();
+      if (typeof window.openStreakPanel === 'function') window.openStreakPanel();
+    });
+    if (earnRef) earnRef.addEventListener('click', () => {
+      _closeBoutique();
+      if (typeof window.openReferralPanel === 'function') window.openReferralPanel();
+    });
     body.querySelector('#bqPackCard').addEventListener('click', _onPackCardClick);
     body.querySelectorAll('.bqSoon').forEach(el => el.addEventListener('click', () => {
       _toast('Bientôt disponible — on y travaille 🛠️', { type: 'info', duration: 2600 });
