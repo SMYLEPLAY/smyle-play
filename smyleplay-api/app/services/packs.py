@@ -24,7 +24,7 @@ est vide → erreur claire (rien débité).
 import random
 from uuid import UUID
 
-from sqlalchemy import and_, exists, func, select, text
+from sqlalchemy import and_, exists, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,25 +37,47 @@ from app.services.credits import _acquire_user_locks, compute_split
 # données réelles (prix moyen des prompts pack_eligible).
 MYSTERY_PACK_PRICE = 8
 
-# Raretés (mécanique 3) — classées selon le PRIX du prompt, tirage PONDÉRÉ.
-# L'upside du gacha : on peut décrocher un son cher à prix cassé, mais c'est
-# rare (poids faible) → la valeur moyenne d'un tirage reste sous le prix du
-# pack, donc la plateforme ne saigne jamais et pas d'arbitrage de revente.
-# "max" inclusif ; le dernier tier capte tout le haut.
+# Raretés (mécanique 3) — basées sur le NOMBRE D'EXEMPLAIRES (max_supply),
+# aligné sur le modèle ADN (compute_rarity_tier). Plus c'est rare (peu
+# d'exemplaires), plus le poids de tirage est faible → la valeur moyenne d'un
+# tirage reste basse, pas d'arbitrage. Mapping supply → tier pack :
+#   illimité (NULL) / open (>10000) → commun
+#   limited (11–10000)              → rare
+#   legendary (2–10)                → epique
+#   mythic (1)                      → legendaire
 RARITY_TIERS = [
-    {"name": "commun",     "min": 0,  "max": 5,            "weight": 70},
-    {"name": "rare",       "min": 6,  "max": 15,           "weight": 22},
-    {"name": "epique",     "min": 16, "max": 40,           "weight": 6},
-    {"name": "legendaire", "min": 41, "max": 10**9,        "weight": 2},
+    {"name": "commun",     "weight": 70},
+    {"name": "rare",       "weight": 22},
+    {"name": "epique",     "weight": 6},
+    {"name": "legendaire", "weight": 2},
 ]
 
 
-def rarity_for_price(price: int) -> str:
-    """Rareté d'un prompt d'après son prix (Smyles)."""
-    for tier in RARITY_TIERS:
-        if tier["min"] <= price <= tier["max"]:
-            return tier["name"]
+def rarity_from_supply(max_supply: int | None) -> str:
+    """Rareté pack d'un prompt d'après son nombre d'exemplaires."""
+    if max_supply is None:
+        return "commun"
+    if max_supply == 1:
+        return "legendaire"
+    if max_supply <= 10:
+        return "epique"
+    if max_supply <= 10000:
+        return "rare"
     return "commun"
+
+
+def _tier_filter(name: str):
+    """Condition SQLAlchemy sur Prompt.max_supply pour un tier donné."""
+    ms = Prompt.max_supply
+    if name == "commun":
+        return or_(ms.is_(None), ms > 10000)
+    if name == "rare":
+        return and_(ms >= 11, ms <= 10000)
+    if name == "epique":
+        return and_(ms >= 2, ms <= 10)
+    if name == "legendaire":
+        return ms == 1
+    return None
 
 
 def _roll_tier() -> dict:
@@ -94,6 +116,14 @@ def _eligible_pool_query(buyer_id: UUID):
             UnlockedPrompt.prompt_id == Prompt.id,
         )
     )
+    # Stock-out : exclut les éditions limitées déjà épuisées
+    # (sold_count = nb d'UnlockedPrompt pour ce prompt >= max_supply).
+    sold_count = (
+        select(func.count(UnlockedPrompt.id))
+        .where(UnlockedPrompt.prompt_id == Prompt.id)
+        .correlate(Prompt)
+        .scalar_subquery()
+    )
     return select(Prompt).where(
         and_(
             Prompt.is_published.is_(True),
@@ -101,6 +131,7 @@ def _eligible_pool_query(buyer_id: UUID):
             Prompt.pack_eligible.is_(True),
             Prompt.artist_id != buyer_id,
             ~exists(owned),
+            or_(Prompt.max_supply.is_(None), sold_count < Prompt.max_supply),
         )
     )
 
@@ -142,7 +173,7 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         tier = _roll_tier()
         pick = (await db.execute(
             _eligible_pool_query(buyer_id)
-            .where(Prompt.price_credits.between(tier["min"], tier["max"]))
+            .where(_tier_filter(tier["name"]))
             .order_by(func.random())
             .limit(1)
         )).scalar_one_or_none()
@@ -153,9 +184,9 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         if pick is None:
             raise PackPoolEmpty("Aucun prompt disponible dans le pool")
 
-        # Rareté affichée = celle du PRIX réel du son tiré (pas du tier roulé,
-        # car le fallback a pu donner un autre tier).
-        rarity = rarity_for_price(pick.price_credits)
+        # Rareté = celle du nombre d'exemplaires réel du son tiré (pas du tier
+        # roulé, car le fallback a pu donner un autre tier).
+        rarity = rarity_from_supply(pick.max_supply)
         artist_id = pick.artist_id
         # 4. Lock l'artiste tiré (en plus du buyer déjà locké).
         await _acquire_user_locks(db, [artist_id])

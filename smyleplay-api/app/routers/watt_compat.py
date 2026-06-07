@@ -665,6 +665,7 @@ async def build_artist_detail_payload(
         .limit(50)
     )
     prompts_rows = (await db.execute(prompts_stmt)).scalars().all()
+    from app.services.marketplace import compute_rarity_tier
     prompts_payload = [
         {
             "id":           str(p.id),
@@ -672,6 +673,9 @@ async def build_artist_detail_payload(
             "description":  p.description or "",
             "priceCredits": p.price_credits,
             "hasLyrics":    bool(p.lyrics),
+            # Rareté/supply (2026-06-08) — comme les ADN.
+            "maxSupply":    p.max_supply,
+            "rarityTier":   compute_rarity_tier(p.max_supply),
             # P1-F4 publique partielle (révision 2026-05-04 PR3) :
             # SEULS les réglages "non-reproductibles" sont publics. Ceux
             # qui permettraient à l'acheteur de cloner le son sans payer

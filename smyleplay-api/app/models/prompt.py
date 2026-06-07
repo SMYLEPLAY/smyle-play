@@ -101,6 +101,14 @@ class Prompt(Base):
         default=True,
         server_default="true",
     )
+    # 2026-06-08 — Rareté/supply (copie du modèle ADN) : NULL = illimité,
+    # 1 = pièce unique (mythic), N = édition limitée. Tier dérivé via
+    # compute_rarity_tier(max_supply). Stock-out enforcé à l'achat
+    # (sold_count = nb d'UnlockedPrompt vs max_supply). Prix libre (min 3) —
+    # la rareté est un signal de valeur, pas un prix imposé.
+    max_supply: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
     # ── P1-F4 (2026-05-04) — Réglages de génération de la fiche prompt ──
     # Tous nullable côté DB pour rétro-compat. La validation strict

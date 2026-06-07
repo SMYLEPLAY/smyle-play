@@ -227,6 +227,7 @@ async def create_my_prompt(
             lyrics=payload.lyrics,
             price_credits=payload.price_credits,
             is_published=payload.is_published,
+            max_supply=payload.max_supply,
             # P1-F4 réglages génération (4 obligatoires + 1 optionnel)
             prompt_platform=payload.prompt_platform,
             prompt_model_version=payload.prompt_model_version,
