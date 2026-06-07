@@ -77,6 +77,10 @@ class AchievementProgressByAxis(BaseModel):
     fan: int
     artist: int
     trader: int = 0
+    # Trophées de la boucle d'engagement :
+    referrer: int = 0   # filleuls validés
+    streak: int = 0     # jours consécutifs en cours
+    collector: int = 0  # packs mystère ouverts
 
 
 class MyAchievementsResponse(BaseModel):

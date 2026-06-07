@@ -21,6 +21,7 @@ Le pool exclut : les prompts non publiés / supprimés / non pack_eligible,
 les prompts de l'acheteur lui-même, et ceux qu'il possède déjà. Si le pool
 est vide → erreur claire (rien débité).
 """
+import random
 from uuid import UUID
 
 from sqlalchemy import and_, exists, func, select, text
@@ -35,6 +36,38 @@ from app.services.credits import _acquire_user_locks, compute_split
 # Prix fixe d'un tirage (Smyles). Modéré au lancement, à affiner avec les
 # données réelles (prix moyen des prompts pack_eligible).
 MYSTERY_PACK_PRICE = 8
+
+# Raretés (mécanique 3) — classées selon le PRIX du prompt, tirage PONDÉRÉ.
+# L'upside du gacha : on peut décrocher un son cher à prix cassé, mais c'est
+# rare (poids faible) → la valeur moyenne d'un tirage reste sous le prix du
+# pack, donc la plateforme ne saigne jamais et pas d'arbitrage de revente.
+# "max" inclusif ; le dernier tier capte tout le haut.
+RARITY_TIERS = [
+    {"name": "commun",     "min": 0,  "max": 5,            "weight": 70},
+    {"name": "rare",       "min": 6,  "max": 15,           "weight": 22},
+    {"name": "epique",     "min": 16, "max": 40,           "weight": 6},
+    {"name": "legendaire", "min": 41, "max": 10**9,        "weight": 2},
+]
+
+
+def rarity_for_price(price: int) -> str:
+    """Rareté d'un prompt d'après son prix (Smyles)."""
+    for tier in RARITY_TIERS:
+        if tier["min"] <= price <= tier["max"]:
+            return tier["name"]
+    return "commun"
+
+
+def _roll_tier() -> dict:
+    """Tire un tier au hasard, pondéré par les poids."""
+    total = sum(t["weight"] for t in RARITY_TIERS)
+    r = random.random() * total
+    acc = 0
+    for tier in RARITY_TIERS:
+        acc += tier["weight"]
+        if r <= acc:
+            return tier
+    return RARITY_TIERS[0]
 
 
 class PackError(ValueError):
@@ -103,13 +136,26 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         if balance < price:
             raise PackInsufficientCredits(required=price, available=balance)
 
-        # 3. Tire un prompt au hasard dans le pool éligible.
+        # 3. Tire une rareté pondérée, puis un prompt au hasard DANS ce tier.
+        #    Si le tier tiré est vide pour ce buyer, on retombe sur le pool
+        #    global (garantit un résultat tant que le pool n'est pas vide).
+        tier = _roll_tier()
         pick = (await db.execute(
-            _eligible_pool_query(buyer_id).order_by(func.random()).limit(1)
+            _eligible_pool_query(buyer_id)
+            .where(Prompt.price_credits.between(tier["min"], tier["max"]))
+            .order_by(func.random())
+            .limit(1)
         )).scalar_one_or_none()
+        if pick is None:
+            pick = (await db.execute(
+                _eligible_pool_query(buyer_id).order_by(func.random()).limit(1)
+            )).scalar_one_or_none()
         if pick is None:
             raise PackPoolEmpty("Aucun prompt disponible dans le pool")
 
+        # Rareté affichée = celle du PRIX réel du son tiré (pas du tier roulé,
+        # car le fallback a pu donner un autre tier).
+        rarity = rarity_for_price(pick.price_credits)
         artist_id = pick.artist_id
         # 4. Lock l'artiste tiré (en plus du buyer déjà locké).
         await _acquire_user_locks(db, [artist_id])
@@ -167,11 +213,20 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         tx.completed_at = func.now()
         await db.flush()
 
+    # Trophées packs (paliers 1/10/50/100 ouvertures). Hors savepoint principal,
+    # le service achievements gère ses propres begin_nested. Le caller commit.
+    from app.models.achievement import AchievementAxis
+    from app.services.achievements import check_and_grant_achievements
+    await check_and_grant_achievements(
+        db, user_id=buyer_id, axis=AchievementAxis.COLLECTOR
+    )
+
     new_balance = balance - price
     return {
         "prompt_id": pick.id,
         "title": pick.title,
         "artist_id": artist_id,
+        "rarity": rarity,
         "price_paid": price,
         "new_balance": new_balance,
     }

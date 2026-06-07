@@ -11,9 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.schemas.pack import PackInfo, PackOpenResult
+from app.schemas.pack import PackInfo, PackOpenResult, RarityOdds
 from app.services.packs import (
     MYSTERY_PACK_PRICE,
+    RARITY_TIERS,
     PackInsufficientCredits,
     PackPoolEmpty,
     PackError,
@@ -30,7 +31,16 @@ async def mystery_info(
     db: AsyncSession = Depends(get_db),
 ):
     pool = await count_pack_pool(db, current_user.id)
-    return PackInfo(price=MYSTERY_PACK_PRICE, pool_count=pool)
+    total_w = sum(t["weight"] for t in RARITY_TIERS)
+    odds = [
+        RarityOdds(
+            name=t["name"],
+            weight=t["weight"],
+            pct=round(t["weight"] * 100 / total_w),
+        )
+        for t in RARITY_TIERS
+    ]
+    return PackInfo(price=MYSTERY_PACK_PRICE, pool_count=pool, odds=odds)
 
 
 @router.post("/mystery/open", response_model=PackOpenResult)

@@ -26,6 +26,10 @@ class AchievementAxis(str, enum.Enum):
     FAN = "fan"       # Engagement profond : nb d'ADN possédées
     ARTIST = "artist" # Création : nb de ventes ou crédits gagnés
     TRADER = "trader" # Échanges : nb d'échanges acceptés (envoyés ou reçus)
+    # Trophées de la boucle d'engagement (mécaniques 1-3) :
+    REFERRER = "referrer"   # Parrainage : nb de filleuls validés
+    STREAK = "streak"       # Fidélité : jours de connexion consécutifs
+    COLLECTOR = "collector" # Packs : nb de packs mystère ouverts
 
 
 class Achievement(Base):
