@@ -593,6 +593,14 @@ async function openPackModal() {
   await _renderPackIntro();
 }
 
+// Couleurs + libellés des raretés (alignés sur RARITY_TIERS backend).
+const PACK_RARITY = {
+  commun:     { label: 'Commun',     color: '#9aa0aa' },
+  rare:       { label: 'Rare',       color: '#4ea1ff' },
+  epique:     { label: 'Épique',     color: '#b06cff' },
+  legendaire: { label: 'Légendaire', color: '#ffb627' },
+};
+
 async function _renderPackIntro() {
   const body = document.getElementById('packBody');
   if (!body) return;
@@ -608,11 +616,19 @@ async function _renderPackIntro() {
         <p style="font-size:13px;color:#9990ad;">Tu possèdes déjà tous les sons disponibles au tirage. Reviens quand de nouveaux sons seront publiés.</p>`;
       return;
     }
+    // Légende des chances par rareté (transparence).
+    const odds = (info && info.odds) || [];
+    const legend = odds.map(o => {
+      const r = PACK_RARITY[o.name] || { label: o.name, color: '#9aa0aa' };
+      return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#b9b2cc;margin:0 6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${r.color};display:inline-block;"></span>${r.label} ${o.pct}%</span>`;
+    }).join('');
     body.innerHTML = `
       <div style="font-size:48px;margin:4px 0 8px;">🎁</div>
       <div style="font-size:20px;font-weight:800;margin-bottom:4px;">Pack mystère</div>
       <p style="font-size:13px;color:#b9b2cc;margin-bottom:4px;">Tire un son au hasard parmi <strong>${pool}</strong> disponibles.</p>
-      <p style="font-size:11px;color:#9990ad;margin-bottom:18px;">Tu pourrais tomber sur une pépite bien plus chère que le prix du tirage.</p>
+      <p style="font-size:11px;color:#9990ad;margin-bottom:12px;">Tu pourrais décrocher un son bien plus cher que le prix du tirage.</p>
+      <div style="margin-bottom:18px;line-height:1.8;">${legend}</div>
       <button id="packOpenBtn" onclick="openPack()" style="width:100%;background:#6c4cf0;border:none;color:#fff;border-radius:12px;padding:14px;cursor:pointer;font-size:16px;font-weight:700;">Ouvrir — ${price} Smyle${price > 1 ? 's' : ''}</button>`;
   } catch (e) {
     body.innerHTML = `<p style="color:#e58;">Impossible de charger le pack. ${(e && e.status === 401) ? 'Reconnecte-toi.' : 'Réessaie dans un instant.'}</p>`;
@@ -635,16 +651,18 @@ async function openPack() {
     }
     await new Promise((res) => setTimeout(res, 650)); // laisse le suspense respirer
     const title = (r && r.title) || 'Un son';
+    const rar = PACK_RARITY[r && r.rarity] || { label: 'Commun', color: '#9aa0aa' };
+    const isTop = r && (r.rarity === 'epique' || r.rarity === 'legendaire');
     if (body) body.innerHTML = `
       <div style="animation:packPop .4s ease-out;">
-        <div style="font-size:48px;margin:6px 0 4px;">🎉</div>
-        <div style="font-size:12px;color:#9990ad;text-transform:uppercase;letter-spacing:1px;">Tu as tiré</div>
-        <div style="font-size:22px;font-weight:800;margin:6px 0 16px;">${title}</div>
+        <div style="font-size:48px;margin:6px 0 4px;">${isTop ? '🌟' : '🎉'}</div>
+        <div style="display:inline-block;background:${rar.color}22;border:1px solid ${rar.color};color:${rar.color};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:999px;margin-bottom:10px;">${rar.label}</div>
+        <div style="font-size:22px;font-weight:800;margin:4px 0 16px;color:${isTop ? rar.color : '#fff'};">${title}</div>
         <a href="/library" style="display:block;background:#6c4cf0;color:#fff;border-radius:12px;padding:12px;text-decoration:none;font-weight:700;margin-bottom:8px;">Voir dans ma bibliothèque</a>
         <button onclick="_renderPackIntro()" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;">Ouvrir un autre pack</button>
       </div>`;
     if (typeof window.smyleToast === 'function') {
-      window.smyleToast(`🎁 Tu as tiré « ${title} » !`, { type: 'success', duration: 3200 });
+      window.smyleToast(`${isTop ? '🌟' : '🎁'} ${rar.label} — « ${title} » !`, { type: 'success', duration: 3400 });
     }
   } catch (e) {
     let msg = 'Tirage impossible. Réessaie dans un instant.';

@@ -98,6 +98,34 @@ async def get_user_progress(
         )
         return int(result.scalar() or 0)
 
+    if axis == AchievementAxis.REFERRER:
+        # Nb de filleuls VALIDÉS (récompense versée).
+        from app.models.referral import Referral, ReferralStatus
+        result = await db.execute(
+            select(func.count(Referral.id)).where(
+                Referral.referrer_id == user_id,
+                Referral.status == ReferralStatus.REWARDED,
+            )
+        )
+        return int(result.scalar() or 0)
+
+    if axis == AchievementAxis.STREAK:
+        # Jours de connexion consécutifs en cours. Un trophée débloqué reste
+        # acquis même si le streak retombe ensuite (UserAchievement permanent).
+        user = await db.get(User, user_id)
+        return int(user.streak_count or 0) if user else 0
+
+    if axis == AchievementAxis.COLLECTOR:
+        # Nb de packs mystère ouverts (transactions marquées source=mystery_pack).
+        from app.models.transaction import Transaction
+        result = await db.execute(
+            select(func.count(Transaction.id)).where(
+                Transaction.buyer_id == user_id,
+                Transaction.metadata_json.op("->>")("source") == "mystery_pack",
+            )
+        )
+        return int(result.scalar() or 0)
+
     return 0  # axis inconnu — pas de crash
 
 
@@ -244,6 +272,15 @@ async def list_user_achievements_with_progress(
         ),
         "trader": await get_user_progress(
             db, user_id=user_id, axis=AchievementAxis.TRADER
+        ),
+        "referrer": await get_user_progress(
+            db, user_id=user_id, axis=AchievementAxis.REFERRER
+        ),
+        "streak": await get_user_progress(
+            db, user_id=user_id, axis=AchievementAxis.STREAK
+        ),
+        "collector": await get_user_progress(
+            db, user_id=user_id, axis=AchievementAxis.COLLECTOR
         ),
     }
 

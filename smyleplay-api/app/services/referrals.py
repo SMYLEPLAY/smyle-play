@@ -132,6 +132,14 @@ async def maybe_reward_referral(db: AsyncSession, referred_user_id: UUID) -> boo
     from sqlalchemy import func as _func
     referral.rewarded_at = _func.now()
     await db.flush()
+
+    # Trophées parrainage (paliers 1/5/10/25 filleuls) pour le parrain.
+    # Import local : évite un cycle referrals ↔ achievements.
+    from app.models.achievement import AchievementAxis
+    from app.services.achievements import check_and_grant_achievements
+    await check_and_grant_achievements(
+        db, user_id=referral.referrer_id, axis=AchievementAxis.REFERRER
+    )
     return True
 
 

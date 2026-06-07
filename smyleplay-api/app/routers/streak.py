@@ -32,5 +32,12 @@ async def checkin(
     db: AsyncSession = Depends(get_db),
 ):
     result = await claim_daily_checkin(db, current_user.id)
+    # Trophées streak (paliers 7/30/100 j) — seulement si on a réclamé.
+    if result.get("claimed"):
+        from app.models.achievement import AchievementAxis
+        from app.services.achievements import check_and_grant_achievements
+        await check_and_grant_achievements(
+            db, user_id=current_user.id, axis=AchievementAxis.STREAK
+        )
     await db.commit()
     return StreakClaim(**result)
