@@ -1,10 +1,11 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     JSON,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Integer,
     String,
@@ -131,6 +132,22 @@ class User(Base):
         unique=True,
         index=True,
         nullable=True,
+    )
+
+    # --- Streak de connexion (mécanique 2) ---
+    # last_checkin_date : dernier jour (date UTC) où l'utilisateur a réclamé sa
+    # récompense quotidienne. streak_count : nombre de jours consécutifs en
+    # cours. Barème : +1 Smyle/jour, +3 au lieu de +1 tous les 7 jours
+    # consécutifs (≈9 Smyles/semaine pleine). Un gap d'un jour remet à 1.
+    last_checkin_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+    streak_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
     )
 
     # --- Préférences ---
