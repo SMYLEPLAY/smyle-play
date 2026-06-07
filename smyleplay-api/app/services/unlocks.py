@@ -180,6 +180,19 @@ async def unlock_prompt_atomic(
     if prompt_row is None or not prompt_row.is_published:
         raise PromptNotPurchasable("Prompt not found or not published")
 
+    # Stock-out : édition limitée épuisée (sold_count d'UnlockedPrompt vs
+    # max_supply). Même mécanique que les ADN. NULL = illimité → pas de check.
+    if prompt_row.max_supply is not None:
+        sold_count = (await db.execute(
+            select(func.count(UnlockedPrompt.id)).where(
+                UnlockedPrompt.prompt_id == prompt_id
+            )
+        )).scalar_one()
+        if int(sold_count) >= int(prompt_row.max_supply):
+            raise PromptNotPurchasable(
+                f"Prompt sold out ({sold_count}/{prompt_row.max_supply})"
+            )
+
     artist_id = prompt_row.artist_id
     base_price = prompt_row.price_credits
 

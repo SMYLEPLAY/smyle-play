@@ -205,6 +205,11 @@ class PromptCreate(BaseModel):
     # immédiatement après upload track. Default False si absent.
     is_published: bool = False
 
+    # Édition limitée (comme les ADN) : nb d'exemplaires en vente.
+    # None = illimité · 1 = pièce unique (mythic) · N = édition limitée.
+    # La rareté en découle (compute_rarity_tier) ; le prix reste libre.
+    max_supply: int | None = Field(default=None, ge=1)
+
     # ── Réglages génération (4 obligatoires + 1 optionnel) ───────────────
     prompt_platform: PromptPlatform
     prompt_model_version: str | None = Field(
@@ -243,6 +248,8 @@ class PromptUpdate(BaseModel):
         default=None, ge=PROMPT_PRICE_MIN, le=PROMPT_PRICE_MAX
     )
     is_published: bool | None = None
+    # Édition limitée éditable. Envoyer null pour repasser en illimité.
+    max_supply: int | None = Field(default=None, ge=1)
 
     # ── Réglages génération (tous optionnels au PATCH) ───────────────────
     prompt_platform: PromptPlatform | None = None
@@ -281,6 +288,9 @@ class PromptRead(BaseModel):
     price_credits: int
     is_published: bool
     pack_eligible: bool
+    # Édition limitée : None = illimité. Le tier de rareté en découle
+    # (compute_rarity_tier) — calculé côté affichage.
+    max_supply: int | None = None
     created_at: datetime
     updated_at: datetime
     # ── P1-F4 — réglages génération (None pour les anciens prompts) ──────

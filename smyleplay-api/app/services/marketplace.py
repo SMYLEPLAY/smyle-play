@@ -265,6 +265,7 @@ async def create_prompt(
     price_credits: int,
     lyrics: str | None = None,
     is_published: bool = False,
+    max_supply: int | None = None,
     # P1-F4 réglages génération (4 obligatoires + 1 optionnel) — fix
     # 2026-05-04, ces paramètres étaient ignorés par le service avant.
     prompt_platform: str | None = None,
@@ -301,6 +302,7 @@ async def create_prompt(
         lyrics=lyrics,
         price_credits=price_credits,
         is_published=is_published,
+        max_supply=max_supply,
         prompt_platform=prompt_platform,
         prompt_model_version=prompt_model_version,
         prompt_weirdness=prompt_weirdness,
