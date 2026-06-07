@@ -2,6 +2,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+
+# Observabilité — Sentry s'initialise UNIQUEMENT si un DSN est configuré
+# (SENTRY_DSN en env). No-op total sinon : aucun impact en dev/CI/local.
+# Permet de voir les erreurs prod avant que l'utilisateur ne les signale.
+if settings.SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        traces_sample_rate=0.1,        # 10 % des requêtes tracées (perf)
+        send_default_pii=False,        # pas de données perso par défaut
+        environment="production",
+    )
 from app.routers.achievements import (
     me_router as achievements_me_router,
     public_router as achievements_public_router,
