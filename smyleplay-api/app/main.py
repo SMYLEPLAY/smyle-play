@@ -45,6 +45,7 @@ from app.routers.trades import router as trades_router
 from app.routers.referrals import router as referrals_router
 from app.routers.streak import router as streak_router
 from app.routers.packs import router as packs_router
+from app.routers.resale import router as resale_router
 
 
 def create_app() -> FastAPI:
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
     app.include_router(referrals_router)
     app.include_router(streak_router)
     app.include_router(packs_router)
+    app.include_router(resale_router)
 
     return app
 
