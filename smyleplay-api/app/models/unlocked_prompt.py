@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -57,6 +57,13 @@ class UnlockedPrompt(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
+    )
+    # Marché secondaire (2026-06-08) : NULL = pas en vente. Sinon, prix fixé
+    # par le propriétaire actuel. À l'achat, la propriété est TRANSFÉRÉE
+    # (current_owner_id change) et resale_price repasse à NULL. Split 30%
+    # artiste d'origine (royaltie) / 20% plateforme / 50% vendeur.
+    resale_price: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
     )
     unlocked_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

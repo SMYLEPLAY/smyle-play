@@ -51,6 +51,11 @@ from app.services.streak import (
 )
 from app.services.marketplace import compute_rarity_tier
 from app.services.unlocks import PromptNotPurchasable, unlock_prompt_atomic
+from app.services.resale import (
+    ResaleSelfBuy,
+    buy_resale_atomic,
+    list_prompt_for_resale,
+)
 
 
 # =============================================================================
@@ -382,6 +387,72 @@ async def test_pack_no_topup_for_limited_tier():
 # =============================================================================
 # Stock-out édition limitée (achat direct prompt)
 # =============================================================================
+
+async def _make_owned_prompt(owner_id, prompt_id, artist_id):
+    async with SessionLocal() as db:
+        up = UnlockedPrompt(
+            current_owner_id=owner_id,
+            prompt_id=prompt_id,
+            original_artist_id=artist_id,
+        )
+        db.add(up)
+        await db.commit()
+        await db.refresh(up)
+        return up.id
+
+
+async def test_resale_transfer_and_split():
+    # Revente : transfert de propriété + split 30% artiste / 20% plateforme / 50% vendeur.
+    artist = await _make_user(initial_balance=0, artist_name="OrigArtist")
+    seller = await _make_user(initial_balance=0)
+    buyer = await _make_user(initial_balance=200)
+    try:
+        prompt_id = await _make_prompt(artist, price=80, max_supply=None)
+        up_id = await _make_owned_prompt(seller, prompt_id, artist)
+
+        # Le vendeur met en vente à 100.
+        async with SessionLocal() as db:
+            await list_prompt_for_resale(db, owner_id=seller, prompt_id=prompt_id, price=100)
+            await db.commit()
+
+        # L'acheteur achète.
+        async with SessionLocal() as db:
+            res = await buy_resale_atomic(db, buyer_id=buyer, unlocked_prompt_id=up_id)
+            await db.commit()
+
+        # Split : 30 / 20 / 50.
+        assert res["artist_royalty"] == 30
+        assert res["platform_fee"] == 20
+        assert res["seller_cut"] == 50
+        # Soldes.
+        assert await _balance(buyer) == 200 - 100
+        assert await _balance(seller) == 50
+        assert await _balance(artist) == 30
+        # Propriété TRANSFÉRÉE à l'acheteur, retirée de la vente.
+        async with SessionLocal() as db:
+            up2 = await db.get(UnlockedPrompt, up_id)
+            assert up2.current_owner_id == buyer
+            assert up2.resale_price is None
+    finally:
+        await _cleanup_users(artist, seller, buyer)
+
+
+async def test_resale_self_buy_refused():
+    artist = await _make_user(initial_balance=0, artist_name="A")
+    seller = await _make_user(initial_balance=100)
+    try:
+        prompt_id = await _make_prompt(artist, price=10, max_supply=None)
+        up_id = await _make_owned_prompt(seller, prompt_id, artist)
+        async with SessionLocal() as db:
+            await list_prompt_for_resale(db, owner_id=seller, prompt_id=prompt_id, price=20)
+            await db.commit()
+        with pytest.raises(ResaleSelfBuy):
+            async with SessionLocal() as db:
+                await buy_resale_atomic(db, buyer_id=seller, unlocked_prompt_id=up_id)
+                await db.commit()
+    finally:
+        await _cleanup_users(artist, seller)
+
 
 async def test_prompt_stockout_limited_edition():
     artist = await _make_user(initial_balance=0, artist_name="LimitedArtist")
