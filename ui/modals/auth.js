@@ -284,6 +284,10 @@ function renderAuthArea() {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
           Parrainage
         </button>
+        <button class="user-menu-item" onclick="openPackModal()" role="menuitem">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+          Ouvrir un pack
+        </button>
         <div class="user-menu-sep"></div>
         <button class="user-menu-item user-menu-item-danger" onclick="doLogout()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -560,6 +564,111 @@ if (typeof window !== 'undefined') {
   window.openStreakModal = openStreakModal;
   window.closeStreakModal = closeStreakModal;
   window.claimStreak = claimStreak;
+}
+
+// ── Packs aléatoires (mécanique 3) — "mystery pack" ─────────────────────────
+// Dépense un prix fixe de Smyles → tire 1 son au hasard du pool éligible.
+// Le sink de la boucle : rend les Smyles gagnés (parrainage/streak) désirables.
+
+function _ensurePackModal() {
+  let modal = document.getElementById('packModal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'packModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);';
+  modal.innerHTML = `
+    <div class="modal-card" style="position:relative;max-width:400px;width:92%;background:#14101f;border:1px solid #2c2440;border-radius:16px;padding:24px;color:#eee;text-align:center;">
+      <button onclick="closePackModal()" aria-label="Fermer" style="position:absolute;top:14px;right:18px;background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;">×</button>
+      <div id="packBody" style="font-size:14px;">Chargement…</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closePackModal(); });
+  return modal;
+}
+
+async function openPackModal() {
+  _closeUserMenu();
+  const modal = _ensurePackModal();
+  modal.style.display = 'flex';
+  await _renderPackIntro();
+}
+
+async function _renderPackIntro() {
+  const body = document.getElementById('packBody');
+  if (!body) return;
+  body.textContent = 'Chargement…';
+  try {
+    const info = await apiFetch('/packs/mystery');
+    const price = (info && info.price) || 8;
+    const pool = (info && info.pool_count) || 0;
+    if (pool <= 0) {
+      body.innerHTML = `
+        <div style="font-size:44px;margin:6px 0 8px;">🎁</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Pool vide</div>
+        <p style="font-size:13px;color:#9990ad;">Tu possèdes déjà tous les sons disponibles au tirage. Reviens quand de nouveaux sons seront publiés.</p>`;
+      return;
+    }
+    body.innerHTML = `
+      <div style="font-size:48px;margin:4px 0 8px;">🎁</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:4px;">Pack mystère</div>
+      <p style="font-size:13px;color:#b9b2cc;margin-bottom:4px;">Tire un son au hasard parmi <strong>${pool}</strong> disponibles.</p>
+      <p style="font-size:11px;color:#9990ad;margin-bottom:18px;">Tu pourrais tomber sur une pépite bien plus chère que le prix du tirage.</p>
+      <button id="packOpenBtn" onclick="openPack()" style="width:100%;background:#6c4cf0;border:none;color:#fff;border-radius:12px;padding:14px;cursor:pointer;font-size:16px;font-weight:700;">Ouvrir — ${price} Smyle${price > 1 ? 's' : ''}</button>`;
+  } catch (e) {
+    body.innerHTML = `<p style="color:#e58;">Impossible de charger le pack. ${(e && e.status === 401) ? 'Reconnecte-toi.' : 'Réessaie dans un instant.'}</p>`;
+  }
+}
+
+async function openPack() {
+  const body = document.getElementById('packBody');
+  const btn = document.getElementById('packOpenBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Ouverture…'; }
+  // Petite animation de suspense avant la révélation.
+  if (body) body.innerHTML = `<div style="font-size:64px;margin:24px 0;animation:packShake .5s ease-in-out infinite;">🎁</div>
+    <style>@keyframes packShake{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}@keyframes packPop{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}</style>
+    <p style="font-size:13px;color:#9990ad;">Tirage en cours…</p>`;
+  try {
+    const r = await apiFetch('/packs/mystery/open', { method: 'POST' });
+    // Rafraîchit la bulle de solde.
+    if (window.SmyleBalance && typeof window.SmyleBalance.refresh === 'function') {
+      try { window.SmyleBalance.refresh(); } catch (_) {}
+    }
+    await new Promise((res) => setTimeout(res, 650)); // laisse le suspense respirer
+    const title = (r && r.title) || 'Un son';
+    if (body) body.innerHTML = `
+      <div style="animation:packPop .4s ease-out;">
+        <div style="font-size:48px;margin:6px 0 4px;">🎉</div>
+        <div style="font-size:12px;color:#9990ad;text-transform:uppercase;letter-spacing:1px;">Tu as tiré</div>
+        <div style="font-size:22px;font-weight:800;margin:6px 0 16px;">${title}</div>
+        <a href="/library" style="display:block;background:#6c4cf0;color:#fff;border-radius:12px;padding:12px;text-decoration:none;font-weight:700;margin-bottom:8px;">Voir dans ma bibliothèque</a>
+        <button onclick="_renderPackIntro()" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;">Ouvrir un autre pack</button>
+      </div>`;
+    if (typeof window.smyleToast === 'function') {
+      window.smyleToast(`🎁 Tu as tiré « ${title} » !`, { type: 'success', duration: 3200 });
+    }
+  } catch (e) {
+    let msg = 'Tirage impossible. Réessaie dans un instant.';
+    if (e && e.status === 402) {
+      const d = e.body && e.body.detail;
+      msg = (d && d.message) || 'Solde insuffisant pour ouvrir un pack.';
+    } else if (e && e.status === 409) {
+      msg = 'Tu possèdes déjà tous les sons disponibles au tirage.';
+    }
+    if (body) body.innerHTML = `<div style="font-size:40px;margin:12px 0;">😕</div><p style="color:#e9a;font-size:14px;">${msg}</p>
+      <button onclick="_renderPackIntro()" style="margin-top:14px;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:13px;">Retour</button>`;
+  }
+}
+
+function closePackModal() {
+  const modal = document.getElementById('packModal');
+  if (modal) modal.style.display = 'none';
+}
+
+if (typeof window !== 'undefined') {
+  window.openPackModal = openPackModal;
+  window.closePackModal = closePackModal;
+  window.openPack = openPack;
+  window._renderPackIntro = _renderPackIntro;
 }
 
 // ── 7. Bootstrap : si un JWT existe déjà au chargement, resynchroniser ──────
