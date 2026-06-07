@@ -1,0 +1,324 @@
+"""
+Tests des mécaniques de la boucle d'engagement (2026-06-08).
+
+Couvre parrainage, streak, packs (rareté par supply + stock-out) et la
+rareté/supply des prompts. Deux familles :
+
+  - Fonctions PURES (pas de DB) : barèmes et mappings de rareté. Rapides,
+    déterministes.
+  - Intégration (Postgres réel via SessionLocal, cf. conftest.py) : flux
+    métier de bout en bout, modelés sur test_integration_unlock.py.
+
+Comme test_integration_unlock, on pré-seed les UserAchievement pour qu'aucun
+trophée ne pollue les assertions de solde (les trophées ont leurs tests
+dédiés). Postgres requis (cf. conftest) ; en local : pytest -q.
+"""
+import uuid
+from datetime import timedelta
+
+import pytest
+from sqlalchemy import delete, func, select, text
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+from app.database import SessionLocal
+from app.models.achievement import Achievement, UserAchievement
+from app.models.prompt import Prompt
+from app.models.referral import Referral, ReferralStatus
+from app.models.unlocked_prompt import UnlockedPrompt
+from app.models.user import User
+from app.schemas.user import UserCreate
+from app.services.users import create_user
+
+from app.services.packs import (
+    MYSTERY_PACK_PRICE,
+    PackInsufficientCredits,
+    PackPoolEmpty,
+    open_mystery_pack_atomic,
+    rarity_from_supply,
+)
+from app.services.referrals import (
+    REFERRAL_REWARD_CREDITS,
+    attach_referral_at_signup,
+    maybe_reward_referral,
+)
+from app.services.streak import (
+    DAILY_REWARD,
+    MILESTONE_EVERY,
+    MILESTONE_REWARD,
+    claim_daily_checkin,
+    reward_for_streak,
+)
+from app.services.marketplace import compute_rarity_tier
+from app.services.unlocks import PromptNotPurchasable, unlock_prompt_atomic
+
+
+# =============================================================================
+# Fonctions PURES — pas de DB
+# =============================================================================
+
+def test_reward_for_streak_bareme():
+    # +1 chaque jour, +3 au 7e jour consécutif → semaine pleine = 9.
+    week = [reward_for_streak(d) for d in range(1, 8)]
+    assert week == [1, 1, 1, 1, 1, 1, 3]
+    assert sum(week) == 9
+    # 14 jours (2 cycles) = 18.
+    assert sum(reward_for_streak(d) for d in range(1, 15)) == 18
+    # Le palier tombe à chaque multiple de 7.
+    assert reward_for_streak(MILESTONE_EVERY) == MILESTONE_REWARD
+    assert reward_for_streak(MILESTONE_EVERY * 2) == MILESTONE_REWARD
+    assert reward_for_streak(1) == DAILY_REWARD
+
+
+def test_rarity_from_supply_mapping():
+    assert rarity_from_supply(None) == "commun"      # illimité
+    assert rarity_from_supply(1) == "legendaire"     # mythic 1/1
+    assert rarity_from_supply(2) == "epique"
+    assert rarity_from_supply(10) == "epique"
+    assert rarity_from_supply(11) == "rare"
+    assert rarity_from_supply(10000) == "rare"
+    assert rarity_from_supply(10001) == "commun"     # open
+
+
+def test_compute_rarity_tier_prompt():
+    # Le tier "édition" partagé avec les ADN, appliqué aux prompts.
+    assert compute_rarity_tier(None) == "unlimited"
+    assert compute_rarity_tier(1) == "mythic"
+    assert compute_rarity_tier(10) == "legendary"
+    assert compute_rarity_tier(10000) == "limited"
+    assert compute_rarity_tier(10001) == "open"
+
+
+# =============================================================================
+# Helpers intégration (modelés sur test_integration_unlock.py)
+# =============================================================================
+
+async def _make_user(initial_balance: int = 1000, artist_name: str | None = None) -> uuid.UUID:
+    email = f"pytest-loop-{uuid.uuid4().hex[:12]}@smyleplay.example"
+    async with SessionLocal() as db:
+        user = await create_user(db, UserCreate(email=email, password="12345678"))
+        user_id = user.id
+    async with SessionLocal() as db:
+        await db.execute(
+            text(
+                "UPDATE users SET credits_balance = :b, "
+                "artist_name = COALESCE(:n, artist_name) WHERE id = :u"
+            ),
+            {"b": initial_balance, "n": artist_name, "u": user_id},
+        )
+        await db.commit()
+    # Pré-seed tous les trophées → pas de bonus parasite sur les soldes.
+    async with SessionLocal() as db:
+        for ach in (await db.execute(select(Achievement))).scalars().all():
+            db.add(UserAchievement(user_id=user_id, achievement_id=ach.id))
+        await db.commit()
+    return user_id
+
+
+async def _make_prompt(artist_id: uuid.UUID, price: int = 10, max_supply: int | None = None) -> uuid.UUID:
+    async with SessionLocal() as db:
+        p = Prompt(
+            artist_id=artist_id,
+            title=f"Prompt {uuid.uuid4().hex[:8]}",
+            description="Tagline",
+            prompt_text="X" * 100,
+            price_credits=price,
+            is_published=True,
+            max_supply=max_supply,
+        )
+        db.add(p)
+        await db.commit()
+        await db.refresh(p)
+        return p.id
+
+
+async def _balance(uid: uuid.UUID) -> int:
+    async with SessionLocal() as db:
+        row = (await db.execute(
+            text("SELECT credits_balance FROM users WHERE id = :u"), {"u": uid}
+        )).first()
+        return int(row.credits_balance)
+
+
+async def _cleanup_users(*uids: uuid.UUID) -> None:
+    async with SessionLocal() as db:
+        for uid in uids:
+            await db.execute(delete(User).where(User.id == uid))
+        await db.commit()
+
+
+# =============================================================================
+# Parrainage
+# =============================================================================
+
+async def test_referral_reward_on_first_action_and_idempotent():
+    referrer = await _make_user(initial_balance=100)
+    referred = await _make_user(initial_balance=100)
+    try:
+        # Récupère le code du parrain.
+        async with SessionLocal() as db:
+            code = (await db.get(User, referrer)).referral_code
+            referred_user = await db.get(User, referred)
+            link = await attach_referral_at_signup(db, referred_user, code)
+            assert link is not None
+            await db.commit()
+
+        # 1ère action du filleul → récompense versée aux DEUX.
+        async with SessionLocal() as db:
+            rewarded = await maybe_reward_referral(db, referred)
+            await db.commit()
+        assert rewarded is True
+        assert await _balance(referrer) == 100 + REFERRAL_REWARD_CREDITS
+        assert await _balance(referred) == 100 + REFERRAL_REWARD_CREDITS
+
+        # Idempotent : 2e déclenchement ne reverse rien.
+        async with SessionLocal() as db:
+            again = await maybe_reward_referral(db, referred)
+            await db.commit()
+        assert again is False
+        assert await _balance(referrer) == 100 + REFERRAL_REWARD_CREDITS
+
+        async with SessionLocal() as db:
+            ref = (await db.execute(
+                select(Referral).where(Referral.referred_id == referred)
+            )).scalar_one()
+            assert ref.status == ReferralStatus.REWARDED
+    finally:
+        await _cleanup_users(referrer, referred)
+
+
+async def test_referral_no_self_referral():
+    u = await _make_user()
+    try:
+        async with SessionLocal() as db:
+            user = await db.get(User, u)
+            link = await attach_referral_at_signup(db, user, user.referral_code)
+            assert link is None  # auto-parrainage refusé
+    finally:
+        await _cleanup_users(u)
+
+
+# =============================================================================
+# Streak
+# =============================================================================
+
+async def test_streak_first_claim_and_same_day_idempotent():
+    u = await _make_user(initial_balance=0)
+    try:
+        async with SessionLocal() as db:
+            r1 = await claim_daily_checkin(db, u)
+            await db.commit()
+        assert r1["claimed"] is True
+        assert r1["streak_count"] == 1
+        assert r1["reward_granted"] == DAILY_REWARD
+        assert await _balance(u) == DAILY_REWARD
+
+        # Même jour → no-op.
+        async with SessionLocal() as db:
+            r2 = await claim_daily_checkin(db, u)
+            await db.commit()
+        assert r2["claimed"] is False
+        assert await _balance(u) == DAILY_REWARD
+    finally:
+        await _cleanup_users(u)
+
+
+async def test_streak_milestone_day7():
+    u = await _make_user(initial_balance=0)
+    try:
+        # Simule 6 jours consécutifs déjà faits, dernier = hier.
+        async with SessionLocal() as db:
+            await db.execute(
+                text(
+                    "UPDATE users SET streak_count = 6, "
+                    "last_checkin_date = (CURRENT_DATE - INTERVAL '1 day') "
+                    "WHERE id = :u"
+                ),
+                {"u": u},
+            )
+            await db.commit()
+        async with SessionLocal() as db:
+            r = await claim_daily_checkin(db, u)
+            await db.commit()
+        assert r["streak_count"] == 7
+        assert r["reward_granted"] == MILESTONE_REWARD  # palier 7 → +3
+        assert r["is_milestone"] is True
+        assert await _balance(u) == MILESTONE_REWARD
+    finally:
+        await _cleanup_users(u)
+
+
+# =============================================================================
+# Packs — rareté par supply + stock-out
+# =============================================================================
+
+async def test_pack_open_debits_and_grants_unlimited_is_commun():
+    artist = await _make_user(initial_balance=0, artist_name="PackArtist")
+    buyer = await _make_user(initial_balance=100)
+    try:
+        await _make_prompt(artist, price=80, max_supply=None)  # illimité
+        async with SessionLocal() as db:
+            res = await open_mystery_pack_atomic(db, buyer)
+            await db.commit()
+        assert res["price_paid"] == MYSTERY_PACK_PRICE
+        assert res["rarity"] == "commun"  # supply illimité → commun (pas legendaire)
+        assert await _balance(buyer) == 100 - MYSTERY_PACK_PRICE
+        # Le son tiré est bien dans la bibliothèque du buyer.
+        async with SessionLocal() as db:
+            owned = (await db.execute(
+                select(func.count(UnlockedPrompt.id)).where(
+                    UnlockedPrompt.current_owner_id == buyer
+                )
+            )).scalar()
+            assert int(owned) == 1
+    finally:
+        await _cleanup_users(artist, buyer)
+
+
+async def test_pack_insufficient_credits():
+    artist = await _make_user(initial_balance=0, artist_name="PoorArtist")
+    buyer = await _make_user(initial_balance=MYSTERY_PACK_PRICE - 1)
+    try:
+        await _make_prompt(artist, price=10, max_supply=None)
+        with pytest.raises(PackInsufficientCredits):
+            async with SessionLocal() as db:
+                await open_mystery_pack_atomic(db, buyer)
+                await db.commit()
+    finally:
+        await _cleanup_users(artist, buyer)
+
+
+async def test_pack_pool_empty_when_only_own_prompts():
+    artist = await _make_user(initial_balance=100, artist_name="LonelyArtist")
+    try:
+        await _make_prompt(artist, price=10, max_supply=None)
+        # L'artiste ne peut pas tirer son propre prompt → pool vide.
+        with pytest.raises(PackPoolEmpty):
+            async with SessionLocal() as db:
+                await open_mystery_pack_atomic(db, artist)
+                await db.commit()
+    finally:
+        await _cleanup_users(artist)
+
+
+# =============================================================================
+# Stock-out édition limitée (achat direct prompt)
+# =============================================================================
+
+async def test_prompt_stockout_limited_edition():
+    artist = await _make_user(initial_balance=0, artist_name="LimitedArtist")
+    buyer1 = await _make_user(initial_balance=100)
+    buyer2 = await _make_user(initial_balance=100)
+    try:
+        prompt_id = await _make_prompt(artist, price=10, max_supply=1)  # 1/1
+        # 1er acheteur : OK.
+        async with SessionLocal() as db:
+            await unlock_prompt_atomic(db, buyer_id=buyer1, prompt_id=prompt_id)
+            await db.commit()
+        # 2e acheteur : épuisé → refus.
+        with pytest.raises(PromptNotPurchasable):
+            async with SessionLocal() as db:
+                await unlock_prompt_atomic(db, buyer_id=buyer2, prompt_id=prompt_id)
+                await db.commit()
+    finally:
+        await _cleanup_users(artist, buyer1, buyer2)
