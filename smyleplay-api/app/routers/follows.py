@@ -87,12 +87,23 @@ async def _find_artist_by_slug(
     )
     users = (await db.execute(stmt_users)).scalars().all()
 
-    for u in users:
-        if _derive_artist_slug(u) == slug:
-            # Gate profile_public : 404 aux tiers si non publié, OK si self
-            is_self = viewer_id is not None and u.id == viewer_id
-            if not u.profile_public and not is_self:
-                raise HTTPException(status_code=404, detail="Artiste introuvable")
+    matches = [u for u in users if _derive_artist_slug(u) == slug]
+    if not matches:
+        raise HTTPException(status_code=404, detail="Artiste introuvable")
+
+    # Résolution DÉTERMINISTE en cas de slugs en doublon (homonymes).
+    # Sans tri, l'ordre de scan DB n'est pas garanti : il peut pointer sur un
+    # homonyme vide. Incident 2026-06-07 — /u/smyle tombait sur un compte
+    # "Smyle" vide après que le backfill du parrainage (migration 0042) ait
+    # réécrit l'ordre physique des lignes users. On préfère donc le compte
+    # OFFICIEL, puis le plus ancien (created_at) comme départage stable.
+    matches.sort(key=lambda u: (not bool(u.is_official), u.created_at))
+
+    # Renvoie le premier homonyme VISIBLE pour ce viewer (gate profile_public :
+    # 404 aux tiers si non publié, OK si c'est son propre profil).
+    for u in matches:
+        is_self = viewer_id is not None and u.id == viewer_id
+        if u.profile_public or is_self:
             return u
 
     raise HTTPException(status_code=404, detail="Artiste introuvable")
