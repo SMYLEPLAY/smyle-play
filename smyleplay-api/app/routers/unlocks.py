@@ -204,6 +204,14 @@ async def unlock_adn(
             )
             await db.commit()
 
+        # Parrainage (mécanique 1) : 1er achat = action qualifiante. Idempotent.
+        try:
+            from app.services.referrals import maybe_reward_referral
+            if await maybe_reward_referral(db, current_user.id):
+                await db.commit()
+        except Exception:
+            await db.rollback()
+
         return UnlockAdnResponse(
             owned_adn=OwnedAdnRead.model_validate(result.owned_adn),
             transaction=result.transaction,
@@ -275,6 +283,14 @@ async def unlock_voice(
             )
             await db.commit()
 
+        # Parrainage (mécanique 1) : 1er achat = action qualifiante. Idempotent.
+        try:
+            from app.services.referrals import maybe_reward_referral
+            if await maybe_reward_referral(db, current_user.id):
+                await db.commit()
+        except Exception:
+            await db.rollback()
+
         return UnlockVoiceResponse(
             owned_voice=OwnedVoiceRead.model_validate(result.owned_voice),
             transaction=result.transaction,
@@ -323,6 +339,15 @@ async def unlock_playlist_adn(
             playlist_id=playlist_id,
         )
         await db.commit()
+
+        # Parrainage (mécanique 1) : 1er achat = action qualifiante. Idempotent.
+        try:
+            from app.services.referrals import maybe_reward_referral
+            if await maybe_reward_referral(db, current_user.id):
+                await db.commit()
+        except Exception:
+            await db.rollback()
+
         return {
             "ok": True,
             "playlist_id": str(playlist_id),
