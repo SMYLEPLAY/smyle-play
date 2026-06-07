@@ -538,12 +538,20 @@ async function claimStreak() {
   }
 }
 
-// Rappel discret au login : si une récompense est réclamable aujourd'hui.
+// Au login : si une récompense est réclamable aujourd'hui, on ouvre
+// directement la fenêtre de réclamation (1 clic, impossible à rater).
+// Garde-fou : une seule ouverture auto par session de navigateur — ensuite
+// l'utilisateur garde l'accès via le menu « Récompense du jour ». Le flag se
+// réinitialise à la fermeture du navigateur (nouvelle journée → nouveau push).
 async function _maybeNudgeStreak() {
   try {
+    let alreadyOpened = false;
+    try { alreadyOpened = sessionStorage.getItem('smyle_streak_autoopened') === '1'; } catch (_) {}
+    if (alreadyOpened) return;
     const s = await apiFetch('/streak/me');
-    if (s && s.can_checkin_today && typeof window.smyleToast === 'function') {
-      window.smyleToast('🔥 Ta récompense du jour t\'attend — menu « Récompense du jour »', { type: 'info', duration: 4200 });
+    if (s && s.can_checkin_today) {
+      try { sessionStorage.setItem('smyle_streak_autoopened', '1'); } catch (_) {}
+      openStreakModal();
     }
   } catch (_) { /* silencieux : ne jamais bloquer le chargement */ }
 }
