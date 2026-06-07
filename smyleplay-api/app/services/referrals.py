@@ -15,7 +15,9 @@ import secrets
 import string
 from uuid import UUID
 
-from sqlalchemy import select
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.referral import Referral, ReferralStatus
@@ -25,6 +27,12 @@ from app.services.credits import grant_credits_atomic
 
 # Montant crédité à CHAQUE côté (parrain + filleul) au déblocage.
 REFERRAL_REWARD_CREDITS = 10
+
+# Anti-abus : plafond glissant de filleuls RÉCOMPENSÉS par parrain sur 24h.
+# Au-delà, la récompense n'est pas versée (le lien reste PENDING). Borne le
+# farming par faux comptes à REFERRAL_DAILY_CAP × 10 Smyles/jour/parrain.
+# Volontairement haut pour ne jamais gêner un parrainage légitime viral.
+REFERRAL_DAILY_CAP = 20
 
 # Alphabet sans caractères ambigus (pas de O/0, I/1) → codes lisibles à l'oral.
 _CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -106,6 +114,19 @@ async def maybe_reward_referral(db: AsyncSession, referred_user_id: UUID) -> boo
         )
     )
     if referral is None:
+        return False
+
+    # Anti-abus : plafond glissant 24h de filleuls récompensés pour ce parrain.
+    # Au-delà, on ne verse pas (le lien reste PENDING). Borne le farming.
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    recent_rewarded = await db.scalar(
+        select(func.count(Referral.id)).where(
+            Referral.referrer_id == referral.referrer_id,
+            Referral.status == ReferralStatus.REWARDED,
+            Referral.rewarded_at >= since,
+        )
+    )
+    if recent_rewarded is not None and int(recent_rewarded) >= REFERRAL_DAILY_CAP:
         return False
 
     amount = referral.reward_credits
