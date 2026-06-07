@@ -30,6 +30,7 @@ from app.routers.notifications import router as notifications_router
 from app.routers.messages import router as messages_router
 from app.routers.trades import router as trades_router
 from app.routers.referrals import router as referrals_router
+from app.routers.streak import router as streak_router
 
 
 def create_app() -> FastAPI:
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(messages_router)
     app.include_router(trades_router)
     app.include_router(referrals_router)
+    app.include_router(streak_router)
 
     return app
 
