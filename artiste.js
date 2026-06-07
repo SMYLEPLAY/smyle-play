@@ -1194,6 +1194,19 @@ function renderPrompts(artist) {
     const vocalBadge = p.promptVocalGender
       ? `<span class="ap-prompt-badge">${_promptVocalGenderLbl(p.promptVocalGender)}</span>`
       : '';
+    // Rareté/supply (2026-06-08) — badge édition limitée, comme les ADN.
+    // unlimited → pas de badge. maxSupply renseigne le nb d'exemplaires.
+    let rarityBadge = '';
+    const _pmax = (p.maxSupply != null) ? p.maxSupply : '?';
+    if (p.rarityTier === 'mythic') {
+      rarityBadge = '<span class="ap-prompt-badge" style="background:#FFD700;color:#000;font-weight:600;">👑 Mythique · 1/1</span>';
+    } else if (p.rarityTier === 'legendary') {
+      rarityBadge = `<span class="ap-prompt-badge" style="background:#FBBF24;color:#000;font-weight:600;">⭐ Légendaire · ${_pmax} ex.</span>`;
+    } else if (p.rarityTier === 'limited') {
+      rarityBadge = `<span class="ap-prompt-badge" style="background:#A78BFA;color:#000;font-weight:600;">💎 Limité · ${_pmax} ex.</span>`;
+    } else if (p.rarityTier === 'open') {
+      rarityBadge = `<span class="ap-prompt-badge" style="background:#4ADE80;color:#000;font-weight:600;">🟢 Ouvert · ${_pmax} ex.</span>`;
+    }
     // Bloc weirdness/style supprimé du rendu public — ces 2 infos
     // apparaissent dans /library après achat (cf library.js renderPrompts).
     const settingsBlock = '';
@@ -1227,6 +1240,7 @@ function renderPrompts(artist) {
       </div>
       ${safeDesc ? `<p class="ap-prompt-card-desc">${safeDesc}</p>` : ''}
       <div class="ap-prompt-card-meta">
+        ${rarityBadge}
         ${platformBadge}
         ${modelBadge}
         ${vocalBadge}
