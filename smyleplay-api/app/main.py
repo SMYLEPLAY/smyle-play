@@ -29,6 +29,7 @@ from app.routers.watt_compat import router as watt_compat_router
 from app.routers.notifications import router as notifications_router
 from app.routers.messages import router as messages_router
 from app.routers.trades import router as trades_router
+from app.routers.referrals import router as referrals_router
 
 
 def create_app() -> FastAPI:
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router)
     app.include_router(messages_router)
     app.include_router(trades_router)
+    app.include_router(referrals_router)
 
     return app
 

@@ -120,6 +120,19 @@ class User(Base):
         server_default="false",
     )
 
+    # --- Parrainage (mécanique 1) ---
+    # Code unique partageable par l'utilisateur. Généré à l'inscription et
+    # backfillé pour les comptes existants (migration 0042). Sert d'identifiant
+    # public de parrainage : un nouvel inscrit le saisit pour lier son compte
+    # au parrain. Nullable uniquement le temps du backfill ; tout compte en
+    # possède un en pratique.
+    referral_code: Mapped[str | None] = mapped_column(
+        String(12),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+
     # --- Préférences ---
     language: Mapped[str] = mapped_column(
         String(2),

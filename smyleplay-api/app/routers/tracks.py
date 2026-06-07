@@ -62,6 +62,15 @@ async def create(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create track: {type(e).__name__}: {str(e)[:300]}",
         )
+    # Parrainage (mécanique 1) : 1er son posté = action qualifiante qui
+    # débloque la récompense si l'utilisateur a été parrainé. Idempotent et
+    # best-effort — un échec ici ne doit jamais casser la création de son.
+    try:
+        from app.services.referrals import maybe_reward_referral
+        if await maybe_reward_referral(db, current_user.id):
+            await db.commit()
+    except Exception:
+        await db.rollback()
     return TrackWithDNA(
         track=TrackRead.model_validate(track),
         dna=DNARead.model_validate(dna),
