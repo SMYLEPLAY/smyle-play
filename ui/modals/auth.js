@@ -276,6 +276,10 @@ function renderAuthArea() {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           WATT BOARD
         </a>
+        <button class="user-menu-item" onclick="openStreakModal()" role="menuitem">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8.5 14.5A2.5 2.5 0 0011 17c2 0 3.5-1.5 3.5-4 0-3-2-4.5-2-7 0 0-3 1.5-3 5 0-1.5-.5-2.5-1.5-3.5-.5 1.5-1 2.5-1 4.5a4 4 0 002 3z"/></svg>
+          Récompense du jour
+        </button>
         <button class="user-menu-item" onclick="openReferralModal()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
           Parrainage
@@ -462,6 +466,94 @@ if (typeof window !== 'undefined') {
   window.copyReferral = copyReferral;
 }
 
+// ── Streak (mécanique 2) — récompense de connexion quotidienne ───────────────
+// +1 Smyle/jour, +3 au 7e jour consécutif. Modal de réclamation + rappel toast.
+
+function _ensureStreakModal() {
+  let modal = document.getElementById('streakModal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'streakModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);';
+  modal.innerHTML = `
+    <div class="modal-card" style="max-width:380px;width:90%;background:#14101f;border:1px solid #2c2440;border-radius:16px;padding:24px;color:#eee;text-align:center;">
+      <button onclick="closeStreakModal()" aria-label="Fermer" style="position:absolute;top:14px;right:18px;background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;">×</button>
+      <div id="streakBody" style="font-size:14px;">Chargement…</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeStreakModal(); });
+  return modal;
+}
+
+async function openStreakModal() {
+  _closeUserMenu();
+  const modal = _ensureStreakModal();
+  modal.style.display = 'flex';
+  await _renderStreakBody();
+}
+
+async function _renderStreakBody() {
+  const body = document.getElementById('streakBody');
+  if (!body) return;
+  body.textContent = 'Chargement…';
+  try {
+    const s = await apiFetch('/streak/me');
+    const count = (s && s.streak_count) || 0;
+    const can = !!(s && s.can_checkin_today);
+    const nextReward = (s && s.next_reward) || 1;
+    body.innerHTML = `
+      <div style="font-size:44px;line-height:1;margin:6px 0 4px;">🔥</div>
+      <div style="font-size:28px;font-weight:800;">${count} jour${count > 1 ? 's' : ''}</div>
+      <div style="font-size:12px;color:#9990ad;margin-bottom:18px;">de connexion consécutive</div>
+      ${can
+        ? `<button onclick="claimStreak()" style="width:100%;background:#6c4cf0;border:none;color:#fff;border-radius:12px;padding:13px;cursor:pointer;font-size:15px;font-weight:700;">Réclamer +${nextReward} Smyle${nextReward > 1 ? 's' : ''}</button>
+           <p style="margin:12px 0 0;font-size:11px;color:#9990ad;">+1 chaque jour · +3 tous les 7 jours</p>`
+        : `<div style="background:#0d0a16;border-radius:12px;padding:13px;color:#9ae6b4;font-size:14px;">✓ Récompense du jour réclamée</div>
+           <p style="margin:12px 0 0;font-size:11px;color:#9990ad;">Reviens demain pour continuer ta série.</p>`}`;
+  } catch (e) {
+    body.innerHTML = `<p style="color:#e58;">Impossible de charger ta récompense. ${(e && e.status === 401) ? 'Reconnecte-toi.' : 'Réessaie dans un instant.'}</p>`;
+  }
+}
+
+function closeStreakModal() {
+  const modal = document.getElementById('streakModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function claimStreak() {
+  const body = document.getElementById('streakBody');
+  try {
+    const r = await apiFetch('/streak/checkin', { method: 'POST' });
+    if (r && r.claimed && typeof window.smyleToast === 'function') {
+      const bonus = r.is_milestone ? ' 🎉 palier 7 jours !' : '';
+      window.smyleToast(`+${r.reward_granted} Smyle${r.reward_granted > 1 ? 's' : ''}${bonus}`, { type: 'success', duration: 3200 });
+    }
+    // Rafraîchit la bulle de solde Smyle.
+    if (window.SmyleBalance && typeof window.SmyleBalance.refresh === 'function') {
+      try { window.SmyleBalance.refresh(); } catch (_) {}
+    }
+    await _renderStreakBody();
+  } catch (e) {
+    if (body) body.innerHTML = `<p style="color:#e58;">Réclamation impossible. Réessaie dans un instant.</p>`;
+  }
+}
+
+// Rappel discret au login : si une récompense est réclamable aujourd'hui.
+async function _maybeNudgeStreak() {
+  try {
+    const s = await apiFetch('/streak/me');
+    if (s && s.can_checkin_today && typeof window.smyleToast === 'function') {
+      window.smyleToast('🔥 Ta récompense du jour t\'attend — menu « Récompense du jour »', { type: 'info', duration: 4200 });
+    }
+  } catch (_) { /* silencieux : ne jamais bloquer le chargement */ }
+}
+
+if (typeof window !== 'undefined') {
+  window.openStreakModal = openStreakModal;
+  window.closeStreakModal = closeStreakModal;
+  window.claimStreak = claimStreak;
+}
+
 // ── 7. Bootstrap : si un JWT existe déjà au chargement, resynchroniser ──────
 // Appelé une fois au load. Si le token est valide → setCurrentUser →
 // renderAuthArea affiche le badge connecté sans que l'utilisateur clique.
@@ -473,6 +565,8 @@ async function _bootstrapAuthFromToken() {
   await _fetchMeAndSync();
   renderAuthArea();
   _maybeAutoOpenFromQuery();
+  // Rappel streak (mécanique 2) — léger délai pour ne pas chevaucher le rendu.
+  setTimeout(() => { _maybeNudgeStreak(); }, 1200);
 }
 
 // Si on arrive ici via un redirect depuis le bandeau "session expirée" d'une
