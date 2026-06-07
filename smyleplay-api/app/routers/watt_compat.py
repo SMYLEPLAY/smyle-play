@@ -837,20 +837,25 @@ async def get_artist(
     stmt_all = select(User)
     users = (await db.execute(stmt_all)).scalars().all()
 
+    # Résolution DÉTERMINISTE en cas de slugs en doublon (homonymes).
+    # Incident 2026-06-07 : deux comptes "Smyle" → /u/smyle tombait sur le
+    # doublon VIDE car ce scan renvoyait le 1er match dans un ordre DB non
+    # garanti (réordonné par le backfill du parrainage, migration 0042).
+    # On préfère le compte OFFICIEL, puis le plus ancien (created_at).
+    matches = [u for u in users if _derive_artist_slug(u) == slug]
+    if not matches:
+        raise HTTPException(status_code=404, detail="Artiste introuvable")
+    matches.sort(key=lambda u: (not bool(u.is_official), u.created_at))
+
+    # Gatekeeping visibilité : on renvoie le 1er homonyme VISIBLE pour ce
+    # viewer (public, OU son propre profil même non publié — preview wattboard).
     target: User | None = None
-    for u in users:
-        if _derive_artist_slug(u) == slug:
+    for u in matches:
+        if u.profile_public or (viewer is not None and viewer.id == u.id):
             target = u
             break
-
     if target is None:
-        raise HTTPException(status_code=404, detail="Artiste introuvable")
-
-    # Gatekeeping visibilité publique : seul soi-même peut voir son profil
-    # tant qu'il n'est pas publié. Les autres reçoivent un 404 indistinguable
-    # d'un slug inexistant (pas de fuite "ce compte existe mais est privé").
-    is_self = viewer is not None and viewer.id == target.id
-    if not target.profile_public and not is_self:
+        # Tous les homonymes sont privés et le viewer n'en possède aucun.
         raise HTTPException(status_code=404, detail="Artiste introuvable")
 
     payload = await build_artist_detail_payload(db, target, slug, viewer)
@@ -1163,14 +1168,13 @@ async def get_adn(slug: str, db: AsyncSession = Depends(get_db)) -> dict:
     )
     users = (await db.execute(stmt_users)).scalars().all()
 
-    target: User | None = None
-    for u in users:
-        if _derive_artist_slug(u) == slug:
-            target = u
-            break
-
-    if target is None:
+    # Résolution déterministe en cas de slugs en doublon (cf. get_artist) :
+    # compte officiel d'abord, puis le plus ancien.
+    matches = [u for u in users if _derive_artist_slug(u) == slug]
+    if not matches:
         raise HTTPException(status_code=404, detail="Artiste introuvable")
+    matches.sort(key=lambda u: (not bool(u.is_official), u.created_at))
+    target = matches[0]
 
     # ADN
     adn_stmt = select(Adn).where(
@@ -1422,6 +1426,94 @@ async def upload_image(
         )
 
     return {"url": f"/watt/images/{r2_key}", "key": r2_key}
+
+
+@router.post("/upload-playlist-cover")
+async def upload_playlist_cover(
+    file: UploadFile = File(...),
+    userId: str = Form(default=""),
+    name: str = Form(default="cover"),
+):
+    """
+    Upload d'une vidéo de cover de playlist vers R2 (max 25 Mo).
+
+    Port 1:1 de l'ancien endpoint Flask /api/watt/upload-playlist-cover.
+    Le générique /watt/upload-image refuse les vidéos (image/* uniquement),
+    d'où cette route dédiée. La durée (<= 3s) est validée côté front ;
+    côté serveur on valide la taille (<= 25 Mo) et l'extension.
+
+    Retourne : { "ok": true, "cover_url": "/watt/stream/<key>", "r2_key": "<key>" }
+    Le front fait ensuite PATCH /playlists/{id} avec la cover_video_url.
+    """
+    from app.services.r2 import get_r2_client, is_configured
+
+    if not is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+
+    _VIDEO_MIME = {
+        "mp4": "video/mp4",
+        "webm": "video/webm",
+        "mov": "video/quicktime",
+        "m4v": "video/x-m4v",
+    }
+    _VIDEO_MAX_BYTES = 25 * 1024 * 1024  # 25 Mo — identique au legacy
+
+    # ── Extension ─────────────────────────────────────────────────────────────
+    filename = file.filename or ""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in _VIDEO_MIME:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Format non supporté ({ext or 'inconnu'}). Utilise mp4, webm ou mov.",
+        )
+
+    # ── Lecture + validation taille ───────────────────────────────────────────
+    data = await file.read()
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Fichier vide",
+        )
+    if len(data) > _VIDEO_MAX_BYTES:
+        mb = len(data) / 1024 / 1024
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Fichier trop lourd ({mb:.1f} Mo). Limite : 25 Mo.",
+        )
+
+    mime = _VIDEO_MIME[ext]
+
+    # ── Clé R2 : PLAYLISTS/<userId>/<uuid>-<nom>.<ext> ────────────────────────
+    uid = _uuid_module.uuid4().hex
+    safe_uid = re.sub(r"[^a-zA-Z0-9_-]", "_", userId or "guest")[:60] or "guest"
+    safe_name = re.sub(r"[^a-z0-9_-]", "_", (name or "cover").lower())[:40] or "cover"
+    r2_key = f"PLAYLISTS/{safe_uid}/{uid}-{safe_name}.{ext}"
+
+    # ── Upload R2 (boto3 sync → executor) ────────────────────────────────────
+    client = get_r2_client()
+    bucket = settings.R2_BUCKET
+
+    def _sync_put() -> None:
+        client.put_object(
+            Bucket=bucket,
+            Key=r2_key,
+            Body=data,
+            ContentType=mime,
+        )
+
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(None, _sync_put)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Upload R2 échoué : {type(exc).__name__}: {str(exc)[:200]}",
+        )
+
+    return {"ok": True, "cover_url": f"/watt/stream/{r2_key}", "r2_key": r2_key}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
