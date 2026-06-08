@@ -20,7 +20,11 @@
   if (window.__smyleSearchInstalled) return;
   window.__smyleSearchInstalled = true;
 
-  const API_BASE = (typeof window !== 'undefined' && window.API_BASE)
+  // BUGFIX : en prod window.API_BASE vaut "" (même origine) — une chaîne
+  // VIDE est falsy, donc l'ancien test `window.API_BASE ? ... : localhost`
+  // retombait à tort sur localhost:8000 (→ 503 en prod). On teste le TYPE
+  // pour accepter "" comme valeur valide (même origine).
+  const API_BASE = (typeof window !== 'undefined' && typeof window.API_BASE === 'string')
     ? String(window.API_BASE).replace(/\/+$/, '')
     : 'http://localhost:8000';
 

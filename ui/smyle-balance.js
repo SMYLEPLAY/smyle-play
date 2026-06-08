@@ -350,8 +350,9 @@
         const data = await apiFetch('/users/me');
         return data || null;
       }
-      // Fallback si api.js pas chargé
-      const base = (typeof window !== 'undefined' && window.API_BASE) || 'http://localhost:8000';
+      // Fallback si api.js pas chargé. BUGFIX : "" (même origine en prod) est
+      // falsy → on teste le type pour ne pas retomber sur localhost.
+      const base = (typeof window !== 'undefined' && typeof window.API_BASE === 'string') ? window.API_BASE : 'http://localhost:8000';
       const r = await fetch(base + '/users/me', {
         headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
       });
