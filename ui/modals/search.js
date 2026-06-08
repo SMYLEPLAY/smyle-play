@@ -269,7 +269,9 @@
 .ss-track-title {
   font-size: 13px; font-weight: 600; color: #fff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; display: inline; width: fit-content; max-width: 100%;
 }
+.ss-track-title:hover { color: #c4b5fd; text-decoration: underline; }
 .ss-track-sub {
   font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -390,11 +392,21 @@
     connectEl = modalRoot.querySelector('#ss-results-connect');
     dnaEl     = modalRoot.querySelector('#ss-results-dna');
 
-    // Clic sur un morceau dans les résultats → lecture inline (découverte).
+    // Clic sur un morceau : titre → fiche/profil artiste ; ailleurs → lecture inline.
     dnaEl.addEventListener('click', (e) => {
       const card = e.target.closest('.ss-track-card');
       if (!card) return;
       e.preventDefault();
+      // Clic sur le titre → atterrit sur le profil de l'artiste avec la carte
+      // détail du morceau ouverte (achat direct ou navigation du profil).
+      if (e.target.closest('.ss-track-title')) {
+        const slug = card.getAttribute('data-artist-slug');
+        const id   = card.getAttribute('data-track-id');
+        if (slug) {
+          window.location.href = '/u/' + encodeURIComponent(slug) + '#son-' + encodeURIComponent(id || '');
+          return;
+        }
+      }
       _ssPlayTrack(card);
     });
 
