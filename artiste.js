@@ -177,6 +177,7 @@ async function loadArtist() {
     state.artist.voices = [];  // état initial → renderVoices cache la section
     renderProfile();
     loadArtistVoices(state.artist.id);
+    loadArtistResale(state.artist.id);
     // Si le profil est vide ET l'utilisateur est owner, on active direct le
     // mode édition pour qu'il puisse remplir sans clic supplémentaire.
     maybePromptFirstEdit();
@@ -1925,6 +1926,65 @@ async function loadArtistVoices(artistId) {
   renderVoices(state.artist);
   // Recalcule la visibilité du disclaimer maintenant que voices est connu.
   _updateSaleDisclaimerVisibility(state.artist);
+}
+
+// ── Section REVENTE (marché secondaire) sur le profil ────────────────────────
+// Les exemplaires que cet artiste remet en vente. Chaque item est attribué à
+// son CRÉATEUR d'origine (lien vers son profil). Public.
+async function loadArtistResale(artistId) {
+  if (!artistId || typeof apiFetch !== 'function') return;
+  let list = [];
+  try {
+    list = await apiFetch('/resale/by-seller/' + encodeURIComponent(artistId), { auth: false });
+  } catch (e) { console.warn('[artiste.js] loadArtistResale', e); list = []; }
+  renderResale(Array.isArray(list) ? list : []);
+}
+
+function renderResale(items) {
+  const _e = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+  let section = document.getElementById('ap-resale-section');
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'ap-resale-section';
+    section.className = 'ap-section';
+    section.style.cssText = 'max-width:760px;margin:0 auto;padding:18px 20px';
+    const anchor = document.getElementById('ap-voices-section') || document.getElementById('ap-profile');
+    if (anchor && anchor.id === 'ap-profile') anchor.appendChild(section);
+    else if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(section, anchor.nextSibling);
+    else document.body.appendChild(section);
+  }
+  if (!items.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  const rows = items.map(it => {
+    const author = it.original_artist_name
+      ? '<a href="/u/' + _e(it.original_artist_slug || '') + '" style="color:#c4b5fd;text-decoration:none">créé par ' + _e(it.original_artist_name) + ' →</a>'
+      : '<span style="color:#888">créateur inconnu</span>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.02);margin-bottom:8px">' +
+      '<div><div style="font-weight:700;color:#fff">' + _e(it.title) + '</div>' +
+        '<div style="font-size:.78rem;margin-top:2px">' + author + '</div></div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<div style="font-weight:700;color:#fff">' + Number(it.resale_price) + ' <span style="font-size:.72rem;color:#a09cb8">Smyles</span></div>' +
+        '<button class="ap-resale-buy" data-up-id="' + _e(it.unlocked_prompt_id) + '" style="padding:8px 14px;border-radius:999px;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.5);color:#c4b5fd;font-size:.8rem;font-weight:700;cursor:pointer">Acheter</button>' +
+      '</div></div>';
+  }).join('');
+  section.innerHTML =
+    '<div style="margin-bottom:10px"><h2 class="ap-section-title" style="margin:0">♻️ Revente</h2>' +
+    '<span style="font-size:.8rem;color:#a09cb8">Exemplaires remis en vente — le créateur d\'origine touche une royaltie</span></div>' + rows;
+  section.querySelectorAll('.ap-resale-buy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Achat…';
+      try {
+        await apiFetch('/resale/' + encodeURIComponent(btn.dataset.upId) + '/buy', { method: 'POST' });
+        if (window.showToast) window.showToast('Acheté en revente 🔓 — dans ta bibliothèque');
+        loadArtistResale(state.artist && state.artist.id);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = orig;
+        const st = e && e.status;
+        const msg = st === 401 ? 'Connecte-toi pour acheter.' : st === 402 ? 'Crédits insuffisants.' : st === 409 ? 'Tu possèdes déjà cette recette.' : 'Erreur lors de l’achat.';
+        if (window.showToast) window.showToast(msg);
+      }
+    });
+  });
 }
 
 // Libellés humains des licences (alignés sur le backend VoiceLicense).

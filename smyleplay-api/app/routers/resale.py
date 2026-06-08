@@ -40,6 +40,18 @@ async def market(
     return [ResaleMarketItem(**it) for it in items]
 
 
+@router.get("/by-seller/{seller_id}", response_model=list[ResaleMarketItem])
+async def by_seller(
+    seller_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Reventes d'un vendeur — PUBLIC (pas d'auth), affiché dans la section
+    Revente de son profil /u/<slug>. Chaque item porte l'attribution du
+    créateur d'origine (nom + slug → lien vers son profil)."""
+    items = await get_resale_market(db, seller_id=seller_id)
+    return [ResaleMarketItem(**it) for it in items]
+
+
 @router.post("/prompts/{prompt_id}/list", status_code=status.HTTP_204_NO_CONTENT)
 async def list_for_resale(
     prompt_id: UUID,
