@@ -263,6 +263,8 @@
   color: #fff; border-radius: 8px;
 }
 .ss-track-card:hover .ss-track-play-overlay { opacity: 1; }
+.ss-track-card.ss-playing { background: rgba(124,58,237,.12); }
+.ss-track-card.ss-playing .ss-track-play-overlay { opacity: 1; color: #c4b5fd; }
 .ss-track-body { flex: 1; min-width: 0; }
 .ss-track-title {
   font-size: 13px; font-weight: 600; color: #fff;
@@ -388,6 +390,14 @@
     connectEl = modalRoot.querySelector('#ss-results-connect');
     dnaEl     = modalRoot.querySelector('#ss-results-dna');
 
+    // Clic sur un morceau dans les résultats → lecture inline (découverte).
+    dnaEl.addEventListener('click', (e) => {
+      const card = e.target.closest('.ss-track-card');
+      if (!card) return;
+      e.preventDefault();
+      _ssPlayTrack(card);
+    });
+
     // Events — overlay
     modalRoot.addEventListener('click', e => { if (e.target === modalRoot) closeModal(); });
     modalRoot.querySelector('.smyle-search-close').addEventListener('click', closeModal);
@@ -431,6 +441,7 @@
 
   function closeModal() {
     if (!modalRoot) return;
+    _ssStop();
     modalRoot.classList.remove('is-open');
     document.body.style.overflow = '';
     // Reset chips à la fermeture
@@ -467,14 +478,19 @@
 
   // ── Fetch parallèle ───────────────────────────────────────────────────
   async function runSearch(q, connectChips, dnaChips) {
-    setLoading(connectEl);
-    setLoading(dnaEl);
+    // On n'affiche QUE sur sélection (mood/rôle) ou texte tapé. Colonne vide
+    // sans critère → placeholder, pas tout le catalogue (demande Tom).
+    const hasQ      = !!(q && q.trim());
+    const doArtists = hasQ || (connectChips && connectChips.size > 0);
+    const doTracks  = hasQ || (dnaChips && dnaChips.size > 0);
+    if (doArtists) setLoading(connectEl); else renderArtists([], q);
+    if (doTracks)  setLoading(dnaEl);     else renderTracks([], q);
     const [artists, tracks] = await Promise.all([
-      fetchArtists(q, connectChips),
-      fetchTracks(q, dnaChips),
+      doArtists ? fetchArtists(q, connectChips) : Promise.resolve([]),
+      doTracks  ? fetchTracks(q, dnaChips)      : Promise.resolve([]),
     ]);
-    if (connectEl) renderArtists(artists, q);
-    if (dnaEl)     renderTracks(tracks, q);
+    if (doArtists && connectEl) renderArtists(artists, q);
+    if (doTracks  && dnaEl)     renderTracks(tracks, q);
   }
 
   async function fetchArtists(q, rolesSet) {
@@ -561,11 +577,13 @@
           `<span class="ss-track-tag">${escHtml(tag.trim())}</span>`
         ).join('')
       : '';
-    const href = t.artistSlug
-      ? `/u/${encodeURIComponent(t.artistSlug)}#track-${encodeURIComponent(t.id)}`
-      : '#';
+    // Clic = lecture inline (découverte d'un mood), pas de redirection slug.
+    const streamUrl = t.audioUrl || t.streamUrl || '';
     return `
-      <a class="ss-track-card" href="${escAttr(href)}">
+      <div class="ss-track-card" role="button" tabindex="0"
+           data-stream-url="${escAttr(streamUrl)}"
+           data-artist-slug="${escAttr(t.artistSlug || '')}"
+           data-track-id="${escAttr(t.id || '')}">
         <span class="ss-track-cover" style="background:${escAttr(color)}22">
           ${cover}
           <span class="ss-track-play-overlay">${ICO_PLAY}</span>
@@ -576,7 +594,31 @@
           ${tags ? `<span class="ss-track-tags">${tags}</span>` : ''}
         </span>
         <span class="ss-track-meta">${escHtml(meta)}</span>
-      </a>`;
+      </div>`;
+  }
+
+  // ── Lecture inline depuis la recherche (audio partagé) ───────────────────
+  let _ssAudio = null;
+  let _ssCard  = null;
+  function _ssStop() {
+    if (_ssAudio) { try { _ssAudio.pause(); } catch (_) {} }
+    if (_ssCard) _ssCard.classList.remove('ss-playing');
+    _ssCard = null;
+  }
+  function _ssPlayTrack(card) {
+    const url = card.getAttribute('data-stream-url');
+    if (!url) return;
+    if (!_ssAudio) {
+      _ssAudio = new Audio();
+      _ssAudio.addEventListener('ended', () => { if (_ssCard) _ssCard.classList.remove('ss-playing'); _ssCard = null; });
+    }
+    // Re-clic sur la même carte = pause/play.
+    if (_ssCard === card && !_ssAudio.paused) { _ssAudio.pause(); card.classList.remove('ss-playing'); _ssCard = null; return; }
+    if (_ssCard && _ssCard !== card) _ssCard.classList.remove('ss-playing');
+    _ssAudio.src = url;
+    _ssAudio.play().catch(() => {});
+    card.classList.add('ss-playing');
+    _ssCard = card;
   }
 
   // ── Utils ─────────────────────────────────────────────────────────────
