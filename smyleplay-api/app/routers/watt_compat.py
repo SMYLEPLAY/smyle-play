@@ -887,7 +887,7 @@ async def tracks_recent(
     `limit` accepté en query (1-50). Default 12 pour conserver la shape
     historique consommée par ui/hub/community.js et ui/panels/agent.js.
     """
-    safe_limit = max(1, min(int(limit or 12), 50))
+    safe_limit = max(1, min(int(limit or 12), 100))
     stmt = (
         select(Track, User)
         .join(User, User.id == Track.artist_id)
