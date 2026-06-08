@@ -1083,6 +1083,45 @@
     // Trois fetches en parallèle — indépendants, pas de cascade.
     await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);
     _renderAll();
+    if (_VIEW === 'sons' || _VIEW === 'artists') _installPageSearchBar();
+  }
+
+  // Sur les pages dédiées (/sons, /artistes), remplace le message d'accueil
+  // « Utilise la loupe… » par une vraie barre de recherche qui filtre la
+  // grille en direct. La loupe topbar reste dispo pour la recherche par mood.
+  function _installPageSearchBar() {
+    const hint = document.querySelector('.mp-hero-search-hint');
+    if (!hint || hint.dataset.searchBar === '1') return;
+    const isArtists = _VIEW === 'artists';
+    hint.dataset.searchBar = '1';
+    hint.classList.add('mp-hero-search-bar');
+    hint.innerHTML =
+      '<span class="mp-hsb-wrap">' +
+        '<svg class="mp-hsb-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>' +
+        '<input type="search" class="mp-hsb-input" autocomplete="off" ' +
+          'placeholder="' + (isArtists ? 'Filtrer les artistes…' : 'Filtrer les sons par titre, artiste, mood…') + '">' +
+      '</span>';
+    if (!document.getElementById('mp-hsb-style')) {
+      const st = document.createElement('style');
+      st.id = 'mp-hsb-style';
+      st.textContent =
+        '.mp-hero-search-bar{display:flex;justify-content:center;margin-top:4px}' +
+        '.mp-hsb-wrap{display:flex;align-items:center;gap:9px;width:min(560px,92%);' +
+          'padding:11px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.45);' +
+          'background:rgba(255,255,255,.04);color:rgba(255,255,255,.55);' +
+          'transition:border-color .15s,background .15s}' +
+        '.mp-hsb-wrap:focus-within{border-color:rgba(124,58,237,.9);background:rgba(124,58,237,.08)}' +
+        '.mp-hsb-input{flex:1;background:transparent;border:0;outline:0;color:#fff;' +
+          'font-size:.92rem;font-family:inherit}' +
+        '.mp-hsb-input::placeholder{color:rgba(255,255,255,.4)}';
+      document.head.appendChild(st);
+    }
+    const input = hint.querySelector('.mp-hsb-input');
+    input.addEventListener('input', () => {
+      const v = input.value || '';
+      if (isArtists) _renderGridArtists(v);
+      else _renderGridSons(v);
+    });
   }
 
   // Attend DOMContentLoaded si on est chargé sync avant le body.

@@ -292,6 +292,7 @@ function renderProfile() {
   renderVoices(artist);
   renderTracks(artist);
   _updateSaleDisclaimerVisibility(artist);
+  _openSonFromHash();         // recherche → #son-{id} ouvre la carte détail
 
   // ── Onglet navigateur ────────────────────────────────────────────────
   const name = artist.artistName && artist.artistName.trim();
@@ -803,6 +804,29 @@ function openTrackDetailById(trackId) {
   const data = _trackDetailCache[trackId];
   if (!data) return;
   openBoutiqueDrawer('son', JSON.stringify(data));
+}
+
+// Ouvre la carte détail d'un son depuis l'URL (#son-<id>), utilisé quand on
+// arrive depuis la recherche en cliquant sur le titre. Le hash peut porter
+// l'UUID FastAPI ; on retrouve la bonne entrée par clé directe OU par
+// trackUuid/trackId/id dans le cache (les clés du cache sont des legacy ids).
+function _openSonFromHash() {
+  const m = (location.hash || '').match(/^#son-(.+)$/);
+  if (!m) return;
+  const wanted = decodeURIComponent(m[1]);
+  let key = _trackDetailCache[wanted] ? wanted : null;
+  if (!key) {
+    key = Object.keys(_trackDetailCache).find((k) => {
+      const d = _trackDetailCache[k] || {};
+      return String(d.trackUuid) === wanted
+          || String(d.trackId)  === wanted
+          || String(d.id)       === wanted;
+    });
+  }
+  if (!key) return;
+  openTrackDetailById(key);
+  // Nettoie le hash pour ne pas rouvrir la carte à chaque reload.
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
 }
 
 function openVoiceDetailById(voiceId) {
