@@ -231,6 +231,7 @@ async def search_tracks(
             "title":       track.title,
             "universe":    track.universe or "",
             "tags":        track.tags or "",
+            "platform":    track.platform or "",
             "color":       track.color or user.brand_color or "",
             "audioUrl":    track.audio_url or "",
             "plays":       int(track.plays or 0),

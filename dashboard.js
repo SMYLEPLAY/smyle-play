@@ -1831,7 +1831,7 @@ async function _uploadTrackCover(file, trackName) {
 // associée. Le DNA per-track devient secondaire dans le nouveau
 // modèle (l'ADN par artiste reprend le rôle), mais le champ reste
 // obligatoire en DB tant qu'on n'a pas migré la contrainte.
-async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt, tags }) {
+async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt, tags, platform }) {
   if (typeof apiFetch !== 'function') {
     throw new Error('apiFetch indisponible');
   }
@@ -1846,6 +1846,7 @@ async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cove
         r2_key: r2_key || null,
         cover_url: cover_url || null,
         tags: tags || null,
+        platform: platform || null,
       },
     });
     // result = TrackWithDNA { track: TrackRead, dna: DNARead }
@@ -1984,6 +1985,7 @@ async function uploadTrack() {
       cover_url:   coverUrl,
       full_prompt: name,  // placeholder requis par TrackCreate (DNA per-track)
       tags:        tags || null,   // dashTags — lu plus haut (ligne ~1865)
+      platform:    platform || null,  // dashTrackPlatform — lu plus haut
     });
   } catch (e) {
     // PR A — gestion fine des erreurs FastAPI. Cas spéciaux :

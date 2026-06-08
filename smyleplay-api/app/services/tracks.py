@@ -41,6 +41,10 @@ async def create_track_with_dna(
         # mais ils n'étaient pas reportés dans le Track → tags=NULL → la
         # recherche par mood (Track.tags ILIKE) ne retrouvait jamais le son.
         tags=data.tags,
+        # Plateforme/IA d'origine (migration 0048) — même problème : le
+        # <select> dashTrackPlatform était choisi mais jamais persisté.
+        # Affiché sur la carte ID avant achat.
+        platform=data.platform,
     )
     db.add(track)
     await db.flush()  # get track.id from the DB

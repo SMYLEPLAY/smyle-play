@@ -274,6 +274,10 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         "color":      track.color or "",
         "trackUuid":         str(track.id),  # UUID réel — utilisé par /playlists/{id}/tracks
         "promptId":          str(track.prompt_id) if track.prompt_id else None,
+        # Carte ID enrichie : mood/tags + plateforme IA d'origine, affichés
+        # sur la carte avant achat (migrations 0038 + 0048).
+        "tags":              track.tags or "",
+        "platform":          track.platform or "",
         # Prix de la recette liée — injecté a posteriori par les endpoints
         # qui font un batch query sur Prompt (tracks-recent, /watt/artists).
         # Vaut None si la track n'a pas de prompt ou si non encore injecté.
