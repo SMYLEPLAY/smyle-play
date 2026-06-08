@@ -142,6 +142,17 @@ def create_app(config_class=None):
     def library_page():
         return send_from_directory(BASE_DIR, 'library.html')
 
+    # Pages dédiées "voir tout" — réutilisent le shell index.html. marketplace.js
+    # détecte le chemin (/sons, /artistes) et affiche la cellule en plein.
+    # Vraies URL partageables + indexables (SEO).
+    @app.route('/sons')
+    def sons_page():
+        return send_from_directory(BASE_DIR, 'index.html')
+
+    @app.route('/artistes')
+    def artistes_page():
+        return send_from_directory(BASE_DIR, 'index.html')
+
     # ── API Playlists / Tracks officiels ──────────────────────────────────
 
     @app.route('/api/tracks')

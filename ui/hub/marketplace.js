@@ -39,6 +39,31 @@
     return !!document.getElementById('smyle-vitrine');
   }
 
+  // Vue selon l'URL : 'home' (accueil), 'sons' (/sons), 'artists' (/artistes).
+  // /sons et /artistes réutilisent le shell index.html → vraies URL
+  // partageables + SEO. On masque les autres cellules en CSS et on affiche la
+  // cellule concernée en PLEIN (catalogue complet). La home, elle, ne montre
+  // que les meilleurs (3 par cellule) pour ne pas qu'un artiste prenne tout.
+  const _VIEW = (function () {
+    const p = (typeof location !== 'undefined' ? location.pathname : '') || '';
+    if (p === '/sons' || p === '/sons/') return 'sons';
+    if (p === '/artistes' || p === '/artistes/') return 'artists';
+    return 'home';
+  })();
+  const HOME_CAP = 3;
+
+  function _injectViewStyles() {
+    if (document.getElementById('mp-view-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'mp-view-styles';
+    s.textContent =
+      '.mp-only-sons .smyle-vitrine,.mp-only-sons .mp-section-top-sons,.mp-only-sons .mp-section-top-artists,.mp-only-sons .mp-section-artists{display:none!important}' +
+      '.mp-only-artists .smyle-vitrine,.mp-only-artists .mp-section-top-sons,.mp-only-artists .mp-section-top-artists,.mp-only-artists .mp-section-sons{display:none!important}' +
+      '.mp-voir-tout{display:block;text-align:center;margin:12px auto 0;padding:9px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.4);color:#c4b5fd;font-size:.82rem;font-weight:600;text-decoration:none;width:max-content;cursor:pointer}' +
+      '.mp-voir-tout:hover{background:rgba(124,58,237,.12)}';
+    document.head.appendChild(s);
+  }
+
   // État local — pas de store global, une page = un cycle de rendu.
   const _state = {
     smyleArtist: null,     // payload de /watt/artists/smyle
@@ -169,7 +194,9 @@
 
   async function _fetchTracks() {
     try {
-      const data = await apiFetch('/watt/tracks-recent');
+      // On charge large (jusqu'à 100) pour que le top-3 et les compteurs
+      // "voir tout (N)" soient justes. L'affichage home reste cappé à 3.
+      const data = await apiFetch('/watt/tracks-recent?limit=100');
       _state.tracks = Array.isArray(data && data.tracks) ? data.tracks : [];
     } catch (err) {
       console.warn('[marketplace] /watt/tracks-recent :', err && err.message);
@@ -223,12 +250,12 @@
     const el = _state.dom.topSons;
     if (!el) return;
 
-    // Tri plays desc, top 10. `tracks-recent` renvoie par created_at desc,
-    // donc on re-trie côté client.
-    const top = _state.tracks
+    // Tri plays desc. Home = seulement les 3 meilleurs (le catalogue complet
+    // est sur la page /sons). `tracks-recent` renvoie par created_at desc.
+    const _allTop = _state.tracks
       .slice()
-      .sort((a, b) => (b.plays || 0) - (a.plays || 0))
-      .slice(0, 10);
+      .sort((a, b) => (b.plays || 0) - (a.plays || 0));
+    const top = _allTop.slice(0, HOME_CAP);
 
     if (top.length === 0) {
       el.innerHTML = '<li class="mp-ranking-empty">Aucun son pour le moment.</li>';
@@ -270,7 +297,9 @@
           audioEl +
         `</li>`
       );
-    }).join('');
+    }).join('') + (_allTop.length > HOME_CAP
+      ? '<li style="list-style:none"><a class="mp-voir-tout" href="/sons">Voir tous les sons (' + _allTop.length + ') →</a></li>'
+      : '');
 
     // Register virtual PLAYLIST pour le player principal (queue Top Sons)
     if (typeof window !== 'undefined') {
@@ -405,19 +434,16 @@
       return;
     }
 
-    // Lancement : sans recherche, on ne déverse pas tout le catalogue (évite
-    // que Smyle prenne toute la place). Sélection featured = les plus écoutés ;
-    // tout reste accessible via la recherche par mood + les profils.
+    // Home : on ne montre que les 3 meilleurs (pas de déversement du catalogue).
+    // Le catalogue complet vit sur la page dédiée /sons. En vue /sons → tout.
     let _capNote = '';
-    const FEATURED_CAP = 16;
-    if (!needle && items.length > FEATURED_CAP) {
+    if (_VIEW === 'home' && !needle && items.length > HOME_CAP) {
       const totalSons = items.length;
-      items = items.slice().sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, FEATURED_CAP);
-      _capNote = '<div style="grid-column:1/-1;text-align:center;padding:16px 8px 2px;color:#a09cb8;font-size:.82rem">' +
-        'Sélection — ' + totalSons + ' sons au catalogue · cherche par mood (loupe) ou ouvre un profil pour tout écouter.</div>';
+      items = items.slice().sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, HOME_CAP);
+      _capNote = '<a class="mp-voir-tout" href="/sons" style="grid-column:1/-1;margin-top:14px">Voir tous les sons (' + totalSons + ') →</a>';
     }
 
-    el.innerHTML = _capNote + items.map(t => {
+    el.innerHTML = items.map(t => {
       const color = t.color || '#7C3AED';
       const title = t.name || 'Sans titre';
       const name  = t.artist || '—';
@@ -491,7 +517,7 @@
           ) +
         `</div>`
       );
-    }).join('');
+    }).join('') + _capNote;
 
     // Register virtual PLAYLIST pour le player principal (queue Tous les sons)
     if (typeof window !== 'undefined') {
@@ -559,8 +585,16 @@
     if (items.length === 0) {
       el.innerHTML = needle
         ? `<div class="mp-grid-empty">Aucun profil ne correspond à "${_esc(filter)}".</div>`
-        : `<div class="mp-grid-empty">Aucun profil publié pour le moment.</div>`;
+        : `<div class="mp-grid-empty">Sois le premier artiste à publier ici. <a href="/dashboard" style="color:#c4b5fd">Deviens artiste →</a></div>`;
       return;
+    }
+
+    // Home : 3 meilleurs profils ; catalogue complet sur /artistes.
+    let _artNote = '';
+    if (_VIEW === 'home' && !needle && items.length > HOME_CAP) {
+      const totalArt = items.length;
+      items = items.slice(0, HOME_CAP);
+      _artNote = '<a class="mp-voir-tout" href="/artistes" style="grid-column:1/-1;margin-top:14px">Voir tous les artistes (' + totalArt + ') →</a>';
     }
 
     el.innerHTML = items.map(a => {
@@ -588,7 +622,7 @@
           `</div>` +
         `</a>`
       );
-    }).join('');
+    }).join('') + _artNote;
   }
 
   /** Re-render complet de toutes les sections dépendant de l'état. */
@@ -1004,6 +1038,9 @@
 
   async function _boot() {
     if (!_isMarketplacePage()) return;
+    _injectViewStyles();
+    if (_VIEW === 'sons')    { document.body.classList.add('mp-only-sons');    document.title = 'Tous les sons — WATT'; }
+    if (_VIEW === 'artists') { document.body.classList.add('mp-only-artists'); document.title = 'Tous les artistes — WATT'; }
     _resolveDom();
     _bindSearch();
     _bindBus();
