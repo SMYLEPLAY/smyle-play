@@ -305,7 +305,17 @@ function renderPrompts(items) {
 
 // ── Marché secondaire : mettre en vente / retirer (transfert de propriété) ──
 async function libListResale(promptId) {
-  const raw = window.prompt('Prix de revente en Smyles ?\n(Attention : revente = transfert, tu cèdes ce son.)');
+  // Avertissement EXPLICITE : la revente = transfert de propriété. Le vendeur
+  // PERD définitivement l'accès au prompt une fois acheté.
+  const ok = window.confirm(
+    '⚠️ Mettre en revente = TRANSFERT de propriété.\n\n' +
+    'Dès qu\'un acheteur l\'achète, tu PERDS définitivement l\'accès à cette recette ' +
+    '(comme une carte que tu vends — tu ne pourras plus l\'utiliser).\n\n' +
+    'En échange : tu touches le prix de revente, et le créateur d\'origine touche une royaltie.\n\n' +
+    'Veux-tu vraiment la mettre en revente ?'
+  );
+  if (!ok) return;
+  const raw = window.prompt('Prix de revente en Smyles ?');
   if (raw == null) return;
   const price = parseInt(raw, 10);
   if (!Number.isInteger(price) || price < 1) {
