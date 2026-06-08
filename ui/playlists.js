@@ -1675,6 +1675,7 @@
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
             '<div>' +
               '<div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Recette Suno</div>' +
+              '<div id="pl-td-recipe-teaser" style="font-size:11px;color:#a79fc0;margin:2px 0 4px;line-height:1.5"></div>' +
               '<div style="font-size:20px;font-weight:700;color:#fff">' + promptPrice + ' <span style="font-size:12px;color:rgba(255,255,255,.4)">Smyles</span></div>' +
             '</div>' +
             '<button id="pl-td-recipe-btn" data-prompt-id="' + _e(promptId) + '" data-prompt-price="' + promptPrice + '" data-track-name="' + _e(title) + '" ' +
@@ -1683,6 +1684,21 @@
             '</button>' +
           '</div>' +
         '</div>'
+      : '';
+
+    // Carte ID enrichie (alignée sur le marketplace) : badge plateforme + chips mood.
+    const _PL_PLAT = { suno:'Suno', udio:'Udio', riffusion:'Riffusion', stable_audio:'Stable Audio', autre:'Autre' };
+    const _plKey   = (t.platform || '').trim().toLowerCase();
+    const _plLabel = _PL_PLAT[_plKey] || (_plKey || '');
+    const _plBadge = _plLabel
+      ? '<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:10px;background:rgba(124,58,237,.16);color:#c4b5fd;font-size:12px;font-weight:600">⚡ ' + _e(_plLabel) + '</span>'
+      : '';
+    const _plMoods = (t.tags || '').split(',').map(s => s.trim()).filter(Boolean);
+    const _plMoodChips = _plMoods
+      .map(m => '<span style="display:inline-block;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.07);color:#cfc9db;font-size:12px">' + _e(m) + '</span>')
+      .join('');
+    const metaRow = (_plBadge || _plMoodChips)
+      ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin:2px 0">' + _plBadge + _plMoodChips + '</div>'
       : '';
 
     const overlay = document.createElement('div');
@@ -1696,6 +1712,7 @@
           '<div style="height:3px;border-radius:2px;background:' + _e(color) + ';margin-bottom:4px"></div>' +
           '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4)">Son</div>' +
           '<h2 style="font-size:20px;font-weight:700;color:#fff;margin:0;line-height:1.2">' + _e(title) + '</h2>' +
+          metaRow +
           audioHTML +
           recipeHTML +
         '</div>' +
@@ -1743,6 +1760,25 @@
           if (typeof showToast === 'function') showToast(msg);
         }
       });
+    }
+
+    // Teaser recette (avant achat) : plateforme + modèle Suno + paroles
+    // incluses. Le prompt et les réglages exacts restent gated.
+    if (promptId && typeof apiFetch === 'function') {
+      (async () => {
+        try {
+          const d = await apiFetch('/catalog/prompts/' + encodeURIComponent(promptId));
+          const el = document.getElementById('pl-td-recipe-teaser');
+          if (!el || !d) return;
+          const parts = [];
+          const pl = (d.platform || '').trim();
+          if (pl) parts.push('⚡ ' + _e(pl.charAt(0).toUpperCase() + pl.slice(1)));
+          if (d.model_version) parts.push(_e(d.model_version));
+          if (d.has_lyrics) parts.push('🎤 paroles incluses');
+          parts.push('🔒 prompt + réglages débloqués à l’achat');
+          el.innerHTML = parts.join(' · ');
+        } catch (_) { /* silencieux */ }
+      })();
     }
   }
 
