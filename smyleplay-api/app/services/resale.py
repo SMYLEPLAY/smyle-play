@@ -238,7 +238,11 @@ async def buy_resale_atomic(
 # -----------------------------------------------------------------------------
 
 async def get_resale_market(
-    db: AsyncSession, *, seller_id: UUID | None = None, limit: int = 50
+    db: AsyncSession,
+    *,
+    seller_id: UUID | None = None,
+    prompt_id: UUID | None = None,
+    limit: int = 50,
 ) -> list[dict]:
     """Listings du marché secondaire : prompts en vente + infos prompt +
     attribution du créateur d'origine (nom + slug → lien "créé par →").
@@ -258,6 +262,8 @@ async def get_resale_market(
     )
     if seller_id is not None:
         q = q.where(UnlockedPrompt.current_owner_id == seller_id)
+    if prompt_id is not None:
+        q = q.where(UnlockedPrompt.prompt_id == prompt_id)
     q = q.order_by(UnlockedPrompt.resale_price.asc()).limit(limit)
     rows = (await db.execute(q)).all()
     return [
@@ -274,3 +280,41 @@ async def get_resale_market(
         }
         for up, p, oa in rows
     ]
+
+
+async def get_prompt_market(db: AsyncSession, prompt_id: UUID) -> dict | None:
+    """Marché CANONIQUE d'un morceau (modèle StockX) : une seule fiche avec
+    l'offre PRIMAIRE (créateur, si stock restant) + les offres SECONDAIRES
+    (reventes). Évite les annonces dupliquées."""
+    p = (await db.execute(
+        select(Prompt).where(
+            Prompt.id == prompt_id, Prompt.is_deleted.is_(False)
+        )
+    )).scalar_one_or_none()
+    if p is None:
+        return None
+    sold = (await db.execute(
+        select(func.count(UnlockedPrompt.id)).where(
+            UnlockedPrompt.prompt_id == prompt_id
+        )
+    )).scalar() or 0
+    # max_supply None = illimité → toujours dispo en primaire, pas de rareté.
+    if p.max_supply is None:
+        supply_left = None
+        primary_available = True
+    else:
+        supply_left = max(0, int(p.max_supply) - int(sold))
+        primary_available = supply_left > 0
+    secondary = await get_resale_market(db, prompt_id=prompt_id)
+    return {
+        "prompt_id": str(prompt_id),
+        "title": p.title,
+        "primary_price": p.price_credits,
+        "max_supply": p.max_supply,
+        "sold": int(sold),
+        "supply_left": supply_left,
+        "primary_available": primary_available,
+        "is_limited": p.max_supply is not None,
+        "secondary": secondary,
+        "secondary_from": (secondary[0]["resale_price"] if secondary else None),
+    }

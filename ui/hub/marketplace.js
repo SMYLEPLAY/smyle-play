@@ -962,6 +962,7 @@
           <span class="mp-recipe-modal-price-val">${price}</span>
           <span class="mp-recipe-modal-price-unit">Smyles</span>
         </div>
+        <div id="mp-recipe-market" style="margin:4px 0 6px;font-size:.8rem;color:#a79fc0;line-height:1.6"></div>
         <div class="mp-recipe-modal-actions">
           <button class="mp-recipe-modal-cancel">Annuler</button>
           <button class="mp-recipe-modal-confirm" id="mp-recipe-confirm-btn">
@@ -976,6 +977,39 @@
     `;
 
     document.body.appendChild(overlay);
+
+    // Fiche CANONIQUE (modèle StockX) : on affiche l'offre primaire (stock
+    // restant si édition limitée) + les offres secondaires (reventes) sur la
+    // MÊME fiche. Un seul appel à l'ouverture.
+    if (promptId) {
+      (async () => {
+        try {
+          const m = await window.apiFetch('/resale/prompt/' + encodeURIComponent(promptId) + '/market');
+          const el = overlay.querySelector('#mp-recipe-market');
+          if (!el || !m) return;
+          const parts = [];
+          if (m.is_limited) {
+            if (m.supply_left > 0) parts.push('🎟️ Édition limitée · <strong>' + m.supply_left + '/' + m.max_supply + '</strong> exemplaires au prix officiel');
+            else parts.push('🔴 Édition limitée <strong>épuisée</strong> en primaire');
+          } else {
+            parts.push('♾️ Édition illimitée');
+          }
+          if (m.secondary && m.secondary.length) {
+            parts.push('♻️ <strong>' + m.secondary.length + '</strong> en revente · à partir de <strong>' + m.secondary_from + ' Smyles</strong> (sur le profil du vendeur)');
+          }
+          el.innerHTML = parts.join('<br>');
+          // Primaire épuisé → on bloque l'achat primaire (rediriger vers revente).
+          if (m.is_limited && m.supply_left === 0) {
+            const btn = overlay.querySelector('#mp-recipe-confirm-btn');
+            if (btn) {
+              btn.disabled = true;
+              btn.style.opacity = '.5';
+              btn.textContent = m.secondary && m.secondary.length ? 'Épuisé · dispo en revente' : 'Épuisé';
+            }
+          }
+        } catch (_) { /* silencieux */ }
+      })();
+    }
 
     function _close() {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);

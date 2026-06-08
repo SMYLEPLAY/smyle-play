@@ -23,6 +23,7 @@ from app.services.resale import (
     ResaleNotOwned,
     ResaleSelfBuy,
     buy_resale_atomic,
+    get_prompt_market,
     get_resale_market,
     list_prompt_for_resale,
     unlist_prompt_for_resale,
@@ -50,6 +51,19 @@ async def by_seller(
     créateur d'origine (nom + slug → lien vers son profil)."""
     items = await get_resale_market(db, seller_id=seller_id)
     return [ResaleMarketItem(**it) for it in items]
+
+
+@router.get("/prompt/{prompt_id}/market")
+async def prompt_market(
+    prompt_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Marché CANONIQUE d'un morceau — PUBLIC : offre primaire (créateur, si
+    stock) + offres secondaires (reventes) sur UNE fiche. Modèle StockX."""
+    data = await get_prompt_market(db, prompt_id)
+    if data is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Prompt introuvable")
+    return data
 
 
 @router.post("/prompts/{prompt_id}/list", status_code=status.HTTP_204_NO_CONTENT)
