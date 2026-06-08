@@ -36,6 +36,11 @@ async def create_track_with_dna(
         r2_key=data.r2_key,
         cover_url=data.cover_url,
         prompt_id=data.prompt_id,
+        # Tags/moods (migration 0038) — étaient silencieusement perdus à la
+        # création : le schéma TrackCreate les accepte et le front les envoie,
+        # mais ils n'étaient pas reportés dans le Track → tags=NULL → la
+        # recherche par mood (Track.tags ILIKE) ne retrouvait jamais le son.
+        tags=data.tags,
     )
     db.add(track)
     await db.flush()  # get track.id from the DB
