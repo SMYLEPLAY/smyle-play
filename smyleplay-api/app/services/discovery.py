@@ -237,6 +237,10 @@ async def get_public_prompt(
         "price_credits": p.price_credits,
         "created_at": p.created_at,
         "artist": _artist_card(u),
+        # Métadonnées teaser (avant achat) — PAS le prompt_text ni les paroles.
+        "platform": p.prompt_platform,
+        "model_version": p.prompt_model_version,
+        "has_lyrics": bool(p.lyrics),
     }
 
 

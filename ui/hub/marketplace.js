@@ -266,7 +266,7 @@
           playBtn +
           `<div class="mp-ranking-meta">${plays} écoutes</div>` +
           `<button class="add-to-pl-btn mp-ranking-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
-          `<button class="like-btn mp-ranking-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
+          `<button class="like-btn mp-ranking-like" type="button" data-like-btn="${_esc(t.trackUuid || t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
           audioEl +
         `</li>`
       );
@@ -433,7 +433,7 @@
           `<div class="mp-son-card-meta">` +
             `<span class="mp-son-card-meta-plays">${plays} \u00e9coutes</span>` +
             `<div class="mp-son-card-meta-actions">` +
-              `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
+              `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.trackUuid || t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
               `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter \u00e0 une playlist" aria-label="Ajouter \u00e0 une playlist">+</button>` +
             `</div>` +
           `</div>` +
@@ -750,6 +750,7 @@
            <div class="mp-td-recipe-row">
              <div>
                <div class="mp-td-recipe-label">Recette Suno</div>
+               <div class="mp-td-recipe-teaser" id="mp-td-recipe-teaser" style="font-size:.72rem;color:#a79fc0;margin:2px 0 4px;line-height:1.5;"></div>
                <div class="mp-td-recipe-price">${promptPrice} <span class="mp-td-recipe-unit">Smyles</span></div>
              </div>
              <button class="mp-td-recipe-btn" id="mp-td-recipe-btn"
@@ -803,6 +804,26 @@
           ${recipeHTML}
         </div>
       </aside>`;
+
+    // Teaser recette (avant achat) : plateforme + modèle Suno + paroles
+    // incluses. Le prompt et les réglages exacts restent gated. Un seul
+    // appel à l'ouverture du drawer.
+    if (promptId) {
+      (async () => {
+        try {
+          const d = await window.apiFetch('/catalog/prompts/' + encodeURIComponent(promptId));
+          const el = overlay.querySelector('#mp-td-recipe-teaser');
+          if (!el || !d) return;
+          const parts = [];
+          const plat = (d.platform || '').trim();
+          if (plat) parts.push('⚡ ' + _esc(plat.charAt(0).toUpperCase() + plat.slice(1)));
+          if (d.model_version) parts.push(_esc(d.model_version));
+          if (d.has_lyrics) parts.push('🎤 paroles incluses');
+          parts.push('🔒 prompt + réglages débloqués à l’achat');
+          el.innerHTML = parts.join(' · ');
+        } catch (_) { /* silencieux */ }
+      })();
+    }
 
     document.body.appendChild(overlay);
     requestAnimationFrame(() => {

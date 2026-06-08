@@ -80,9 +80,13 @@ class PromptPublicCard(BaseModel):
 
 
 class PromptPublicDetail(PromptPublicCard):
-    """Identique à la card pour Phase 9 — extensible plus tard (popularité, tags…)."""
+    """Carte + métadonnées teaser (avant achat) : plateforme, modèle, présence
+    de paroles. Le prompt_text et les paroles restent gated (pas exposés ici) ;
+    ces champs servent juste l'argumentaire de vente sur la fiche."""
 
-    pass
+    platform: str | None = None        # ex: "suno"
+    model_version: str | None = None   # ex: "v5.5"
+    has_lyrics: bool = False           # paroles incluses (sans les révéler)
 
 
 class PromptCatalogResponse(BaseModel):
