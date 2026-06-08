@@ -10,13 +10,21 @@
 // Limite freemium — version gratuite bêta
 const FREE_LIMIT = 6;
 
-// Comptes officiels exemptés de la limite freemium
-const OFFICIAL_SLUGS = ['smyle'];
+// Comptes officiels / fondateur — exemptés de la limite freemium bêta.
+// IMPORTANT : on matche sur le slug ET sur le nom d'artiste slugifié.
+// Le slug de profil est recalculé à la volée côté backend et peut dériver
+// (cf. audit B2) ; ne tester que `p.slug` faisait "revenir" le plafond quand
+// le slug changeait. Matcher aussi le nom slugifié (stable) rend l'exemption
+// résiliente à cette dérive.
+const OFFICIAL_SLUGS = ['smyle', 'tom-lecomte'];
 function _isOfficialAccount() {
-  const p = getWattProfile ? getWattProfile() : null;
+  const p = (typeof getWattProfile === 'function') ? getWattProfile() : null;
   if (!p) return false;
-  const slug = (p.slug || '').toLowerCase().trim();
-  return OFFICIAL_SLUGS.includes(slug);
+  const candidates = [
+    (p.slug || ''),
+    (typeof slugify === 'function' ? slugify(p.artistName || '') : ''),
+  ].map(s => String(s).toLowerCase().trim()).filter(Boolean);
+  return candidates.some(s => OFFICIAL_SLUGS.includes(s));
 }
 
 // ── Wrapper sécurisé localStorage (Safari Private Mode / quota 0 octet) ──────
