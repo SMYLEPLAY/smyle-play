@@ -762,6 +762,21 @@
          </div>`
       : '';
 
+    // Carte ID enrichie (drawer détail) : badge plateforme/IA + chips mood.
+    const _TD_PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
+    const tdPlatformKey   = (t.platform || '').trim().toLowerCase();
+    const tdPlatformLabel = _TD_PLATFORM_LABELS[tdPlatformKey] || (tdPlatformKey ? tdPlatformKey : '');
+    const tdPlatformBadge = tdPlatformLabel
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;background:rgba(124,58,237,.16);color:#c4b5fd;font-size:.75rem;font-weight:600;">⚡ ${_esc(tdPlatformLabel)}</span>`
+      : '';
+    const tdMoods = (t.tags || '').split(',').map(s => s.trim()).filter(Boolean);
+    const tdMoodChips = tdMoods
+      .map(m => `<span style="display:inline-block;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.07);color:#cfc9db;font-size:.75rem;">${_esc(m)}</span>`)
+      .join('');
+    const tagsMetaHTML = (tdPlatformBadge || tdMoodChips)
+      ? `<div class="mp-td-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 2px;">${tdPlatformBadge}${tdMoodChips}</div>`
+      : '';
+
     const overlay = document.createElement('div');
     overlay.id        = 'mp-track-detail-drawer';
     overlay.className = 'mp-td-overlay';
@@ -782,6 +797,7 @@
           <h2 class="mp-td-title">${_esc(title)}</h2>
           <a class="mp-td-artist" href="/u/${_esc(artistSlug)}">${_esc(artistName)}</a>
           <div class="mp-td-plays">${plays} écoutes</div>
+          ${tagsMetaHTML}
           ${audioHTML}
           ${socialHTML}
           ${recipeHTML}
