@@ -28,6 +28,11 @@ class TrackCreate(BaseModel):
     prompt_id: UUID | None = None
     # Tags libres — séparés par des virgules ("chill, dark, guitare, 90bpm")
     tags: str | None = Field(default=None, max_length=500)
+    # Plateforme/IA d'origine du son (suno, udio, riffusion, stable_audio,
+    # autre). Validation souple ici (jamais de 422 sur la création) ; la
+    # borne stricte est tenue par le CHECK DB ck_tracks_platform_enum + le
+    # <select> frontend. Vide → None.
+    platform: str | None = Field(default=None, max_length=20)
 
 
 class TrackUpdate(BaseModel):
@@ -65,6 +70,7 @@ class TrackRead(BaseModel):
     # Peuplé uniquement dans les endpoints playlist detail.
     prompt_price_credits: int | None = None
     tags: str | None = None
+    platform: str | None = None
     created_at: datetime
 
     @computed_field  # type: ignore[misc]

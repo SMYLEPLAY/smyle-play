@@ -401,6 +401,20 @@
       const permalinkBtn = artistSlug
         ? `<a class="mp-son-card-permalink" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();" title="Voir le profil artiste" aria-label="Voir le profil artiste">\u2197</a>`
         : '';
+      // Carte ID enrichie (avant achat) : badge plateforme/IA + chips mood.
+      const _PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
+      const platformKey   = (t.platform || '').trim().toLowerCase();
+      const platformLabel = _PLATFORM_LABELS[platformKey] || (platformKey ? platformKey : '');
+      const platformBadge = platformLabel
+        ? `<span class="mp-son-card-platform" title="Son g\u00e9n\u00e9r\u00e9 avec ${_esc(platformLabel)}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(124,58,237,.16);color:#c4b5fd;font-size:.68rem;font-weight:600;">\u26a1 ${_esc(platformLabel)}</span>`
+        : '';
+      const moods = (t.tags || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 4);
+      const moodChips = moods
+        .map(m => `<span class="mp-son-card-mood" style="display:inline-block;padding:2px 7px;border-radius:9px;background:rgba(255,255,255,.07);color:#b9b3c8;font-size:.68rem;">${_esc(m)}</span>`)
+        .join('');
+      const tagsRow = (platformBadge || moodChips)
+        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${platformBadge}${moodChips}</div>`
+        : '';
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
           `<div class="mp-son-card-cover">` +
@@ -414,6 +428,7 @@
             `<a class="mp-son-card-artist-name" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
             permalinkBtn +
           `</div>` +
+          tagsRow +
           (recipeBtn ? `<div class="mp-son-card-recipe-row">${recipeBtn}</div>` : '') +
           `<div class="mp-son-card-meta">` +
             `<span class="mp-son-card-meta-plays">${plays} \u00e9coutes</span>` +
