@@ -237,18 +237,29 @@ async def buy_resale_atomic(
 # Marché (listings publics)
 # -----------------------------------------------------------------------------
 
-async def get_resale_market(db: AsyncSession, *, limit: int = 50) -> list[dict]:
-    """Listings du marché secondaire : prompts en vente + infos prompt."""
-    rows = (await db.execute(
-        select(UnlockedPrompt, Prompt)
+async def get_resale_market(
+    db: AsyncSession, *, seller_id: UUID | None = None, limit: int = 50
+) -> list[dict]:
+    """Listings du marché secondaire : prompts en vente + infos prompt +
+    attribution du créateur d'origine (nom + slug → lien "créé par →").
+    Si `seller_id` est fourni, on ne renvoie que les reventes de ce vendeur
+    (section Revente d'un profil)."""
+    from app.core.slug import derive_artist_slug
+    from app.models.user import User
+
+    q = (
+        select(UnlockedPrompt, Prompt, User)
         .join(Prompt, Prompt.id == UnlockedPrompt.prompt_id)
+        .outerjoin(User, User.id == UnlockedPrompt.original_artist_id)
         .where(
             UnlockedPrompt.resale_price.is_not(None),
             Prompt.is_deleted.is_(False),
         )
-        .order_by(UnlockedPrompt.resale_price.asc())
-        .limit(limit)
-    )).all()
+    )
+    if seller_id is not None:
+        q = q.where(UnlockedPrompt.current_owner_id == seller_id)
+    q = q.order_by(UnlockedPrompt.resale_price.asc()).limit(limit)
+    rows = (await db.execute(q)).all()
     return [
         {
             "unlocked_prompt_id": up.id,
@@ -257,7 +268,9 @@ async def get_resale_market(db: AsyncSession, *, limit: int = 50) -> list[dict]:
             "resale_price": up.resale_price,
             "seller_id": up.current_owner_id,
             "original_artist_id": up.original_artist_id,
+            "original_artist_name": (oa.artist_name if oa else None),
+            "original_artist_slug": (derive_artist_slug(oa) if oa else None),
             "max_supply": p.max_supply,
         }
-        for up, p in rows
+        for up, p, oa in rows
     ]

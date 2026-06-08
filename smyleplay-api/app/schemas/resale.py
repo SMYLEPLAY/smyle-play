@@ -18,6 +18,8 @@ class ResaleMarketItem(BaseModel):
     resale_price: int
     seller_id: UUID
     original_artist_id: UUID | None = None
+    original_artist_name: str | None = None
+    original_artist_slug: str | None = None
     max_supply: int | None = None
 
 
