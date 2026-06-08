@@ -291,27 +291,62 @@
     const el = _state.dom.topArtists;
     if (!el) return;
 
-    // On EXCLUT le compte Smyle du classement — il est déjà en vitrine.
-    // Le backend renvoie déjà trié (is_official DESC puis plays DESC), on
-    // filtre Smyle puis on garde les 10 premiers.
-    const top = _state.artists
-      .filter(a => !a.isOfficial)
-      .slice(0, 10);
+    // Podium Top 3 — COMMUNAUTÉ uniquement (Smyle = vitrine, exclu). Classé
+    // par écoutes (backend déjà trié). Dynamique : bouge selon les stats →
+    // méritocratique, pas de favoritisme.
+    const community = _state.artists.filter(a => !a.isOfficial);
 
-    if (top.length === 0) {
-      el.innerHTML = '<li class="mp-ranking-empty">Aucun artiste publié pour le moment.</li>';
+    // État vide = invitation (cold start propre pour le lancement).
+    if (community.length === 0) {
+      el.innerHTML =
+        '<li style="list-style:none">' +
+          '<div style="text-align:center;padding:30px 18px;border:1px dashed rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.02)">' +
+            '<div style="font-size:1.8rem;margin-bottom:6px">🏆</div>' +
+            '<div style="font-weight:800;color:#fff;font-size:1.02rem;margin-bottom:4px">Le podium attend ses premiers artistes</div>' +
+            '<div style="font-size:.84rem;color:#a09cb8;max-width:340px;margin:0 auto 14px">Sois parmi les premiers à publier sur WATT — le classement se construit à l’écoute, à toi de grimper.</div>' +
+            '<a href="/dashboard" style="display:inline-block;padding:10px 20px;border-radius:999px;background:linear-gradient(90deg,#7C3AED,#a855f7);color:#fff;font-weight:700;font-size:.86rem;text-decoration:none">Deviens artiste WATT →</a>' +
+          '</div>' +
+        '</li>';
       return;
     }
 
-    el.innerHTML = top.map((a, i) => {
-      const href  = a.slug ? '/u/' + a.slug : '#';
-      const name  = a.artistName || 'Sans nom';
-      const city  = a.city || '';
-      const genre = a.genre || '';
-      const parts = [city, genre].filter(Boolean).map(_esc).join(' · ');
+    const top3 = community.slice(0, 3);
+    const rest = community.slice(3, 10);
+    const MEDAL = ['🥇', '🥈', '🥉'];
+    const _spot = (a, rankIdx) => {
+      const big = rankIdx === 0;
+      const sz = big ? 80 : 60;
+      const href = a.slug ? '/u/' + a.slug : '#';
+      const name = a.artistName || 'Sans nom';
+      const color = a.brandColor || '#7C3AED';
+      const avatar = a.avatarUrl
+        ? `<img src="${_esc(a.avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover">`
+        : `<span style="font-weight:800;color:#fff;font-size:${big ? 1.6 : 1.2}rem">${_esc(_initial(name))}</span>`;
+      return (
+        `<a href="${_esc(href)}" style="flex:1;max-width:130px;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;${big ? 'transform:translateY(-10px)' : ''}">` +
+          `<div style="font-size:${big ? 1.5 : 1.2}rem">${MEDAL[rankIdx]}</div>` +
+          `<div style="width:${sz}px;height:${sz}px;border-radius:50%;overflow:hidden;background:${_esc(color)};display:flex;align-items:center;justify-content:center;border:2px solid ${big ? '#FFD700' : 'rgba(255,255,255,.2)'};box-shadow:0 4px 18px ${big ? 'rgba(255,215,0,.25)' : 'rgba(0,0,0,.3)'}">${avatar}</div>` +
+          `<div style="font-weight:700;color:#fff;font-size:${big ? '.95rem' : '.85rem'};text-align:center;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(name)}</div>` +
+          `<div style="font-size:.72rem;color:#a09cb8">${_fmt(a.plays || 0)} écoutes</div>` +
+        `</a>`
+      );
+    };
+    // Ordre visuel : 2e (gauche), 1er (centre, surélevé), 3e (droite).
+    const spots = [];
+    if (top3[1]) spots.push(_spot(top3[1], 1));
+    if (top3[0]) spots.push(_spot(top3[0], 0));
+    if (top3[2]) spots.push(_spot(top3[2], 2));
+    const podium =
+      '<li style="list-style:none;margin-bottom:14px">' +
+        '<div style="display:flex;align-items:flex-end;justify-content:center;gap:14px;padding:18px 8px 8px">' + spots.join('') + '</div>' +
+      '</li>';
+    const list = rest.map((a, i) => {
+      const href = a.slug ? '/u/' + a.slug : '#';
+      const name = a.artistName || 'Sans nom';
+      const parts = [a.city, a.genre].filter(Boolean).map(_esc).join(' · ');
       return (
         `<li class="mp-ranking-row" onclick="window.location.href='${_esc(href)}'">` +
-          `<div class="mp-ranking-rank">${i + 1}</div>` +
+          `<div class="mp-ranking-rank">${i + 4}</div>` +
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title">${_esc(name)}</div>` +
             `<div class="mp-ranking-sub">${parts || '&nbsp;'}</div>` +
@@ -320,6 +355,7 @@
         `</li>`
       );
     }).join('');
+    el.innerHTML = podium + list;
   }
 
   function _renderGridSons(filter = '') {
@@ -369,7 +405,19 @@
       return;
     }
 
-    el.innerHTML = items.map(t => {
+    // Lancement : sans recherche, on ne déverse pas tout le catalogue (évite
+    // que Smyle prenne toute la place). Sélection featured = les plus écoutés ;
+    // tout reste accessible via la recherche par mood + les profils.
+    let _capNote = '';
+    const FEATURED_CAP = 16;
+    if (!needle && items.length > FEATURED_CAP) {
+      const totalSons = items.length;
+      items = items.slice().sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, FEATURED_CAP);
+      _capNote = '<div style="grid-column:1/-1;text-align:center;padding:16px 8px 2px;color:#a09cb8;font-size:.82rem">' +
+        'Sélection — ' + totalSons + ' sons au catalogue · cherche par mood (loupe) ou ouvre un profil pour tout écouter.</div>';
+    }
+
+    el.innerHTML = _capNote + items.map(t => {
       const color = t.color || '#7C3AED';
       const title = t.name || 'Sans titre';
       const name  = t.artist || '—';
