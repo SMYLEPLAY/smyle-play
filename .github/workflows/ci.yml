@@ -165,3 +165,68 @@ jobs:
         with:
           name: uvicorn-log
           path: /tmp/uvicorn.log
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3 — Suite pytest sur Postgres réel
+  # C'EST LE FILET MANQUANT : jusqu'ici la CI lançait les migrations + un smoke
+  # /health, mais JAMAIS les tests comportementaux. Les bugs passaient donc en
+  # prod sans être vus. Ce job exécute toute la suite tests/ contre un vrai
+  # Postgres (le même moteur qu'en prod), et bloque le merge si rouge.
+  # ─────────────────────────────────────────────────────────────────────────────
+  tests:
+    name: Pytest (Postgres réel)
+    needs: migrations
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: smyleplay_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
+      SECRET_KEY: ci-flask-secret
+      JWT_SECRET: ci-jwt-secret
+      ENVIRONMENT: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+
+      - name: Install dependencies (+ test tooling)
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -U ci -d smyleplay_ci && exit 0
+            sleep 1
+          done
+          echo "Postgres not ready"; exit 1
+
+      - name: Apply migrations
+        working-directory: smyleplay-api
+        run: alembic upgrade head
+
+      - name: Run pytest suite
+        working-directory: smyleplay-api
+        run: pytest -q
