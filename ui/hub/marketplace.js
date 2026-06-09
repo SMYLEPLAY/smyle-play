@@ -52,6 +52,16 @@
   })();
   const HOME_CAP = 3;
 
+  // Moods sélectionnés sur la page /sons (chips DNA inline). Filtre les sons
+  // uniquement — la colonne artistes n'est pas touchée.
+  const _pageMoodSet = new Set();
+  // Liste des moods proposés sur /sons (alignée sur les tags des sons + loupe).
+  const _PAGE_MOODS = [
+    'chill', 'énergique', 'dark', 'festif', 'romantique', 'mélancolique',
+    'instrumental', 'vocal', 'groovy', 'hypnotique', 'agressif',
+    'nostalgique', 'euphorique', 'cinématique', 'loop', 'acapella',
+  ];
+
   function _injectViewStyles() {
     if (document.getElementById('mp-view-styles')) return;
     const s = document.createElement('style');
@@ -404,7 +414,7 @@
 
     let items = _state.tracks.filter(t => {
       if (!needle) return true;
-      const hay = ((t.name || '') + ' ' + (t.artist || '') + ' ' + (t.genre || '')).toLowerCase();
+      const hay = ((t.name || '') + ' ' + (t.artist || '') + ' ' + (t.genre || '') + ' ' + (t.tags || '')).toLowerCase();
       // Match texte classique OU match DNA (genre taggé sur l'univers gagnant)
       if (hay.includes(needle)) return true;
       if (dnaHit) {
@@ -414,6 +424,15 @@
       }
       return false;
     });
+
+    // Filtre moods (chips DNA de la page /sons) — OR entre moods, sur les tags.
+    if (_pageMoodSet.size) {
+      const wanted = [..._pageMoodSet];
+      items = items.filter(t => {
+        const tg = (t.tags || '').toLowerCase();
+        return wanted.some(m => tg.includes(m));
+      });
+    }
 
     // Re-ranking DNA : les sons qui matchent l'univers gagnant remontent.
     if (dnaHit && items.length > 1) {
@@ -428,8 +447,8 @@
     }
 
     if (items.length === 0) {
-      el.innerHTML = needle
-        ? `<div class="mp-grid-empty">Aucun son ne correspond à "${_esc(filter)}".</div>`
+      el.innerHTML = (needle || _pageMoodSet.size)
+        ? `<div class="mp-grid-empty">Aucun son ne correspond à ta sélection.</div>`
         : `<div class="mp-grid-empty">Aucun son dans le catalogue pour le moment.</div>`;
       return;
     }
@@ -1095,17 +1114,29 @@
     const isArtists = _VIEW === 'artists';
     hint.dataset.searchBar = '1';
     hint.classList.add('mp-hero-search-bar');
+
+    // Rangée de chips mood — UNIQUEMENT sur /sons (filtre les sons, pas les
+    // artistes). Sur /artistes, pas de moods (la partie Connect viendra).
+    const moodChipsHtml = isArtists ? '' :
+      '<div class="mp-hsb-moods" id="mp-hsb-moods">' +
+        _PAGE_MOODS.map(m =>
+          '<button type="button" class="mp-hsb-mood" data-mood="' + m + '">' + _esc(m) + '</button>'
+        ).join('') +
+      '</div>';
+
     hint.innerHTML =
       '<span class="mp-hsb-wrap">' +
         '<svg class="mp-hsb-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>' +
         '<input type="search" class="mp-hsb-input" autocomplete="off" ' +
           'placeholder="' + (isArtists ? 'Filtrer les artistes…' : 'Filtrer les sons par titre, artiste, mood…') + '">' +
-      '</span>';
+      '</span>' +
+      moodChipsHtml;
+
     if (!document.getElementById('mp-hsb-style')) {
       const st = document.createElement('style');
       st.id = 'mp-hsb-style';
       st.textContent =
-        '.mp-hero-search-bar{display:flex;justify-content:center;margin-top:4px}' +
+        '.mp-hero-search-bar{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:4px}' +
         '.mp-hsb-wrap{display:flex;align-items:center;gap:9px;width:min(560px,92%);' +
           'padding:11px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.45);' +
           'background:rgba(255,255,255,.04);color:rgba(255,255,255,.55);' +
@@ -1113,15 +1144,37 @@
         '.mp-hsb-wrap:focus-within{border-color:rgba(124,58,237,.9);background:rgba(124,58,237,.08)}' +
         '.mp-hsb-input{flex:1;background:transparent;border:0;outline:0;color:#fff;' +
           'font-size:.92rem;font-family:inherit}' +
-        '.mp-hsb-input::placeholder{color:rgba(255,255,255,.4)}';
+        '.mp-hsb-input::placeholder{color:rgba(255,255,255,.4)}' +
+        '.mp-hsb-moods{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;' +
+          'width:min(680px,94%)}' +
+        '.mp-hsb-mood{padding:4px 11px;border-radius:999px;font-size:.74rem;cursor:pointer;' +
+          'border:1px solid rgba(204,136,255,.25);background:rgba(204,136,255,.06);' +
+          'color:rgba(204,136,255,.75);transition:all .12s;font-family:inherit}' +
+        '.mp-hsb-mood:hover{border-color:rgba(204,136,255,.55);color:#cc88ff}' +
+        '.mp-hsb-mood.is-active{border-color:rgba(204,136,255,.9);' +
+          'background:rgba(204,136,255,.22);color:#fff}';
       document.head.appendChild(st);
     }
+
     const input = hint.querySelector('.mp-hsb-input');
-    input.addEventListener('input', () => {
+    const _apply = () => {
       const v = input.value || '';
       if (isArtists) _renderGridArtists(v);
       else _renderGridSons(v);
-    });
+    };
+    input.addEventListener('input', _apply);
+
+    // Chips mood (multi-select) → toggle dans _pageMoodSet puis re-filtre.
+    if (!isArtists) {
+      hint.querySelectorAll('.mp-hsb-mood').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const m = chip.dataset.mood;
+          if (_pageMoodSet.has(m)) { _pageMoodSet.delete(m); chip.classList.remove('is-active'); }
+          else                     { _pageMoodSet.add(m);    chip.classList.add('is-active'); }
+          _apply();
+        });
+      });
+    }
   }
 
   // Attend DOMContentLoaded si on est chargé sync avant le body.
