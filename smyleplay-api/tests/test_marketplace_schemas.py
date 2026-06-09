@@ -48,6 +48,12 @@ def _prompt_create_payload(**overrides):
         "title": VALID_TITLE,
         "prompt_text": LONG_PROMPT_TEXT,
         "price_credits": PROMPT_PRICE_MIN,
+        # Champs rendus obligatoires après l'évolution produit (plateforme IA,
+        # weirdness, style_influence, genre vocal). Valeurs valides minimales.
+        "prompt_platform": "suno",
+        "prompt_weirdness": "standard",
+        "prompt_style_influence": "aucune",
+        "prompt_vocal_gender": "masculin",
     }
     base.update(overrides)
     return base
@@ -74,7 +80,10 @@ def test_adn_create_full_valid():
     assert a.usage_guide == "how to use"
 
 
-@pytest.mark.parametrize("price", [0, 1, 29, ADN_PRICE_MAX + 1, 1000])
+# Plafond ADN déverrouillé (commit 347d709 / migration 0031) : plus de max
+# fonctionnel, seule la borne min (30) et la borne technique INT32 s'appliquent.
+# 1000 est désormais un prix VALIDE (prix libre) → retiré des cas rejetés.
+@pytest.mark.parametrize("price", [0, 1, 29, ADN_PRICE_MAX + 1])
 def test_adn_create_rejects_out_of_range_price(price):
     with pytest.raises(ValidationError):
         AdnCreate(**_adn_create_payload(price_credits=price))
@@ -161,8 +170,10 @@ def test_prompt_create_rejects_short_text():
 
 
 def test_prompt_create_rejects_unknown_field():
+    # is_published est devenu un champ valide (publication à la création) ;
+    # on teste le refus d'un champ réellement inconnu, contrôlé par serveur.
     with pytest.raises(ValidationError):
-        PromptCreate(**_prompt_create_payload(is_published=True))
+        PromptCreate(**_prompt_create_payload(artist_id="00000000-0000-0000-0000-000000000000"))
 
 
 def test_prompt_create_rejects_pack_eligible():
@@ -257,9 +268,11 @@ def test_constants_are_consistent_with_db():
     Les bornes Pydantic doivent matcher les CHECK constraints DB
     (vérif manuelle ici : c'est de la doc-as-test).
     """
-    # ADN : ck_adns_price_credits_range entre 30 et 500
+    # ADN : plafond déverrouillé (migration 0031 — ck_adns_price_credits_range
+    # supprimé, remplacé par ck_adns_price_credits_min >= 30). Plus de max
+    # fonctionnel ; seule la borne technique INT32 subsiste.
     assert ADN_PRICE_MIN == 30
-    assert ADN_PRICE_MAX == 500
+    assert ADN_PRICE_MAX == 2147483647
     # ADN : ck_adns_description_min_length >= 200
     assert ADN_DESCRIPTION_MIN == 200
     # Prompt : ck_prompts_price_credits_min >= 3
