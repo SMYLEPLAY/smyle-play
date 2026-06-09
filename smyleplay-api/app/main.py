@@ -69,18 +69,6 @@ def create_app() -> FastAPI:
         """Healthcheck Railway — NE PAS renommer ni monter Flask au-dessus."""
         return {"status": "ok"}
 
-    # ── TEMPORAIRE 2026-06-09 — vérif branchement Sentry. À RETIRER après test.
-    @app.get("/debug/sentry-test")
-    async def _sentry_test():
-        try:
-            import sentry_sdk
-            sentry_sdk.capture_message(
-                "Sentry test — branchement verifie (a retirer)", level="error"
-            )
-        except Exception:
-            pass
-        raise RuntimeError("Sentry test exception — declenchee volontairement (a retirer)")
-
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(tracks_router)
