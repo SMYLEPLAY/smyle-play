@@ -314,6 +314,17 @@ async def unlock_prompt_atomic(
         tx.completed_at = func.now()
         await db.flush()
 
+        # 11b. Beat EXCLUSIF — retiré de la vente après l'achat (spec Beats).
+        #      max_supply=1 (forcé à la création) garantit déjà l'unicité de
+        #      la vente sous le lock artiste ; on dé-publie en plus pour le
+        #      sortir des listings immédiatement. Le morceau reste streamable.
+        if (
+            getattr(prompt_row, "product_type", "recipe") == "beat"
+            and getattr(prompt_row, "license_type", None) == "exclusive"
+        ):
+            prompt_row.is_published = False
+            await db.flush()
+
     # 12. Phase 9.6 — Hook achievements (HORS du savepoint principal).
     # Appelé après le COMPLETED pour que les counts soient à jour.
     # Le service utilise ses propres begin_nested → un grant qui foire

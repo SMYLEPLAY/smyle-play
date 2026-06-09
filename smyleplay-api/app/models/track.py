@@ -85,6 +85,18 @@ class Track(Base):
         nullable=True,
         index=True,
     )
+    # Beats (migration 0052) : un morceau peut vendre une recette ET un beat.
+    # beat_id = le produit vendable de type 'beat' (miroir de prompt_id).
+    beat_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("prompts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Prix du bundle recette + beat (en crédits). NULL = pas d'offre pack.
+    pack_price_credits: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
     # --- Champ ajouté migration 0038 — tags libres pour la recherche ---
     # Texte libre séparé par des virgules ("chill, dark, guitare, 90bpm").
