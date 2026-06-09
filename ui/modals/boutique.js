@@ -343,8 +343,10 @@
         return;
       }
       const rows = items.map(it => {
-        const ltd = (it.max_supply != null)
-          ? `<span style="font-size:10px;color:#FBBF24;margin-left:6px;">édition limitée</span>` : '';
+        const ltd = (it.edition_number != null && it.max_supply != null)
+          ? `<span title="Exemplaire #${it.edition_number} sur ${it.max_supply}" style="font-size:10px;color:#cbb3ff;background:rgba(124,77,255,.18);border-radius:999px;padding:1px 7px;font-weight:700;margin-left:6px;">#${it.edition_number}/${it.max_supply}</span>`
+          : (it.max_supply != null)
+            ? `<span style="font-size:10px;color:#FBBF24;margin-left:6px;">édition limitée</span>` : '';
         return `
           <div style="display:flex;align-items:center;gap:10px;background:#0d0a16;border:1px solid #2c2440;border-radius:12px;padding:12px;margin-bottom:8px;">
             <div style="flex:1;min-width:0;">

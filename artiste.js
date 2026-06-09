@@ -1983,8 +1983,11 @@ function renderResale(items) {
     const author = it.original_artist_name
       ? '<a href="/u/' + _e(it.original_artist_slug || '') + '" style="color:#c4b5fd;text-decoration:none">créé par ' + _e(it.original_artist_name) + ' →</a>'
       : '<span style="color:#888">créateur inconnu</span>';
+    const editionBadge = (it.edition_number != null && it.max_supply != null)
+      ? ' <span title="Exemplaire #' + _e(it.edition_number) + ' sur ' + _e(it.max_supply) + ' — édition limitée" style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:rgba(124,77,255,.18);color:#cbb3ff;font-size:11px;font-weight:700;vertical-align:middle">#' + _e(it.edition_number) + '/' + _e(it.max_supply) + '</span>'
+      : '';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.02);margin-bottom:8px">' +
-      '<div><div style="font-weight:700;color:#fff">' + _e(it.title) + '</div>' +
+      '<div><div style="font-weight:700;color:#fff">' + _e(it.title) + editionBadge + '</div>' +
         '<div style="font-size:.78rem;margin-top:2px">' + author + '</div></div>' +
       '<div style="display:flex;align-items:center;gap:10px">' +
         '<div style="font-weight:700;color:#fff">' + Number(it.resale_price) + ' <span style="font-size:.72rem;color:#a09cb8">Smyles</span></div>' +

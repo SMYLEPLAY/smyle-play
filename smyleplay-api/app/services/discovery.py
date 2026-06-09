@@ -412,6 +412,10 @@ async def list_user_library_prompts(
             "track_color": track_color,
             # Marché secondaire — prix de revente courant (None = pas en vente).
             "resale_price": up.resale_price,
+            # #X/N — numéro d'exemplaire possédé + taille de l'édition.
+            # edition_number NULL = tirage illimité (pas de badge #X/N).
+            "edition_number": up.edition_number,
+            "max_supply": p.max_supply,
         }
         for up, p, u, audio_url, cover_url, track_color in rows
     ]

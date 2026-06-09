@@ -230,11 +230,24 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
             {"rev": artist_revenue, "uid": artist_id},
         )
 
-        # 7. Crée l'UnlockedPrompt (UNIQUE buyer+prompt dédoublonne).
+        # 7. #X/N — numéro d'édition pour les éditions LIMITÉES uniquement.
+        #    Compté sous le lock artiste (acquis step 4) → pas de doublon.
+        #    NULL = tirage illimité. Filet = UNIQUE(prompt_id, edition_number).
+        edition_number = None
+        if pick.max_supply is not None:
+            minted = (await db.execute(
+                select(func.count(UnlockedPrompt.id)).where(
+                    UnlockedPrompt.prompt_id == pick.id
+                )
+            )).scalar_one()
+            edition_number = int(minted) + 1
+
+        # 8. Crée l'UnlockedPrompt (UNIQUE buyer+prompt dédoublonne).
         unlocked = UnlockedPrompt(
             current_owner_id=buyer_id,
             prompt_id=pick.id,
             original_artist_id=artist_id,
+            edition_number=edition_number,
         )
         db.add(unlocked)
         try:

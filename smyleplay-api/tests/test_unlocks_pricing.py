@@ -26,11 +26,30 @@ from app.schemas.marketplace import (
 from app.services.credits import compute_effective_price, compute_split
 
 
+def _sample(lo: int, hi: int, n: int = 60) -> list[int]:
+    """
+    Échantillon de prix déterministe : bornes (lo, lo+1, hi-1, hi) +
+    répartition régulière de `n` points entre lo et hi.
+
+    Indispensable depuis le déverrouillage du plafond ADN : ADN_PRICE_MAX
+    vaut désormais INT32 (~2,1 milliards). Paramétrer `range(lo, hi+1)`
+    générerait des milliards de cas pytest → collection impossible (OOM).
+    Les invariants testés sont purement arithmétiques, donc un échantillon
+    qui couvre les bornes et la plage garantit la même propriété.
+    """
+    if hi - lo <= n:
+        return list(range(lo, hi + 1))
+    pts = {lo, lo + 1, hi - 1, hi}
+    step = (hi - lo) / (n - 1)
+    pts.update(int(lo + round(i * step)) for i in range(n))
+    return sorted(pts)
+
+
 # -----------------------------------------------------------------------------
 # Composition perk + split (utilisée dans unlock_prompt_atomic)
 # -----------------------------------------------------------------------------
 
-@pytest.mark.parametrize("base", range(PROMPT_PRICE_MIN, PROMPT_PRICE_MAX + 1))
+@pytest.mark.parametrize("base", _sample(PROMPT_PRICE_MIN, PROMPT_PRICE_MAX))
 @pytest.mark.parametrize("perk", [False, True])
 def test_unlock_prompt_pricing_invariants(base, perk):
     """
@@ -76,11 +95,14 @@ def test_unlock_prompt_no_perk_is_identity():
 # Pricing ADN (pas de perk applicable)
 # -----------------------------------------------------------------------------
 
-@pytest.mark.parametrize("price", range(ADN_PRICE_MIN, ADN_PRICE_MAX + 1))
+@pytest.mark.parametrize("price", _sample(ADN_PRICE_MIN, ADN_PRICE_MAX))
 def test_unlock_adn_pricing_invariants(price):
     """
     Achat ADN : paid == price (jamais de perk).
     Split 80/20 garanti, somme = paid.
+
+    Échantillonné via _sample : le plafond ADN étant INT32, un range complet
+    générerait ~2,1 milliards de cas. L'échantillon couvre bornes + plage.
     """
     paid = compute_effective_price(price, has_perk=False)
     assert paid == price  # ADN: pas de perk

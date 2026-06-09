@@ -183,6 +183,10 @@ class LibraryPromptItem(BaseModel):
     # Marché secondaire (2026-06-08) : prix de revente courant. NULL = pas en
     # vente. Permet à la bibliothèque d'afficher l'état "en vente" + le prix.
     resale_price: int | None = None
+    # #X/N (2026-06-09) — numéro d'exemplaire possédé + taille d'édition.
+    # edition_number NULL = tirage illimité → le front n'affiche pas de badge.
+    edition_number: int | None = None
+    max_supply: int | None = None
 
 
 class LibraryPromptsResponse(BaseModel):

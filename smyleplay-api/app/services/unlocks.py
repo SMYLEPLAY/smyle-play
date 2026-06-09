@@ -275,11 +275,27 @@ async def unlock_prompt_atomic(
             {"rev": artist_revenue, "uid": artist_id},
         )
 
-        # 10. Crée l'unlock — UNIQUE (current_owner_id, prompt_id) dédoublonne
+        # 10. #X/N — numéro d'édition pour les éditions LIMITÉES uniquement.
+        #     Compté SOUS LOCK : le verrou sur la ligne artiste (acquis en
+        #     step 3, identique pour tous les acheteurs d'un prompt donné)
+        #     sérialise les achats concurrents → pas de doublon de numéro.
+        #     La contrainte UNIQUE(prompt_id, edition_number) reste le filet.
+        #     NULL = tirage illimité, non numéroté.
+        edition_number = None
+        if prompt_row.max_supply is not None:
+            minted = (await db.execute(
+                select(func.count(UnlockedPrompt.id)).where(
+                    UnlockedPrompt.prompt_id == prompt_id
+                )
+            )).scalar_one()
+            edition_number = int(minted) + 1
+
+        # 11. Crée l'unlock — UNIQUE (current_owner_id, prompt_id) dédoublonne
         unlocked = UnlockedPrompt(
             current_owner_id=buyer_id,
             prompt_id=prompt_id,
             original_artist_id=artist_id,
+            edition_number=edition_number,
         )
         db.add(unlocked)
         try:
