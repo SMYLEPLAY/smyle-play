@@ -229,4 +229,16 @@ jobs:
 
       - name: Run pytest suite
         working-directory: smyleplay-api
-        run: pytest -q
+        run: |
+          set -o pipefail
+          # -rf : liste les tests FAILED en fin de sortie. On copie le tout
+          # dans le récapitulatif du run (visible sur la page GitHub sans
+          # connexion) → diagnostic rapide des échecs sans ouvrir les logs.
+          {
+            echo '### Résultat pytest'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          pytest -q -rf 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          rc=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $rc

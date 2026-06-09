@@ -41,9 +41,20 @@ class Prompt(Base):
             "char_length(title) >= 5",
             name="ck_prompts_title_min_length",
         ),
+        # Beats (migration 0052) : la longueur de prompt_text n'est exigée que
+        # pour les recettes ; un beat n'a pas de prompt (prompt_text NULL).
         CheckConstraint(
-            "char_length(prompt_text) BETWEEN 100 AND 1000",
+            "(product_type = 'recipe' AND char_length(prompt_text) BETWEEN 100 AND 1000) "
+            "OR (product_type = 'beat' AND prompt_text IS NULL)",
             name="ck_prompts_prompt_text_length",
+        ),
+        CheckConstraint(
+            "product_type IN ('recipe', 'beat')",
+            name="ck_prompts_product_type",
+        ),
+        CheckConstraint(
+            "license_type IS NULL OR license_type IN ('lease', 'exclusive')",
+            name="ck_prompts_license_type",
         ),
         # P1-F4 (2026-05-04) — enums réglages génération.
         # Conditionnelles (IS NULL OR IN ...) pour rétro-compat des
@@ -73,7 +84,15 @@ class Prompt(Base):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
+    # NULLable depuis 0052 (Beats) : un beat n'a pas de prompt. La contrainte
+    # de longueur ne s'applique qu'aux recettes (cf. ck_prompts_prompt_text_length).
+    prompt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Type de produit vendable : 'recipe' (recette IA, l'existant) | 'beat'.
+    product_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="recipe", server_default="recipe"
+    )
+    # Licence du beat : 'lease' (non-exclusif) | 'exclusive'. NULL pour recettes.
+    license_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Paroles complètes (gated behind unlock — ne JAMAIS retourner sans paiement)
     # Nullable car la majorité des morceaux sont instrumentaux ; rempli pour HIT MIX.
     lyrics: Mapped[str | None] = mapped_column(Text, nullable=True)
