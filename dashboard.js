@@ -1314,6 +1314,30 @@ async function openTrackEdit(localId) {
   _editCoverFile    = null;
   _editCoverPreview = t.coverDataUrl || null;
 
+  // ── Source de vérité : hydrate depuis l'API avant d'afficher le form ──────
+  // Fix persistance tags à l'édition (2026-06-09). Le localStorage est un
+  // cache peu fiable (clé d'ID incohérente, champ tags absent sur les sons
+  // antérieurs à la migration 0038, autre appareil, cache vidé). On pré-remplit
+  // donc tags/titre/couleur/recette depuis /tracks/me (TrackRead), qui est la
+  // source de vérité. Sans ça, le champ tags s'affiche vide alors que la base
+  // les contient → aucun PATCH envoyé à la sauvegarde → "tags perdus".
+  if (t.dbId) {
+    let apiTracks = (Array.isArray(_dte2AllTracks) && _dte2AllTracks.length) ? _dte2AllTracks : null;
+    if (!apiTracks) {
+      try {
+        const r = await apiFetch('/tracks/me');
+        apiTracks = Array.isArray(r) ? r : [];
+      } catch (_) { apiTracks = []; }
+    }
+    const apiT = apiTracks.find(x => x && x.id === t.dbId);
+    if (apiT) {
+      t.name     = apiT.title      ?? t.name;
+      t.color    = apiT.color      ?? t.color;
+      t.tags     = apiT.tags       ?? t.tags;
+      t.promptId = apiT.prompt_id  ?? t.promptId;
+    }
+  }
+
   // Récupère les prompts de l'artiste pour le dropdown
   let myPrompts = [];
   try {
