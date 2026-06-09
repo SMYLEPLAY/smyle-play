@@ -249,8 +249,11 @@
 .ss-track-cover {
   width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden; position: relative;
+  overflow: hidden; position: relative; cursor: pointer;
 }
+/* Hint permanent que la pochette est le bouton lecture. */
+.ss-track-cover .ss-track-play-overlay { opacity: .35; }
+.ss-track-cover:hover .ss-track-play-overlay { opacity: 1; }
 .ss-track-cover img { width: 100%; height: 100%; object-fit: cover; }
 .ss-track-cover-fallback {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
@@ -392,22 +395,26 @@
     connectEl = modalRoot.querySelector('#ss-results-connect');
     dnaEl     = modalRoot.querySelector('#ss-results-dna');
 
-    // Clic sur un morceau : titre → fiche/profil artiste ; ailleurs → lecture inline.
+    // Clic sur un morceau :
+    //   - sur la POCHETTE (icône play) → lecture inline (découverte du mood) ;
+    //   - partout ailleurs (titre, texte) → atterrit sur le profil du vendeur
+    //     avec la carte détail du son ouverte (achat direct ou navigation).
+    // Zone de navigation large (toute la carte sauf la pochette) → fiable au clic.
     dnaEl.addEventListener('click', (e) => {
       const card = e.target.closest('.ss-track-card');
       if (!card) return;
       e.preventDefault();
-      // Clic sur le titre → atterrit sur le profil de l'artiste avec la carte
-      // détail du morceau ouverte (achat direct ou navigation du profil).
-      if (e.target.closest('.ss-track-title')) {
-        const slug = card.getAttribute('data-artist-slug');
-        const id   = card.getAttribute('data-track-id');
-        if (slug) {
-          window.location.href = '/u/' + encodeURIComponent(slug) + '#son-' + encodeURIComponent(id || '');
-          return;
-        }
+      if (e.target.closest('.ss-track-cover')) {
+        _ssPlayTrack(card);
+        return;
       }
-      _ssPlayTrack(card);
+      const slug = card.getAttribute('data-artist-slug');
+      const id   = card.getAttribute('data-track-id');
+      if (slug) {
+        window.location.href = '/u/' + encodeURIComponent(slug) + '#son-' + encodeURIComponent(id || '');
+        return;
+      }
+      _ssPlayTrack(card); // pas de slug → fallback lecture
     });
 
     // Events — overlay
@@ -596,11 +603,11 @@
            data-stream-url="${escAttr(streamUrl)}"
            data-artist-slug="${escAttr(t.artistSlug || '')}"
            data-track-id="${escAttr(t.id || '')}">
-        <span class="ss-track-cover" style="background:${escAttr(color)}22">
+        <span class="ss-track-cover" style="background:${escAttr(color)}22" title="Écouter un extrait">
           ${cover}
           <span class="ss-track-play-overlay">${ICO_PLAY}</span>
         </span>
-        <span class="ss-track-body">
+        <span class="ss-track-body" title="Voir la fiche du son">
           <span class="ss-track-title">${escHtml(t.title || 'Sans titre')}</span>
           <span class="ss-track-sub">${escHtml(sub)}</span>
           ${tags ? `<span class="ss-track-tags">${tags}</span>` : ''}
