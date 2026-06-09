@@ -33,6 +33,15 @@ class UnlockedPrompt(Base):
             "prompt_id",
             name="uq_unlocked_prompts_owner_prompt",
         ),
+        # #X/N (2026-06-09) — deux exemplaires d'un même prompt ne peuvent pas
+        # porter le même numéro d'édition. NULL autorisé en multiple (Postgres
+        # traite les NULL comme distincts) → les tirages illimités, non
+        # numérotés, ne déclenchent pas la contrainte.
+        UniqueConstraint(
+            "prompt_id",
+            "edition_number",
+            name="uq_unlocked_prompts_prompt_edition",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -69,4 +78,12 @@ class UnlockedPrompt(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+    # #X/N (2026-06-09) — numéro d'exemplaire dans l'édition limitée.
+    # Assigné séquentiellement au mint (1..max_supply) UNIQUEMENT pour les
+    # éditions limitées (prompt.max_supply non NULL). NULL = tirage illimité,
+    # non numéroté. Voir services/unlocks.py + services/packs.py (mint) et
+    # migration 0051 (backfill par ordre d'achat).
+    edition_number: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
     )

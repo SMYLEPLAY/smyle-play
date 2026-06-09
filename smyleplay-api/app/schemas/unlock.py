@@ -30,6 +30,8 @@ class UnlockedPromptRead(BaseModel):
     prompt_id: UUID
     original_artist_id: UUID | None = None
     unlocked_at: datetime
+    # #X/N — numéro d'exemplaire (NULL si tirage illimité).
+    edition_number: int | None = None
 
 
 class OwnedAdnRead(BaseModel):

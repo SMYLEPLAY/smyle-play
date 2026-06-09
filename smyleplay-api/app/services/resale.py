@@ -277,6 +277,7 @@ async def get_resale_market(
             "original_artist_name": (oa.artist_name if oa else None),
             "original_artist_slug": (derive_artist_slug(oa) if oa else None),
             "max_supply": p.max_supply,
+            "edition_number": up.edition_number,
         }
         for up, p, oa in rows
     ]

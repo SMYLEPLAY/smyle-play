@@ -276,7 +276,7 @@ function renderPrompts(items) {
         <summary class="lib-item-cell-hdr">
           <span class="lib-item-cell-icon">🎵</span>
           <span class="lib-item-cell-info">
-            <span class="lib-item-cell-title">${esc(p.title || 'Recette IA')}</span>
+            <span class="lib-item-cell-title">${esc(p.title || 'Recette IA')}${(p.edition_number != null && p.max_supply != null) ? ` <span class="lib-edition-badge" title="Exemplaire #${p.edition_number} sur ${p.max_supply} — édition limitée" style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:rgba(124,77,255,.18);color:#cbb3ff;font-size:11px;font-weight:700;vertical-align:middle">#${p.edition_number}/${p.max_supply}</span>` : ''}</span>
             <span class="lib-item-cell-meta">par ${esc(artistName)} · ${fmtDate(p.unlocked_at)}</span>
           </span>
           ${playBtn}
