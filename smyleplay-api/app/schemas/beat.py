@@ -58,3 +58,12 @@ class BeatRead(BaseModel):
     max_supply: int | None = None
     is_published: bool
     created_at: datetime
+
+
+class PackBuyResult(BaseModel):
+    """Résultat d'un achat pack (recette + beat débloqués au prix pack)."""
+
+    price_paid: int
+    recipe_id: UUID
+    beat_id: UUID
+    new_balance: int | None = None
