@@ -242,15 +242,13 @@
            + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { locked: true, lockLabel: 'Chantier C4' })
            + tileHtml('fx',         '✨', 'FX',         null, { locked: true, lockLabel: 'Phase 2' });
     }
+    // DÉCISION 100 % IA (Tom, 2026-06-10) : aucun produit non-IA vendu sur
+    // la plateforme. La tuile « Musique perso » (humaine, gated palier) est
+    // SUPPRIMÉE — le Réel reste de la promo externe uniquement (pont C7).
     return tileHtml('sons',  '🤖', 'Sons IA',     'sons',  { createKind: 'son',  viewKey: 'sons',  countLabel: 'publiés' })
-         + tileHtml('beats', '🥁', 'Beats',       'beats', { createKind: 'beat', viewKey: 'beats', countLabel: 'en vente' })
+         + tileHtml('beats', '🥁', 'Beats IA',    'beats', { createKind: 'beat', viewKey: 'beats', countLabel: 'en vente' })
          + tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',   countLabel: 'signature' })
-         + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' })
-         // Vision Tom 2026-06-10 : musique perso (Réel, humaine) postée sur
-         // le profil dans un espace dédié, réservée à un palier d'abo →
-         // nécessite la couche entitlements (C6). Affichée verrouillée pour
-         // acter la décision, comme FX côté Visuel.
-         + tileHtml('perso', '🎤', 'Musique perso', null,  { locked: true, lockLabel: 'Palier · C6' });
+         + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' });
   }
 
   /* ── Menu "+ Créer" ─────────────────────────────────────────────────── */
@@ -259,7 +257,7 @@
     if (monde === 'visuel') return '';
     return '' +
       '<button type="button" class="wb3-create-item" data-wb3-create="son">🤖 <span>Son IA avec recette<em>Le son + son prompt vendable</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat seul<em>Fichier audio + licence lease / exclusif</em></span></button>' +
+      '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat IA seul<em>Fichier audio + licence lease / vente unique</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="pack">📦 <span>Recette + beat (pack)<em>Les deux, avec un prix pack</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="partage">🎵 <span>Partage simple<em>Juste un son, rien à vendre</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature créative vendable</em></span></button>' +
