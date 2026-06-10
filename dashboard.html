@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="/ui/core/badges.css" />
   <script src="/ui/core/badges.js" defer></script>
   <!-- C1 — WattBoard v3 (bandeau + 2 mondes + tuiles + création Audio) -->
-  <link rel="stylesheet" href="wattboard-v3.css?v=20260610b" />
+  <link rel="stylesheet" href="wattboard-v3.css?v=20260610c" />
 
 <style>
 /* SLIDER PROMPT SETTINGS */
@@ -742,8 +742,8 @@
                   onclick="setUploadMode('beat')">
             <span style="font-size:14px;line-height:1">🥁</span>
             <span class="dash-mode-pill-label">
-              <strong>Beat seul</strong>
-              <em>Je vends le fichier audio — licence lease ou exclusif</em>
+              <strong>Beat IA seul</strong>
+              <em>Je vends le fichier audio — lease ou vente unique</em>
             </span>
           </button>
           <button type="button" class="dash-mode-pill"
@@ -1060,8 +1060,8 @@
              fichier gaté par l'achat. EXCLUSIF = vente unique (le backend
              force max_supply=1 et retire l'offre à l'achat). ══════════════ -->
         <div id="dashBeatFields">
-          <div class="wb3-beat-hdr">🥁 Beat — le fichier vendable</div>
-          <div class="wb3-beat-sub">L'écoute reste libre pour tout le monde ; l'achat débloque le téléchargement du fichier.</div>
+          <div class="wb3-beat-hdr">🥁 Beat IA — le fichier vendable</div>
+          <div class="wb3-beat-sub">Beat généré par IA (outil + version déclarés ci-dessus — affichés sur la carte). L'écoute reste libre pour tout le monde ; l'achat débloque le téléchargement du fichier.</div>
           <div class="wb3-beat-grid">
             <div>
               <label class="dash-label">Licence <span class="dash-req">*</span></label>
@@ -1072,10 +1072,15 @@
                   <span><strong>Lease</strong>
                   <em>Plusieurs acheteurs possibles. Tu peux limiter le nombre d'exemplaires.</em></span>
                 </label>
+                <!-- DÉCISION 100 % IA (2026-06-10) : libellé « Vente unique »
+                     (pas « Exclusif ») — on garantit techniquement la vente
+                     unique du fichier (retrait à l'achat, mécanique #1/1),
+                     pas une exclusivité créative invérifiable sur du contenu
+                     IA régénérable. Valeur backend inchangée : 'exclusive'. -->
                 <label class="wb3-license-opt">
                   <input type="radio" name="dashBeatLicense" value="exclusive"
                          onchange="dashBeatOnLicenseChange()" />
-                  <span><strong>Exclusif</strong>
+                  <span><strong>Vente unique</strong>
                   <em>Un seul acheteur — le beat est retiré de la vente dès l'achat.</em></span>
                 </label>
               </div>
@@ -1940,9 +1945,9 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <script src="/ui/playlists.js" defer></script>
-<script src="dashboard.js?v=20260610"></script>
+<script src="dashboard.js?v=20260610c"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
-<script src="wattboard-v3.js?v=20260610b" defer></script>
+<script src="wattboard-v3.js?v=20260610c" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>

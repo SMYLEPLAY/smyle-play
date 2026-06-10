@@ -1947,6 +1947,18 @@ async function uploadTrack() {
   // qu'il manque un prix. uploadMode est relu plus bas (même source).
   const _formEl    = document.getElementById('dashUploadForm');
   const _earlyMode = (_formEl && _formEl.dataset.mode) || 'with_prompt';
+
+  // ── DÉCISION 100 % IA (2026-06-10) ──────────────────────────────────────
+  // Smyleplay ne vend QUE des produits générés par IA. L'outil de
+  // génération (plateforme) est donc obligatoire pour TOUTE publication
+  // audio — plus seulement pour les recettes. C'est la provenance affichée
+  // sur les cartes (4e repère, arme transparence).
+  const _platformEarly = (document.getElementById('dashTrackPlatform')?.value || '').trim();
+  if (!_platformEarly) {
+    dashToast('⚠ Indique l\'IA avec laquelle ce son a été généré (plateforme d\'origine).');
+    return;
+  }
+
   let beatFields = null;
   let packPrice  = null;
   if (_earlyMode === 'beat' || _earlyMode === 'pack') {
@@ -2274,7 +2286,7 @@ async function uploadTrack() {
                 ? { pack_price_credits: packPrice } : {}),
           },
         });
-        const licLbl = bp.license_type === 'exclusive' ? 'exclusif — vente unique' : 'lease';
+        const licLbl = bp.license_type === 'exclusive' ? 'vente unique' : 'lease';
         dashToast(`🥁 Beat "${name}" en vente (${licLbl} · ${bp.price_credits} Smyles).`);
       } else {
         dashToast('⚠ Son publié, mais le serveur n\'a pas renvoyé d\'ID beat. Réessaie depuis le catalogue.');
