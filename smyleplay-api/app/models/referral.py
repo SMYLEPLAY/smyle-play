@@ -66,7 +66,16 @@ class Referral(Base):
         index=True,
     )
     status: Mapped[ReferralStatus] = mapped_column(
-        SQLEnum(ReferralStatus, name="referral_status", native_enum=False),
+        # values_callable : stocker la VALEUR de l'enum ('pending'/'rewarded'),
+        # pas son NOM ('PENDING'/'REWARDED'). Sans ça SQLAlchemy insère le nom
+        # en majuscules → viole ck_referrals_status_enum (status IN
+        # ('pending','rewarded')). Bug qui cassait attach_referral en prod.
+        SQLEnum(
+            ReferralStatus,
+            name="referral_status",
+            native_enum=False,
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         nullable=False,
         default=ReferralStatus.PENDING,
         server_default=ReferralStatus.PENDING.value,

@@ -22,8 +22,14 @@ from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
-from app.schemas.beat import BeatCreate, BeatRead
+from app.schemas.beat import BeatCreate, BeatRead, PackBuyResult
 from app.services.beats import create_beat
+from app.services.pack_purchase import PackNotPurchasable, buy_pack_atomic
+from app.services.unlocks import (
+    AlreadyUnlocked,
+    InsufficientCredits,
+    SelfPurchaseForbidden,
+)
 
 router = APIRouter(tags=["beats"])
 
@@ -60,6 +66,40 @@ async def create_my_beat(
     await db.commit()
     await db.refresh(beat)
     return BeatRead.model_validate(beat)
+
+
+@router.post("/pack/{track_id}/buy", response_model=PackBuyResult)
+async def buy_pack(
+    track_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Achète le PACK d'un morceau : débloque la recette ET le beat en une seule
+    transaction, au prix pack (track.pack_price_credits). 404 si pas d'offre
+    pack, 403 self-purchase, 402 solde insuffisant, 409 déjà possédé.
+    """
+    try:
+        result = await buy_pack_atomic(
+            db, buyer_id=current_user.id, track_id=track_id
+        )
+        await db.commit()
+    except SelfPurchaseForbidden as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except InsufficientCredits as e:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "error": "insufficient_credits",
+                "required": e.required,
+                "available": e.available,
+            },
+        )
+    except AlreadyUnlocked as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except PackNotPurchasable as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    return PackBuyResult(**result)
 
 
 @router.get("/beats/{beat_id}/download")

@@ -21,9 +21,12 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 from app.database import SessionLocal
 from app.models.prompt import Prompt
+from app.models.track import Track
+from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.beats import create_beat
+from app.services.pack_purchase import buy_pack_atomic
 from app.services.unlocks import PromptNotPurchasable, unlock_prompt_atomic
 from app.services.users import create_user
 
@@ -149,3 +152,66 @@ async def test_download_unknown_beat_is_404(client: AsyncClient, auth_headers: d
     fake = "00000000-0000-0000-0000-000000000000"
     r = await client.get(f"/beats/{fake}/download", headers=auth_headers)
     assert r.status_code == 404, r.text
+
+
+# --- Achat pack (recette + beat) ------------------------------------------
+
+async def _make_recipe(artist_id) -> uuid.UUID:
+    async with SessionLocal() as db:
+        p = Prompt(
+            artist_id=artist_id,
+            title=f"Recipe {uuid.uuid4().hex[:8]}",
+            description="x",
+            prompt_text="Y" * 120,  # recette : 100..1000 chars
+            price_credits=10,
+            is_published=True,
+        )
+        db.add(p)
+        await db.commit()
+        await db.refresh(p)
+        return p.id
+
+
+async def _make_track_with_pack(artist_id, recipe_id, beat_id, pack_price) -> uuid.UUID:
+    async with SessionLocal() as db:
+        t = Track(
+            title=f"Track {uuid.uuid4().hex[:8]}",
+            artist_id=artist_id,
+            prompt_id=recipe_id,
+            beat_id=beat_id,
+            pack_price_credits=pack_price,
+        )
+        db.add(t)
+        await db.commit()
+        await db.refresh(t)
+        return t.id
+
+
+async def test_buy_pack_unlocks_both_products():
+    artist = await _make_user()
+    buyer = await _make_user(initial_balance=2000)
+    recipe_id = await _make_recipe(artist)
+    beat_id = await _make_beat(artist, license_type="lease", is_published=True)
+    track_id = await _make_track_with_pack(artist, recipe_id, beat_id, 15)
+    try:
+        async with SessionLocal() as db:
+            result = await buy_pack_atomic(db, buyer_id=buyer, track_id=track_id)
+            await db.commit()
+        assert result["price_paid"] == 15
+
+        # L'acheteur possède LES DEUX produits après un seul achat pack.
+        async with SessionLocal() as db:
+            owned = (await db.execute(
+                select(UnlockedPrompt.prompt_id).where(
+                    UnlockedPrompt.current_owner_id == buyer
+                )
+            )).scalars().all()
+        assert recipe_id in owned, "la recette doit être débloquée par le pack"
+        assert beat_id in owned, "le beat doit être débloqué par le pack"
+    finally:
+        async with SessionLocal() as db:
+            await db.execute(delete(Track).where(Track.id == track_id))
+            await db.execute(delete(Prompt).where(Prompt.id.in_([recipe_id, beat_id])))
+            for uid in (artist, buyer):
+                await db.execute(delete(User).where(User.id == uid))
+            await db.commit()
