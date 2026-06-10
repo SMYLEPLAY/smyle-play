@@ -1136,7 +1136,10 @@
     // Trois fetches en parallèle — indépendants, pas de cascade.
     await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);
     _renderAll();
-    if (_VIEW === 'sons' || _VIEW === 'artists') _installPageSearchBar();
+    // 2026-06-11 — la barre de recherche vit aussi sur la HOME (dépliant
+    // combiné moods DNA + rôles CONNECT), même process que /sons et
+    // /artistes. Elle remplace le message « Utilise la loupe… ».
+    _installPageSearchBar();
   }
 
   // Sur les pages dédiées (/sons, /artistes), remplace le message d'accueil
@@ -1146,28 +1149,32 @@
     const hint = document.querySelector('.mp-hero-search-hint');
     if (!hint || hint.dataset.searchBar === '1') return;
     const isArtists = _VIEW === 'artists';
+    const isHome    = _VIEW === 'home';
     hint.dataset.searchBar = '1';
     hint.classList.add('mp-hero-search-bar');
 
     // Rangée de chips — repliée par défaut dans un dépliant « Filtres » :
     //   /sons     → moods DNA (filtre les sons)
-    //   /artistes → rôles CONNECT (filtre les profils — ajout 2026-06-11,
-    //               miroir exact de la mécanique moods, multi-sélection OR)
-    const moodChipsHtml = isArtists
-      ? '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
-          _PAGE_ROLES.map(r =>
-            '<button type="button" class="mp-hsb-mood" data-role="' + _esc(r.val) + '">' + _esc(r.label) + '</button>'
-          ).join('') +
-        '</div>'
-      : '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
-          _PAGE_MOODS.map(m =>
-            '<button type="button" class="mp-hsb-mood" data-mood="' + m + '">' + _esc(m) + '</button>'
-          ).join('') +
-        '</div>';
+    //   /artistes → rôles CONNECT (filtre les profils)
+    //   home      → LES DEUX, en groupes titrés (2026-06-11) — un seul
+    //               pattern de recherche sur tout le site.
+    const _moodsChips = _PAGE_MOODS.map(m =>
+      '<button type="button" class="mp-hsb-mood" data-mood="' + m + '">' + _esc(m) + '</button>'
+    ).join('');
+    const _rolesChips = _PAGE_ROLES.map(r =>
+      '<button type="button" class="mp-hsb-mood" data-role="' + _esc(r.val) + '">' + _esc(r.label) + '</button>'
+    ).join('');
+    const moodChipsHtml =
+      '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
+        (isHome
+          ? '<span class="mp-hsb-group-lbl">🧬 Moods · sons</span>' + _moodsChips +
+            '<span class="mp-hsb-group-lbl">👤 Rôles · artistes</span>' + _rolesChips
+          : (isArtists ? _rolesChips : _moodsChips)) +
+      '</div>';
 
-    // Bouton dépliant (chevron + compteur de filtres actifs) — les 2 pages.
+    // Bouton dépliant (chevron + compteur de filtres actifs).
     const filterBtnHtml =
-      '<button type="button" class="mp-hsb-toggle" aria-expanded="false" title="' + (isArtists ? 'Filtrer par rôle' : 'Filtrer par mood') + '">' +
+      '<button type="button" class="mp-hsb-toggle" aria-expanded="false" title="' + (isArtists ? 'Filtrer par rôle' : (isHome ? 'Filtrer par mood ou rôle' : 'Filtrer par mood')) + '">' +
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>' +
         '<span class="mp-hsb-toggle-lbl">' + (isArtists ? 'Rôles' : 'Filtres') + '</span>' +
         '<span class="mp-hsb-fcount" hidden>0</span>' +
@@ -1179,7 +1186,7 @@
         '<span class="mp-hsb-wrap">' +
           '<svg class="mp-hsb-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>' +
           '<input type="search" class="mp-hsb-input" autocomplete="off" ' +
-            'placeholder="' + (isArtists ? 'Filtrer les artistes…' : 'Filtrer les sons par titre, artiste, mood…') + '">' +
+            'placeholder="' + (isArtists ? 'Filtrer les artistes…' : (isHome ? 'Rechercher un son ou un artiste…' : 'Filtrer les sons par titre, artiste, mood…')) + '">' +
         '</span>' +
         filterBtnHtml +
       '</span>' +
@@ -1222,28 +1229,40 @@
           'color:rgba(204,136,255,.75);transition:all .12s;font-family:inherit}' +
         '.mp-hsb-mood:hover{border-color:rgba(204,136,255,.55);color:#cc88ff}' +
         '.mp-hsb-mood.is-active{border-color:rgba(204,136,255,.9);' +
-          'background:rgba(204,136,255,.22);color:#fff}';
+          'background:rgba(204,136,255,.22);color:#fff}' +
+        // titres de groupes (dépliant combiné de la home)
+        '.mp-hsb-group-lbl{width:100%;text-align:center;font-size:.66rem;' +
+          'letter-spacing:.1em;text-transform:uppercase;' +
+          'color:rgba(255,255,255,.38);margin:7px 0 2px}';
       document.head.appendChild(st);
     }
 
     const input = hint.querySelector('.mp-hsb-input');
     const _apply = () => {
       const v = input.value || '';
-      if (isArtists) _renderGridArtists(v);
-      else _renderGridSons(v);
+      if (isHome) {
+        // Home : la recherche et les filtres pilotent LES DEUX grilles.
+        _renderGridSons(v);
+        _renderGridArtists(v);
+      } else if (isArtists) {
+        _renderGridArtists(v);
+      } else {
+        _renderGridSons(v);
+      }
     };
     input.addEventListener('input', _apply);
 
-    // Dépliant + chips (multi-select) — /sons : moods · /artistes : rôles.
+    // Dépliant + chips (multi-select) — /sons : moods · /artistes : rôles ·
+    // home : les deux (le data-attribut de la chip détermine le set visé).
     {
       const toggle  = hint.querySelector('.mp-hsb-toggle');
       const moods   = hint.querySelector('#mp-hsb-moods');
       const fcount  = hint.querySelector('.mp-hsb-fcount');
-      // Le set actif dépend de la page (même mécanique des deux côtés).
-      const _theSet = isArtists ? _pageRoleSet : _pageMoodSet;
 
       const _updateCount = () => {
-        const n = _theSet.size;
+        const n = isHome
+          ? _pageMoodSet.size + _pageRoleSet.size
+          : (isArtists ? _pageRoleSet.size : _pageMoodSet.size);
         if (!fcount) return;
         fcount.textContent = String(n);
         fcount.hidden = n === 0;
@@ -1260,9 +1279,11 @@
 
       hint.querySelectorAll('.mp-hsb-mood').forEach(chip => {
         chip.addEventListener('click', () => {
-          const key = isArtists ? chip.dataset.role : chip.dataset.mood;
-          if (_theSet.has(key)) { _theSet.delete(key); chip.classList.remove('is-active'); }
-          else                  { _theSet.add(key);    chip.classList.add('is-active'); }
+          const isRole = chip.dataset.role !== undefined;
+          const set    = isRole ? _pageRoleSet : _pageMoodSet;
+          const key    = isRole ? chip.dataset.role : chip.dataset.mood;
+          if (set.has(key)) { set.delete(key); chip.classList.remove('is-active'); }
+          else              { set.add(key);    chip.classList.add('is-active'); }
           _updateCount();
           _apply();
         });
