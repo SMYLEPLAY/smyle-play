@@ -1723,11 +1723,13 @@ function cancelUpload() {
 // État stocké dans dashUploadForm.dataset.mode, lu par uploadTrack() au submit.
 // Valeurs : 'with_prompt' (défaut) · 'simple' · 'beat' · 'pack' (C1).
 function setUploadMode(mode) {
-  // C1 (2026-06-10) — 4 types de publication Audio (blueprint VF) :
-  //   with_prompt = recette seule · simple = partage · beat = beat seul ·
-  //   pack = recette + beat (prix pack). beat/pack créent un produit
-  //   vendable via POST /artist/me/beats puis lient track.beat_id.
-  const VALID_MODES = ['with_prompt', 'simple', 'beat', 'pack'];
+  // C1.4 (2026-06-10) — MODÈLE FINAL : 2 destinations.
+  //   with_prompt = 🎵 Musique (recette vendable, fichier inclus à l'achat)
+  //   pack        = 🥁 Beat (recette + fichier ensemble, un seul prix)
+  // 'simple' et 'beat' (fichier seul) ont été SUPPRIMÉS : tout ce qui est
+  // publié porte sa recette (comme côté image), et un achat = l'exemplaire
+  // complet. Les anciennes valeurs retombent sur with_prompt.
+  const VALID_MODES = ['with_prompt', 'pack'];
   if (!VALID_MODES.includes(mode)) mode = 'with_prompt';
   const form = document.getElementById('dashUploadForm');
   if (!form) return;
@@ -1740,42 +1742,34 @@ function setUploadMode(mode) {
     p.setAttribute('aria-selected', on ? 'true' : 'false');
   });
 
-  // Libellé du CTA — reflète la nature du post
+  // Libellé du CTA — reflète la destination
   const cta = document.getElementById('dashUploadCtaLbl');
   if (cta) {
     cta.textContent = ({
-      with_prompt: 'Publier avec recette',
-      simple:      'Publier sans recette',
-      beat:        'Publier le beat en vente',
-      pack:        'Publier le pack (recette + beat)',
+      with_prompt: 'Publier la musique',
+      pack:        'Publier le beat',
     })[mode];
   }
 }
 
-/* C1 — licence beat : EXCLUSIF = vente unique, le backend force
-   max_supply=1 → le champ exemplaires n'a de sens qu'en LEASE. */
-function dashBeatOnLicenseChange() {
-  const lic = document.querySelector('input[name="dashBeatLicense"]:checked')?.value || 'lease';
-  const supplyField = document.getElementById('dashBeatSupplyField');
-  if (supplyField) supplyField.style.display = (lic === 'exclusive') ? 'none' : '';
-}
-
-/* C1 — lit + valide les champs beat du formulaire. {ok, errs, payload}. */
+/* C1.4 — lit + valide les champs beat. Plus de licence : la rareté #X/N
+   porte la mécanique (1 exemplaire → 'exclusive' backend = retrait à
+   l'achat ; sinon 'lease'). Prix 3..500 (borne du miroir recette). */
 function dashReadBeatFields() {
   const errs = [];
-  const lic = document.querySelector('input[name="dashBeatLicense"]:checked')?.value || 'lease';
   const priceRaw = parseInt(document.getElementById('dashBeatPrice')?.value, 10);
-  if (!Number.isInteger(priceRaw) || priceRaw < 3) errs.push('prix du beat (min 3 crédits)');
+  if (!Number.isInteger(priceRaw) || priceRaw < 3 || priceRaw > 500) {
+    errs.push('prix du beat (3 à 500 crédits)');
+  }
 
   let maxSupply = null;
-  if (lic === 'lease') {
-    const supRaw = (document.getElementById('dashBeatMaxSupply')?.value || '').trim();
-    if (supRaw !== '') {
-      const n = parseInt(supRaw, 10);
-      if (Number.isInteger(n) && n >= 1) maxSupply = n;
-      else errs.push('nombre d\'exemplaires du beat (entier ≥ 1, ou vide)');
-    }
+  const supRaw = (document.getElementById('dashBeatMaxSupply')?.value || '').trim();
+  if (supRaw !== '') {
+    const n = parseInt(supRaw, 10);
+    if (Number.isInteger(n) && n >= 1) maxSupply = n;
+    else errs.push('nombre d\'exemplaires (entier ≥ 1, ou vide)');
   }
+  const lic = (maxSupply === 1) ? 'exclusive' : 'lease';
   return {
     ok: errs.length === 0,
     errs,
@@ -1967,14 +1961,9 @@ async function uploadTrack() {
       dashToast(`⚠ Champs beat incomplets : ${beatFields.errs.join(', ')}`);
       return;
     }
-    if (_earlyMode === 'pack') {
-      const pp = parseInt(document.getElementById('dashPackPrice')?.value, 10);
-      if (!Number.isInteger(pp) || pp < 3) {
-        dashToast('⚠ Prix du pack invalide (min 3 crédits).');
-        return;
-      }
-      packPrice = pp;
-    }
+    // C1.4 — un seul prix : l'achat du beat débloque fichier + recette.
+    // Le prix pack = le prix du beat (plus de champ séparé).
+    packPrice = beatFields.payload.price_credits;
   }
 
   // ── Vérification limite freemium (comptes officiels exemptés) ───────────
@@ -2074,6 +2063,11 @@ async function uploadTrack() {
     return;
   }
 
+  // C1.4 — l'ADN du morceau (DNA per-track) reçoit le VRAI prompt :
+  // la recette est désormais obligatoire pour toute publication (plus de
+  // « partage simple »), donc plus de placeholder mensonger en base.
+  const _dnaPrompt = (document.getElementById('dashPromptText')?.value || '').trim();
+
   try {
     fastApiTrack = await _createFastApiTrackMirror({
       title:       name,
@@ -2081,7 +2075,7 @@ async function uploadTrack() {
       r2_key:      r2Key,
       color:       _pendingTrackColor,
       cover_url:   coverUrl,
-      full_prompt: name,  // placeholder requis par TrackCreate (DNA per-track)
+      full_prompt: _dnaPrompt || name,  // fallback titre si champ vide (bloqué plus loin de toute façon)
       tags:        tags || null,   // dashTags — lu plus haut (ligne ~1865)
       platform:    platform || null,  // dashTrackPlatform — lu plus haut
     });
@@ -2166,7 +2160,12 @@ async function uploadTrack() {
   if (uploadMode === 'with_prompt' || uploadMode === 'pack') {
     const promptText = (document.getElementById('dashPromptText')?.value || '').trim();
     const lyrics     = (document.getElementById('dashPromptLyrics')?.value || '').trim();
-    const priceRaw   = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
+    // C1.4 — destination BEAT : un seul prix (celui du bloc beat) et une
+    // seule rareté pour les deux produits (recette + fichier), afin que
+    // l'édition #X/N et le stock-out du pack restent cohérents.
+    const priceRaw   = (uploadMode === 'pack' && beatFields)
+      ? beatFields.payload.price_credits
+      : parseInt(document.getElementById('dashPromptPrice')?.value, 10);
     const price      = Number.isFinite(priceRaw) ? priceRaw : 80;
 
     // P1-F4 (2026-05-04) — réglages de génération.
@@ -2186,7 +2185,9 @@ async function uploadTrack() {
     // Rareté/supply (comme les ADN) : nb d'exemplaires. Vide = illimité.
     const supRaw = (document.getElementById('dashPromptMaxSupply')?.value || '').trim();
     let promptMaxSupply = null;
-    if (supRaw !== '') {
+    if (uploadMode === 'pack' && beatFields) {
+      promptMaxSupply = beatFields.payload.max_supply;   // rareté unique beat
+    } else if (supRaw !== '') {
       const n = parseInt(supRaw, 10);
       if (Number.isInteger(n) && n >= 1) promptMaxSupply = n;
     }

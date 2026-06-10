@@ -39,7 +39,7 @@
   };
 
   /* Compteurs (cache local au module, rafraîchi au retour board) */
-  var counts = { sons: null, beats: null, adn: null, voix: null };
+  var counts = { sons: null, adn: null, voix: null };
   var hero   = { plays: null, followers: null, rank: null, smyles: null };
 
   function $(id) { return document.getElementById(id); }
@@ -85,49 +85,29 @@
     refreshHeroStats();
   }
 
-  /* C1.1 — contexte de création par CELLULE (décision Tom 2026-06-10) :
-     chaque cellule n'expose que SES types de publication, parce que la
-     cellule d'origine déterminera le positionnement marketplace du contenu.
-       sons  → Avec recette · Simple (sans prompt)
-       beats → Beat seul · Recette + beat (pack)
-     Le contexte est posé sur dashUploadForm.dataset.context ; les pills
-     hors contexte sont masquées en CSS (wattboard-v3.css). */
-  function setUploadContext(ctx) {
-    var form = $('dashUploadForm');
-    if (form) form.dataset.context = ctx;
-  }
-
-  /* "Créer" contextuel : positionne contexte + mode du formulaire AVANT
-     d'ouvrir l'écran, pour que le choix structurant soit déjà fait. */
+  /* FUSION 2026-06-10 : plus de contexte beats — la cellule Sons IA expose
+     les 4 destinations (musique avec recette · partage · beat · beat+pack).
+     Le mode est LE choix structurant : il détermine ce qui est vendu et le
+     positionnement marketplace (un beat ira sur /beats en C2). */
+  // C1.4 — 2 destinations : Musique (with_prompt) · Beat (pack = recette
+  // + fichier, un seul prix). Partage simple et beat-fichier-seul supprimés.
   var CREATE_MAP = {
-    son:     { ctx: 'sons',  mode: 'with_prompt' },
-    partage: { ctx: 'sons',  mode: 'simple' },
-    beat:    { ctx: 'beats', mode: 'beat' },
-    pack:    { ctx: 'beats', mode: 'pack' },
+    son:  'with_prompt',
+    beat: 'pack',
   };
   function createAction(kind) {
     closeCreateMenu();
     if (kind === 'adn')  { openScreen('adn');  return; }
     if (kind === 'voix') { openScreen('voix'); return; }
-    var c = CREATE_MAP[kind] || CREATE_MAP.son;
-    setUploadContext(c.ctx);
     openScreen('sons');
-    try { if (typeof setUploadMode === 'function') setUploadMode(c.mode); } catch (_) {}
+    try { if (typeof setUploadMode === 'function') setUploadMode(CREATE_MAP[kind] || 'with_prompt'); } catch (_) {}
     // Amène directement la dropzone à l'écran (zone 1b de la section).
     var dz = $('dashDropzone');
     if (dz) { try { dz.scrollIntoView({ block: 'center' }); } catch (_) {} }
   }
 
-  /* "Voir" sur les tuiles Sons / Beats : même écran catalogue, mais le
-     contexte de création suit la cellule d'où on vient. Déplie le
-     catalogue (wrapper 1a replié). */
-  function viewSons(ctx) {
-    setUploadContext(ctx || 'sons');
-    try {
-      if (typeof setUploadMode === 'function') {
-        setUploadMode(ctx === 'beats' ? 'beat' : 'with_prompt');
-      }
-    } catch (_) {}
+  /* "Voir" sur la tuile Sons : déplie le catalogue (wrapper 1a replié). */
+  function viewSons() {
     openScreen('sons');
     var hdr1a = document.querySelector('#sec-upload .is-1a-collapsed');
     if (hdr1a) { try { hdr1a.click(); } catch (_) {} }
@@ -245,8 +225,13 @@
     // DÉCISION 100 % IA (Tom, 2026-06-10) : aucun produit non-IA vendu sur
     // la plateforme. La tuile « Musique perso » (humaine, gated palier) est
     // SUPPRIMÉE — le Réel reste de la promo externe uniquement (pont C7).
+    //
+    // FUSION BEATS → SONS IA (Tom, même soir) : un beat IA n'est pas une
+    // nature différente d'un son IA, c'est une DESTINATION de vente
+    // (un artiste crée dessus vs on écoute le morceau). Le choix se fait
+    // dans la création Sons IA (4 types) ; la tuile Beats disparaît.
+    // Côté acheteurs, /beats (C2) listera les sons vendus en tant que beats.
     return tileHtml('sons',  '🤖', 'Sons IA',     'sons',  { createKind: 'son',  viewKey: 'sons',  countLabel: 'publiés' })
-         + tileHtml('beats', '🥁', 'Beats IA',    'beats', { createKind: 'beat', viewKey: 'beats', countLabel: 'en vente' })
          + tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',   countLabel: 'signature' })
          + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' });
   }
@@ -256,10 +241,8 @@
   function createMenuHtml(monde) {
     if (monde === 'visuel') return '';
     return '' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="son">🤖 <span>Son IA avec recette<em>Le son + son prompt vendable</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat IA seul<em>Fichier audio + licence lease / vente unique</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="pack">📦 <span>Recette + beat (pack)<em>Les deux, avec un prix pack</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="partage">🎵 <span>Partage simple<em>Juste un son, rien à vendre</em></span></button>' +
+      '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
+      '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature créative vendable</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>';
   }
@@ -333,13 +316,6 @@
       .then(function (tracks) { setCount('sons', Array.isArray(tracks) ? tracks.length : 0); })
       .catch(function () { setCount('sons', counts.sons); });
 
-    apiFetch('/artist/me/prompts?per_page=100')
-      .then(function (resp) {
-        var items = (resp && resp.items) || [];
-        setCount('beats', items.filter(function (p) { return p.product_type === 'beat'; }).length);
-      })
-      .catch(function () { setCount('beats', counts.beats); });
-
     apiFetch('/artist/me/adn')
       .then(function () { setCount('adn', 1); })
       .catch(function (e) { setCount('adn', (e && e.status === 404) ? 0 : counts.adn); });
@@ -394,7 +370,7 @@
       if (t.hasAttribute('data-wb3-create')) { createAction(t.getAttribute('data-wb3-create')); return; }
       if (t.hasAttribute('data-wb3-view')) {
         var key = t.getAttribute('data-wb3-view');
-        if (key === 'sons' || key === 'beats') viewSons(key); else openScreen(key);
+        if (key === 'sons') viewSons(); else openScreen(key);
         return;
       }
       if (t.classList.contains('wb3-monde-btn')) {
@@ -449,9 +425,6 @@
 
     // C1.1 — Analytique : "Mes Sons Publiés" plié par défaut.
     makeStatsTracksCollapsible();
-
-    // C1.1 — contexte de création par défaut : Sons IA.
-    setUploadContext('sons');
 
     render();
     bind();
