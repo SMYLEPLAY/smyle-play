@@ -1596,7 +1596,11 @@ function renderTracks(artist) {
       const mime = ext === 'mp3' ? 'audio/mpeg'
                   : ext === 'm4a' ? 'audio/mp4'
                   : 'audio/wav';  // .wav par défaut
-      audio = `<audio controls preload="metadata" class="ap-track-audio" controlsList="nodownload noplaybackrate">
+      // preload="none" (et pas "metadata") : avec 81 sons publiés, le
+      // preload metadata déclenchait 81 requêtes R2 dès l'ouverture du
+      // profil — page très lourde au chargement (constat audit 2026-06-10).
+      // Trade-off : la durée ne s'affiche qu'au clic play. Acceptable.
+      audio = `<audio controls preload="none" class="ap-track-audio" controlsList="nodownload noplaybackrate">
         <source src="${safeUrl}" type="${mime}" />
       </audio>`;
     } else {
