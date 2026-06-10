@@ -808,36 +808,13 @@
             <label class="dash-label">Description</label>
             <textarea class="dash-textarea" id="dashDesc" placeholder="Raconte l'univers de ce son..." rows="3"></textarea>
 
-            <!-- ── Style / ambiance (mood) ───────────────────────────────── -->
-            <div class="dash-mood-block">
-              <div class="dash-mood-hdr">
-                <span class="dash-mood-title">🎛 Style / ambiance (mood)</span>
-                <span class="dash-mood-sub">Calibre l'énergie et l'originalité de ton son</span>
-              </div>
-
-              <label class="dash-label">
-                Weirdness — variété sonore
-                <span class="dash-slider-val" id="dashMoodWeirdnessVal">50</span>/100
-              </label>
-              <input type="range" class="dash-slider" id="dashMoodWeirdness"
-                     min="0" max="100" value="50" step="1"
-                     oninput="document.getElementById('dashMoodWeirdnessVal').textContent=this.value" />
-              <div class="dash-mood-extremes">
-                <span>0 — classique</span><span>100 — expérimental</span>
-              </div>
-
-              <label class="dash-label" style="margin-top:12px">
-                Style influence — fidélité à la référence
-                <span class="dash-slider-val" id="dashMoodStyleVal">50</span>/100
-              </label>
-              <input type="range" class="dash-slider" id="dashMoodStyleInfluence"
-                     min="0" max="100" value="50" step="1"
-                     oninput="document.getElementById('dashMoodStyleVal').textContent=this.value" />
-              <div class="dash-mood-extremes">
-                <span>0 — très libre</span><span>100 — très fidèle</span>
-              </div>
-
-            </div>
+            <!-- (Bloc « 🎛 Style / ambiance (mood) » SUPPRIMÉ le 2026-06-10 :
+                 doublon visuel des sliders Weirdness / Style influence des
+                 réglages de génération (#dashPromptSettings, P1-F4), et ses
+                 valeurs (dashMoodWeirdness / dashMoodStyleInfluence)
+                 n'étaient lues par AUCUN code — UI morte. La seule source
+                 de vérité est dans la recette, où ces réglages sont requis
+                 et persistés. -->
           </div>
 
           <!-- Col 2 : bloc RECETTE (prompt_text + lyrics + prix) — visible
