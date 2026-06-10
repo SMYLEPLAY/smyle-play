@@ -187,6 +187,10 @@ class LibraryPromptItem(BaseModel):
     # edition_number NULL = tirage illimité → le front n'affiche pas de badge.
     edition_number: int | None = None
     max_supply: int | None = None
+    # Beats (2026-06-09) — 'recipe' | 'beat'. Sur un beat possédé, le front
+    # affiche le bouton Télécharger (download gaté).
+    product_type: str | None = None
+    license_type: str | None = None
 
 
 class LibraryPromptsResponse(BaseModel):

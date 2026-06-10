@@ -1117,18 +1117,32 @@
 
     // Rangée de chips mood — UNIQUEMENT sur /sons (filtre les sons, pas les
     // artistes). Sur /artistes, pas de moods (la partie Connect viendra).
+    // Repliée par défaut dans un dépliant : s'ouvre au clic sur « Filtres »,
+    // pour ne pas encombrer la page (et tenir la montée en critères).
     const moodChipsHtml = isArtists ? '' :
-      '<div class="mp-hsb-moods" id="mp-hsb-moods">' +
+      '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
         _PAGE_MOODS.map(m =>
           '<button type="button" class="mp-hsb-mood" data-mood="' + m + '">' + _esc(m) + '</button>'
         ).join('') +
       '</div>';
 
+    // Bouton dépliant (chevron + compteur de filtres actifs).
+    const filterBtnHtml = isArtists ? '' :
+      '<button type="button" class="mp-hsb-toggle" aria-expanded="false" title="Filtrer par mood">' +
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>' +
+        '<span class="mp-hsb-toggle-lbl">Filtres</span>' +
+        '<span class="mp-hsb-fcount" hidden>0</span>' +
+        '<svg class="mp-hsb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+      '</button>';
+
     hint.innerHTML =
-      '<span class="mp-hsb-wrap">' +
-        '<svg class="mp-hsb-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>' +
-        '<input type="search" class="mp-hsb-input" autocomplete="off" ' +
-          'placeholder="' + (isArtists ? 'Filtrer les artistes…' : 'Filtrer les sons par titre, artiste, mood…') + '">' +
+      '<span class="mp-hsb-row">' +
+        '<span class="mp-hsb-wrap">' +
+          '<svg class="mp-hsb-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>' +
+          '<input type="search" class="mp-hsb-input" autocomplete="off" ' +
+            'placeholder="' + (isArtists ? 'Filtrer les artistes…' : 'Filtrer les sons par titre, artiste, mood…') + '">' +
+        '</span>' +
+        filterBtnHtml +
       '</span>' +
       moodChipsHtml;
 
@@ -1137,16 +1151,33 @@
       st.id = 'mp-hsb-style';
       st.textContent =
         '.mp-hero-search-bar{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:4px}' +
-        '.mp-hsb-wrap{display:flex;align-items:center;gap:9px;width:min(560px,92%);' +
+        '.mp-hsb-row{display:flex;align-items:center;justify-content:center;gap:8px;' +
+          'width:min(620px,94%);flex-wrap:wrap}' +
+        '.mp-hsb-wrap{display:flex;align-items:center;gap:9px;flex:1;min-width:220px;' +
           'padding:11px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.45);' +
           'background:rgba(255,255,255,.04);color:rgba(255,255,255,.55);' +
           'transition:border-color .15s,background .15s}' +
         '.mp-hsb-wrap:focus-within{border-color:rgba(124,58,237,.9);background:rgba(124,58,237,.08)}' +
         '.mp-hsb-input{flex:1;background:transparent;border:0;outline:0;color:#fff;' +
-          'font-size:.92rem;font-family:inherit}' +
+          'font-size:.92rem;font-family:inherit;min-width:0}' +
         '.mp-hsb-input::placeholder{color:rgba(255,255,255,.4)}' +
+        // bouton dépliant
+        '.mp-hsb-toggle{display:inline-flex;align-items:center;gap:6px;cursor:pointer;' +
+          'padding:10px 14px;border-radius:999px;font-size:.82rem;font-family:inherit;' +
+          'border:1px solid rgba(204,136,255,.3);background:rgba(204,136,255,.07);' +
+          'color:rgba(204,136,255,.85);transition:all .12s;white-space:nowrap}' +
+        '.mp-hsb-toggle:hover{border-color:rgba(204,136,255,.6);color:#cc88ff}' +
+        '.mp-hsb-toggle[aria-expanded="true"]{background:rgba(204,136,255,.18);color:#fff;' +
+          'border-color:rgba(204,136,255,.8)}' +
+        '.mp-hsb-toggle .mp-hsb-chev{transition:transform .15s}' +
+        '.mp-hsb-toggle[aria-expanded="true"] .mp-hsb-chev{transform:rotate(180deg)}' +
+        '.mp-hsb-fcount{display:inline-flex;align-items:center;justify-content:center;' +
+          'min-width:17px;height:17px;padding:0 4px;border-radius:999px;font-size:.68rem;' +
+          'font-weight:700;background:#cc88ff;color:#1a0f2e}' +
+        // dépliant moods
         '.mp-hsb-moods{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;' +
           'width:min(680px,94%)}' +
+        '.mp-hsb-moods[hidden]{display:none}' +
         '.mp-hsb-mood{padding:4px 11px;border-radius:999px;font-size:.74rem;cursor:pointer;' +
           'border:1px solid rgba(204,136,255,.25);background:rgba(204,136,255,.06);' +
           'color:rgba(204,136,255,.75);transition:all .12s;font-family:inherit}' +
@@ -1164,13 +1195,34 @@
     };
     input.addEventListener('input', _apply);
 
-    // Chips mood (multi-select) → toggle dans _pageMoodSet puis re-filtre.
+    // Dépliant + chips mood (multi-select) → /sons uniquement.
     if (!isArtists) {
+      const toggle = hint.querySelector('.mp-hsb-toggle');
+      const moods  = hint.querySelector('#mp-hsb-moods');
+      const fcount = hint.querySelector('.mp-hsb-fcount');
+
+      const _updateCount = () => {
+        const n = _pageMoodSet.size;
+        if (!fcount) return;
+        fcount.textContent = String(n);
+        fcount.hidden = n === 0;
+      };
+
+      // Ouvre/ferme le dépliant.
+      if (toggle && moods) {
+        toggle.addEventListener('click', () => {
+          const open = moods.hasAttribute('hidden');
+          if (open) { moods.removeAttribute('hidden'); toggle.setAttribute('aria-expanded', 'true'); }
+          else      { moods.setAttribute('hidden', '');  toggle.setAttribute('aria-expanded', 'false'); }
+        });
+      }
+
       hint.querySelectorAll('.mp-hsb-mood').forEach(chip => {
         chip.addEventListener('click', () => {
           const m = chip.dataset.mood;
           if (_pageMoodSet.has(m)) { _pageMoodSet.delete(m); chip.classList.remove('is-active'); }
           else                     { _pageMoodSet.add(m);    chip.classList.add('is-active'); }
+          _updateCount();
           _apply();
         });
       });

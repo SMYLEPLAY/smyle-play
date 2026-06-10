@@ -416,6 +416,10 @@ async def list_user_library_prompts(
             # edition_number NULL = tirage illimité (pas de badge #X/N).
             "edition_number": up.edition_number,
             "max_supply": p.max_supply,
+            # Beats : 'recipe' | 'beat'. Le front affiche un bouton Télécharger
+            # sur les beats possédés (download gaté /beats/{id}/download).
+            "product_type": p.product_type,
+            "license_type": p.license_type,
         }
         for up, p, u, audio_url, cover_url, track_color in rows
     ]

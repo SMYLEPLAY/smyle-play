@@ -50,17 +50,21 @@ async def create(
         )
     try:
         track, dna = await create_track_with_dna(db, current_user, data)
-    except Exception as e:
-        # Debug temporaire 2026-05-05 — on expose le type d'exception et
-        # son message au lieu d'un détail générique. Permet de diagnostiquer
-        # un bug en prod (ex: migration manquante, contrainte DB, payload
-        # invalide). À retirer / remplacer par log structuré une fois le
-        # bug actuel résolu.
+    except Exception:
+        # 2026-06-09 — on ne fuite plus le détail d'exception au client
+        # (sécurité + propreté). Le diagnostic passe désormais par le log
+        # serveur structuré + la capture Sentry (DSN en env). Le client
+        # reçoit un message générique.
         import logging
         logging.exception("create_track_with_dna failed")
+        try:
+            import sentry_sdk  # no-op si Sentry non initialisé (pas de DSN)
+            sentry_sdk.capture_exception()
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create track: {type(e).__name__}: {str(e)[:300]}",
+            detail="Échec de la création du son. Réessaie dans un instant.",
         )
     # Parrainage (mécanique 1) : 1er son posté = action qualifiante qui
     # débloque la récompense si l'utilisateur a été parrainé. Idempotent et
