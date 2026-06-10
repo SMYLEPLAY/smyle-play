@@ -15,6 +15,10 @@
   <link rel="stylesheet" href="/topbar.css" />
   <!-- Player partagé (chantier playlists quick-play) -->
   <link rel="stylesheet" href="/style.css" />
+  <!-- C0 design system (blueprint VF 2026-06-10) : tokens + pilules des
+       3 repères constants (Nature / Palier / Rareté) -->
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <link rel="stylesheet" href="/ui/core/badges.css" />
 </head>
 <body class="ap-page">
 
@@ -587,6 +591,7 @@
 <!-- Chemins ABSOLUS obligatoires : /artiste/<slug> ajoute un segment dans
      le path, donc "artiste.js" serait résolu en "/artiste/artiste.js". -->
 <script src="/ui/core/api.js"></script>
+<script src="/ui/core/badges.js"></script>
 <script src="/ui/session-guard.js" defer></script>
 <script src="/ui/core/events.js"></script>
 <script src="/ui/core/toast.js"></script>

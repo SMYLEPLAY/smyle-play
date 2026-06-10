@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tarifs · WATT</title>
   <meta name="theme-color" content="#050508" />
-  <link rel="stylesheet" href="/static/css/style.css" />
+  <!-- Fix C0 (2026-06-10) : l'ancien href /static/css/style.css était un 404
+       → le fond noir ne se chargeait jamais et la page s'affichait BLANCHE,
+       hors charte (constat audit). Bon chemin + filet body inline. -->
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
   <style>
+    body { background: #050508; }
     .tarifs-wrap { max-width: 980px; margin: 48px auto; padding: 0 20px; color: #e8e6f5; }
     .tarifs-eyebrow { color: #cc88ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 12px; }
     .tarifs-h1 { font-size: 38px; margin: 0 0 8px; letter-spacing: -.01em; }
