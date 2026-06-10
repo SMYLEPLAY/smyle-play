@@ -213,7 +213,7 @@ jobs:
       - name: Install dependencies (+ test tooling)
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio
+          pip install pytest pytest-asyncio pytest-github-actions-annotate-failures
 
       - name: Wait for Postgres
         run: |
