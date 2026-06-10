@@ -1,0 +1,67 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   SMYLE PLAY — ui/core/badges.css
+   Pilules des 3 repères constants (chantier C0, blueprint VF 2026-06-10) :
+     1. NATURE  (ce que c'est)        → .sp-pill--nature-*
+     2. PALIER  (qui l'a fait)        → .sp-pill--palier-*
+     3. RARETÉ  (#X/N + label)        → .sp-pill--rarete-*
+     + provenance IA discrète         → .sp-provenance
+
+   Place fixe sur toute card/fiche : nature en haut-gauche, rareté en
+   haut-droite, palier sous le nom du créateur, provenance sous le titre.
+   Requiert ui/core/tokens.css chargé avant.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.sp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: var(--sp-radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.6;
+  white-space: nowrap;
+  border: 1px solid;
+  /* La couleur du repère est portée par --pill-c posée par la variante : */
+  color: var(--pill-c, var(--sp-text-muted));
+  border-color: color-mix(in srgb, var(--pill-c, #888) 40%, transparent);
+  background: color-mix(in srgb, var(--pill-c, #888) 12%, transparent);
+}
+
+/* Fallback navigateurs sans color-mix (≈2022) : fond/bordure neutres. */
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+  .sp-pill { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); }
+}
+
+/* ── Repère 1 : NATURE ─────────────────────────────────────────────────── */
+.sp-pill--nature-adn    { --pill-c: var(--sp-nature-adn); }
+.sp-pill--nature-son-ia { --pill-c: var(--sp-nature-son-ia); }
+.sp-pill--nature-beat   { --pill-c: var(--sp-nature-beat); }
+.sp-pill--nature-voix   { --pill-c: var(--sp-nature-voix); }
+.sp-pill--nature-image  { --pill-c: var(--sp-nature-image); }
+.sp-pill--nature-reel   { --pill-c: var(--sp-nature-reel); }
+
+/* ── Repère 2 : PALIER (toujours préfixé « Palier » dans le libellé pour
+   ne jamais confondre avec la rareté « Mythique ») ──────────────────────── */
+.sp-pill--palier-free     { --pill-c: var(--sp-palier-free); }
+.sp-pill--palier-standard { --pill-c: var(--sp-palier-standard); }
+.sp-pill--palier-premium  { --pill-c: var(--sp-palier-premium); }
+.sp-pill--palier-mythique { --pill-c: var(--sp-palier-mythique); }
+
+/* ── Repère 3 : RARETÉ ─────────────────────────────────────────────────── */
+.sp-pill--rarete-commune    { --pill-c: var(--sp-rarete-commune); }
+.sp-pill--rarete-rare       { --pill-c: var(--sp-rarete-rare); }
+.sp-pill--rarete-epique     { --pill-c: var(--sp-rarete-epique); }
+.sp-pill--rarete-legendaire { --pill-c: var(--sp-rarete-legendaire); }
+
+/* ── Provenance IA (texte discret, pas une pilule) ─────────────────────── */
+.sp-provenance {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sp-text-faint);
+  letter-spacing: .02em;
+}

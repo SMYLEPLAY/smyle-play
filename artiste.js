@@ -1699,6 +1699,7 @@ function renderTracks(artist) {
             </div>
           </div>
           <div class="ap-track-card-meta">
+            ${(window.SpBadges) ? SpBadges.nature(t.beatId || t.beat_id ? 'beat' : 'son-ia') : ''}
             <span class="ap-track-meta-plays">▶ ${plays}</span>
             ${date ? `<span class="ap-track-meta-date">· ${date}</span>` : ''}
             ${platformBadge}

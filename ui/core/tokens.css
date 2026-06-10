@@ -1,0 +1,75 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   SMYLE PLAY — ui/core/tokens.css
+   Design tokens du design system WATT (chantier C0, blueprint VF 2026-06-10).
+
+   RÈGLE : toute nouvelle UI consomme ces variables. Plus de couleurs en dur
+   dans les pages. Les anciennes feuilles (style.css & co) migrent
+   progressivement à chaque chantier (C1 WattBoard, C2 drawer, C3 profil…).
+
+   Palette extraite de l'existant (audit 2026-06-10) — on systématise la
+   charte, on ne la réinvente pas :
+     noir profond #050508/#070608 · violet #8800ff · mauve #cc88ff
+     bleu électrique #0055ff · or WATT #ffd700 · blanc cassé #e8e8f0
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Fond & surfaces ────────────────────────────────────────────────── */
+  --sp-bg:              #050508;  /* fond page (identique --bg existant)   */
+  --sp-surface:         rgba(255, 255, 255, .04);  /* carte / tuile        */
+  --sp-surface-2:       rgba(255, 255, 255, .07);  /* surface survolée     */
+  --sp-surface-raised:  #14101f;  /* modal / drawer (existant)             */
+  --sp-border:          rgba(255, 255, 255, .10);
+  --sp-border-strong:   rgba(255, 255, 255, .25);
+
+  /* ── Texte ──────────────────────────────────────────────────────────── */
+  --sp-text:            #e8e8f0;
+  --sp-text-muted:      rgba(255, 255, 255, .72);
+  --sp-text-faint:      rgba(255, 255, 255, .55);
+
+  /* ── Marque ─────────────────────────────────────────────────────────── */
+  --sp-violet:          #8800ff;
+  --sp-mauve:           #cc88ff;
+  --sp-electric:        #0055ff;
+  --sp-gold:            #ffd700;   /* l'éclair WATT — marque & prestige    */
+
+  /* ── Les 2 mondes (accent du monde actif) ───────────────────────────── */
+  --sp-monde-audio:     #0055ff;   /* 🎧 bleu électrique                   */
+  --sp-monde-visuel:    #cc88ff;   /* 🎨 mauve                             */
+
+  /* ── Repère 1 : NATURE (couleur fixe par type, partout) ─────────────── */
+  --sp-nature-adn:      #8800ff;   /* 🧬 ADN (musical & visuel)            */
+  --sp-nature-son-ia:   #0055ff;   /* 🤖 Son IA                            */
+  --sp-nature-beat:     #00cc66;   /* 🥁 Beat                              */
+  --sp-nature-voix:     #ff9500;   /* 🎙️ Voix                              */
+  --sp-nature-image:    #ff5577;   /* 🖼️ Image IA                          */
+  --sp-nature-reel:     #ffd700;   /* 🎤 Réel (humain vérifié)             */
+
+  /* ── Repère 2 : PALIER créateur ─────────────────────────────────────── */
+  --sp-palier-free:     #b4b2a9;
+  --sp-palier-standard: #0055ff;
+  --sp-palier-premium:  #cc88ff;
+  --sp-palier-mythique: #ffd700;
+
+  /* ── Repère 3 : RARETÉ (labels d'édition #X/N) ──────────────────────── */
+  --sp-rarete-commune:    #b4b2a9;
+  --sp-rarete-rare:       #0055ff;
+  --sp-rarete-epique:     #8800ff;
+  --sp-rarete-legendaire: #ffd700;
+
+  /* ── Sémantique ─────────────────────────────────────────────────────── */
+  --sp-success:         #4ade80;
+  --sp-warning:         #ff9500;
+  --sp-danger:          #ff5577;
+
+  /* ── Géométrie & rythme ─────────────────────────────────────────────── */
+  --sp-radius-sm:       6px;
+  --sp-radius-md:       10px;
+  --sp-radius-lg:       16px;
+  --sp-radius-pill:     999px;
+  --sp-gap-sm:          8px;
+  --sp-gap-md:          16px;
+  --sp-gap-lg:          24px;
+
+  /* ── Mouvement (sobre, uniforme) ────────────────────────────────────── */
+  --sp-transition:      150ms ease;
+}
