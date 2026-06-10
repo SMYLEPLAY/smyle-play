@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070608" />
+  <title>Légal · WATT</title>
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <style>
+    /* Page légale — charte WATT, autonome (pas de dépendance aux CSS pages). */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
+      font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.7;
+    }
+    .lg-top {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 22px; border-bottom: 1px solid var(--sp-border, rgba(255,255,255,.1));
+    }
+    .lg-top a { color: var(--sp-gold, #ffd700); text-decoration: none; font-weight: 800; letter-spacing: .1em; font-size: 14px; }
+    .lg-wrap { max-width: 820px; margin: 0 auto; padding: 32px 22px 80px; }
+    .lg-toc {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 34px;
+    }
+    .lg-toc a {
+      padding: 7px 14px; border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: 999px; color: var(--sp-text-muted, rgba(255,255,255,.72));
+      font-size: .8rem; font-weight: 600; text-decoration: none;
+      transition: border-color .15s ease, color .15s ease;
+    }
+    .lg-toc a:hover { color: var(--sp-text, #e8e8f0); border-color: var(--sp-border-strong, rgba(255,255,255,.25)); }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; }
+    .lg-updated { color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: .8rem; margin-bottom: 30px; }
+    section { margin-bottom: 56px; scroll-margin-top: 24px; }
+    h2 {
+      font-size: 1.15rem; color: var(--sp-gold, #ffd700);
+      border-bottom: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      padding-bottom: 8px; margin: 0 0 18px;
+    }
+    h3 { font-size: .95rem; margin: 22px 0 8px; }
+    p, li { color: var(--sp-text-muted, rgba(255,255,255,.72)); font-size: .9rem; }
+    strong { color: var(--sp-text, #e8e8f0); }
+    .lg-placeholder {
+      background: rgba(255, 215, 0, .08); border: 1px dashed var(--sp-gold, #ffd700);
+      border-radius: 8px; padding: 3px 8px; color: var(--sp-gold, #ffd700);
+      font-size: .82rem; font-style: normal;
+    }
+    .lg-note {
+      background: var(--sp-surface, rgba(255,255,255,.04));
+      border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: 10px; padding: 14px 16px; font-size: .82rem;
+      color: var(--sp-text-faint, rgba(255,255,255,.55)); margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="lg-top">
+  <a href="/">← ⚡ WATT</a>
+</div>
+
+<div class="lg-wrap">
+  <h1>Informations légales</h1>
+  <div class="lg-updated">Dernière mise à jour : 10 juin 2026 · Version 1 (pré-lancement)</div>
+
+  <div class="lg-note">
+    ⚠️ WATT est en phase de test (bêta). Aucun paiement en argent réel n'est
+    actif : les « Smyles » sont des crédits de test sans valeur monétaire
+    jusqu'à l'activation officielle des paiements. Ce document sera complété
+    (entité juridique, médiation, TVA) avant l'ouverture commerciale.
+  </div>
+
+  <nav class="lg-toc">
+    <a href="#mentions">Mentions légales</a>
+    <a href="#cgu">CGU / CGV</a>
+    <a href="#confidentialite">Confidentialité (RGPD)</a>
+    <a href="#contenu">Contenu &amp; contrefaçon</a>
+  </nav>
+
+  <!-- ═══════════ MENTIONS LÉGALES ═══════════ -->
+  <section id="mentions">
+    <h2>Mentions légales</h2>
+    <p><strong>Éditeur du service</strong> : <span class="lg-placeholder">[À COMPLÉTER — nom / raison sociale, statut juridique, SIRET]</span></p>
+    <p><strong>Directeur de la publication</strong> : <span class="lg-placeholder">[À COMPLÉTER]</span></p>
+    <p><strong>Contact</strong> : <span class="lg-placeholder">[À COMPLÉTER — email de contact officiel]</span></p>
+    <p><strong>Hébergement</strong> : application hébergée par Railway Corp. (railway.com, États-Unis) ; fichiers médias hébergés par Cloudflare, Inc. (cloudflare.com).</p>
+    <p>« WATT » désigne le service en ligne accessible à cette adresse, plateforme de création et d'échange de produits musicaux générés par intelligence artificielle.</p>
+  </section>
+
+  <!-- ═══════════ CGU / CGV ═══════════ -->
+  <section id="cgu">
+    <h2>Conditions générales d'utilisation et de vente (CGU/CGV)</h2>
+
+    <h3>1. Objet</h3>
+    <p>WATT est une marketplace de <strong>créations 100 % générées par intelligence artificielle</strong>. Les utilisateurs peuvent publier, écouter, acheter, revendre et échanger des créations sonores accompagnées de leur <strong>recette</strong> (le prompt et les réglages ayant servi à les générer), ainsi que des fichiers de voix destinés à la création musicale par IA.</p>
+
+    <h3>2. Compte</h3>
+    <p>L'inscription requiert une adresse email valide. Chaque personne ne peut détenir qu'un seul compte. Tu es responsable de la confidentialité de tes identifiants et de l'activité de ton compte. L'âge minimum d'utilisation est de 15 ans ; l'achat de crédits (à l'ouverture commerciale) sera réservé aux majeurs ou aux mineurs autorisés par leur représentant légal.</p>
+
+    <h3>3. Les Smyles (crédits)</h3>
+    <p>Les transactions internes s'effectuent en « Smyles », la monnaie virtuelle de la plateforme. <strong>Pendant la bêta, les Smyles n'ont aucune valeur monétaire</strong>, ne sont pas remboursables et peuvent être réinitialisés. Les conditions d'achat et de conversion des Smyles seront précisées dans une version ultérieure des présentes, avant l'activation des paiements réels.</p>
+
+    <h3>4. Achats et exemplaires</h3>
+    <p>Un achat porte sur un <strong>exemplaire</strong> d'une création, éventuellement numéroté (#X/N) lorsque l'édition est limitée. L'achat d'un exemplaire donne accès : au fichier de la création, et à sa recette lorsque la création en comporte une. Les fichiers de voix sont vendus sans recette (une voix générée n'est pas reproductible par son prompt).</p>
+    <p>Un exemplaire « vente unique » (1/1) est retiré de la vente dès son achat. La revente d'exemplaires entre utilisateurs est possible sur le marché secondaire de la plateforme ; elle déclenche une rétribution de l'artiste d'origine (royalties) et une commission de plateforme, affichées au moment de la revente.</p>
+
+    <h3>5. Licence accordée à l'acheteur</h3>
+    <p>Sauf mention contraire affichée sur la fiche du produit, l'achat d'un exemplaire confère à l'acheteur un droit d'utilisation de la création et de sa recette pour ses propres projets créatifs, y compris commerciaux (chanter sur une instrumentale, générer des œuvres dérivées à partir de la recette…). L'achat <strong>n'emporte pas</strong> le droit de revendre le fichier ou la recette en dehors de la plateforme, ni de les republier tels quels comme sa propre création.</p>
+
+    <h3>6. Obligations du vendeur</h3>
+    <p>En publiant sur WATT, tu déclares : que la création est générée par IA avec l'outil et la version que tu indiques (provenance affichée publiquement) ; que tu détiens les droits nécessaires sur les éléments publiés (notamment pour les voix : ta propre voix ou une voix IA originale — l'imitation d'une personne réelle identifiable est interdite) ; que le contenu ne viole aucun droit de tiers.</p>
+
+    <h3>7. Rémunération des artistes</h3>
+    <p>Les ventes créditent le solde Smyles de l'artiste après commission de plateforme. Les conditions de conversion en monnaie réelle (seuils, identité, fiscalité) seront définies à l'activation des paiements et feront l'objet d'une mise à jour des présentes.</p>
+
+    <h3>8. Comportements interdits</h3>
+    <p>Sont notamment interdits : la fraude aux mécaniques d'engagement (multi-comptes, parrainages fictifs, achats croisés destinés à gonfler artificiellement des statistiques), la copie de recettes d'autrui pour les revendre, toute tentative de contournement des protections d'accès aux contenus payants, et tout contenu illicite (voir politique de contenu).</p>
+
+    <h3>9. Sanctions et résiliation</h3>
+    <p>En cas de manquement, WATT peut retirer un contenu, suspendre ou supprimer un compte, et annuler des transactions frauduleuses. Tu peux supprimer ton compte à tout moment (voir Confidentialité).</p>
+
+    <h3>10. Responsabilité</h3>
+    <p>WATT est fourni « en l'état » pendant la bêta, sans garantie de disponibilité ni d'absence d'erreur. La plateforme n'est pas responsable de l'usage que les acheteurs font des créations en dehors du service.</p>
+
+    <h3>11. Droit applicable</h3>
+    <p>Les présentes sont soumises au droit français. <span class="lg-placeholder">[À COMPLÉTER à la création de la structure : juridiction, médiation de la consommation]</span></p>
+  </section>
+
+  <!-- ═══════════ CONFIDENTIALITÉ ═══════════ -->
+  <section id="confidentialite">
+    <h2>Politique de confidentialité (RGPD)</h2>
+
+    <h3>Données collectées</h3>
+    <p>Compte : email, mot de passe (haché, jamais stocké en clair), nom d'artiste et informations de profil que tu choisis de remplir. Activité : créations publiées, achats/ventes/échanges (nécessaires au fonctionnement du service et à l'intégrité de l'économie), messages internes, statistiques d'écoute. Technique : journaux d'erreurs (Sentry) destinés à la fiabilité du service.</p>
+
+    <h3>Finalités et base légale</h3>
+    <p>Ces données servent exclusivement à fournir le service (exécution du contrat) : gérer ton compte, tes transactions, ta bibliothèque, et t'envoyer les emails transactionnels (confirmation de vente, reçu d'achat, emails de compte). <strong>Aucune donnée n'est vendue ni transmise à des fins publicitaires.</strong></p>
+
+    <h3>Durée de conservation</h3>
+    <p>Les données sont conservées tant que ton compte est actif. Les enregistrements de transactions sont conservés après suppression du compte, sous forme anonymisée, pour préserver l'intégrité des achats des autres utilisateurs et répondre aux obligations comptables.</p>
+
+    <h3>Tes droits</h3>
+    <p>Conformément au RGPD, tu disposes des droits d'accès, de rectification, d'effacement, de portabilité et d'opposition. <strong>Suppression de compte</strong> : disponible directement dans ton WATT BOARD (section Identité → Supprimer mon compte). La suppression anonymise immédiatement tes données personnelles et dépublie tes contenus invendus ; les exemplaires déjà achetés par d'autres utilisateurs restent dans leur bibliothèque (l'auteur apparaît comme « Artiste supprimé »).</p>
+    <p>Pour toute autre demande : <span class="lg-placeholder">[À COMPLÉTER — email de contact officiel]</span>. Tu peux aussi saisir la CNIL (cnil.fr).</p>
+
+    <h3>Cookies et stockage local</h3>
+    <p>WATT n'utilise pas de cookies publicitaires ni de traceurs tiers. Le stockage local de ton navigateur conserve uniquement ta session de connexion et tes préférences d'interface.</p>
+  </section>
+
+  <!-- ═══════════ CONTENU & CONTREFAÇON ═══════════ -->
+  <section id="contenu">
+    <h2>Politique de contenu &amp; contrefaçon</h2>
+
+    <h3>Règles de contenu</h3>
+    <p>Sont interdits sur WATT : les contenus illégaux, haineux, ou sexualisant des mineurs ; l'imitation de la voix ou de l'identité d'une personne réelle identifiable sans son consentement ; les contenus dont tu ne détiens pas les droits ; les fausses déclarations de provenance IA.</p>
+
+    <h3>Signaler une contrefaçon ou un abus</h3>
+    <p>Si tu estimes qu'un contenu publié sur WATT viole tes droits (recette copiée, fichier volé, voix imitée) ou enfreint les règles ci-dessus, envoie un signalement à <span class="lg-placeholder">[À COMPLÉTER — email de contact officiel]</span> en précisant : l'URL du contenu en cause, la description de tes droits, et tout élément de preuve (lien vers ta publication originale, antériorité…).</p>
+    <p>Tout signalement étayé est traité sous 7 jours : le contenu peut être dépublié le temps de l'examen, puis retiré définitivement et le compte fautif sanctionné si la violation est avérée. Les signalements abusifs ou de mauvaise foi sont également sanctionnés.</p>
+
+    <h3>Transparence IA</h3>
+    <p>Chaque création publiée sur WATT affiche sa provenance (outil IA et version, déclarés par l'artiste). Cette déclaration engage l'artiste ; une fausse déclaration constitue un manquement aux CGU.</p>
+  </section>
+
+</div>
+</body>
+</html>

@@ -4113,6 +4113,37 @@ function initSectionNav() {
 
 // ── 12. DÉCONNEXION ───────────────────────────────────────────────────────────
 
+/* ── Suppression de compte RGPD (pack légal v1, 2026-06-10) ──────────────
+   Double confirmation : l'utilisateur doit taper SUPPRIMER. Appelle
+   DELETE /users/me (anonymisation backend), puis purge la session locale
+   et renvoie à l'accueil. */
+async function dashDeleteAccount() {
+  const typed = window.prompt(
+    'Cette action est DÉFINITIVE.\n\n' +
+    'Ton profil sera anonymisé et tes contenus retirés du public. ' +
+    'Les exemplaires déjà achetés par d\'autres restent dans leur bibliothèque.\n\n' +
+    'Pour confirmer, tape exactement : SUPPRIMER'
+  );
+  if (typed === null) return;                    // annulé
+  if (typed.trim() !== 'SUPPRIMER') {
+    dashToast('Suppression annulée — le texte ne correspond pas.');
+    return;
+  }
+  try {
+    await apiFetch('/users/me', { method: 'DELETE' });
+  } catch (e) {
+    dashToast('⚠ Échec de la suppression : ' + _humanizeApiError(e));
+    return;
+  }
+  // Purge locale complète puis retour accueil (le JWT est déjà invalide
+  // côté serveur : l'email anonymisé ne résout plus aucun token).
+  try { if (typeof clearAuthToken === 'function') clearAuthToken(); } catch (_) {}
+  try { clearCurrentUser(); } catch (_) {}
+  try { safeStorage.removeItem('smyle_watt_profile'); } catch (_) {}
+  try { safeStorage.removeItem('smyle_watt_tracks'); } catch (_) {}
+  window.location.href = '/';
+}
+
 function dashLogout() {
   clearCurrentUser();
   // Vide le JWT (localStorage, partagé entre onglets) et notifie les autres composants

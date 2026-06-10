@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import get_current_user
@@ -7,6 +7,24 @@ from app.models.user import User
 from app.schemas.user import UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Suppression de compte RGPD (pack légal v1, 2026-06-10).
+
+    Anonymisation immédiate + retrait public des contenus + déconnexion
+    définitive (l'email anonymisé invalide tous les JWT émis, sub=email).
+    Les exemplaires achetés par d'autres restent dans leur bibliothèque —
+    voir services/account_deletion.py et /legal#confidentialite.
+    """
+    from app.services.account_deletion import delete_account
+
+    await delete_account(db, current_user)
 
 
 @router.get("/me", response_model=UserRead)

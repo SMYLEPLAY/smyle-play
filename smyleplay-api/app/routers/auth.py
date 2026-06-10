@@ -40,6 +40,15 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
         await ensure_default_wishlist(db, new_user)
     except Exception:
         await db.rollback()
+    # Email de bienvenue — best-effort (chantier hygiène revenu 2026-06-10).
+    # Mode test Resend tant que le domaine WATT n'est pas déposé.
+    try:
+        from app.services.emails import send_welcome_email
+        await send_welcome_email(
+            new_user.email, name=new_user.artist_name or None
+        )
+    except Exception:
+        pass
     return new_user
 
 
