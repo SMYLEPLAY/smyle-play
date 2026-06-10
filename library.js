@@ -267,6 +267,15 @@ function renderPrompts(items) {
              </div>`}
       </div>`;
 
+    // Beats — bouton de téléchargement (réservé au propriétaire, download gaté).
+    const downloadBlock = (p.product_type === 'beat') ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header"><span class="lib-content-label">🎚 Beat${p.license_type ? ' · licence ' + esc(p.license_type) : ''}</span></div>
+        <div class="lib-content-body">
+          <button class="lib-copy-btn" onclick="libDownloadBeat('${p.prompt_id}', this)">⬇ Télécharger le fichier</button>
+        </div>
+      </div>` : '';
+
     const cellStyle = p.track_color ? ` style="border-left:3px solid ${esc(p.track_color)}"` : '';
     const playBtn = p.audio_url ? `
       <audio id="lib-audio-${i}" src="${esc(p.audio_url)}" preload="none" class="lib-hidden-audio"></audio>
@@ -297,6 +306,7 @@ function renderPrompts(items) {
           ${weirdnessBlock}
           ${styleInfluenceBlock}
           ${lyricsBlock}
+          ${downloadBlock}
           ${resaleBlock}
         </div>
       </details>`;
@@ -341,9 +351,40 @@ async function libUnlistResale(promptId) {
   }
 }
 
+// Télécharge le fichier d'un beat possédé (download gaté côté serveur).
+// apiFetch ajoute le Bearer ; raw:true renvoie la Response brute → blob.
+async function libDownloadBeat(beatId, btn) {
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Téléchargement…'; }
+  try {
+    const resp = await apiFetch('/beats/' + encodeURIComponent(beatId) + '/download', { raw: true });
+    if (!resp || !resp.ok) {
+      if (window.smyleToast) window.smyleToast('Téléchargement indisponible.', { type: 'error' });
+      return;
+    }
+    const cd = resp.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    const filename = (m && m[1]) ? m[1] : 'beat';
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (_) {
+    if (window.smyleToast) window.smyleToast('Échec du téléchargement.', { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.libListResale = libListResale;
   window.libUnlistResale = libUnlistResale;
+  window.libDownloadBeat = libDownloadBeat;
 }
 
 
