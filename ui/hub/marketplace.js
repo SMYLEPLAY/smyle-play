@@ -62,6 +62,26 @@
     'nostalgique', 'euphorique', 'cinématique', 'loop', 'acapella',
   ];
 
+  // Rôles CONNECT sélectionnés sur la page /artistes (chips inline —
+  // miroir exact des moods DNA de /sons, demande Tom 2026-06-11).
+  // Valeurs = ROLE_CODES backend (schemas/user.py, casquettes migration
+  // 0018), alignées sur les chips CONNECT de la loupe (ui/modals/search.js).
+  const _pageRoleSet = new Set();
+  const _PAGE_ROLES = [
+    { label: 'Artiste',     val: 'artiste'       },
+    { label: 'Producteur',  val: 'producteur'    },
+    { label: 'Beatmaker',   val: 'beatmaker'     },
+    { label: 'Compositeur', val: 'compositeur'   },
+    { label: 'Topliner',    val: 'topliner'      },
+    { label: 'Parolier',    val: 'parolier'      },
+    { label: 'Ghostwriter', val: 'ghostwriter'   },
+    { label: 'Arrangeur',   val: 'arrangeur'     },
+    { label: 'DJ',          val: 'dj'            },
+    { label: 'Ingé son',    val: 'ingenieur_son' },
+    { label: 'Éditeur',     val: 'editeur'       },
+    { label: 'Auditeur',    val: 'auditeur'      },
+  ];
+
   function _injectViewStyles() {
     if (document.getElementById('mp-view-styles')) return;
     const s = document.createElement('style');
@@ -569,6 +589,16 @@
     // On exclut Smyle de la grille — il est en vitrine au-dessus.
     let items = _state.artists
       .filter(a => !a.isOfficial)
+      // Chips CONNECT de /artistes (2026-06-11) : multi-sélection en OR —
+      // un profil reste visible s'il porte AU MOINS un des rôles cochés.
+      .filter(a => {
+        if (!_pageRoleSet.size) return true;
+        const roles = Array.isArray(a.roles) ? a.roles : [];
+        for (const r of _pageRoleSet) {
+          if (roles.includes(r)) return true;
+        }
+        return false;
+      })
       .filter(a => {
         if (!needle) return true;
         const hay = (
@@ -602,8 +632,8 @@
     }
 
     if (items.length === 0) {
-      el.innerHTML = needle
-        ? `<div class="mp-grid-empty">Aucun profil ne correspond à "${_esc(filter)}".</div>`
+      el.innerHTML = (needle || _pageRoleSet.size)
+        ? `<div class="mp-grid-empty">Aucun profil ne correspond à ta sélection.</div>`
         : `<div class="mp-grid-empty">Sois le premier artiste à publier ici. <a href="/dashboard" style="color:#c4b5fd">Deviens artiste →</a></div>`;
       return;
     }
@@ -1115,22 +1145,27 @@
     hint.dataset.searchBar = '1';
     hint.classList.add('mp-hero-search-bar');
 
-    // Rangée de chips mood — UNIQUEMENT sur /sons (filtre les sons, pas les
-    // artistes). Sur /artistes, pas de moods (la partie Connect viendra).
-    // Repliée par défaut dans un dépliant : s'ouvre au clic sur « Filtres »,
-    // pour ne pas encombrer la page (et tenir la montée en critères).
-    const moodChipsHtml = isArtists ? '' :
-      '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
-        _PAGE_MOODS.map(m =>
-          '<button type="button" class="mp-hsb-mood" data-mood="' + m + '">' + _esc(m) + '</button>'
-        ).join('') +
-      '</div>';
+    // Rangée de chips — repliée par défaut dans un dépliant « Filtres » :
+    //   /sons     → moods DNA (filtre les sons)
+    //   /artistes → rôles CONNECT (filtre les profils — ajout 2026-06-11,
+    //               miroir exact de la mécanique moods, multi-sélection OR)
+    const moodChipsHtml = isArtists
+      ? '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
+          _PAGE_ROLES.map(r =>
+            '<button type="button" class="mp-hsb-mood" data-role="' + _esc(r.val) + '">' + _esc(r.label) + '</button>'
+          ).join('') +
+        '</div>'
+      : '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
+          _PAGE_MOODS.map(m =>
+            '<button type="button" class="mp-hsb-mood" data-mood="' + m + '">' + _esc(m) + '</button>'
+          ).join('') +
+        '</div>';
 
-    // Bouton dépliant (chevron + compteur de filtres actifs).
-    const filterBtnHtml = isArtists ? '' :
-      '<button type="button" class="mp-hsb-toggle" aria-expanded="false" title="Filtrer par mood">' +
+    // Bouton dépliant (chevron + compteur de filtres actifs) — les 2 pages.
+    const filterBtnHtml =
+      '<button type="button" class="mp-hsb-toggle" aria-expanded="false" title="' + (isArtists ? 'Filtrer par rôle' : 'Filtrer par mood') + '">' +
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>' +
-        '<span class="mp-hsb-toggle-lbl">Filtres</span>' +
+        '<span class="mp-hsb-toggle-lbl">' + (isArtists ? 'Rôles' : 'Filtres') + '</span>' +
         '<span class="mp-hsb-fcount" hidden>0</span>' +
         '<svg class="mp-hsb-chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
       '</button>';
@@ -1195,14 +1230,16 @@
     };
     input.addEventListener('input', _apply);
 
-    // Dépliant + chips mood (multi-select) → /sons uniquement.
-    if (!isArtists) {
-      const toggle = hint.querySelector('.mp-hsb-toggle');
-      const moods  = hint.querySelector('#mp-hsb-moods');
-      const fcount = hint.querySelector('.mp-hsb-fcount');
+    // Dépliant + chips (multi-select) — /sons : moods · /artistes : rôles.
+    {
+      const toggle  = hint.querySelector('.mp-hsb-toggle');
+      const moods   = hint.querySelector('#mp-hsb-moods');
+      const fcount  = hint.querySelector('.mp-hsb-fcount');
+      // Le set actif dépend de la page (même mécanique des deux côtés).
+      const _theSet = isArtists ? _pageRoleSet : _pageMoodSet;
 
       const _updateCount = () => {
-        const n = _pageMoodSet.size;
+        const n = _theSet.size;
         if (!fcount) return;
         fcount.textContent = String(n);
         fcount.hidden = n === 0;
@@ -1219,9 +1256,9 @@
 
       hint.querySelectorAll('.mp-hsb-mood').forEach(chip => {
         chip.addEventListener('click', () => {
-          const m = chip.dataset.mood;
-          if (_pageMoodSet.has(m)) { _pageMoodSet.delete(m); chip.classList.remove('is-active'); }
-          else                     { _pageMoodSet.add(m);    chip.classList.add('is-active'); }
+          const key = isArtists ? chip.dataset.role : chip.dataset.mood;
+          if (_theSet.has(key)) { _theSet.delete(key); chip.classList.remove('is-active'); }
+          else                  { _theSet.add(key);    chip.classList.add('is-active'); }
           _updateCount();
           _apply();
         });
