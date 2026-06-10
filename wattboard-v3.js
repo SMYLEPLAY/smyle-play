@@ -85,25 +85,84 @@
     refreshHeroStats();
   }
 
-  /* "Créer" contextuel : positionne le mode du formulaire d'upload AVANT
+  /* C1.1 — contexte de création par CELLULE (décision Tom 2026-06-10) :
+     chaque cellule n'expose que SES types de publication, parce que la
+     cellule d'origine déterminera le positionnement marketplace du contenu.
+       sons  → Avec recette · Simple (sans prompt)
+       beats → Beat seul · Recette + beat (pack)
+     Le contexte est posé sur dashUploadForm.dataset.context ; les pills
+     hors contexte sont masquées en CSS (wattboard-v3.css). */
+  function setUploadContext(ctx) {
+    var form = $('dashUploadForm');
+    if (form) form.dataset.context = ctx;
+  }
+
+  /* "Créer" contextuel : positionne contexte + mode du formulaire AVANT
      d'ouvrir l'écran, pour que le choix structurant soit déjà fait. */
+  var CREATE_MAP = {
+    son:     { ctx: 'sons',  mode: 'with_prompt' },
+    partage: { ctx: 'sons',  mode: 'simple' },
+    beat:    { ctx: 'beats', mode: 'beat' },
+    pack:    { ctx: 'beats', mode: 'pack' },
+  };
   function createAction(kind) {
     closeCreateMenu();
     if (kind === 'adn')  { openScreen('adn');  return; }
     if (kind === 'voix') { openScreen('voix'); return; }
-    var mode = { son: 'with_prompt', partage: 'simple', beat: 'beat', pack: 'pack' }[kind] || 'with_prompt';
+    var c = CREATE_MAP[kind] || CREATE_MAP.son;
+    setUploadContext(c.ctx);
     openScreen('sons');
-    try { if (typeof setUploadMode === 'function') setUploadMode(mode); } catch (_) {}
+    try { if (typeof setUploadMode === 'function') setUploadMode(c.mode); } catch (_) {}
     // Amène directement la dropzone à l'écran (zone 1b de la section).
     var dz = $('dashDropzone');
     if (dz) { try { dz.scrollIntoView({ block: 'center' }); } catch (_) {} }
   }
 
-  /* "Voir" sur la tuile Sons : déplie le catalogue (wrapper 1a replié). */
-  function viewSons() {
+  /* "Voir" sur les tuiles Sons / Beats : même écran catalogue, mais le
+     contexte de création suit la cellule d'où on vient. Déplie le
+     catalogue (wrapper 1a replié). */
+  function viewSons(ctx) {
+    setUploadContext(ctx || 'sons');
+    try {
+      if (typeof setUploadMode === 'function') {
+        setUploadMode(ctx === 'beats' ? 'beat' : 'with_prompt');
+      }
+    } catch (_) {}
     openScreen('sons');
     var hdr1a = document.querySelector('#sec-upload .is-1a-collapsed');
     if (hdr1a) { try { hdr1a.click(); } catch (_) {} }
+  }
+
+  /* C1.1 — Analytique : le bloc "2a · Mes Sons Publiés" prenait tout
+     l'écran (retour QA Tom). On le rend pliable, PLIÉ par défaut, sur le
+     modèle du wrapper 1a de la section Création. */
+  function makeStatsTracksCollapsible() {
+    var stats = $('sec-stats');
+    if (!stats) return;
+    var sub = stats.querySelector('.dash-subhdr');   // 1er subhdr = 2a
+    if (!sub || sub.dataset.wb3Collapsible) return;
+    sub.dataset.wb3Collapsible = '1';
+
+    var toMove = [];
+    var n = sub.nextElementSibling;
+    while (n && !n.classList.contains('dash-subhdr')) {
+      toMove.push(n);
+      n = n.nextElementSibling;
+    }
+    if (!toMove.length) return;
+    var wrap = document.createElement('div');
+    toMove.forEach(function (el) { wrap.appendChild(el); });
+    stats.insertBefore(wrap, n);   // n = subhdr 2b (ou null → fin)
+
+    wrap.style.display = 'none';
+    sub.classList.add('is-1a-collapsed');   // réutilise le chevron existant
+    sub.style.cursor = 'pointer';
+    sub.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('button, a, input, select, textarea')) return;
+      var hidden = wrap.style.display === 'none';
+      wrap.style.display = hidden ? '' : 'none';
+      sub.classList.toggle('is-1a-collapsed', !hidden);
+    });
   }
 
   /* ── Bandeau identité ───────────────────────────────────────────────── */
@@ -183,10 +242,15 @@
            + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { locked: true, lockLabel: 'Chantier C4' })
            + tileHtml('fx',         '✨', 'FX',         null, { locked: true, lockLabel: 'Phase 2' });
     }
-    return tileHtml('sons',  '🤖', 'Sons IA',     'sons',  { createKind: 'son',  viewKey: 'sons', countLabel: 'publiés' })
-         + tileHtml('beats', '🥁', 'Beats',       'beats', { createKind: 'beat', viewKey: 'sons', countLabel: 'en vente' })
-         + tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',  countLabel: 'signature' })
-         + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix', countLabel: 'au catalogue' });
+    return tileHtml('sons',  '🤖', 'Sons IA',     'sons',  { createKind: 'son',  viewKey: 'sons',  countLabel: 'publiés' })
+         + tileHtml('beats', '🥁', 'Beats',       'beats', { createKind: 'beat', viewKey: 'beats', countLabel: 'en vente' })
+         + tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',   countLabel: 'signature' })
+         + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' })
+         // Vision Tom 2026-06-10 : musique perso (Réel, humaine) postée sur
+         // le profil dans un espace dédié, réservée à un palier d'abo →
+         // nécessite la couche entitlements (C6). Affichée verrouillée pour
+         // acter la décision, comme FX côté Visuel.
+         + tileHtml('perso', '🎤', 'Musique perso', null,  { locked: true, lockLabel: 'Palier · C6' });
   }
 
   /* ── Menu "+ Créer" ─────────────────────────────────────────────────── */
@@ -332,7 +396,7 @@
       if (t.hasAttribute('data-wb3-create')) { createAction(t.getAttribute('data-wb3-create')); return; }
       if (t.hasAttribute('data-wb3-view')) {
         var key = t.getAttribute('data-wb3-view');
-        if (key === 'sons') viewSons(); else openScreen(key);
+        if (key === 'sons' || key === 'beats') viewSons(key); else openScreen(key);
         return;
       }
       if (t.classList.contains('wb3-monde-btn')) {
@@ -385,6 +449,12 @@
     if (main && dna   && dna.parentNode   === upload) main.appendChild(dna);
     if (main && voice && voice.parentNode === upload) main.appendChild(voice);
 
+    // C1.1 — Analytique : "Mes Sons Publiés" plié par défaut.
+    makeStatsTracksCollapsible();
+
+    // C1.1 — contexte de création par défaut : Sons IA.
+    setUploadContext('sons');
+
     render();
     bind();
     document.body.classList.add('wb3-active');
@@ -401,14 +471,17 @@
     }
   }
 
-  // Script defer : son listener DOMContentLoaded est enregistré APRÈS ceux
-  // de dashboard.js et de l'inline (ordre de parsing) → init() court en
-  // dernier, une fois les accordéons legacy en place. Si le DOM est déjà
-  // prêt (cache bfcache), on init directement.
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+  // ⚠️ Timing (bug C1 corrigé en C1.1) : un script `defer` s'exécute quand
+  // readyState vaut DÉJÀ 'interactive', AVANT que l'événement
+  // DOMContentLoaded ne soit émis. L'ancien test `readyState === 'loading'`
+  // faisait donc tourner init() AVANT les handlers DOMContentLoaded legacy
+  // (dashboard.js + inline regroup/collapse) → l'inline re-déplaçait ensuite
+  // sec-dna / sec-voice-sale DANS sec-upload, et les écrans ADN / Voix
+  // s'ouvraient vides. Règle : init() doit courir APRÈS DOMContentLoaded.
+  if (document.readyState === 'complete') {
+    init();   // bfcache / injection tardive : tout est déjà passé
   } else {
-    init();
+    document.addEventListener('DOMContentLoaded', init);
   }
 
   // API publique (debug / autres scripts)

@@ -301,6 +301,24 @@ body.wb3-active.wb3-screen-open #wb3-backbar { display: block; }
   .dash-mode-switch { grid-template-columns: repeat(4, 1fr); }
 }
 
+/* ── C1.1 — création CONTEXTUELLE par cellule (décision Tom 2026-06-10) ──
+   La cellule d'origine détermine les types proposés (et, à terme, le
+   positionnement marketplace du contenu) :
+     contexte "sons"  → Avec recette · Simple
+     contexte "beats" → Beat seul · Recette + beat (pack)               */
+#dashUploadForm[data-context="sons"] .dash-mode-pill[data-mode="beat"],
+#dashUploadForm[data-context="sons"] .dash-mode-pill[data-mode="pack"],
+#dashUploadForm[data-context="beats"] .dash-mode-pill[data-mode="with_prompt"],
+#dashUploadForm[data-context="beats"] .dash-mode-pill[data-mode="simple"] {
+  display: none;
+}
+@media (min-width: 961px) {
+  #dashUploadForm[data-context="sons"] .dash-mode-switch,
+  #dashUploadForm[data-context="beats"] .dash-mode-switch {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* beat : pas de colonne recette (comme simple) */
 [data-mode="beat"] .dash-upload-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 220px); }
 [data-mode="beat"] .dash-upload-col-prompt,
