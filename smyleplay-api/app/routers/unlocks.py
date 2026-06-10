@@ -26,6 +26,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.notification import NotificationType
 from app.models.user import User
+from app.services.emails import send_purchase_emails
 from app.services.notifications import create_notification
 from app.schemas.unlock import (
     OwnedAdnRead,
@@ -124,6 +125,26 @@ async def unlock_prompt(
             )
             await db.commit()
 
+            # Email 💸 vendeur + reçu acheteur — best-effort, APRÈS commit
+            # (chantier hygiène revenu 2026-06-10). Titre résolu en DB.
+            try:
+                from sqlalchemy import select as _select
+
+                from app.models.prompt import Prompt as _Prompt
+                _title = (await db.execute(
+                    _select(_Prompt.title).where(_Prompt.id == prompt_id)
+                )).scalar_one_or_none()
+                await send_purchase_emails(
+                    db,
+                    buyer=current_user,
+                    seller_id=result.unlocked_prompt.original_artist_id,
+                    amount=result.paid,
+                    item_title=_title,
+                    item_kind="prompt",
+                )
+            except Exception:
+                pass
+
         # Parrainage (mécanique 1) : 1er achat = action qualifiante qui
         # débloque la récompense si le buyer a été parrainé. Idempotent et
         # best-effort — un échec ici ne casse jamais l'achat déjà committé.
@@ -204,6 +225,18 @@ async def unlock_adn(
             )
             await db.commit()
 
+            # Email 💸 vendeur + reçu acheteur — best-effort, après commit.
+            try:
+                await send_purchase_emails(
+                    db,
+                    buyer=current_user,
+                    seller_id=result.transaction.seller_id,
+                    amount=result.paid,
+                    item_kind="adn",
+                )
+            except Exception:
+                pass
+
         # Parrainage (mécanique 1) : 1er achat = action qualifiante. Idempotent.
         try:
             from app.services.referrals import maybe_reward_referral
@@ -282,6 +315,25 @@ async def unlock_voice(
                 },
             )
             await db.commit()
+
+            # Email 💸 vendeur + reçu acheteur — best-effort, après commit.
+            try:
+                from sqlalchemy import select as _select
+
+                from app.models.voice import Voice as _Voice
+                _vname = (await db.execute(
+                    _select(_Voice.name).where(_Voice.id == voice_id)
+                )).scalar_one_or_none()
+                await send_purchase_emails(
+                    db,
+                    buyer=current_user,
+                    seller_id=result.transaction.seller_id,
+                    amount=result.paid,
+                    item_title=(f"Voix · {_vname}" if _vname else None),
+                    item_kind="voice",
+                )
+            except Exception:
+                pass
 
         # Parrainage (mécanique 1) : 1er achat = action qualifiante. Idempotent.
         try:

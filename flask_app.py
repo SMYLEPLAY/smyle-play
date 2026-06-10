@@ -142,6 +142,14 @@ def create_app(config_class=None):
     def library_page():
         return send_from_directory(BASE_DIR, 'library.html')
 
+    # Pack légal v1 (chantier hygiène revenu 2026-06-10) — page unique à
+    # sections ancrées (#mentions, #cgu, #confidentialite, #contenu).
+    # Textes avec placeholders [À COMPLÉTER] tant que l'entité juridique
+    # n'existe pas — rien n'est déposé/enregistré, simple page statique.
+    @app.route('/legal')
+    def legal_page():
+        return send_from_directory(BASE_DIR, 'legal.html')
+
     # Pages dédiées "voir tout" — réutilisent le shell index.html. marketplace.js
     # détecte le chemin (/sons, /artistes) et affiche la cellule en plein.
     # Vraies URL partageables + indexables (SEO).

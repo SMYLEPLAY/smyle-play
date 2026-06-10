@@ -579,6 +579,25 @@
       </aside>
 
     </div>
+
+    <!-- ═══ Zone danger — suppression de compte RGPD (pack légal v1) ═══ -->
+    <div style="margin-top:28px;padding:16px 18px;border:1px solid rgba(255,85,119,.35);
+                border-radius:10px;">
+      <div style="font-size:.85rem;font-weight:700;color:var(--sp-danger,#ff5577);margin-bottom:6px;">
+        Zone danger
+      </div>
+      <div style="font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:12px;">
+        Supprimer ton compte anonymise immédiatement ton profil et retire tes
+        contenus du public. Les exemplaires déjà achetés par d'autres restent
+        dans leur bibliothèque (auteur affiché « Artiste supprimé »).
+        Action définitive — détail dans <a href="/legal#confidentialite"
+        style="color:rgba(255,255,255,.7);">la politique de confidentialité</a>.
+      </div>
+      <button type="button" class="dash-btn-ghost" onclick="dashDeleteAccount()"
+              style="border-color:rgba(255,85,119,.5);color:var(--sp-danger,#ff5577);">
+        Supprimer mon compte
+      </button>
+    </div>
     </details>
   </section>
 
@@ -1912,7 +1931,7 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <script src="/ui/playlists.js" defer></script>
-<script src="dashboard.js?v=20260610e"></script>
+<script src="dashboard.js?v=20260610f"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260610e" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
@@ -2141,5 +2160,7 @@
 <script src="/ui/messaging/messaging.js" defer></script>
 <script src="/ui/core/trade-view.js" defer></script>
 <script src="/ui/core/page-services.js" defer></script>
+<!-- Pack légal v1 — footer liens /legal -->
+<script src="/ui/core/legal-footer.js" defer></script>
 </body>
 </html>

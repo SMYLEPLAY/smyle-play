@@ -15,6 +15,16 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: str | None = None
 
+    # --- Emails transactionnels (Resend) — chantier hygiène revenu 2026-06-10.
+    # Sans clé : les emails sont DÉSACTIVÉS proprement (aucune erreur, aucun
+    # envoi) — le produit fonctionne à l'identique. Avec clé mais sans domaine
+    # vérifié : Resend n'autorise l'envoi que vers l'adresse du compte Resend
+    # (mode test) — suffisant tant que le domaine WATT n'est pas déposé.
+    RESEND_API_KEY: str | None = None
+    # Expéditeur par défaut : domaine de test Resend. À remplacer par
+    # "WATT <hello@domaine-officiel>" quand le domaine sera déposé + vérifié.
+    EMAIL_FROM: str = "WATT <onboarding@resend.dev>"
+
     # --- JWT ---
     # Défaut dev-friendly ; en prod DOIT être défini via SECRET_KEY env var.
     SECRET_KEY: str = "dev-secret-change-in-production"

@@ -99,6 +99,28 @@ async def buy_pack(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except PackNotPurchasable as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+    # Email 💸 vendeur + reçu acheteur — best-effort, après commit
+    # (chantier hygiène revenu 2026-06-10).
+    try:
+        from sqlalchemy import select as _select
+
+        from app.models.track import Track as _Track
+        from app.services.emails import send_purchase_emails
+        row = (await db.execute(
+            _select(_Track.title, _Track.artist_id).where(_Track.id == track_id)
+        )).first()
+        if row:
+            await send_purchase_emails(
+                db,
+                buyer=current_user,
+                seller_id=row.artist_id,
+                amount=result["price_paid"],
+                item_title=f"Beat · {row.title}",
+                item_kind="prompt",
+            )
+    except Exception:
+        pass
     return PackBuyResult(**result)
 
 
