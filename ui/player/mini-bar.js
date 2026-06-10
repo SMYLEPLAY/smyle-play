@@ -22,6 +22,18 @@
 
   // ── Build DOM ──────────────────────────────────────────────────────────────
   function _build() {
+    // Fix 2026-06-11 — la mini-bar embarque SON CSS (ui/player/mini-bar.css,
+    // extrait de style.css). Avant : les pages qui ne chargeaient pas
+    // style.css (library, artiste…) affichaient la barre NUE en texte brut
+    // en bas de page ("—WATT ⏮▶⏭ ↺♡+×"). Une seule source de style,
+    // valable sur toutes les pages qui incluent ce script.
+    if (!document.getElementById('smb-styles')) {
+      const lk = document.createElement('link');
+      lk.id   = 'smb-styles';
+      lk.rel  = 'stylesheet';
+      lk.href = '/ui/player/mini-bar.css?v=20260611';
+      document.head.appendChild(lk);
+    }
     if (document.getElementById('smyle-mini-bar')) {
       _barEl = document.getElementById('smyle-mini-bar');
       return;
@@ -29,6 +41,10 @@
     const el = document.createElement('div');
     el.id = 'smyle-mini-bar';
     el.setAttribute('aria-hidden', 'true');
+    // Ceinture + bretelles : tant que le CSS n'est pas chargé, la barre
+    // reste en display:none inline → impossible de la voir « nue ».
+    // _show() retire ce style inline, le CSS prend alors le relais.
+    el.style.display = 'none';
     el.innerHTML = [
       '<div class="smb-progress-wrap" id="smb-progress-wrap">',
         '<div class="smb-progress-fill" id="smb-progress-fill"></div>',
@@ -131,6 +147,7 @@
   // ── Show / Hide ────────────────────────────────────────────────────────────
   function _show() {
     if (!_barEl) return;
+    _barEl.style.display = '';   // retire le display:none inline de _build()
     _barEl.classList.add('smb-visible');
     _barEl.setAttribute('aria-hidden', 'false');
     document.body.classList.add('smyle-mini-bar-open');
