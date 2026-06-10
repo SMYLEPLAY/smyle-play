@@ -46,6 +46,16 @@ class TrackUpdate(BaseModel):
     color: str | None = Field(default=None, pattern=HEX_COLOR_RE)
     cover_url: str | None = Field(default=None, max_length=2048)
     prompt_id: UUID | None = None
+    # C1 WattBoard v3 (2026-06-10) — liaison beat. Le workflow création
+    # Audio (modes "Beat seul" / "Recette + beat") crée le track, puis le
+    # beat (POST /artist/me/beats), puis lie les deux ici. Les colonnes
+    # tracks.beat_id / tracks.pack_price_credits existaient en DB depuis la
+    # migration beats mais n'étaient PAS écrivables via l'API (gap détecté
+    # à l'audit C1). Ownership du beat vérifiée dans services.tracks.
+    beat_id: UUID | None = None
+    # Prix du pack recette+beat (crédits). Pertinent seulement si le track
+    # a un prompt_id ET un beat_id — consommé par POST /pack/{track_id}/buy.
+    pack_price_credits: int | None = Field(default=None, ge=1)
     # Tags libres — séparés par des virgules ("chill, dark, guitare, 90bpm")
     tags: str | None = Field(default=None, max_length=500)
 
@@ -66,6 +76,9 @@ class TrackRead(BaseModel):
     color: str | None
     cover_url: str | None = None
     prompt_id: UUID | None = None
+    # C1 — exposés pour le front (cards beat /beats en C2, drawer pack).
+    beat_id: UUID | None = None
+    pack_price_credits: int | None = None
     # Prix du prompt lié — None si pas de prompt ou non injecté.
     # Peuplé uniquement dans les endpoints playlist detail.
     prompt_price_credits: int | None = None

@@ -279,7 +279,15 @@ class PromptRead(BaseModel):
     artist_id: UUID
     title: str
     description: str | None = None
-    prompt_text: str
+    # C1 (2026-06-10) — prompt_text devient nullable : un BEAT est une ligne
+    # `prompts` avec prompt_text=NULL (ck_prompts_prompt_text_length). Sans
+    # ça, le premier beat créé faisait exploser GET /artist/me/prompts en
+    # erreur de validation Pydantic (bug latent détecté à l'audit C1).
+    prompt_text: str | None = None
+    # C1 — distinguer recette / beat dans le catalogue artiste (tuiles
+    # WattBoard v3 + futures listes filtrées C2).
+    product_type: str = "recipe"
+    license_type: str | None = None
     # Paroles complètes — exposées dans cette vue (owner ou acheteur après
     # unlock). JAMAIS dans les vues publiques. Bug fix 2026-05-04 :
     # le frontend envoyait `lyrics` au create mais Pydantic rejetait

@@ -7,6 +7,11 @@ from app.models.user import User
 from app.schemas.track import TrackCreate
 
 
+class BeatLinkInvalid(Exception):
+    """beat_id fourni au PATCH track invalide : inexistant, pas un beat,
+    supprimé, ou appartenant à un autre artiste. → 422 côté router."""
+
+
 async def create_track_with_dna(
     db: AsyncSession,
     user: User,
@@ -95,6 +100,25 @@ async def patch_track(
     # exclude_unset=True pour éviter d'écraser avec None les champs non
     # envoyés. Le caller envoie uniquement ce qu'il veut changer.
     data = payload.model_dump(exclude_unset=True)
+
+    # C1 (2026-06-10) — liaison beat : on ne lie JAMAIS un beat qui
+    # n'appartient pas à l'artiste courant (sinon n'importe qui pourrait
+    # vampiriser le beat d'un autre en pointant son track dessus).
+    if data.get("beat_id") is not None:
+        from app.models.prompt import Prompt
+
+        beat = (await db.execute(
+            select(Prompt).where(
+                Prompt.id == data["beat_id"],
+                Prompt.product_type == "beat",
+                Prompt.is_deleted.is_(False),
+            )
+        )).scalar_one_or_none()
+        if beat is None or beat.artist_id != user.id:
+            raise BeatLinkInvalid(
+                "beat_id invalide : beat introuvable ou pas à toi."
+            )
+
     for field, value in data.items():
         setattr(track, field, value)
 
