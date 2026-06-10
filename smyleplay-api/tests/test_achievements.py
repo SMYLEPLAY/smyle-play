@@ -306,7 +306,12 @@ async def test_get_achievements_catalog_endpoint_returns_seeded_badges():
     assert r.status_code == 200, r.text
     data = r.json()
     assert "items" in data and "total" in data
-    assert data["total"] == 13, f"Attendu 13 badges seedés, obtenu {data['total']}"
+    # Le catalogue grossit au fil des migrations (0009:13 + 0040:6 + 0044:11
+    # = 30 à ce jour, et d'autres viendront). On vérifie qu'il est seedé et
+    # non-trivial, sans coder un total exact qui se périme à chaque ajout de
+    # badge (c'est ce qui cassait ce test : il exigeait == 13).
+    assert data["total"] >= 13, f"Catalogue badges anormalement petit : {data['total']}"
+    assert data["total"] == len(data["items"]), "total doit matcher le nombre d'items"
 
     axes = {item["axis"] for item in data["items"]}
     # Les enum values sont sérialisées en string (lowercase)
