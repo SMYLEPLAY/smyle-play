@@ -292,12 +292,14 @@
       /* 3. tuiles de contenu */
       '<div class="wb3-tiles">' + tilesHtml(monde) + '</div>' +
 
-      /* 4. rangée transversale */
+      /* 4. rangée transversale (+ lien Bibliothèque — fix 2026-06-11 :
+            la collection n'était pas accessible depuis le board) */
       '<div class="wb3-cross">' +
         '<button type="button" class="wb3-cross-btn" data-wb3-view="playlists">📚 Playlists</button>' +
         '<button type="button" class="wb3-cross-btn" data-wb3-view="trades">🔄 Échanges</button>' +
         '<button type="button" class="wb3-cross-btn" data-wb3-view="trophees">🏆 Trophées</button>' +
         '<button type="button" class="wb3-cross-btn" data-wb3-view="stats">📈 Analytique</button>' +
+        '<a class="wb3-cross-btn" href="/library" style="text-decoration:none;">📦 Bibliothèque</a>' +
       '</div>';
   }
 

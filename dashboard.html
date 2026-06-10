@@ -82,6 +82,14 @@
 
   <div class="dash-topbar-right">
 
+    <!-- Lien BIBLIOTHÈQUE (fix 2026-06-11 — la bibliothèque n'était pas
+         accessible depuis le WATT BOARD, retour QA Tom). -->
+    <a href="/library" title="Ma bibliothèque"
+       style="display:inline-flex;align-items:center;gap:6px;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:7px 12px;text-decoration:none;font-size:12px;font-weight:700;margin-right:10px;">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      BIBLIOTHÈQUE
+    </a>
+
     <!-- Bouton BOUTIQUE — hub unique (dépenser ET gagner des Smyles).
          Logique autonome dans ui/modals/boutique.js + engagement.js. -->
     <button type="button" onclick="if(window.openBoutique)window.openBoutique()" title="Boutique"
@@ -1910,7 +1918,7 @@
 <script src="/ui/playlists.js" defer></script>
 <script src="dashboard.js?v=20260610g"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
-<script src="wattboard-v3.js?v=20260610e" defer></script>
+<script src="wattboard-v3.js?v=20260611a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>
