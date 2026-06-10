@@ -968,9 +968,83 @@ async def increment_plays(
         .where(Track.id == track.id)
         .values(plays=func.coalesce(Track.plays, 0) + 1)
     )
+
+    # Vraies stats (2026-06-10) : chaque play insère AUSSI un événement
+    # horodaté play_events → la courbe 7j/30j du dashboard devient réelle
+    # (avant : données simulées côté front). Anonyme — pas de user ni d'IP.
+    # Best-effort : un échec ici ne casse pas le compteur total.
+    try:
+        from app.models.play_event import PlayEvent
+        db.add(PlayEvent(track_id=track.id))
+    except Exception:
+        pass
+
     await db.commit()
     await db.refresh(track)
     return {"ok": True, "plays": int(track.plays or 0)}
+
+
+@router.get("/me/plays-history")
+async def my_plays_history(
+    days: int = 30,
+    db: AsyncSession = Depends(get_db),
+    token: str | None = Depends(OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)),
+) -> dict:
+    """
+    Courbe d'écoutes RÉELLE de l'artiste connecté (chantier vraies stats,
+    2026-06-10) : nombre de plays par jour sur ses tracks, sur `days` jours
+    (1..90), zéros inclus pour les jours sans écoute.
+
+    Réponse : {"days": N, "since": "YYYY-MM-DD", "series": [int, ...]}
+    (series[0] = il y a N-1 jours … series[-1] = aujourd'hui, fuseau UTC).
+
+    Les écoutes antérieures au déploiement de play_events n'existent pas
+    dans la table : la courbe démarre à cette date (assumé — le TOTAL
+    affiché ailleurs reste Track.plays, lui complet).
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.play_event import PlayEvent
+
+    # Auth manuelle (le router watt-compat n'a pas de dépendance auth
+    # globale) : token requis, résolu par email comme partout.
+    if not token:
+        return {"days": 0, "since": None, "series": []}
+    email = decode_access_token(token)
+    if email is None:
+        return {"days": 0, "since": None, "series": []}
+    user = (await db.execute(
+        select(User).where(User.email == email)
+    )).scalar_one_or_none()
+    if user is None:
+        return {"days": 0, "since": None, "series": []}
+
+    days = max(1, min(int(days or 30), 90))
+    now = datetime.now(timezone.utc)
+    since = (now - timedelta(days=days - 1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
+    rows = (await db.execute(
+        select(
+            func.date_trunc("day", PlayEvent.created_at).label("day"),
+            func.count(PlayEvent.id),
+        )
+        .join(Track, Track.id == PlayEvent.track_id)
+        .where(
+            Track.artist_id == user.id,
+            PlayEvent.created_at >= since,
+        )
+        .group_by("day")
+    )).all()
+    by_day = {row[0].date().isoformat(): int(row[1]) for row in rows}
+
+    series = []
+    for i in range(days):
+        d = (since + timedelta(days=i)).date().isoformat()
+        series.append(by_day.get(d, 0))
+
+    return {"days": days, "since": since.date().isoformat(), "series": series}
 
 
 @router.get("/stats")

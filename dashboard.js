@@ -488,7 +488,29 @@ async function fetchRealRanking() {
   }
 }
 
-// Données historique écoutes simulées (7j)
+// ── Historique d'écoutes RÉEL (chantier vraies stats, 2026-06-10) ─────────
+// Avant : courbe SIMULÉE générée côté client (getPlaysHistory). Maintenant :
+// GET /watt/me/plays-history agrège la table play_events par jour. Les
+// écoutes antérieures au déploiement n'ont pas d'événements : la courbe
+// démarre à cette date (le TOTAL affiché reste complet via Track.plays).
+const _playsHistoryCache = {};
+async function fetchPlaysHistory(period) {
+  const days = period === '7j' ? 7 : 30;   // '30j' et 'total' → 30 jours
+  const key = String(days);
+  if (_playsHistoryCache[key]) return _playsHistoryCache[key];
+  try {
+    if (typeof apiFetch === 'function') {
+      const resp = await apiFetch('/watt/me/plays-history?days=' + days);
+      const series = (resp && Array.isArray(resp.series)) ? resp.series : [];
+      if (series.length) { _playsHistoryCache[key] = series; return series; }
+    }
+  } catch (_) { /* silencieux — courbe à zéro plutôt qu'une erreur */ }
+  return new Array(days).fill(0);
+}
+
+// (Ancienne courbe simulée — conservée nulle part : remplacée par
+// fetchPlaysHistory ci-dessus. Fonction laissée pour d'éventuels appels
+// externes, mais elle n'est plus utilisée par renderChart.)
 function getPlaysHistory(period) {
   const tracks = getMyTracks();
   const days = period === 'total' ? 30 : parseInt(period);
@@ -3994,8 +4016,9 @@ function renderStats() {
   renderChart(_currentPeriod);
 }
 
-function renderChart(period) {
-  const data    = getPlaysHistory(period);
+async function renderChart(period) {
+  // Vraies stats (2026-06-10) — données réelles play_events, plus de mock.
+  const data    = await fetchPlaysHistory(period);
   if (!data.length) return;
   const maxVal  = Math.max(...data, 1);
   const chartEl = document.getElementById('statsChart');
