@@ -454,6 +454,11 @@ async def list_artists(db: AsyncSession = Depends(get_db)) -> dict:
             # Phase 2 refonte marketplace : flag officiel Smyle. Le front
             # l'utilise pour afficher le checkmark coloré de confiance.
             "isOfficial":     bool(user.is_official),
+            # Page /artistes (2026-06-11) — chips CONNECT inline : le front
+            # filtre par rôles (casquettes migration 0018). + avatarUrl que
+            # la card lisait déjà sans jamais le recevoir.
+            "roles":          list(user.roles) if user.roles else [],
+            "avatarUrl":      user.avatar_url or "",
             "created_at":     user.created_at.isoformat() if user.created_at else None,
         })
 
