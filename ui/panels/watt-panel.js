@@ -448,6 +448,15 @@ function _renderArtistTab(container) {
 function _fetchArtistStats() {
   apiFetch('/watt/me/stats').then(d => {
     const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    // Pas connecté → l'API renvoie authenticated:false avec des zéros.
+    // On affiche "—" partout plutôt que de faux "0 sons / 0 écoutes"
+    // alors que l'artiste a peut-être 81 sons (constat audit 2026-06-10).
+    if (d && d.authenticated === false) {
+      el('artist-tracks', '—');
+      el('artist-plays', '—');
+      el('artist-rank', '—');
+      return;
+    }
     el('artist-tracks', d.tracks || 0);
     el('artist-plays', d.plays || 0);
     el('artist-rank', d.rank ? `#${d.rank}` : '—');
@@ -491,6 +500,11 @@ function _wattCellLoad(key, content) {
   if (key === 'stats') {
     content.innerHTML = '<div style="opacity:.6">Chargement…</div>';
     apiFetch('/watt/me/stats').then(d => {
+      // Pas connecté → message clair plutôt que de faux zéros.
+      if (d && d.authenticated === false) {
+        content.innerHTML = '<div style="opacity:.6">Connecte-toi pour voir tes stats.</div>';
+        return;
+      }
       content.innerHTML = `
         <div style="display:flex;gap:18px;flex-wrap:wrap">
           <div><strong style="font-size:18px">${d.tracks || 0}</strong><br><span style="opacity:.6">Sons</span></div>

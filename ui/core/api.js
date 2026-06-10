@@ -32,53 +32,49 @@ const API_BASE = (function resolveApiBase() {
 })();
 
 
-// ── 2. TOKEN JWT (sessionStorage — fix P1-B10 cross-onglet) ─────────────────
+// ── 2. TOKEN JWT (localStorage — partagé entre onglets) ─────────────────────
 //
-// Avant cette PR, le token vivait dans localStorage qui est PARTAGÉ entre
-// tous les onglets de la même origine. Conséquence : impossible de tester
-// l'achat avec 2 comptes différents dans 2 onglets Chrome (le 2e login
-// écrasait le 1er pour TOUS les onglets — workaround = navigateurs séparés).
+// Historique : P1-B10 avait basculé le token vers sessionStorage (isolé par
+// onglet) pour pouvoir tester 2 comptes dans 2 onglets. Trade-off devenu
+// inacceptable en prod réelle : CHAQUE nouvel onglet (lien partagé, cmd+clic,
+// fenêtre) arrivait déconnecté alors que l'utilisateur était connecté
+// ailleurs — incohérence visible (solde affiché + bouton "Se connecter") et
+// rejet systématique du /dashboard. Constat session du 2026-06-10.
 //
-// On bascule sur sessionStorage qui est isolé par onglet/fenêtre. Trade-off
-// UX : fermer un onglet et le rouvrir = relogin (sessionStorage est vidé
-// quand l'onglet se ferme). Acceptable pour alpha (population technique
-// faible volume) ; on ajoutera plus tard un "remember me" via cookies si
-// besoin.
+// Retour à localStorage = comportement standard d'une SPA : la connexion
+// vaut pour tout le navigateur. Le besoin de tester 2 comptes se couvre par
+// une fenêtre privée ou un 2e profil Chrome (pratique standard).
 //
-// Migration douce (transition deploy) : on lit aussi localStorage en
-// fallback au tout 1er accès après le déploiement — comme ça un user déjà
-// connecté avant ne se voit pas brutalement déconnecté. La valeur est
-// transférée vers sessionStorage puis supprimée de localStorage pour ne
-// pas re-fuiter cross-onglet.
+// Migration douce (transition deploy) : si un token vit encore en
+// sessionStorage (posé par la version précédente), on le recopie vers
+// localStorage au boot — pas de logout brutal pour les sessions en cours.
 
 const _TOKEN_KEY = 'smyle_api_token';
 
-function _migrateLegacyTokenOnce() {
+function _migrateSessionTokenOnce() {
   try {
-    if (sessionStorage.getItem(_TOKEN_KEY)) return;  // déjà migré
-    const legacy = localStorage.getItem(_TOKEN_KEY);
-    if (legacy) {
-      sessionStorage.setItem(_TOKEN_KEY, legacy);
-      localStorage.removeItem(_TOKEN_KEY);
+    if (localStorage.getItem(_TOKEN_KEY)) return;  // déjà en place
+    const fromSession = sessionStorage.getItem(_TOKEN_KEY);
+    if (fromSession) {
+      localStorage.setItem(_TOKEN_KEY, fromSession);
+      sessionStorage.removeItem(_TOKEN_KEY);
     }
   } catch (_) { /* mode privé / quota — silent */ }
 }
-_migrateLegacyTokenOnce();
+_migrateSessionTokenOnce();
 
 function getAuthToken() {
-  try { return sessionStorage.getItem(_TOKEN_KEY) || null; }
+  try { return localStorage.getItem(_TOKEN_KEY) || null; }
   catch (_) { return null; }
 }
 
 function setAuthToken(token) {
   try {
-    if (token) sessionStorage.setItem(_TOKEN_KEY, token);
-    else       sessionStorage.removeItem(_TOKEN_KEY);
-    // Filet : si un legacy token traîne encore en localStorage (cas où
-    // _migrateLegacyTokenOnce a tourné mais l'utilisateur revient depuis
-    // un autre device/onglet où la migration n'a pas eu lieu), on le purge
-    // aussi pour éviter qu'il ressuscite à la prochaine visite.
-    try { localStorage.removeItem(_TOKEN_KEY); } catch (_) { /* */ }
+    if (token) localStorage.setItem(_TOKEN_KEY, token);
+    else       localStorage.removeItem(_TOKEN_KEY);
+    // Filet : purge un éventuel token résiduel posé en sessionStorage par
+    // l'ancienne version (P1-B10) pour qu'il ne ressuscite pas au boot.
+    try { sessionStorage.removeItem(_TOKEN_KEY); } catch (_) { /* */ }
   } catch (_) { /* quota / mode privé → silent */ }
 }
 
@@ -101,6 +97,7 @@ function clearAuthToken() {
     const _bc = new BroadcastChannel('smyle_auth');
     _bc.onmessage = function(e) {
       if (e.data && e.data.type === 'logout') {
+        try { localStorage.removeItem(_TOKEN_KEY); } catch (_) {}
         try { sessionStorage.removeItem(_TOKEN_KEY); } catch (_) {}
         try { localStorage.removeItem('smyle_current_user'); } catch (_) {}
         window.location.href = '/';

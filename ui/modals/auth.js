@@ -305,8 +305,17 @@ function renderAuthArea() {
 
 function openAuthModal(tab) {
   // Si déjà connecté, le badge ouvre le user menu (via toggleUserMenu).
-  // On ne devrait donc arriver ici que si l'user est null.
-  if (getCurrentUser()) { return; }
+  // "Connecté" = un JWT existe. Avant, on testait getCurrentUser() (cache
+  // localStorage) : un cache périmé sans token bloquait l'ouverture du
+  // modal — bouton "Se connecter" et ?auth=login devenaient inopérants
+  // (constat audit 2026-06-10). Le token est LA source de vérité ; si un
+  // cache user traîne sans token, on le purge pour réaligner l'UI.
+  const _hasToken = (typeof getAuthToken === 'function') && !!getAuthToken();
+  if (_hasToken) { return; }
+  if (getCurrentUser()) {
+    try { localStorage.removeItem('smyle_current_user'); } catch (_) { /* */ }
+    if (typeof renderAuthArea === 'function') renderAuthArea();
+  }
   document.getElementById('authModal').classList.add('open');
   switchAuthTab(tab);
   // Focus auto sur le premier champ après l'anim d'ouverture
@@ -366,7 +375,25 @@ async function submitLogin() {
     closeAuthModal();
     renderAuthArea();
     if (window.SmylePageServices) window.SmylePageServices.refresh();
+    _consumeReturnParam();
   } else msg.textContent = result.msg;
+}
+
+// Consomme ?return=/chemin après un login/signup réussi : l'utilisateur
+// arrivé via "/?auth=login&return=/dashboard" (garde d'accès d'une page
+// protégée) repart là où il voulait aller au lieu de rester sur l'accueil
+// (perte de contexte constatée à l'audit 2026-06-10). Sécurité : on
+// n'accepte que les chemins relatifs internes ("/...") — jamais une URL
+// absolue ou protocol-relative ("//evil.com") pour interdire toute
+// redirection ouverte vers un site externe.
+function _consumeReturnParam() {
+  try {
+    const params = new URLSearchParams(location.search || '');
+    const target = params.get('return') || '';
+    if (target && target.startsWith('/') && !target.startsWith('//')) {
+      window.location.href = target;
+    }
+  } catch (_) { /* noop */ }
 }
 
 async function submitSignup() {
@@ -388,6 +415,7 @@ async function submitSignup() {
     closeAuthModal();
     renderAuthArea();
     if (window.SmylePageServices) window.SmylePageServices.refresh();
+    _consumeReturnParam();
   } else msg.textContent = result.msg;
 }
 
@@ -726,6 +754,15 @@ if (typeof window !== 'undefined') {
 // renderAuthArea affiche le badge connecté sans que l'utilisateur clique.
 async function _bootstrapAuthFromToken() {
   if (typeof getAuthToken !== 'function' || !getAuthToken()) {
+    // Pas de token → on purge un éventuel cache user périmé pour que la
+    // topbar n'affiche pas un faux état "connecté" (avatar/menu) alors que
+    // toutes les requêtes API échoueraient (constat audit 2026-06-10).
+    try {
+      if (getCurrentUser()) {
+        localStorage.removeItem('smyle_current_user');
+        renderAuthArea();
+      }
+    } catch (_) { /* noop */ }
     _maybeAutoOpenFromQuery();
     return;
   }
@@ -739,8 +776,8 @@ async function _bootstrapAuthFromToken() {
 // Si on arrive ici via un redirect depuis le bandeau "session expirée" d'une
 // page secondaire (/?auth=login&return=/dashboard par exemple), on ouvre
 // automatiquement le modal d'auth sur le bon onglet. Le paramètre `return`
-// n'est pas consommé ici — c'est à l'utilisateur ou à la logique post-login
-// de décider où rediriger ensuite (hors scope de ce sprint).
+// est consommé après le login/signup réussi par _consumeReturnParam()
+// (défini plus haut) : retour direct vers la page protégée d'origine.
 function _maybeAutoOpenFromQuery() {
   try {
     // Si déjà connecté, on ne ré-ouvre rien.
