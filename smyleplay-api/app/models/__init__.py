@@ -4,6 +4,7 @@ from .base import Base
 from .dna import DNA
 from .owned_adn import OwnedAdn
 from .owned_playlist_adn import OwnedPlaylistAdn
+from .password_reset_token import PasswordResetToken
 from .play_event import PlayEvent
 from .playlist import Playlist, PlaylistTrack
 from .prompt import Prompt

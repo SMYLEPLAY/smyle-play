@@ -55,6 +55,18 @@ class UserLogin(BaseModel):
     password: str
 
 
+# ── Reset mot de passe (mission Tier 1, 2026-06-10) ─────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=128)
+    # Mêmes règles que l'inscription (min 8).
+    new_password: str = Field(min_length=8)
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

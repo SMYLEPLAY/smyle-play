@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070608" />
+  <title>Mot de passe · WATT</title>
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <style>
+    /* Page reset MDP — charte WATT, autonome. Deux états :
+       sans ?token= → formulaire « envoie-moi un lien »
+       avec ?token= → formulaire « nouveau mot de passe » */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
+      font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .rs-top { width: 100%; padding: 16px 22px; border-bottom: 1px solid var(--sp-border, rgba(255,255,255,.1)); }
+    .rs-top a { color: var(--sp-gold, #ffd700); text-decoration: none; font-weight: 800; letter-spacing: .1em; font-size: 14px; }
+    .rs-card {
+      width: 100%; max-width: 420px; margin: 9vh 20px 0;
+      background: var(--sp-surface, rgba(255,255,255,.04));
+      border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: var(--sp-radius-lg, 16px);
+      padding: 28px 26px;
+    }
+    h1 { font-size: 1.15rem; margin: 0 0 6px; }
+    .rs-sub { color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: .82rem; line-height: 1.6; margin-bottom: 20px; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: var(--sp-text-muted, rgba(255,255,255,.72)); margin: 0 0 6px; }
+    input {
+      width: 100%; padding: 12px 14px; margin-bottom: 14px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: var(--sp-radius-md, 10px);
+      color: var(--sp-text, #e8e8f0); font-size: .9rem; outline: none;
+    }
+    input:focus { border-color: var(--sp-gold, #ffd700); }
+    button {
+      width: 100%; padding: 13px;
+      background: var(--sp-gold, #ffd700); color: #070608;
+      border: none; border-radius: var(--sp-radius-pill, 999px);
+      font-size: .9rem; font-weight: 800; cursor: pointer;
+      transition: filter .15s ease;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.1); }
+    button:disabled { opacity: .5; cursor: wait; }
+    .rs-msg { margin-top: 14px; font-size: .82rem; line-height: 1.6; display: none; }
+    .rs-msg.ok    { display: block; color: var(--sp-success, #4ade80); }
+    .rs-msg.error { display: block; color: var(--sp-danger, #ff5577); }
+    .rs-back { display: block; text-align: center; margin-top: 16px; font-size: .78rem; color: var(--sp-text-faint, rgba(255,255,255,.55)); text-decoration: none; }
+    .rs-back:hover { color: var(--sp-text, #e8e8f0); }
+  </style>
+</head>
+<body>
+
+<div class="rs-top"><a href="/">← ⚡ WATT</a></div>
+
+<!-- État 1 : demander un lien -->
+<div class="rs-card" id="rs-request" style="display:none">
+  <h1>Mot de passe oublié ?</h1>
+  <div class="rs-sub">Donne l'email de ton compte — on t'envoie un lien de
+    réinitialisation valable 60 minutes.</div>
+  <label for="rs-email">Email du compte</label>
+  <input id="rs-email" type="email" autocomplete="email" placeholder="toi@email.com" />
+  <button id="rs-send">Envoyer le lien</button>
+  <div class="rs-msg" id="rs-request-msg"></div>
+  <a class="rs-back" href="/?auth=login">Retour à la connexion</a>
+</div>
+
+<!-- État 2 : choisir un nouveau mot de passe (?token=) -->
+<div class="rs-card" id="rs-reset" style="display:none">
+  <h1>Nouveau mot de passe</h1>
+  <div class="rs-sub">Choisis ton nouveau mot de passe (8 caractères minimum).</div>
+  <label for="rs-pwd">Nouveau mot de passe</label>
+  <input id="rs-pwd" type="password" minlength="8" autocomplete="new-password" placeholder="••••••••" />
+  <label for="rs-pwd2">Confirme-le</label>
+  <input id="rs-pwd2" type="password" minlength="8" autocomplete="new-password" placeholder="••••••••" />
+  <button id="rs-apply">Changer mon mot de passe</button>
+  <div class="rs-msg" id="rs-reset-msg"></div>
+  <a class="rs-back" href="/reset">Le lien est mort ? Redemande un email</a>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var qs = new URLSearchParams(location.search);
+  var token = (qs.get('token') || '').trim();
+
+  var reqCard = document.getElementById('rs-request');
+  var rstCard = document.getElementById('rs-reset');
+  (token ? rstCard : reqCard).style.display = '';
+
+  function msg(id, text, kind) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'rs-msg ' + kind;
+  }
+
+  async function post(path, body) {
+    var r = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = null;
+    try { data = await r.json(); } catch (_) {}
+    if (!r.ok) {
+      var d = data && data.detail;
+      throw new Error(typeof d === 'string' ? d : 'Erreur (' + r.status + '). Réessaie.');
+    }
+    return data;
+  }
+
+  // ── État 1 : envoi du lien ─────────────────────────────────────────────
+  var sendBtn = document.getElementById('rs-send');
+  if (sendBtn) sendBtn.addEventListener('click', async function () {
+    var email = (document.getElementById('rs-email').value || '').trim();
+    if (!email || email.indexOf('@') < 1) {
+      msg('rs-request-msg', 'Entre un email valide.', 'error');
+      return;
+    }
+    sendBtn.disabled = true;
+    try {
+      await post('/auth/forgot-password', { email: email });
+      // Toujours le même message, que le compte existe ou non
+      // (anti-énumération) — et honnête sur le mode test email.
+      msg('rs-request-msg',
+          'Si un compte existe pour ' + email + ', un email vient de partir. ' +
+          'Pense à vérifier les spams.', 'ok');
+    } catch (e) {
+      msg('rs-request-msg', e.message, 'error');
+    }
+    sendBtn.disabled = false;
+  });
+
+  // ── État 2 : application du nouveau mot de passe ───────────────────────
+  var applyBtn = document.getElementById('rs-apply');
+  if (applyBtn) applyBtn.addEventListener('click', async function () {
+    var p1 = document.getElementById('rs-pwd').value;
+    var p2 = document.getElementById('rs-pwd2').value;
+    if (p1.length < 8) { msg('rs-reset-msg', '8 caractères minimum.', 'error'); return; }
+    if (p1 !== p2)     { msg('rs-reset-msg', 'Les deux mots de passe ne correspondent pas.', 'error'); return; }
+    applyBtn.disabled = true;
+    try {
+      await post('/auth/reset-password', { token: token, new_password: p1 });
+      msg('rs-reset-msg', 'Mot de passe changé ✔ Tu peux te reconnecter.', 'ok');
+      setTimeout(function () { location.href = '/?auth=login'; }, 1800);
+    } catch (e) {
+      msg('rs-reset-msg', e.message, 'error');
+      applyBtn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
