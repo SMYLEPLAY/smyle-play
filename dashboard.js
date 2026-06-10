@@ -1721,9 +1721,14 @@ function cancelUpload() {
 // grille crédits↔euros disparaît, et le CTA devient "Publier sans recette".
 //
 // État stocké dans dashUploadForm.dataset.mode, lu par uploadTrack() au submit.
-// Valeurs : 'with_prompt' (défaut) · 'simple'.
+// Valeurs : 'with_prompt' (défaut) · 'simple' · 'beat' · 'pack' (C1).
 function setUploadMode(mode) {
-  if (mode !== 'with_prompt' && mode !== 'simple') mode = 'with_prompt';
+  // C1 (2026-06-10) — 4 types de publication Audio (blueprint VF) :
+  //   with_prompt = recette seule · simple = partage · beat = beat seul ·
+  //   pack = recette + beat (prix pack). beat/pack créent un produit
+  //   vendable via POST /artist/me/beats puis lient track.beat_id.
+  const VALID_MODES = ['with_prompt', 'simple', 'beat', 'pack'];
+  if (!VALID_MODES.includes(mode)) mode = 'with_prompt';
   const form = document.getElementById('dashUploadForm');
   if (!form) return;
   form.dataset.mode = mode;
@@ -1738,10 +1743,44 @@ function setUploadMode(mode) {
   // Libellé du CTA — reflète la nature du post
   const cta = document.getElementById('dashUploadCtaLbl');
   if (cta) {
-    cta.textContent = mode === 'with_prompt'
-      ? 'Publier avec recette'
-      : 'Publier sans recette';
+    cta.textContent = ({
+      with_prompt: 'Publier avec recette',
+      simple:      'Publier sans recette',
+      beat:        'Publier le beat en vente',
+      pack:        'Publier le pack (recette + beat)',
+    })[mode];
   }
+}
+
+/* C1 — licence beat : EXCLUSIF = vente unique, le backend force
+   max_supply=1 → le champ exemplaires n'a de sens qu'en LEASE. */
+function dashBeatOnLicenseChange() {
+  const lic = document.querySelector('input[name="dashBeatLicense"]:checked')?.value || 'lease';
+  const supplyField = document.getElementById('dashBeatSupplyField');
+  if (supplyField) supplyField.style.display = (lic === 'exclusive') ? 'none' : '';
+}
+
+/* C1 — lit + valide les champs beat du formulaire. {ok, errs, payload}. */
+function dashReadBeatFields() {
+  const errs = [];
+  const lic = document.querySelector('input[name="dashBeatLicense"]:checked')?.value || 'lease';
+  const priceRaw = parseInt(document.getElementById('dashBeatPrice')?.value, 10);
+  if (!Number.isInteger(priceRaw) || priceRaw < 3) errs.push('prix du beat (min 3 crédits)');
+
+  let maxSupply = null;
+  if (lic === 'lease') {
+    const supRaw = (document.getElementById('dashBeatMaxSupply')?.value || '').trim();
+    if (supRaw !== '') {
+      const n = parseInt(supRaw, 10);
+      if (Number.isInteger(n) && n >= 1) maxSupply = n;
+      else errs.push('nombre d\'exemplaires du beat (entier ≥ 1, ou vide)');
+    }
+  }
+  return {
+    ok: errs.length === 0,
+    errs,
+    payload: { license_type: lic, price_credits: priceRaw, max_supply: maxSupply },
+  };
 }
 
 // Compteur live du prompt_text + état de validité (empty / short / ok / over)
@@ -1902,6 +1941,29 @@ async function uploadTrack() {
   const name = document.getElementById('dashTrackName').value.trim();
   if (!name) { dashToast('⚠ Le titre est obligatoire.'); return; }
   if (!_pendingFile) { dashToast('⚠ Aucun fichier sélectionné.'); return; }
+
+  // ── C1 — validation PRÉCOCE des champs beat (modes beat & pack) ─────────
+  // On valide AVANT l'upload R2 : pas d'aller-retour réseau pour découvrir
+  // qu'il manque un prix. uploadMode est relu plus bas (même source).
+  const _formEl    = document.getElementById('dashUploadForm');
+  const _earlyMode = (_formEl && _formEl.dataset.mode) || 'with_prompt';
+  let beatFields = null;
+  let packPrice  = null;
+  if (_earlyMode === 'beat' || _earlyMode === 'pack') {
+    beatFields = dashReadBeatFields();
+    if (!beatFields.ok) {
+      dashToast(`⚠ Champs beat incomplets : ${beatFields.errs.join(', ')}`);
+      return;
+    }
+    if (_earlyMode === 'pack') {
+      const pp = parseInt(document.getElementById('dashPackPrice')?.value, 10);
+      if (!Number.isInteger(pp) || pp < 3) {
+        dashToast('⚠ Prix du pack invalide (min 3 crédits).');
+        return;
+      }
+      packPrice = pp;
+    }
+  }
 
   // ── Vérification limite freemium (comptes officiels exemptés) ───────────
   const _existing = getMyTracks();
@@ -2085,8 +2147,11 @@ async function uploadTrack() {
   // tolère : la track reste en ligne, l'artiste peut éditer/republier le
   // prompt plus tard depuis la gestion catalogue (phase ultérieure).
   const form = document.getElementById('dashUploadForm');
-  const uploadMode = form && form.dataset.mode === 'simple' ? 'simple' : 'with_prompt';
-  if (uploadMode === 'with_prompt') {
+  const uploadMode = (form && ['with_prompt', 'simple', 'beat', 'pack'].includes(form.dataset.mode))
+    ? form.dataset.mode
+    : 'with_prompt';
+  // C1 — le mode pack publie AUSSI la recette (mêmes règles que with_prompt).
+  if (uploadMode === 'with_prompt' || uploadMode === 'pack') {
     const promptText = (document.getElementById('dashPromptText')?.value || '').trim();
     const lyrics     = (document.getElementById('dashPromptLyrics')?.value || '').trim();
     const priceRaw   = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
@@ -2173,6 +2238,54 @@ async function uploadTrack() {
     }
   }
 
+  // ── 4ter. C1 — Beat (modes beat & pack) ─────────────────────────────────
+  // Le beat est une ligne `prompts` (product_type='beat') créée via
+  // POST /artist/me/beats, puis liée au track (PATCH beat_id) : c'est le
+  // track lié qui porte le FICHIER audio servi par GET /beats/{id}/download
+  // (réservé acheteurs). En mode pack on pose aussi pack_price_credits,
+  // consommé par POST /pack/{track_id}/buy (achat atomique recette+beat).
+  // Garde-fou : beatFields vient de la validation précoce — si le mode a
+  // été changé PENDANT l'upload (re-clic sur une pill), on ne crée pas un
+  // beat avec des champs jamais validés.
+  if ((uploadMode === 'beat' || uploadMode === 'pack') && beatFields && beatFields.ok) {
+    try {
+      const bp = beatFields.payload;
+      const beatResp = await apiFetch('/artist/me/beats', {
+        method: 'POST',
+        json: {
+          title:         name,
+          description:   desc || null,
+          price_credits: bp.price_credits,
+          license_type:  bp.license_type,
+          // max_supply ignoré par le backend en exclusif (forcé à 1) —
+          // on ne l'envoie qu'en lease pour rester explicite.
+          ...(bp.license_type === 'lease' && bp.max_supply != null
+              ? { max_supply: bp.max_supply } : {}),
+          is_published: true,
+        },
+      });
+
+      if (beatResp && beatResp.id) {
+        await apiFetch(`/tracks/${encodeURIComponent(dbTrackId)}`, {
+          method: 'PATCH',
+          json: {
+            beat_id: beatResp.id,
+            ...(uploadMode === 'pack' && packPrice != null
+                ? { pack_price_credits: packPrice } : {}),
+          },
+        });
+        const licLbl = bp.license_type === 'exclusive' ? 'exclusif — vente unique' : 'lease';
+        dashToast(`🥁 Beat "${name}" en vente (${licLbl} · ${bp.price_credits} Smyles).`);
+      } else {
+        dashToast('⚠ Son publié, mais le serveur n\'a pas renvoyé d\'ID beat. Réessaie depuis le catalogue.');
+      }
+    } catch (e) {
+      // Le SON reste publié (écoute libre) — seule la mise en vente du
+      // beat a échoué. Message clair, pas de rollback silencieux.
+      dashToast(`⚠ Son publié, mais beat non créé : ${_humanizeApiError(e)}`);
+    }
+  }
+
   setProgress(100, uploaded ? '⚡ Son publié sur WATT !' : '⚡ Son sauvegardé !');
   await wait(1000);
 
@@ -2181,6 +2294,8 @@ async function uploadTrack() {
   renderArtistCard();
   renderStats();
   renderRanking();
+  // C1 — rafraîchit les compteurs des tuiles WattBoard v3 (sons/beats/…)
+  try { if (window.WattBoardV3) window.WattBoardV3.refresh(); } catch (_) {}
   dashToast(`⚡ "${name}" publié sur WATT !`);
 }
 

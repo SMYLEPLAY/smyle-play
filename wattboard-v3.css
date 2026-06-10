@@ -1,0 +1,351 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   SMYLE PLAY — wattboard-v3.css
+   Chantier C1 (blueprint VF 2026-06-10) — WattBoard v3 :
+   bandeau identité + bascule 2 mondes + tuiles à compteurs + rangée
+   transversale. Maquette validée par Tom le 2026-06-10.
+
+   RÈGLE C0 : aucune couleur en dur — tout passe par ui/core/tokens.css.
+   Le monde actif teinte le board via la variable locale --wb3-accent.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Visibilité v3 : le board est la home, les sections deviennent des
+      écrans dédiés ouverts un par un via les tuiles. ─────────────────── */
+body.wb3-active .dash-section          { display: none; }
+body.wb3-active .dash-section.wb3-open { display: block; }
+body.wb3-active .dash-section-nav      { display: none; }
+body.wb3-active.wb3-screen-open #wb3-board { display: none; }
+
+/* Barre retour au-dessus d'un écran ouvert */
+#wb3-backbar {
+  display: none;
+  max-width: 1200px;
+  margin: 18px auto 0;
+  padding: 0 20px;
+}
+body.wb3-active.wb3-screen-open #wb3-backbar { display: block; }
+.wb3-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-gap-sm);
+  padding: 8px 16px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-surface);
+  color: var(--sp-text);
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sp-transition), border-color var(--sp-transition);
+}
+.wb3-back-btn:hover { background: var(--sp-surface-2); border-color: var(--sp-border-strong); }
+.wb3-back-btn:focus-visible { outline: 2px solid var(--sp-gold); outline-offset: 2px; }
+
+/* ── Le board ─────────────────────────────────────────────────────────── */
+#wb3-board {
+  --wb3-accent: var(--sp-monde-audio);
+  max-width: 1200px;
+  margin: 22px auto 0;
+  padding: 0 20px 8px;
+}
+#wb3-board[data-monde="visuel"] { --wb3-accent: var(--sp-monde-visuel); }
+
+/* ── 1. Bandeau identité (l'ancre) ────────────────────────────────────── */
+.wb3-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-gap-md);
+  flex-wrap: wrap;
+  padding: 20px 22px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-lg);
+}
+.wb3-hero-avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 800;
+  color: var(--sp-text);
+  background: var(--sp-surface-2);
+  border: 2px solid var(--wb3-accent);
+  overflow: hidden;
+}
+.wb3-hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.wb3-hero-id { min-width: 180px; flex: 1; }
+.wb3-hero-name {
+  font-size: 1.25rem; font-weight: 800; color: var(--sp-text);
+  letter-spacing: .01em; margin: 0 0 6px;
+}
+.wb3-hero-pills { display: flex; gap: var(--sp-gap-sm); flex-wrap: wrap; }
+
+.wb3-hero-stats {
+  display: flex;
+  gap: var(--sp-gap-lg);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.wb3-stat { text-align: center; min-width: 64px; }
+.wb3-stat-val {
+  font-size: 1.15rem; font-weight: 800; color: var(--sp-text);
+  font-variant-numeric: tabular-nums;
+}
+.wb3-stat-lbl { font-size: .68rem; color: var(--sp-text-faint); letter-spacing: .06em; text-transform: uppercase; }
+
+.wb3-hero-edit {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-pill);
+  background: transparent;
+  color: var(--sp-text-muted);
+  font-size: .8rem; font-weight: 600;
+  cursor: pointer;
+  transition: color var(--sp-transition), border-color var(--sp-transition);
+}
+.wb3-hero-edit:hover { color: var(--sp-text); border-color: var(--sp-border-strong); }
+.wb3-hero-edit:focus-visible { outline: 2px solid var(--sp-gold); outline-offset: 2px; }
+
+/* ── 2. Bascule 2 mondes + Créer ──────────────────────────────────────── */
+.wb3-mondes-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-gap-md);
+  margin: var(--sp-gap-lg) 0 var(--sp-gap-md);
+  flex-wrap: wrap;
+}
+.wb3-monde-switch {
+  display: inline-flex;
+  padding: 4px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-pill);
+  gap: 4px;
+}
+.wb3-monde-btn {
+  padding: 9px 22px;
+  border: none;
+  border-radius: var(--sp-radius-pill);
+  background: transparent;
+  color: var(--sp-text-faint);
+  font-size: .88rem; font-weight: 700;
+  cursor: pointer;
+  transition: background var(--sp-transition), color var(--sp-transition);
+}
+.wb3-monde-btn:focus-visible { outline: 2px solid var(--sp-gold); outline-offset: 2px; }
+.wb3-monde-btn.is-active[data-monde="audio"]  { background: var(--sp-monde-audio);  color: #fff; }
+.wb3-monde-btn.is-active[data-monde="visuel"] { background: var(--sp-monde-visuel); color: var(--sp-bg); }
+
+.wb3-create-wrap { position: relative; }
+.wb3-create-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: var(--sp-radius-pill);
+  background: var(--wb3-accent);
+  color: #fff;
+  font-size: .9rem; font-weight: 800;
+  cursor: pointer;
+  transition: filter var(--sp-transition), transform var(--sp-transition);
+}
+#wb3-board[data-monde="visuel"] .wb3-create-btn { color: var(--sp-bg); }
+.wb3-create-btn:hover:not(:disabled) { filter: brightness(1.15); }
+.wb3-create-btn:focus-visible { outline: 2px solid var(--sp-gold); outline-offset: 2px; }
+.wb3-create-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.wb3-create-menu {
+  position: absolute;
+  right: 0; top: calc(100% + 8px);
+  z-index: 60;
+  min-width: 260px;
+  padding: 6px;
+  background: var(--sp-surface-raised);
+  border: 1px solid var(--sp-border-strong);
+  border-radius: var(--sp-radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
+  display: none;
+}
+.wb3-create-menu.is-open { display: block; }
+.wb3-create-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none; background: transparent;
+  border-radius: var(--sp-radius-sm);
+  color: var(--sp-text);
+  font-size: .84rem; font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--sp-transition);
+}
+.wb3-create-item:hover { background: var(--sp-surface-2); }
+.wb3-create-item em {
+  display: block; font-style: normal; font-weight: 400;
+  font-size: .72rem; color: var(--sp-text-faint);
+}
+
+/* ── 3. Tuiles de contenu ─────────────────────────────────────────────── */
+.wb3-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+  gap: var(--sp-gap-md);
+}
+.wb3-tile {
+  padding: 18px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-lg);
+  transition: border-color var(--sp-transition), background var(--sp-transition);
+}
+.wb3-tile:hover:not(.is-locked) { border-color: var(--wb3-accent); background: var(--sp-surface-2); }
+.wb3-tile-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.wb3-tile-ico {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.15rem;
+  border-radius: var(--sp-radius-md);
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+}
+.wb3-tile[data-tile="sons"]  .wb3-tile-ico { border-color: var(--sp-nature-son-ia); }
+.wb3-tile[data-tile="beats"] .wb3-tile-ico { border-color: var(--sp-nature-beat); }
+.wb3-tile[data-tile="adn"]   .wb3-tile-ico { border-color: var(--sp-nature-adn); }
+.wb3-tile[data-tile="voix"]  .wb3-tile-ico { border-color: var(--sp-nature-voix); }
+.wb3-tile[data-tile="images"]     .wb3-tile-ico { border-color: var(--sp-nature-image); }
+.wb3-tile[data-tile="adn-visuel"] .wb3-tile-ico { border-color: var(--sp-nature-adn); }
+.wb3-tile-name { font-size: .92rem; font-weight: 700; color: var(--sp-text); }
+.wb3-tile-count {
+  font-size: 1.5rem; font-weight: 800;
+  color: var(--sp-text);
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0 12px;
+}
+.wb3-tile-count .wb3-count-lbl { font-size: .72rem; font-weight: 500; color: var(--sp-text-faint); margin-left: 6px; }
+.wb3-tile-actions { display: flex; gap: var(--sp-gap-sm); }
+.wb3-tile-btn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: var(--sp-radius-sm);
+  border: 1px solid var(--sp-border);
+  background: transparent;
+  color: var(--sp-text-muted);
+  font-size: .78rem; font-weight: 700;
+  cursor: pointer;
+  transition: background var(--sp-transition), color var(--sp-transition), border-color var(--sp-transition);
+}
+.wb3-tile-btn:hover { border-color: var(--sp-border-strong); color: var(--sp-text); }
+.wb3-tile-btn:focus-visible { outline: 2px solid var(--sp-gold); outline-offset: 2px; }
+.wb3-tile-btn--primary {
+  background: var(--wb3-accent);
+  border-color: transparent;
+  color: #fff;
+}
+#wb3-board[data-monde="visuel"] .wb3-tile-btn--primary { color: var(--sp-bg); }
+.wb3-tile-btn--primary:hover { filter: brightness(1.15); color: #fff; }
+
+/* Tuile verrouillée (monde Visuel v1 : Images C4 · ADN visuel C4 · FX phase 2) */
+.wb3-tile.is-locked { opacity: .5; }
+.wb3-tile.is-locked .wb3-tile-btn { cursor: not-allowed; }
+.wb3-tile-lock {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--sp-radius-pill);
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  color: var(--sp-text-faint);
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+
+/* ── 4. Rangée transversale (commune aux 2 mondes, style neutre) ──────── */
+.wb3-cross {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--sp-gap-sm);
+  margin-top: var(--sp-gap-md);
+  padding-top: var(--sp-gap-md);
+  border-top: 1px solid var(--sp-border);
+}
+.wb3-cross-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 16px;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-md);
+  color: var(--sp-text-muted);
+  font-size: .84rem; font-weight: 700;
+  cursor: pointer;
+  transition: background var(--sp-transition), color var(--sp-transition), border-color var(--sp-transition);
+}
+.wb3-cross-btn:hover { background: var(--sp-surface-2); color: var(--sp-text); border-color: var(--sp-border-strong); }
+.wb3-cross-btn:focus-visible { outline: 2px solid var(--sp-gold); outline-offset: 2px; }
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .wb3-hero { padding: 16px; }
+  .wb3-hero-stats { gap: var(--sp-gap-md); }
+  .wb3-mondes-row { flex-direction: column; align-items: stretch; }
+  .wb3-monde-switch { justify-content: center; }
+  .wb3-create-btn { width: 100%; justify-content: center; }
+  .wb3-create-menu { left: 0; right: 0; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Écran création Audio — extension beat/pack du formulaire d'upload
+   (les modes with_prompt / simple existants ne bougent pas).
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 4 types de publication : 4 colonnes sur desktop (2×2 sinon, héritée) */
+@media (min-width: 961px) {
+  .dash-mode-switch { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* beat : pas de colonne recette (comme simple) */
+[data-mode="beat"] .dash-upload-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 220px); }
+[data-mode="beat"] .dash-upload-col-prompt,
+[data-mode="beat"] .dash-credit-grid { display: none !important; }
+
+/* pack : recette visible (comme with_prompt) — grille 3 colonnes héritée */
+
+/* bloc champs beat : visible uniquement en beat / pack */
+#dashBeatFields { display: none; }
+[data-mode="beat"] #dashBeatFields,
+[data-mode="pack"] #dashBeatFields { display: block; }
+
+#dashBeatFields {
+  margin-top: var(--sp-gap-md);
+  padding: var(--sp-gap-md);
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-nature-beat);
+  border-radius: var(--sp-radius-md);
+}
+#dashBeatFields .wb3-beat-hdr {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .9rem; font-weight: 700; color: var(--sp-text);
+  margin-bottom: 4px;
+}
+#dashBeatFields .wb3-beat-sub { font-size: .74rem; color: var(--sp-text-faint); margin-bottom: 12px; }
+#dashBeatFields .wb3-beat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-gap-md);
+}
+.wb3-license-choice { display: flex; flex-direction: column; gap: 8px; }
+.wb3-license-opt {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--sp-transition), background var(--sp-transition);
+}
+.wb3-license-opt:hover { background: var(--sp-surface-2); }
+.wb3-license-opt:has(input:checked) { border-color: var(--sp-nature-beat); background: var(--sp-surface-2); }
+.wb3-license-opt input { margin-top: 3px; accent-color: var(--sp-nature-beat); }
+.wb3-license-opt strong { display: block; font-size: .8rem; color: var(--sp-text); }
+.wb3-license-opt em { font-style: normal; font-size: .72rem; color: var(--sp-text-faint); line-height: 1.4; }
+
+/* champ prix pack : visible uniquement en mode pack */
+#dashPackPriceField { display: none; }
+[data-mode="pack"] #dashPackPriceField { display: block; }

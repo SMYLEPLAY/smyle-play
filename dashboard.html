@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="/ui/core/tokens.css" />
   <link rel="stylesheet" href="/ui/core/badges.css" />
   <script src="/ui/core/badges.js" defer></script>
+  <!-- C1 — WattBoard v3 (bandeau + 2 mondes + tuiles + création Audio) -->
+  <link rel="stylesheet" href="wattboard-v3.css?v=20260610" />
 
 <style>
 /* SLIDER PROMPT SETTINGS */
@@ -242,6 +244,18 @@
 
 <!-- ═══════ CONTENU PRINCIPAL ══════════════════════════════════════════════════ -->
 <main class="dash-main" id="dashMain">
+
+  <!-- ════ C1 — WATTBOARD V3 (maquette validée 2026-06-10) ════════════════
+       Le board est la home du dashboard : bandeau identité + bascule
+       2 mondes + tuiles à compteurs + rangée transversale. Rendu par
+       wattboard-v3.js. Les sections legacy ci-dessous deviennent des
+       écrans dédiés ouverts via les tuiles (classe .wb3-open). ═══════════ -->
+  <div id="wb3-board" data-monde="audio"></div>
+  <div id="wb3-backbar">
+    <button type="button" class="wb3-back-btn" id="wb3-back-btn">
+      ← Retour au WATT BOARD · <span id="wb3-back-label"></span>
+    </button>
+  </div>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
        BLOC 1 — IDENTITÉ PUBLIQUE (Phase 5 — 2026-04-20)
@@ -721,6 +735,26 @@
               <em>Je partage juste un son — pas de vente prompt associée</em>
             </span>
           </button>
+          <!-- C1 (2026-06-10) — 2 nouveaux types branchés sur le backend
+               beats (POST /artist/me/beats + liaison track.beat_id). -->
+          <button type="button" class="dash-mode-pill"
+                  data-mode="beat" role="tab" aria-selected="false"
+                  onclick="setUploadMode('beat')">
+            <span style="font-size:14px;line-height:1">🥁</span>
+            <span class="dash-mode-pill-label">
+              <strong>Beat seul</strong>
+              <em>Je vends le fichier audio — licence lease ou exclusif</em>
+            </span>
+          </button>
+          <button type="button" class="dash-mode-pill"
+                  data-mode="pack" role="tab" aria-selected="false"
+                  onclick="setUploadMode('pack')">
+            <span style="font-size:14px;line-height:1">📦</span>
+            <span class="dash-mode-pill-label">
+              <strong>Recette + beat (pack)</strong>
+              <em>Le prompt ET le fichier, avec un prix pack avantageux</em>
+            </span>
+          </button>
         </div>
 
         <!-- Grille du formulaire — 3 colonnes en mode with_prompt, 2 en simple -->
@@ -1016,6 +1050,56 @@
               </div>
               <div class="dash-help">
                 Sert de fond à la cellule du son sur ta page publique si tu n'as pas mis de pochette.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ C1 — BLOC BEAT (modes beat & pack uniquement) ══════════════
+             Le produit "beat" : écoute streaming libre, téléchargement du
+             fichier gaté par l'achat. EXCLUSIF = vente unique (le backend
+             force max_supply=1 et retire l'offre à l'achat). ══════════════ -->
+        <div id="dashBeatFields">
+          <div class="wb3-beat-hdr">🥁 Beat — le fichier vendable</div>
+          <div class="wb3-beat-sub">L'écoute reste libre pour tout le monde ; l'achat débloque le téléchargement du fichier.</div>
+          <div class="wb3-beat-grid">
+            <div>
+              <label class="dash-label">Licence <span class="dash-req">*</span></label>
+              <div class="wb3-license-choice">
+                <label class="wb3-license-opt">
+                  <input type="radio" name="dashBeatLicense" value="lease" checked
+                         onchange="dashBeatOnLicenseChange()" />
+                  <span><strong>Lease</strong>
+                  <em>Plusieurs acheteurs possibles. Tu peux limiter le nombre d'exemplaires.</em></span>
+                </label>
+                <label class="wb3-license-opt">
+                  <input type="radio" name="dashBeatLicense" value="exclusive"
+                         onchange="dashBeatOnLicenseChange()" />
+                  <span><strong>Exclusif</strong>
+                  <em>Un seul acheteur — le beat est retiré de la vente dès l'achat.</em></span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="dash-label">Prix du beat (crédits) <span class="dash-req">*</span></label>
+              <input class="dash-input" id="dashBeatPrice" type="number" min="3" value="120"
+                     oninput="dashUpdateEurPreview('dashBeatPrice','dashBeatPriceEur')" />
+              <div class="dash-help" id="dashBeatPriceEur" style="margin-top:4px;font-style:italic;"></div>
+              <div class="dash-help">Min. 3 crédits. Prix libre.</div>
+
+              <div id="dashBeatSupplyField">
+                <label class="dash-label" style="margin-top:12px;">Nombre d'exemplaires <span style="font-weight:400;">(lease, optionnel)</span></label>
+                <input class="dash-input" id="dashBeatMaxSupply" type="number" min="1"
+                       placeholder="Laisse vide = illimité" />
+                <div class="dash-help">Édition limitée = badge de rareté #X/N sur la carte.</div>
+              </div>
+
+              <div id="dashPackPriceField">
+                <label class="dash-label" style="margin-top:12px;">Prix du pack recette + beat (crédits) <span class="dash-req">*</span></label>
+                <input class="dash-input" id="dashPackPrice" type="number" min="3" value="160"
+                       oninput="dashUpdateEurPreview('dashPackPrice','dashPackPriceEur')" />
+                <div class="dash-help" id="dashPackPriceEur" style="margin-top:4px;font-style:italic;"></div>
+                <div class="dash-help">Le pack débloque la recette ET le beat en un seul achat — mets-le sous la somme des deux prix.</div>
               </div>
             </div>
           </div>
@@ -1856,7 +1940,9 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <script src="/ui/playlists.js" defer></script>
-<script src="dashboard.js?v=20260609"></script>
+<script src="dashboard.js?v=20260610"></script>
+<!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
+<script src="wattboard-v3.js?v=20260610" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>

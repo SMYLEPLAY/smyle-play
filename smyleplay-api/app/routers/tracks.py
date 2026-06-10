@@ -111,9 +111,19 @@ async def update_track(
     Authz : track doit appartenir à l'utilisateur courant. 404
     indistingable si track inexistant ou pas owner (anti-énumération).
     """
-    track = await patch_track(
-        db, track_id=track_id, user=current_user, payload=payload
-    )
+    from app.services.tracks import BeatLinkInvalid
+
+    try:
+        track = await patch_track(
+            db, track_id=track_id, user=current_user, payload=payload
+        )
+    except BeatLinkInvalid as e:
+        # C1 — beat_id fourni mais invalide (inexistant / pas un beat /
+        # pas à l'artiste courant). 422 = payload sémantiquement invalide.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
     if track is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
