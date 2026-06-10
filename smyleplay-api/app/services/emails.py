@@ -204,6 +204,26 @@ async def send_purchase_emails(
         logger.warning("[emails] send_purchase_emails a échoué", exc_info=True)
 
 
+async def send_password_reset_email(to: str, *, link: str) -> None:
+    """Lien de réinitialisation de mot de passe (jeton 60 min, usage unique)."""
+    body = f"""\
+    <p style="color:{_MUTED};font-size:14px;line-height:1.7;margin:0 0 18px;">
+      Quelqu'un (toi, normalement) a demandé à réinitialiser le mot de passe
+      de ton compte WATT. Ce lien est valable <strong style="color:{_TEXT};">60
+      minutes</strong> et ne fonctionne qu'une fois :
+    </p>
+    <p style="text-align:center;margin:0 0 18px;">
+      <a href="{link}" style="display:inline-block;background:{_GOLD};
+         color:#070608;font-weight:800;padding:12px 28px;border-radius:999px;
+         text-decoration:none;font-size:14px;">Choisir un nouveau mot de passe</a>
+    </p>
+    <p style="color:{_MUTED};font-size:12px;line-height:1.6;margin:0;">
+      Si tu n'es pas à l'origine de cette demande, ignore simplement cet
+      email — ton mot de passe actuel reste valable.
+    </p>"""
+    await _send(to, "Réinitialise ton mot de passe WATT", _layout("Mot de passe oublié ?", body))
+
+
 async def send_welcome_email(to: str, *, name: str | None = None) -> None:
     """Bienvenue à l'inscription."""
     hello = f"Bienvenue {name} ⚡" if name else "Bienvenue ⚡"

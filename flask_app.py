@@ -150,6 +150,12 @@ def create_app(config_class=None):
     def legal_page():
         return send_from_directory(BASE_DIR, 'legal.html')
 
+    # Reset mot de passe (mission Tier 1 2026-06-10) — page à 2 états :
+    # sans ?token= demande d'email, avec ?token= choix du nouveau MDP.
+    @app.route('/reset')
+    def reset_page():
+        return send_from_directory(BASE_DIR, 'reset.html')
+
     # Pages dédiées "voir tout" — réutilisent le shell index.html. marketplace.js
     # détecte le chemin (/sons, /artistes) et affiche la cellule en plein.
     # Vraies URL partageables + indexables (SEO).
