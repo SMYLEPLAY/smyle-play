@@ -639,10 +639,14 @@
     }
 
     // Home : 3 meilleurs profils ; catalogue complet sur /artistes.
+    // 2026-06-11 — le lien « Voir tous les artistes » est TOUJOURS affiché
+    // sur la home (miroir de « Voir tous les sons »). Avant : seulement si
+    // plus de 3 profils → avec un catalogue jeune, aucun accès visible à
+    // /artistes (retour QA Tom).
     let _artNote = '';
-    if (_VIEW === 'home' && !needle && items.length > HOME_CAP) {
+    if (_VIEW === 'home' && !needle) {
       const totalArt = items.length;
-      items = items.slice(0, HOME_CAP);
+      if (items.length > HOME_CAP) items = items.slice(0, HOME_CAP);
       _artNote = '<a class="mp-voir-tout" href="/artistes" style="grid-column:1/-1;margin-top:14px">Voir tous les artistes (' + totalArt + ') →</a>';
     }
 
