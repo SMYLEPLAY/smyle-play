@@ -296,28 +296,7 @@ body.wb3-active.wb3-screen-open #wb3-backbar { display: block; }
    (les modes with_prompt / simple existants ne bougent pas).
    ───────────────────────────────────────────────────────────────────────── */
 
-/* 4 types de publication : 4 colonnes sur desktop (2×2 sinon, héritée) */
-@media (min-width: 961px) {
-  .dash-mode-switch { grid-template-columns: repeat(4, 1fr); }
-}
-
-/* ── C1.1 — création CONTEXTUELLE par cellule (décision Tom 2026-06-10) ──
-   La cellule d'origine détermine les types proposés (et, à terme, le
-   positionnement marketplace du contenu) :
-     contexte "sons"  → Avec recette · Simple
-     contexte "beats" → Beat seul · Recette + beat (pack)               */
-#dashUploadForm[data-context="sons"] .dash-mode-pill[data-mode="beat"],
-#dashUploadForm[data-context="sons"] .dash-mode-pill[data-mode="pack"],
-#dashUploadForm[data-context="beats"] .dash-mode-pill[data-mode="with_prompt"],
-#dashUploadForm[data-context="beats"] .dash-mode-pill[data-mode="simple"] {
-  display: none;
-}
-@media (min-width: 961px) {
-  #dashUploadForm[data-context="sons"] .dash-mode-switch,
-  #dashUploadForm[data-context="beats"] .dash-mode-switch {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+/* (C1.4 : 2 destinations — la grille 2 colonnes du dashboard.css suffit.) */
 
 /* beat : pas de colonne recette (comme simple) */
 [data-mode="beat"] .dash-upload-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 220px); }
@@ -330,6 +309,12 @@ body.wb3-active.wb3-screen-open #wb3-backbar { display: block; }
 #dashBeatFields { display: none; }
 [data-mode="beat"] #dashBeatFields,
 [data-mode="pack"] #dashBeatFields { display: block; }
+
+/* C1.4 — destination BEAT : un seul prix + une seule rareté (portés par le
+   bloc beat). Les champs prix/exemplaires de la recette sont masqués. */
+[data-mode="pack"] #dashPromptPriceWrap,
+[data-mode="pack"] #dashPromptSupplyWrap,
+[data-mode="pack"] .dash-credit-grid { display: none !important; }
 
 #dashBeatFields {
   margin-top: var(--sp-gap-md);

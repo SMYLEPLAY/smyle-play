@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="/ui/core/badges.css" />
   <script src="/ui/core/badges.js" defer></script>
   <!-- C1 — WattBoard v3 (bandeau + 2 mondes + tuiles + création Audio) -->
-  <link rel="stylesheet" href="wattboard-v3.css?v=20260610c" />
+  <link rel="stylesheet" href="wattboard-v3.css?v=20260610e" />
 
 <style>
 /* SLIDER PROMPT SETTINGS */
@@ -712,7 +712,14 @@
              sons avec/sans prompt ne cohabiteront PAS dans les mêmes
              sections de la plateforme — traité plus tard.
              ═════════════════════════════════════════════════════════════ -->
-        <div class="dash-mode-switch" role="tablist" aria-label="Type de publication">
+        <div class="dash-mode-switch" role="tablist" aria-label="Destination de la publication">
+          <!-- C1.4 (2026-06-10) — MODÈLE FINAL : 2 destinations.
+               Règle plateforme : tout ce qui est publié porte sa recette
+               (plus de « partage simple », comme côté image), et un achat
+               = l'exemplaire complet (fichier + recette). Le concept de
+               « licence » disparaît au profit de la rareté #X/N
+               (1 exemplaire = vente unique). Les modes internes restent
+               'with_prompt' (musique) et 'pack' (beat = recette + fichier). -->
           <button type="button" class="dash-mode-pill is-active"
                   data-mode="with_prompt" role="tab" aria-selected="true"
                   onclick="setUploadMode('with_prompt')">
@@ -720,39 +727,17 @@
               <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
             </svg>
             <span class="dash-mode-pill-label">
-              <strong>Avec recette prompt</strong>
-              <em>Je vends mon prompt — les fans peuvent recréer mon style</em>
-            </span>
-          </button>
-          <button type="button" class="dash-mode-pill"
-                  data-mode="simple" role="tab" aria-selected="false"
-                  onclick="setUploadMode('simple')">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-            </svg>
-            <span class="dash-mode-pill-label">
-              <strong>Simple (sans prompt)</strong>
-              <em>Je partage juste un son — pas de vente prompt associée</em>
-            </span>
-          </button>
-          <!-- C1 (2026-06-10) — 2 nouveaux types branchés sur le backend
-               beats (POST /artist/me/beats + liaison track.beat_id). -->
-          <button type="button" class="dash-mode-pill"
-                  data-mode="beat" role="tab" aria-selected="false"
-                  onclick="setUploadMode('beat')">
-            <span style="font-size:14px;line-height:1">🥁</span>
-            <span class="dash-mode-pill-label">
-              <strong>Beat IA seul</strong>
-              <em>Je vends le fichier audio — lease ou vente unique</em>
+              <strong>🎵 Musique</strong>
+              <em>On écoute le morceau — l'achat débloque recette + fichier</em>
             </span>
           </button>
           <button type="button" class="dash-mode-pill"
                   data-mode="pack" role="tab" aria-selected="false"
                   onclick="setUploadMode('pack')">
-            <span style="font-size:14px;line-height:1">📦</span>
+            <span style="font-size:14px;line-height:1">🥁</span>
             <span class="dash-mode-pill-label">
-              <strong>Recette + beat (pack)</strong>
-              <em>Le prompt ET le fichier, avec un prix pack avantageux</em>
+              <strong>🥁 Beat</strong>
+              <em>Un artiste crée dessus — l'achat débloque fichier + recette</em>
             </span>
           </button>
         </div>
@@ -868,14 +853,20 @@
               placeholder="Colle ici les paroles complètes si le morceau est vocal. Laisser vide pour un instrumental."></textarea>
             <div class="dash-help">🎤 Les fans verront un badge "Avec paroles" sur la carte. Contenu gated jusqu'à l'achat.</div>
 
+            <!-- C1.4 : en destination BEAT, le prix et les exemplaires sont
+                 portés par le bloc beat (un seul achat, un seul prix) —
+                 ces champs recette sont masqués via [data-mode="pack"]. -->
+            <div id="dashPromptPriceWrap">
             <label class="dash-label">Prix de débloquage (crédits) <span class="dash-req">*</span></label>
             <input class="dash-input" id="dashPromptPrice" type="number"
                    min="3" max="500" value="80"
                    oninput="updateCreditGrid()" />
           <div class="dash-help" id="dashPromptPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
             <div class="dash-help">Min. 3 · Max. 500 crédits. Si l'acheteur possède ton ADN il a -30&nbsp;% automatique.</div>
+            </div>
 
             <!-- Édition limitée (rareté par nb d'exemplaires) — comme les ADN. -->
+            <div id="dashPromptSupplyWrap">
             <label class="dash-label" style="margin-top:14px;">Nombre d'exemplaires <span style="color:#a09cb8;font-weight:400;">(optionnel)</span></label>
             <input class="dash-input" id="dashPromptMaxSupply" type="number" min="1"
                    placeholder="Laisse vide = illimité"
@@ -884,6 +875,7 @@
               <span style="color:#a09cb8;">Édition illimitée (pas de badge de rareté)</span>
             </div>
             <div class="dash-help">1 = pièce unique 👑 · 2–10 = légendaire ⭐ · 11–10 000 = limitée 💎 · plus = ouverte 🟢. La rareté valorise ton prompt ; le prix reste libre.</div>
+            </div><!-- /dashPromptSupplyWrap -->
 
             <!-- ──────────────────────────────────────────────────────────────
                  P1-F4 (2026-05-04) — Réglages de génération (4 obligatoires + 1 optionnel)
@@ -1055,57 +1047,28 @@
           </div>
         </div>
 
-        <!-- ═══ C1 — BLOC BEAT (modes beat & pack uniquement) ══════════════
-             Le produit "beat" : écoute streaming libre, téléchargement du
-             fichier gaté par l'achat. EXCLUSIF = vente unique (le backend
-             force max_supply=1 et retire l'offre à l'achat). ══════════════ -->
+        <!-- ═══ C1.4 — BLOC BEAT (destination beat uniquement) ═════════════
+             Modèle final : un beat = recette + fichier vendus ENSEMBLE en
+             un seul achat, à UN seul prix. Plus de licence : la rareté
+             #X/N porte la mécanique (1 exemplaire = vente unique, le
+             backend retire l'offre à l'achat). Écoute streaming libre,
+             téléchargement gaté par l'achat. ══════════════════════════════ -->
         <div id="dashBeatFields">
-          <div class="wb3-beat-hdr">🥁 Beat IA — le fichier vendable</div>
-          <div class="wb3-beat-sub">Beat généré par IA (outil + version déclarés ci-dessus — affichés sur la carte). L'écoute reste libre pour tout le monde ; l'achat débloque le téléchargement du fichier.</div>
+          <div class="wb3-beat-hdr">🥁 Beat — recette + fichier, un seul achat</div>
+          <div class="wb3-beat-sub">L'instru s'écoute librement. L'acheteur reçoit le fichier ET le prompt (il chante sur LE fichier exact — un prompt seul ne le recrée jamais). Outil IA + version déclarés ci-dessus, affichés sur la carte.</div>
           <div class="wb3-beat-grid">
             <div>
-              <label class="dash-label">Licence <span class="dash-req">*</span></label>
-              <div class="wb3-license-choice">
-                <label class="wb3-license-opt">
-                  <input type="radio" name="dashBeatLicense" value="lease" checked
-                         onchange="dashBeatOnLicenseChange()" />
-                  <span><strong>Lease</strong>
-                  <em>Plusieurs acheteurs possibles. Tu peux limiter le nombre d'exemplaires.</em></span>
-                </label>
-                <!-- DÉCISION 100 % IA (2026-06-10) : libellé « Vente unique »
-                     (pas « Exclusif ») — on garantit techniquement la vente
-                     unique du fichier (retrait à l'achat, mécanique #1/1),
-                     pas une exclusivité créative invérifiable sur du contenu
-                     IA régénérable. Valeur backend inchangée : 'exclusive'. -->
-                <label class="wb3-license-opt">
-                  <input type="radio" name="dashBeatLicense" value="exclusive"
-                         onchange="dashBeatOnLicenseChange()" />
-                  <span><strong>Vente unique</strong>
-                  <em>Un seul acheteur — le beat est retiré de la vente dès l'achat.</em></span>
-                </label>
-              </div>
-            </div>
-            <div>
               <label class="dash-label">Prix du beat (crédits) <span class="dash-req">*</span></label>
-              <input class="dash-input" id="dashBeatPrice" type="number" min="3" value="120"
+              <input class="dash-input" id="dashBeatPrice" type="number" min="3" max="500" value="120"
                      oninput="dashUpdateEurPreview('dashBeatPrice','dashBeatPriceEur')" />
               <div class="dash-help" id="dashBeatPriceEur" style="margin-top:4px;font-style:italic;"></div>
-              <div class="dash-help">Min. 3 crédits. Prix libre.</div>
-
-              <div id="dashBeatSupplyField">
-                <label class="dash-label" style="margin-top:12px;">Nombre d'exemplaires <span style="font-weight:400;">(lease, optionnel)</span></label>
-                <input class="dash-input" id="dashBeatMaxSupply" type="number" min="1"
-                       placeholder="Laisse vide = illimité" />
-                <div class="dash-help">Édition limitée = badge de rareté #X/N sur la carte.</div>
-              </div>
-
-              <div id="dashPackPriceField">
-                <label class="dash-label" style="margin-top:12px;">Prix du pack recette + beat (crédits) <span class="dash-req">*</span></label>
-                <input class="dash-input" id="dashPackPrice" type="number" min="3" value="160"
-                       oninput="dashUpdateEurPreview('dashPackPrice','dashPackPriceEur')" />
-                <div class="dash-help" id="dashPackPriceEur" style="margin-top:4px;font-style:italic;"></div>
-                <div class="dash-help">Le pack débloque la recette ET le beat en un seul achat — mets-le sous la somme des deux prix.</div>
-              </div>
+              <div class="dash-help">Min. 3 crédits. Prix libre — il débloque fichier + recette.</div>
+            </div>
+            <div>
+              <label class="dash-label">Nombre d'exemplaires <span style="font-weight:400;">(optionnel)</span></label>
+              <input class="dash-input" id="dashBeatMaxSupply" type="number" min="1"
+                     placeholder="Laisse vide = illimité" />
+              <div class="dash-help">1 = vente unique (retiré de la vente dès l'achat) · N = édition limitée, badge #X/N sur la carte.</div>
             </div>
           </div>
         </div>
@@ -1121,7 +1084,7 @@
         <div class="dash-upload-actions">
           <button class="dash-btn-primary" onclick="uploadTrack()" id="dashUploadCta">
             <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span id="dashUploadCtaLbl">Publier avec recette</span>
+            <span id="dashUploadCtaLbl">Publier la musique</span>
           </button>
           <button class="dash-btn-ghost" onclick="cancelUpload()">Annuler</button>
         </div>
@@ -1596,13 +1559,17 @@
       <label class="dash-label">
         Origine de la voix <span class="dash-req">*</span>
       </label>
+      <!-- DÉCISION 100 % IA (2026-06-10) : option « Voix d'un artiste
+           connu » SUPPRIMÉE — vendre la voix clonée d'un tiers sans accord
+           = risque juridique majeur (droit à la voix/image). On ne vend que
+           des voix dont le vendeur détient les droits : la sienne, ou une
+           voix IA originale. La voix est un INGRÉDIENT de création IA. -->
       <select class="dash-input" id="dashVoiceOrigin">
         <option value="">— Sélectionne —</option>
         <option value="personal">Personnelle (ma propre voix)</option>
         <option value="ai">Créée par IA</option>
-        <option value="known_artist">Voix d'un artiste connu</option>
       </select>
-      <div class="dash-help">Info utile à l'acheteur — visible avant l'achat. Distingue voix humaine perso, voix IA et voix d'artiste référencé.</div>
+      <div class="dash-help">Info utile à l'acheteur — visible avant l'achat. Tu dois détenir les droits de la voix vendue : la tienne, ou une voix IA originale (jamais l'imitation d'un artiste existant).</div>
 
       <label class="dash-label">
         Morceau associé (optionnel)
@@ -1945,9 +1912,9 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <script src="/ui/playlists.js" defer></script>
-<script src="dashboard.js?v=20260610c"></script>
+<script src="dashboard.js?v=20260610e"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
-<script src="wattboard-v3.js?v=20260610c" defer></script>
+<script src="wattboard-v3.js?v=20260610e" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>
