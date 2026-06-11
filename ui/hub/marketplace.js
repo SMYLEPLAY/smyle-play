@@ -89,6 +89,10 @@
     s.textContent =
       '.mp-only-sons .smyle-vitrine,.mp-only-sons .mp-section-top-sons,.mp-only-sons .mp-section-top-artists,.mp-only-sons .mp-section-artists{display:none!important}' +
       '.mp-only-artists .smyle-vitrine,.mp-only-artists .mp-section-top-sons,.mp-only-artists .mp-section-top-artists,.mp-only-artists .mp-section-sons{display:none!important}' +
+      // MODE RÉSULTATS (2026-06-11) — dès qu'une recherche ou un filtre est
+      // actif sur la home, la vitrine et les podiums s'effacent : les
+      // grilles résultats prennent toute la place (sans plafond de 3).
+      '.mp-searching .smyle-vitrine,.mp-searching .mp-section-top-sons,.mp-searching .mp-section-top-artists{display:none!important}' +
       '.mp-voir-tout{display:block;text-align:center;margin:12px auto 0;padding:9px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.4);color:#c4b5fd;font-size:.82rem;font-weight:600;text-decoration:none;width:max-content;cursor:pointer}' +
       '.mp-voir-tout:hover{background:rgba(124,58,237,.12)}';
     document.head.appendChild(s);
@@ -476,7 +480,8 @@
     // Home : on ne montre que les 3 meilleurs (pas de déversement du catalogue).
     // Le catalogue complet vit sur la page dédiée /sons. En vue /sons → tout.
     let _capNote = '';
-    if (_VIEW === 'home' && !needle && items.length > HOME_CAP) {
+    // Cap home à 3 UNIQUEMENT hors recherche/filtre actif (mode résultats).
+    if (_VIEW === 'home' && !needle && !_pageMoodSet.size && items.length > HOME_CAP) {
       const totalSons = items.length;
       items = items.slice().sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, HOME_CAP);
       _capNote = '<a class="mp-voir-tout" href="/sons" style="grid-column:1/-1;margin-top:14px">Voir tous les sons (' + totalSons + ') →</a>';
@@ -644,7 +649,8 @@
     // plus de 3 profils → avec un catalogue jeune, aucun accès visible à
     // /artistes (retour QA Tom).
     let _artNote = '';
-    if (_VIEW === 'home' && !needle) {
+    // Cap home à 3 UNIQUEMENT hors recherche/filtre actif (mode résultats).
+    if (_VIEW === 'home' && !needle && !_pageRoleSet.size) {
       const totalArt = items.length;
       if (items.length > HOME_CAP) items = items.slice(0, HOME_CAP);
       _artNote = '<a class="mp-voir-tout" href="/artistes" style="grid-column:1/-1;margin-top:14px">Voir tous les artistes (' + totalArt + ') →</a>';
@@ -1241,7 +1247,10 @@
     const _apply = () => {
       const v = input.value || '';
       if (isHome) {
-        // Home : la recherche et les filtres pilotent LES DEUX grilles.
+        // MODE RÉSULTATS : recherche/filtre actif → vitrine + podiums
+        // masqués, grilles complètes (le plafond de 3 saute aussi).
+        const active = !!v.trim() || _pageMoodSet.size > 0 || _pageRoleSet.size > 0;
+        document.body.classList.toggle('mp-searching', active);
         _renderGridSons(v);
         _renderGridArtists(v);
       } else if (isArtists) {
