@@ -98,6 +98,15 @@ class Track(Base):
         Integer, nullable=True
     )
 
+    # C2 (migration 0055) — le beat devient un DRAPEAU de placement :
+    # is_beat=True → le son apparaît sur l'étagère /beats. La recette
+    # reste LE produit vendu (plus de ligne prompts type 'beat' créée).
+    is_beat: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
+    # BPM optionnel, affiché sur les cards /beats (40..300, CHECK en DB).
+    bpm: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # --- Champ ajouté migration 0038 — tags libres pour la recherche ---
     # Texte libre séparé par des virgules ("chill, dark, guitare, 90bpm").
     # ILIKE dans /watt/search/tracks. NULL = pas de tags.

@@ -33,6 +33,10 @@ class TrackCreate(BaseModel):
     # borne stricte est tenue par le CHECK DB ck_tracks_platform_enum + le
     # <select> frontend. Vide → None.
     platform: str | None = Field(default=None, max_length=20)
+    # C2 — drapeau de placement « beat » (étagère /beats) + BPM optionnel.
+    # Le beat n'est PLUS un produit distinct : la recette est LE produit.
+    is_beat: bool = False
+    bpm: int | None = Field(default=None, ge=40, le=300)
 
 
 class TrackUpdate(BaseModel):
@@ -58,6 +62,9 @@ class TrackUpdate(BaseModel):
     pack_price_credits: int | None = Field(default=None, ge=1)
     # Tags libres — séparés par des virgules ("chill, dark, guitare, 90bpm")
     tags: str | None = Field(default=None, max_length=500)
+    # C2 — drapeau beat + BPM modifiables après coup.
+    is_beat: bool | None = None
+    bpm: int | None = Field(default=None, ge=40, le=300)
 
 
 class DNARead(BaseModel):
@@ -84,6 +91,9 @@ class TrackRead(BaseModel):
     prompt_price_credits: int | None = None
     tags: str | None = None
     platform: str | None = None
+    # C2 — drapeau beat + BPM (cards /beats).
+    is_beat: bool = False
+    bpm: int | None = None
     created_at: datetime
 
     @computed_field  # type: ignore[misc]

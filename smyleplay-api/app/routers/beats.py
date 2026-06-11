@@ -127,6 +127,7 @@ async def buy_pack(
     return PackBuyResult(**result)
 
 
+@router.get("/products/{beat_id}/download")
 @router.get("/beats/{beat_id}/download")
 async def download_beat(
     beat_id: UUID,
@@ -134,48 +135,54 @@ async def download_beat(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Télécharge le fichier audio d'un beat — RÉSERVÉ aux acheteurs (ou à
-    l'artiste). C'est ça, le produit "beat" : l'écoute streaming est libre,
-    le téléchargement est gaté par l'achat.
+    C2 — DOWNLOAD UNIVERSEL : télécharge le fichier audio de TOUT
+    exemplaire possédé (recette OU beat legacy) — réservé aux acheteurs
+    (ou à l'artiste). Rend vraie la règle « achat = fichier + recette ».
+    L'écoute streaming reste libre, le téléchargement est gaté par l'achat.
 
-    404 indistinct si le beat n'existe pas (anti-énumération). 403 si l'user
-    ne possède pas le beat. La vérification de possession précède tout accès
-    R2 (testable sans R2).
+    Deux routes, un handler : /products/{id}/download (canonique C2) et
+    /beats/{id}/download (rétro-compat front bibliothèque pré-C2).
+
+    404 indistinct si le produit n'existe pas (anti-énumération). 403 si
+    l'user ne le possède pas. La vérification de possession précède tout
+    accès R2 (testable sans R2).
     """
-    beat = (await db.execute(
+    product = (await db.execute(
         select(Prompt).where(
             Prompt.id == beat_id,
-            Prompt.product_type == "beat",
             Prompt.is_deleted.is_(False),
         )
     )).scalar_one_or_none()
-    if beat is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Beat not found")
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
-    # Possession : une ligne UnlockedPrompt pour ce beat, ou l'artiste lui-même.
+    # Possession : une ligne UnlockedPrompt pour ce produit, ou l'artiste lui-même.
     owns = (await db.execute(
         select(UnlockedPrompt.id).where(
             UnlockedPrompt.prompt_id == beat_id,
             UnlockedPrompt.current_owner_id == current_user.id,
         )
     )).scalar_one_or_none()
-    if owns is None and beat.artist_id != current_user.id:
+    if owns is None and product.artist_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Achète ce beat pour pouvoir le télécharger.",
+            detail="Achète cet exemplaire pour pouvoir le télécharger.",
         )
 
-    # Fichier = audio du track lié (track.beat_id = ce beat), le plus récent.
+    # Fichier = audio du track lié : via prompt_id (recette, cas C2) OU
+    # beat_id (produit beat legacy). Le plus récent si plusieurs.
+    from sqlalchemy import or_ as _or
+
     track = (await db.execute(
         select(Track).where(
-            Track.beat_id == beat_id,
+            _or(Track.prompt_id == beat_id, Track.beat_id == beat_id),
             Track.is_deleted.is_(False),
         ).order_by(Track.created_at.desc()).limit(1)
     )).scalar_one_or_none()
     if track is None or not track.r2_key:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Fichier audio indisponible pour ce beat.",
+            detail="Fichier audio indisponible pour cet exemplaire.",
         )
 
     from app.services.r2 import get_r2_client, is_configured
@@ -203,7 +210,7 @@ async def download_beat(
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = _AUDIO_MIME_BY_EXT.get(ext, "application/octet-stream")
-    safe_name = (beat.title or "beat").replace('"', "").strip() or "beat"
+    safe_name = (product.title or "exemplaire").replace('"', "").strip() or "exemplaire"
     filename = f"{safe_name}.{ext}" if ext else safe_name
 
     def _iter_chunks():

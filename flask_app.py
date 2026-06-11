@@ -163,6 +163,12 @@ def create_app(config_class=None):
     def sons_page():
         return send_from_directory(BASE_DIR, 'index.html')
 
+    # C2 (2026-06-12) — étagère /beats : sons flagués « beat » (drapeau
+    # is_beat), même shell index.html, filtrage côté marketplace.js.
+    @app.route('/beats')
+    def beats_page():
+        return send_from_directory(BASE_DIR, 'index.html')
+
     @app.route('/artistes')
     def artistes_page():
         return send_from_directory(BASE_DIR, 'index.html')

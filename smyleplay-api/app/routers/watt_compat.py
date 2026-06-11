@@ -282,6 +282,9 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         # qui font un batch query sur Prompt (tracks-recent, /watt/artists).
         # Vaut None si la track n'a pas de prompt ou si non encore injecté.
         "promptPriceCredits": None,
+        # C2 — drapeau beat (étagère /beats) + BPM pour les cards.
+        "isBeat":            bool(track.is_beat or track.beat_id),
+        "bpm":               track.bpm,
     }
     if artist is not None:
         out["artistName"] = artist.artist_name or ""
@@ -878,6 +881,7 @@ async def get_artist(
 @router.get("/tracks-recent")
 async def tracks_recent(
     limit: int = 12,
+    beats_only: bool = False,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
@@ -900,6 +904,14 @@ async def tracks_recent(
         .order_by(desc(Track.created_at))
         .limit(safe_limit)
     )
+    # C2 — étagère /beats : sons flagués beat (nouveau drapeau) OU liés à
+    # un produit beat legacy (beat_id, pré-C2).
+    if beats_only:
+        from sqlalchemy import or_ as _or
+
+        stmt = stmt.where(
+            _or(Track.is_beat.is_(True), Track.beat_id.isnot(None))
+        )
     rows = (await db.execute(stmt)).all()
     tracks_out = [_track_to_flask_dict(t, a) for t, a in rows]
 

@@ -50,6 +50,9 @@ async def create_track_with_dna(
         # <select> dashTrackPlatform était choisi mais jamais persisté.
         # Affiché sur la carte ID avant achat.
         platform=data.platform,
+        # C2 — drapeau beat (placement /beats) + BPM optionnel.
+        is_beat=bool(getattr(data, "is_beat", False)),
+        bpm=getattr(data, "bpm", None),
     )
     db.add(track)
     await db.flush()  # get track.id from the DB

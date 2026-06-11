@@ -1065,6 +1065,12 @@
     const promptId  = badgeEl.dataset.promptId;
     const price     = parseInt(badgeEl.dataset.promptPrice, 10) || 0;
     const trackName = badgeEl.dataset.trackName || 'ce son';
+    // C2 — drawer d'achat unifié : un seul composant pour tout le site.
+    // L'ancienne modale reste en fallback si le composant n'est pas chargé.
+    if (window.PurchaseDrawer) {
+      window.PurchaseDrawer.open({ type: 'son', id: promptId, price: price || null, title: trackName });
+      return;
+    }
     const existing  = document.getElementById('track-adn-overlay');
     if (existing) existing.remove();
 
@@ -1743,6 +1749,17 @@
     const recipeBtn = document.getElementById('pl-td-recipe-btn');
     if (recipeBtn) {
       recipeBtn.addEventListener('click', async () => {
+        // C2 — drawer d'achat unifié (fallback : POST direct historique).
+        if (window.PurchaseDrawer) {
+          _close();
+          window.PurchaseDrawer.open({
+            type: 'son',
+            id: recipeBtn.dataset.promptId,
+            price: parseInt(recipeBtn.dataset.promptPrice, 10) || null,
+            title: recipeBtn.dataset.trackName || 'ce son',
+          });
+          return;
+        }
         recipeBtn.disabled = true;
         recipeBtn.textContent = 'Déblocage…';
         try {
