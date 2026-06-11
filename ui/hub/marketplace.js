@@ -47,6 +47,7 @@
   const _VIEW = (function () {
     const p = (typeof location !== 'undefined' ? location.pathname : '') || '';
     if (p === '/sons' || p === '/sons/') return 'sons';
+    if (p === '/beats' || p === '/beats/') return 'beats';  // C2 — étagère beats
     if (p === '/artistes' || p === '/artistes/') return 'artists';
     return 'home';
   })();
@@ -441,7 +442,13 @@
     const dnaHit = dna && dna.winner;
     _setMatchPill(_state.dom.searchBarDna, dnaHit ? { label: dna.label, color: dna.color } : null);
 
-    let items = _state.tracks.filter(t => {
+    // C2 — vue /beats : seulement les sons flagués beat (drapeau is_beat
+    // ou beat legacy), achetables via le même circuit recette.
+    const _baseTracks = (_VIEW === 'beats')
+      ? _state.tracks.filter(t => !!t.isBeat)
+      : _state.tracks;
+
+    let items = _baseTracks.filter(t => {
       if (!needle) return true;
       const hay = ((t.name || '') + ' ' + (t.artist || '') + ' ' + (t.genre || '') + ' ' + (t.tags || '')).toLowerCase();
       // Match texte classique OU match DNA (genre taggé sur l'univers gagnant)
@@ -478,7 +485,9 @@
     if (items.length === 0) {
       el.innerHTML = (needle || _pageMoodSet.size)
         ? `<div class="mp-grid-empty">Aucun son ne correspond à ta sélection.</div>`
-        : `<div class="mp-grid-empty">Aucun son dans le catalogue pour le moment.</div>`;
+        : (_VIEW === 'beats'
+            ? `<div class="mp-grid-empty">Aucun beat sur l'étagère pour le moment. Publie un son avec la case « 🥁 Proposer aussi comme beat ».</div>`
+            : `<div class="mp-grid-empty">Aucun son dans le catalogue pour le moment.</div>`);
       return;
     }
 
@@ -489,7 +498,10 @@
     if (_VIEW === 'home' && !needle && !_pageMoodSet.size && items.length > HOME_CAP) {
       const totalSons = items.length;
       items = items.slice().sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, HOME_CAP);
-      _capNote = '<a class="mp-voir-tout" href="/sons" style="grid-column:1/-1;margin-top:14px">Voir tous les sons (' + totalSons + ') →</a>';
+      _capNote = '<div style="grid-column:1/-1;display:flex;gap:10px;justify-content:center;margin-top:14px">'
+        + '<a class="mp-voir-tout" href="/sons" style="margin:0">Voir tous les sons (' + totalSons + ') →</a>'
+        + '<a class="mp-voir-tout" href="/beats" style="margin:0">🥁 Étagère beats →</a>'
+        + '</div>';
     }
 
     el.innerHTML = items.map(t => {
@@ -535,8 +547,12 @@
       const moodChips = moods
         .map(m => `<span class="mp-son-card-mood" style="display:inline-block;padding:2px 7px;border-radius:9px;background:rgba(255,255,255,.07);color:#b9b3c8;font-size:.68rem;">${_esc(m)}</span>`)
         .join('');
-      const tagsRow = (platformBadge || moodChips)
-        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${platformBadge}${moodChips}</div>`
+      // C2 — chips beat : 🥁 (placement) + BPM si renseigné.
+      const beatChip = t.isBeat
+        ? `<span class="mp-son-card-beat" title="Proposé comme beat" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(34,197,94,.14);color:#86efac;font-size:.68rem;font-weight:600;">🥁 Beat${t.bpm ? ' · ' + t.bpm + ' BPM' : ''}</span>`
+        : '';
+      const tagsRow = (platformBadge || moodChips || beatChip)
+        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${platformBadge}${beatChip}${moodChips}</div>`
         : '';
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
@@ -1008,6 +1024,13 @@
     const price      = parseInt(badgeEl.dataset.promptPrice, 10) || 0;
     const trackName  = badgeEl.dataset.trackName || 'ce son';
 
+    // C2 — drawer d'achat unifié : remplace la modale locale (qui reste
+    // ci-dessous en fallback si le composant n'est pas chargé).
+    if (window.PurchaseDrawer) {
+      window.PurchaseDrawer.open({ type: 'son', id: promptId, price: price || null, title: trackName });
+      return;
+    }
+
     if (document.getElementById('mp-recipe-modal')) return;
 
     const overlay = document.createElement('div');
@@ -1138,6 +1161,15 @@
     if (!_isMarketplacePage()) return;
     _injectViewStyles();
     if (_VIEW === 'sons')    { document.body.classList.add('mp-only-sons');    document.title = 'Tous les sons — WATT'; }
+    if (_VIEW === 'beats')   {
+      document.body.classList.add('mp-only-sons');
+      document.title = 'Beats — WATT';
+      // Tête de section adaptée à l'étagère beats.
+      const _t = document.querySelector('.mp-section-sons .mp-section-title');
+      if (_t) _t.innerHTML = '🥁 Beats';
+      const _s = document.querySelector('.mp-section-sons .mp-section-sub');
+      if (_s) _s.textContent = 'Des bases prêtes à chanter dessus — achat = fichier + recette';
+    }
     if (_VIEW === 'artists') { document.body.classList.add('mp-only-artists'); document.title = 'Tous les artistes — WATT'; }
     _resolveDom();
     _bindSearch();

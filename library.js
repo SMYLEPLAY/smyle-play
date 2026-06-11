@@ -267,14 +267,16 @@ function renderPrompts(items) {
              </div>`}
       </div>`;
 
-    // Beats — bouton de téléchargement (réservé au propriétaire, download gaté).
-    const downloadBlock = (p.product_type === 'beat') ? `
+    // C2 — DOWNLOAD UNIVERSEL : tout exemplaire possédé donne droit au
+    // fichier (« achat = fichier + recette »), plus seulement les beats.
+    const downloadBlock = `
       <div class="lib-content-block">
-        <div class="lib-content-header"><span class="lib-content-label">🎚 Beat${p.license_type ? ' · licence ' + esc(p.license_type) : ''}</span></div>
+        <div class="lib-content-header"><span class="lib-content-label">${p.product_type === 'beat' ? '🎚 Beat' : '🎵 Fichier audio'}</span></div>
         <div class="lib-content-body">
-          <button class="lib-copy-btn" onclick="libDownloadBeat('${p.prompt_id}', this)">⬇ Télécharger le fichier</button>
+          <button class="lib-copy-btn" onclick="libDownloadProduct('${p.prompt_id}', this)">⬇ Télécharger le fichier</button>
+          <span style="display:block;margin-top:4px;font-size:11px;color:#a09cb8">Achat = fichier + recette — le fichier exact est à toi.</span>
         </div>
-      </div>` : '';
+      </div>`;
 
     const cellStyle = p.track_color ? ` style="border-left:3px solid ${esc(p.track_color)}"` : '';
     const playBtn = p.audio_url ? `
@@ -351,20 +353,21 @@ async function libUnlistResale(promptId) {
   }
 }
 
-// Télécharge le fichier d'un beat possédé (download gaté côté serveur).
+// C2 — Télécharge le fichier de TOUT exemplaire possédé (download gaté
+// côté serveur : GET /products/{id}/download, recette OU beat legacy).
 // apiFetch ajoute le Bearer ; raw:true renvoie la Response brute → blob.
-async function libDownloadBeat(beatId, btn) {
+async function libDownloadProduct(productId, btn) {
   const old = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Téléchargement…'; }
   try {
-    const resp = await apiFetch('/beats/' + encodeURIComponent(beatId) + '/download', { raw: true });
+    const resp = await apiFetch('/products/' + encodeURIComponent(productId) + '/download', { raw: true });
     if (!resp || !resp.ok) {
       if (window.smyleToast) window.smyleToast('Téléchargement indisponible.', { type: 'error' });
       return;
     }
     const cd = resp.headers.get('Content-Disposition') || '';
     const m = cd.match(/filename="?([^"]+)"?/);
-    const filename = (m && m[1]) ? m[1] : 'beat';
+    const filename = (m && m[1]) ? m[1] : 'exemplaire';
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -384,7 +387,8 @@ async function libDownloadBeat(beatId, btn) {
 if (typeof window !== 'undefined') {
   window.libListResale = libListResale;
   window.libUnlistResale = libUnlistResale;
-  window.libDownloadBeat = libDownloadBeat;
+  window.libDownloadProduct = libDownloadProduct;
+  window.libDownloadBeat = libDownloadProduct; // alias rétro-compat
 }
 
 

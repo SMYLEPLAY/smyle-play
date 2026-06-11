@@ -739,34 +739,21 @@
              sons avec/sans prompt ne cohabiteront PAS dans les mêmes
              sections de la plateforme — traité plus tard.
              ═════════════════════════════════════════════════════════════ -->
-        <div class="dash-mode-switch" role="tablist" aria-label="Destination de la publication">
-          <!-- C1.4 (2026-06-10) — MODÈLE FINAL : 2 destinations.
-               Règle plateforme : tout ce qui est publié porte sa recette
-               (plus de « partage simple », comme côté image), et un achat
-               = l'exemplaire complet (fichier + recette). Le concept de
-               « licence » disparaît au profit de la rareté #X/N
-               (1 exemplaire = vente unique). Les modes internes restent
-               'with_prompt' (musique) et 'pack' (beat = recette + fichier). -->
-          <button type="button" class="dash-mode-pill is-active"
-                  data-mode="with_prompt" role="tab" aria-selected="true"
-                  onclick="setUploadMode('with_prompt')">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
-            </svg>
-            <span class="dash-mode-pill-label">
-              <strong>🎵 Musique</strong>
-              <em>On écoute le morceau — l'achat débloque recette + fichier</em>
-            </span>
-          </button>
-          <button type="button" class="dash-mode-pill"
-                  data-mode="pack" role="tab" aria-selected="false"
-                  onclick="setUploadMode('pack')">
-            <span style="font-size:14px;line-height:1">🥁</span>
-            <span class="dash-mode-pill-label">
-              <strong>🥁 Beat</strong>
-              <em>Un artiste crée dessus — l'achat débloque fichier + recette</em>
-            </span>
-          </button>
+        <!-- C2 (2026-06-12) — FLUX UNIQUE : les 2 pilules Musique/Beat sont
+             remplacées par une case « Proposer aussi comme beat ». La recette
+             est LE produit (un seul prix, une seule rareté) ; le flag beat
+             est un PLACEMENT (étagère /beats), plus un produit distinct. -->
+        <div class="dash-beat-flag" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:10px 14px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:14px;background:rgba(255,255,255,.02)">
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="dashBeatFlag" onchange="dashToggleBeatFlag()" style="width:16px;height:16px;accent-color:#7c5cff">
+            <span><strong>🥁 Proposer aussi comme beat</strong>
+            <em style="display:block;font-size:12px;color:#a09cb8;font-style:normal">Même produit, même prix — ton son apparaît en plus sur l'étagère /beats pour les artistes qui cherchent une base.</em></span>
+          </label>
+          <span id="dashBpmWrap" hidden style="display:flex;align-items:center;gap:8px">
+            <label class="dash-label" for="dashTrackBpm" style="margin:0">BPM</label>
+            <input class="dash-input" id="dashTrackBpm" type="number" min="40" max="300" placeholder="ex : 140" style="width:90px">
+            <em style="font-size:11px;color:#a09cb8;font-style:normal">optionnel</em>
+          </span>
         </div>
 
         <!-- Grille du formulaire — 3 colonnes en mode with_prompt, 2 en simple -->
@@ -1051,31 +1038,9 @@
           </div>
         </div>
 
-        <!-- ═══ C1.4 — BLOC BEAT (destination beat uniquement) ═════════════
-             Modèle final : un beat = recette + fichier vendus ENSEMBLE en
-             un seul achat, à UN seul prix. Plus de licence : la rareté
-             #X/N porte la mécanique (1 exemplaire = vente unique, le
-             backend retire l'offre à l'achat). Écoute streaming libre,
-             téléchargement gaté par l'achat. ══════════════════════════════ -->
-        <div id="dashBeatFields">
-          <div class="wb3-beat-hdr">🥁 Beat — recette + fichier, un seul achat</div>
-          <div class="wb3-beat-sub">L'instru s'écoute librement. L'acheteur reçoit le fichier ET le prompt (il chante sur LE fichier exact — un prompt seul ne le recrée jamais). Outil IA + version déclarés ci-dessus, affichés sur la carte.</div>
-          <div class="wb3-beat-grid">
-            <div>
-              <label class="dash-label">Prix du beat (crédits) <span class="dash-req">*</span></label>
-              <input class="dash-input" id="dashBeatPrice" type="number" min="3" max="500" value="120"
-                     oninput="dashUpdateEurPreview('dashBeatPrice','dashBeatPriceEur')" />
-              <div class="dash-help" id="dashBeatPriceEur" style="margin-top:4px;font-style:italic;"></div>
-              <div class="dash-help">Min. 3 crédits. Prix libre — il débloque fichier + recette.</div>
-            </div>
-            <div>
-              <label class="dash-label">Nombre d'exemplaires <span style="font-weight:400;">(optionnel)</span></label>
-              <input class="dash-input" id="dashBeatMaxSupply" type="number" min="1"
-                     placeholder="Laisse vide = illimité" />
-              <div class="dash-help">1 = vente unique (retiré de la vente dès l'achat) · N = édition limitée, badge #X/N sur la carte.</div>
-            </div>
-          </div>
-        </div>
+        <!-- C2 (2026-06-12) — l'ancien BLOC BEAT (prix/exemplaires séparés)
+             est SUPPRIMÉ : un seul produit (la recette), un seul prix, une
+             seule rareté. Le flag beat + BPM vivent en haut du formulaire. -->
 
         <!-- Barre de progression -->
         <div id="dashProgressWrap" style="display:none">
@@ -1915,8 +1880,10 @@
 <script src="ui/core/api.js"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
-<script src="/ui/playlists.js" defer></script>
-<script src="dashboard.js?v=20260610g"></script>
+<!-- C2 — drawer d'achat unifié -->
+<script src="/ui/modals/purchase-drawer.js?v=20260612"></script>
+<script src="/ui/playlists.js?v=20260612a" defer></script>
+<script src="dashboard.js?v=20260612a"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260611a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
