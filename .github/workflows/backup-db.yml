@@ -56,11 +56,26 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+          # R2 ne supporte pas les checksums automatiques d'aws cli v2.23+
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
           # En dur : identifiant de compte R2, pas un secret (le secret
           # R2_ENDPOINT_URL posait des soucis de format — abandonné).
           R2_ENDPOINT: https://2376b01ec5baa2915948d63fcca6a367.r2.cloudflarestorage.com
         run: |
           set -euo pipefail
+          # Nettoie espaces / retours-ligne parasites d'un collage manuel
+          export AWS_ACCESS_KEY_ID="$(printf %s "$AWS_ACCESS_KEY_ID" | tr -d '[:space:]')"
+          export AWS_SECRET_ACCESS_KEY="$(printf %s "$AWS_SECRET_ACCESS_KEY" | tr -d '[:space:]')"
+          # Diagnostic sans rien révéler : longueurs attendues 32 et 64
+          echo "aws: $(aws --version)"
+          echo "Endpoint: $R2_ENDPOINT"
+          echo "Longueur Access Key ID: ${#AWS_ACCESS_KEY_ID} (attendu: 32)"
+          echo "Longueur Secret Key:    ${#AWS_SECRET_ACCESS_KEY} (attendu: 64)"
+          # Test d'accès au bucket AVANT l'upload (erreur plus lisible)
+          aws s3api head-bucket --bucket smyleplay-db-backups-watt \
+            --endpoint-url "$R2_ENDPOINT"
+          echo "Accès bucket : OK"
           aws s3 cp "$FILE" "s3://smyleplay-db-backups-watt/$FILE" \
             --endpoint-url "$R2_ENDPOINT"
           echo "Backup déposé : $FILE"
@@ -70,11 +85,15 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
           # En dur : identifiant de compte R2, pas un secret (le secret
           # R2_ENDPOINT_URL posait des soucis de format — abandonné).
           R2_ENDPOINT: https://2376b01ec5baa2915948d63fcca6a367.r2.cloudflarestorage.com
         run: |
           set -euo pipefail
+          export AWS_ACCESS_KEY_ID="$(printf %s "$AWS_ACCESS_KEY_ID" | tr -d '[:space:]')"
+          export AWS_SECRET_ACCESS_KEY="$(printf %s "$AWS_SECRET_ACCESS_KEY" | tr -d '[:space:]')"
           CUTOFF=$(date -u -d "14 days ago" +%Y-%m-%d)
           aws s3 ls "s3://smyleplay-db-backups-watt/" --endpoint-url "$R2_ENDPOINT" \
             | awk '{print $NF}' | while read -r f; do
