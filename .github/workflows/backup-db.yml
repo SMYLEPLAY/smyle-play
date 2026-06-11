@@ -13,7 +13,6 @@
 #   BACKUP_DATABASE_URL  → DATABASE_PUBLIC_URL du service Postgres Railway
 #   R2_ACCESS_KEY_ID     → token R2 scopé sur le bucket backups uniquement
 #   R2_SECRET_ACCESS_KEY → idem
-#   R2_ENDPOINT_URL      → https://<account_id>.r2.cloudflarestorage.com
 #
 # Rotation : 14 jours glissants (≈ 14 dumps), purge automatique en fin de run.
 # Restauration (jour J, guidée) :
@@ -57,7 +56,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL }}
+          # En dur : identifiant de compte R2, pas un secret (le secret
+          # R2_ENDPOINT_URL posait des soucis de format — abandonné).
+          R2_ENDPOINT: https://2376b01ec5baa2915948d63fcca6a367.r2.cloudflarestorage.com
         run: |
           set -euo pipefail
           aws s3 cp "$FILE" "s3://smyleplay-db-backups-watt/$FILE" \
@@ -69,7 +70,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL }}
+          # En dur : identifiant de compte R2, pas un secret (le secret
+          # R2_ENDPOINT_URL posait des soucis de format — abandonné).
+          R2_ENDPOINT: https://2376b01ec5baa2915948d63fcca6a367.r2.cloudflarestorage.com
         run: |
           set -euo pipefail
           CUTOFF=$(date -u -d "14 days ago" +%Y-%m-%d)
