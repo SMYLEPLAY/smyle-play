@@ -4424,3 +4424,23 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 
 /* ── Respiration générale : les sections ne se touchent plus ─────────── */
 .ap-section-title { margin-bottom: 14px; }
+
+/* ── COVER SACRÉE — la liaison RÉELLE (2026-06-11) ────────────────────────
+   Le JS pose l'image sur #ap-hero-bg (position absolute inset:0 → elle
+   tapissait TOUT le hero, texte par-dessus). renderHeader ajoute désormais
+   ap-has-cover sur .ap-hero : on contraint alors l'image en bannière haute
+   de 260px, fondu doux en bas, et le contenu commence dessous. Seul
+   l'avatar chevauche le bas (règle plus haut, ap-avatar-wrap -48px). */
+.ap-hero.ap-has-cover .ap-hero-bg.has-image {
+  inset: auto;
+  top: 0; left: 0; right: 0;
+  height: 260px;
+  bottom: auto;
+}
+.ap-hero.ap-has-cover .ap-hero-bg.has-image::after {
+  height: 48%;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(7, 6, 8, .45) 60%,
+    var(--ap-bg) 100%);
+}
