@@ -2,6 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import create_access_token
+from app.core.ratelimit import (
+    LIMIT_FORGOT_PASSWORD,
+    LIMIT_LOGIN,
+    LIMIT_REGISTER,
+    LIMIT_RESET_PASSWORD,
+    limiter,
+)
 from app.database import get_db
 from app.schemas.user import (
     ForgotPasswordRequest,
@@ -23,7 +30,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
 )
-async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit(LIMIT_REGISTER)
+async def register(
+    user: UserCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     existing = await get_user_by_email(db, user.email)
     if existing is not None:
         raise HTTPException(
@@ -60,7 +72,12 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit(LIMIT_LOGIN)
+async def login(
+    credentials: UserLogin,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     user = await authenticate_user(db, credentials.email, credentials.password)
     if user is None:
         raise HTTPException(
@@ -84,6 +101,7 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
 # ─────────────────────────────────────────────────────────────────────────
 
 @router.post("/forgot-password")
+@limiter.limit(LIMIT_FORGOT_PASSWORD)
 async def forgot_password(
     payload: ForgotPasswordRequest,
     request: Request,
@@ -134,8 +152,10 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
+@limiter.limit(LIMIT_RESET_PASSWORD)
 async def reset_password(
     payload: ResetPasswordRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Échange jeton valide → nouveau mot de passe. 400 si lien mort."""

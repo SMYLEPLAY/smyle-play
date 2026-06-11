@@ -52,6 +52,17 @@ from app.routers.beats import router as beats_router
 def create_app() -> FastAPI:
     app = FastAPI(title="Smyle Play API", version="1.0.0")
 
+    # ── Rate-limiting (Tier 1 sécurité) ──────────────────────────────────
+    # Limiteur global exposé sur app.state (requis par slowapi) + handler
+    # 429 JSON. Les limites elles-mêmes sont posées en décorateurs sur les
+    # endpoints sensibles (auth + achats). Désactivé si ENVIRONMENT=test.
+    from slowapi.errors import RateLimitExceeded
+
+    from app.core.ratelimit import limiter, rate_limit_handler
+
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+
     # ── CORS ────────────────────────────────────────────────────────────
     # Permet au front Flask (http://localhost:8080) et aux autres origines
     # listées dans settings.CORS_ALLOWED_ORIGINS d'appeler cette API.

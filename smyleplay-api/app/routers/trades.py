@@ -19,11 +19,12 @@ Règles métier :
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
+from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
 from app.models.notification import NotificationType
 from app.models.prompt import Prompt
@@ -122,8 +123,10 @@ async def _enrich_offer(offer: TradeOffer, db: AsyncSession) -> TradeOfferRead:
 
 @router.post("/offers", response_model=TradeOfferRead,
              status_code=status.HTTP_201_CREATED)
+@limiter.limit(LIMIT_PURCHASE)
 async def create_trade_offer(
     payload: TradeOfferCreate,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TradeOfferRead:
