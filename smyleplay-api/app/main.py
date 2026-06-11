@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
@@ -80,6 +80,23 @@ def create_app() -> FastAPI:
     async def health():
         """Healthcheck Railway — NE PAS renommer ni monter Flask au-dessus."""
         return {"status": "ok"}
+
+    @app.get("/health/client-echo")
+    async def client_echo(request: Request):
+        """Diagnostic rate-limiting : montre la clé IP calculée + les
+        en-têtes proxy bruts. Ne révèle que les infos du demandeur
+        lui-même (aucune donnée sensible)."""
+        from app.core.ratelimit import client_ip
+
+        return {
+            "rate_limit_key": client_ip(request),
+            "x_forwarded_for": request.headers.get("x-forwarded-for"),
+            "x_real_ip": request.headers.get("x-real-ip"),
+            "x_envoy_external_address": request.headers.get(
+                "x-envoy-external-address"
+            ),
+            "direct_peer": request.client.host if request.client else None,
+        }
 
     app.include_router(auth_router)
     app.include_router(users_router)

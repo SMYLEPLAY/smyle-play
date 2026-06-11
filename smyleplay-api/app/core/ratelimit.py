@@ -6,11 +6,13 @@ Protège les endpoints sensibles contre le brute-force (auth) et le spam
 worker a son propre compteur → la limite effective est ~2× la valeur
 affichée. Acceptable pour un anti-abus (passage à Redis si besoin futur).
 
-Clé = vraie IP du client. En prod, l'app est derrière le proxy Railway :
-`request.client.host` renvoie l'IP du proxy (la même pour tout le monde !),
-il faut donc lire `X-Forwarded-For`. On prend la DERNIÈRE entrée de la
-liste : c'est celle ajoutée par le proxy Railway lui-même, donc non
-falsifiable par le client (les premières entrées peuvent être forgées).
+Clé = vraie IP du client. En prod, l'app est derrière le mesh Railway :
+`request.client.host` renvoie une IP interne 100.64.0.x qui CHANGE à
+chaque requête (constaté en prod le 2026-06-11 — prendre la dernière
+entrée XFF donnait un compteur neuf par requête, donc aucun blocage).
+Ordre de résolution : `X-Real-IP` / `X-Envoy-External-Address` (posés par
+l'edge Railway), sinon PREMIÈRE entrée de `X-Forwarded-For`, sinon IP
+directe. Vérifiable en prod via GET /health/client-echo.
 
 Désactivé quand ENVIRONMENT=test (CI pytest enchaîne les requêtes).
 """
@@ -34,12 +36,18 @@ LIMIT_PURCHASE = "30/minute"
 
 
 def client_ip(request: Request) -> str:
-    """IP réelle du client derrière le proxy Railway (sinon fallback direct)."""
+    """IP réelle du client derrière l'edge Railway (sinon fallback direct)."""
+    real = (
+        request.headers.get("x-real-ip")
+        or request.headers.get("x-envoy-external-address")
+    )
+    if real and real.strip():
+        return real.strip()
     xff = request.headers.get("x-forwarded-for")
     if xff:
-        last = xff.split(",")[-1].strip()
-        if last:
-            return last
+        first = xff.split(",")[0].strip()
+        if first:
+            return first
     return get_remote_address(request)
 
 
