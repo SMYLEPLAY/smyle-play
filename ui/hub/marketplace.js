@@ -93,6 +93,11 @@
       // actif sur la home, la vitrine et les podiums s'effacent : les
       // grilles résultats prennent toute la place (sans plafond de 3).
       '.mp-searching .smyle-vitrine,.mp-searching .mp-section-top-sons,.mp-searching .mp-section-top-artists{display:none!important}' +
+      // Ciblage par groupe : rôles seuls → la section sons disparaît ·
+      // moods seuls → la section artistes disparaît (chaque filtre ne
+      // montre que SA grille ; le texte libre montre les deux).
+      '.mp-hide-sons .mp-section-sons{display:none!important}' +
+      '.mp-hide-artists .mp-section-artists{display:none!important}' +
       '.mp-voir-tout{display:block;text-align:center;margin:12px auto 0;padding:9px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.4);color:#c4b5fd;font-size:.82rem;font-weight:600;text-decoration:none;width:max-content;cursor:pointer}' +
       '.mp-voir-tout:hover{background:rgba(124,58,237,.12)}';
     document.head.appendChild(s);
@@ -1249,8 +1254,16 @@
       if (isHome) {
         // MODE RÉSULTATS : recherche/filtre actif → vitrine + podiums
         // masqués, grilles complètes (le plafond de 3 saute aussi).
-        const active = !!v.trim() || _pageMoodSet.size > 0 || _pageRoleSet.size > 0;
+        // Ciblage par groupe (fix 2026-06-11) : des rôles CONNECT seuls ne
+        // doivent montrer QUE les profils — pas de musiques (et
+        // réciproquement, des moods seuls ne montrent que les sons).
+        const hasText  = !!v.trim();
+        const hasMoods = _pageMoodSet.size > 0;
+        const hasRoles = _pageRoleSet.size > 0;
+        const active   = hasText || hasMoods || hasRoles;
         document.body.classList.toggle('mp-searching', active);
+        document.body.classList.toggle('mp-hide-sons',    active && !hasText && !hasMoods && hasRoles);
+        document.body.classList.toggle('mp-hide-artists', active && !hasText && !hasRoles && hasMoods);
         _renderGridSons(v);
         _renderGridArtists(v);
       } else if (isArtists) {
