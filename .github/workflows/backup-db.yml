@@ -31,14 +31,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Dump Postgres (client 17 via Docker, compatible serveur ≤ 17)
+      - name: Dump Postgres (client 18 via Docker — serveur Railway = 18.4)
         env:
           DB_URL: ${{ secrets.BACKUP_DATABASE_URL }}
         run: |
           set -euo pipefail
           STAMP=$(date -u +%Y-%m-%d_%H%M)
           FILE="smyleplay_${STAMP}.sql.gz"
-          docker run --rm -e PGCONNECT_TIMEOUT=20 postgres:17-alpine \
+          docker run --rm -e PGCONNECT_TIMEOUT=20 postgres:18-alpine \
             pg_dump --no-owner --no-privileges "$DB_URL" | gzip > "$FILE"
           echo "FILE=$FILE" >> "$GITHUB_ENV"
           ls -lh "$FILE"
