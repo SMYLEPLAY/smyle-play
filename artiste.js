@@ -398,6 +398,13 @@ function renderHeader(artist) {
       heroBg.style.backgroundImage = '';
       heroBg.classList.remove('has-image');
     }
+    // Cover sacrée (2026-06-11) — le hero porte la classe ap-has-cover :
+    // le CSS contraint alors l'image en BANNIÈRE haute de 260px (au lieu
+    // de tapisser tout le hero derrière le texte) et pousse le bloc
+    // identité strictement dessous. Les fixes précédents visaient des
+    // règles jamais câblées — celle-ci est la liaison réelle JS→CSS.
+    const hero = heroBg.closest('.ap-hero');
+    if (hero) hero.classList.toggle('ap-has-cover', !!artist.coverPhotoUrl);
   }
 
   // Avatar : image si URL, sinon initiale du nom, sinon silhouette ghost
