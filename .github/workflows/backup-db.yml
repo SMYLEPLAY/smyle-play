@@ -5,7 +5,7 @@
 # pas restaurable hors Pro (constat 2026-06-11). Ce workflow est donc le
 # FILET PRINCIPAL : dump complet chaque nuit + déclenchement manuel.
 #
-# Bucket : smyleplay-db-backups — bucket R2 PRIVÉ et SÉPARÉ du bucket audio
+# Bucket : smyleplay-db-backups-watt — bucket R2 PRIVÉ et SÉPARÉ du bucket audio
 # public. Ne JAMAIS pointer vers smyle-play-audio (les dumps contiennent
 # emails + hash de mots de passe).
 #
@@ -60,7 +60,7 @@ jobs:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT_URL }}
         run: |
           set -euo pipefail
-          aws s3 cp "$FILE" "s3://smyleplay-db-backups/$FILE" \
+          aws s3 cp "$FILE" "s3://smyleplay-db-backups-watt/$FILE" \
             --endpoint-url "$R2_ENDPOINT"
           echo "Backup déposé : $FILE"
 
@@ -73,12 +73,12 @@ jobs:
         run: |
           set -euo pipefail
           CUTOFF=$(date -u -d "14 days ago" +%Y-%m-%d)
-          aws s3 ls "s3://smyleplay-db-backups/" --endpoint-url "$R2_ENDPOINT" \
+          aws s3 ls "s3://smyleplay-db-backups-watt/" --endpoint-url "$R2_ENDPOINT" \
             | awk '{print $NF}' | while read -r f; do
               d=$(echo "$f" | sed -nE 's/^smyleplay_([0-9]{4}-[0-9]{2}-[0-9]{2})_.*/\1/p')
               if [ -n "$d" ] && [ "$d" \< "$CUTOFF" ]; then
                 echo "Purge : $f (antérieur au $CUTOFF)"
-                aws s3 rm "s3://smyleplay-db-backups/$f" --endpoint-url "$R2_ENDPOINT"
+                aws s3 rm "s3://smyleplay-db-backups-watt/$f" --endpoint-url "$R2_ENDPOINT"
               fi
             done
           echo "Rotation terminée."
