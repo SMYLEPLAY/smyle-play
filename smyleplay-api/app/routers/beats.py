@@ -10,12 +10,13 @@ le beat_id), puisqu'un beat est une ligne `prompts`. Le retrait à l'achat
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
+from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.config import settings
 from app.database import get_db
 from app.models.prompt import Prompt
@@ -69,8 +70,10 @@ async def create_my_beat(
 
 
 @router.post("/pack/{track_id}/buy", response_model=PackBuyResult)
+@limiter.limit(LIMIT_PURCHASE)
 async def buy_pack(
     track_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

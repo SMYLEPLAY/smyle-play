@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import get_current_user
+from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
 from app.models.user import User
 from app.schemas.credit import (
@@ -32,8 +33,10 @@ async def list_packs():
 
 
 @router.post("/grant", response_model=TransactionRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit(LIMIT_PURCHASE)
 async def grant_credits(
     payload: GrantCreditsRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

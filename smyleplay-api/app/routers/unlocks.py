@@ -18,7 +18,9 @@ Mapping HTTP des erreurs métier :
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+
+from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,8 +87,10 @@ def _raise_unlock_error(exc: ValueError) -> None:
     response_model=UnlockPromptResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(LIMIT_PURCHASE)
 async def unlock_prompt(
     prompt_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -189,8 +193,10 @@ async def unlock_prompt(
     response_model=UnlockAdnResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(LIMIT_PURCHASE)
 async def unlock_adn(
     adn_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -276,8 +282,10 @@ async def unlock_adn(
     response_model=UnlockVoiceResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(LIMIT_PURCHASE)
 async def unlock_voice(
     voice_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -375,8 +383,10 @@ async def unlock_voice(
     status_code=status.HTTP_200_OK,
     summary="Achète l'ADN d'une playlist publique",
 )
+@limiter.limit(LIMIT_PURCHASE)
 async def unlock_playlist_adn(
     playlist_id: UUID,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
