@@ -401,9 +401,14 @@ img { max-width: 100%; display: block; }
   padding: 56px 48px 48px;
   overflow: hidden;
 }
-/* Quand une cover photo est présente, on pousse le hero vers le bas pour
-   laisser la bannière respirer — l'avatar chevauche alors la fin de la cover. */
-.ap-hero.ap-has-cover { padding-top: 180px; }
+/* 2026-06-11 (demande Tom) — la cover est SACRÉE : plus aucun contenu ne
+   chevauche dessus. Le bloc identité (avatar, nom, bio, rôles, genre)
+   commence STRICTEMENT sous la bannière (260px) + une respiration. La
+   photo de couverture exprime l'identité de l'artiste sans entache. */
+.ap-hero.ap-has-cover { padding-top: 282px; }
+/* Seule exception validée : l'AVATAR chevauche légèrement le bas de la
+   bannière (code visuel Spotify/YouTube) — le texte, lui, reste dessous. */
+.ap-hero.ap-has-cover .ap-avatar-wrap { margin-top: -48px; }
 
 /* Cover photo — bannière large en tête. Masquée par défaut, révélée par JS
    (ap-has-cover + --ap-cover-url) quand l'artiste a renseigné coverPhotoUrl. */
@@ -418,11 +423,13 @@ img { max-width: 100%; display: block; }
   transition: opacity .6s ease;
 }
 .ap-hero-cover::after {
+  /* Fondu réduit (65 % → 38 %) : plus rien n'étant écrit sur la cover,
+     elle s'affiche presque entière — juste un raccord doux vers le fond. */
   content: '';
-  position: absolute; left: 0; right: 0; bottom: -1px; height: 65%;
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 38%;
   background: linear-gradient(to bottom,
     transparent 0%,
-    rgba(7, 6, 8, .55) 55%,
+    rgba(7, 6, 8, .45) 60%,
     var(--ap-bg) 100%);
 }
 .ap-hero.ap-has-cover .ap-hero-cover { opacity: 1; }
