@@ -45,6 +45,10 @@ class VoiceNotPurchasable(UnlockError):
     """Voix introuvable ou non publiée. → HTTP 404."""
 
 
+class VoiceSoldOut(UnlockError):
+    """Édition limitée épuisée (#N/N vendus). → HTTP 409."""
+
+
 # -----------------------------------------------------------------------------
 # Result tuple pour le router
 # -----------------------------------------------------------------------------
@@ -158,7 +162,29 @@ async def unlock_voice_atomic(
             {"rev": artist_revenue, "uid": artist_id},
         )
 
-        owned = OwnedVoice(user_id=buyer_id, voice_id=voice_id)
+        # #X/N (chantier Voix 2026-06-12) — stock-out atomique + numéro
+        # d'exemplaire, calqué sur unlock_prompt_atomic (0051). Compté SOUS
+        # le lock artiste (step 3) : les achats concurrents d'une même voix
+        # sont sérialisés → pas de survente ni de doublon de numéro.
+        # UNIQUE(voice_id, edition_number) reste le filet en base.
+        edition_number = None
+        if voice_row.max_supply is not None:
+            minted = (await db.execute(
+                select(func.count()).select_from(OwnedVoice).where(
+                    OwnedVoice.voice_id == voice_id
+                )
+            )).scalar_one()
+            if int(minted) >= voice_row.max_supply:
+                raise VoiceSoldOut(
+                    "Tous les exemplaires de cette voix sont vendus."
+                )
+            edition_number = int(minted) + 1
+
+        owned = OwnedVoice(
+            user_id=buyer_id,
+            voice_id=voice_id,
+            edition_number=edition_number,
+        )
         db.add(owned)
         try:
             await db.flush()
@@ -284,6 +310,16 @@ async def enrich_voices_with_artist(
     )).scalars().all()
     artists_map = {u.id: u for u in artists_rows}
 
+    # #X/N (chantier Voix) — exemplaires vendus, 1 requête groupée pour
+    # toute la liste (utile au front : « 2/5 restants », bouton Épuisé).
+    voice_ids = [v.id for v in voices]
+    sold_rows = (await db.execute(
+        select(OwnedVoice.voice_id, func.count())
+        .where(OwnedVoice.voice_id.in_(voice_ids))
+        .group_by(OwnedVoice.voice_id)
+    )).all()
+    sold_map = {r[0]: int(r[1]) for r in sold_rows}
+
     out: list[dict] = []
     for v in voices:
         a = artists_map.get(v.artist_id)
@@ -304,6 +340,9 @@ async def enrich_voices_with_artist(
             "genres": v.genres,
             "license": v.license,
             "price_credits": v.price_credits,
+            # #X/N — rareté (remplace le vocabulaire licence dans les UI).
+            "max_supply": v.max_supply,
+            "editions_sold": sold_map.get(v.id, 0),
             "is_published": v.is_published,
             "created_at": v.created_at,
             # sample_url PRIVÉ (filtré côté router selon autorisation).
@@ -332,6 +371,22 @@ async def voice_to_full_dict(
     """
     enriched = await enrich_voices_with_artist(db, [voice], include_sample=True)
     return enriched[0] if enriched else {}
+
+
+async def list_published_voices(
+    db: AsyncSession, *, limit: int = 100
+) -> list[Voice]:
+    """
+    Catalogue public des voix (page /voix, chantier Voix 2026-06-12).
+    Toutes les voix publiées, tous artistes confondus, récentes d'abord.
+    """
+    stmt = (
+        select(Voice)
+        .where(Voice.is_published.is_(True), Voice.is_deleted.is_(False))
+        .order_by(Voice.created_at.desc())
+        .limit(max(1, min(int(limit or 100), 200)))
+    )
+    return list((await db.execute(stmt)).scalars().all())
 
 
 # -----------------------------------------------------------------------------

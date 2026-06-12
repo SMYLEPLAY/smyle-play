@@ -554,14 +554,17 @@ function renderVoices(items) {
     el.innerHTML = `
       <div class="lib-empty">
         Tu n'as pas encore débloqué de voix.<br>
-        <span class="lib-empty-note">Une voix débloquée te donne accès au sample audio + à la licence d'usage. Choisis-la sur le profil de l'artiste.</span><br>
-        <a href="/" class="lib-empty-cta">Explorer la marketplace →</a>
+        <span class="lib-empty-note">Une voix débloquée te donne le fichier vocal complet. Choisis-la sur le profil de l'artiste ou sur la page /voix.</span><br>
+        <a href="/voix" class="lib-empty-cta">Explorer les voix →</a>
       </div>`;
     return;
   }
 
   el.innerHTML = items.map((v, i) => {
-    const license = VOICE_LICENSE_LBL_LIB[v.license] || v.license || '';
+    // Chantier Voix — rareté #X/N à la place du vocabulaire licence.
+    const license = (v.max_supply != null)
+      ? (v.max_supply === 1 ? '1/1 vente unique' : 'Édition limitée · ' + v.max_supply + ' ex.')
+      : '';
     const genres  = _libVoiceGenresStr(v.genres);
     const artist = v.artist || null;
     const artistName = (artist && artist.artist_name) || '';

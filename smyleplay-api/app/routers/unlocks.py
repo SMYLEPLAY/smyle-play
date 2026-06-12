@@ -48,7 +48,11 @@ from app.services.unlocks import (
     unlock_playlist_adn_atomic,
     unlock_prompt_atomic,
 )
-from app.services.voices import VoiceNotPurchasable, unlock_voice_atomic
+from app.services.voices import (
+    VoiceNotPurchasable,
+    VoiceSoldOut,
+    unlock_voice_atomic,
+)
 
 router = APIRouter(prefix="/unlocks", tags=["unlocks"])
 
@@ -74,6 +78,9 @@ def _raise_unlock_error(exc: ValueError) -> None:
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
     if isinstance(exc, (AlreadyUnlocked, AlreadyOwned)):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
+    if isinstance(exc, VoiceSoldOut):
+        # Chantier Voix — édition limitée épuisée (#N/N vendus).
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
     raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
 

@@ -96,8 +96,12 @@ async def create_voice(
         style=payload.style,
         genres=payload.genres,
         sample_url=str(payload.sample_url),
-        license=payload.license,
+        # Chantier Voix — licence retirée des UI : défaut neutre en DB
+        # (colonne NOT NULL conservée pour l'historique des achats).
+        license=payload.license or "personnel",
         price_credits=payload.price_credits,
+        # #X/N — rareté, remplace la licence comme mécanique de valeur.
+        max_supply=payload.max_supply,
         is_published=False,
         voice_origin=payload.voice_origin,
         linked_track_id=payload.linked_track_id,
@@ -158,6 +162,22 @@ async def list_my_unlocked_voices(
 # -----------------------------------------------------------------------------
 # GET /api/voices/by-artist/{artist_id} — voix publiées d'un artiste
 # -----------------------------------------------------------------------------
+
+@router.get("", response_model=list[VoicePublicRead])
+async def list_all_published_voices(
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Catalogue public des voix (page /voix, chantier Voix 2026-06-12).
+    Jamais de sample_url ici — preview 30 s uniquement (gating strict).
+    """
+    from app.services.voices import list_published_voices
+
+    voices = await list_published_voices(db, limit=limit)
+    enriched = await enrich_voices_with_artist(db, voices, include_sample=False)
+    return [VoicePublicRead.model_validate(d) for d in enriched]
+
 
 @router.get(
     "/by-artist/{artist_id}",
