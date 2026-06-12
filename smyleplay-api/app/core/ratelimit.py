@@ -51,9 +51,14 @@ def client_ip(request: Request) -> str:
     return get_remote_address(request)
 
 
+# ⚠️ headers_enabled DOIT rester False : avec True, slowapi tente d'injecter
+# les en-têtes X-RateLimit-* dans la valeur de retour de l'endpoint — or nos
+# endpoints renvoient des dicts/modèles Pydantic (pas des Response), ce qui
+# faisait planter en 500 TOUTES les réponses RÉUSSIES des endpoints décorés
+# (bug prod du 2026-06-12 : login correct → 500, mauvais mdp → 401 normal).
 limiter = Limiter(
     key_func=client_ip,
-    headers_enabled=True,  # X-RateLimit-* + Retry-After dans les réponses
+    headers_enabled=False,
     enabled=settings.ENVIRONMENT != "test",
 )
 
