@@ -1137,6 +1137,22 @@
               Séparés par des virgules. Utilisés par les fans pour trouver ton son.
             </div>
           </div>
+          <!-- Fix dissonance Instrumental/Beat (Tom, 2026-06-13) : un son
+               « instrumental » n'est PAS automatiquement un beat — le beat
+               est un PLACEMENT que l'artiste choisit. Ce toggle permet de
+               flaguer (ou retirer) un son existant rétroactivement. -->
+          <div class="dte2-field-group">
+            <label style="display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="dte2BeatFlag" onchange="dte2ToggleBeatFlag()" style="width:15px;height:15px;accent-color:#7c5cff">
+              <span><strong>🥁 Proposer comme beat</strong>
+              <em style="display:block;font-size:11px;color:rgba(255,255,255,.35);font-style:normal">Le son apparaît en plus sur l'étagère /beats. « Instrumental » décrit le son ; « Beat » est un choix de placement.</em></span>
+            </label>
+            <span id="dte2BpmWrap" hidden style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <label class="dte2-label" for="dte2Bpm" style="margin:0">BPM</label>
+              <input class="dte2-input" id="dte2Bpm" type="number" min="40" max="300" placeholder="ex : 140" style="width:90px">
+              <em style="font-size:11px;color:rgba(255,255,255,.35);font-style:normal">optionnel</em>
+            </span>
+          </div>
           <div class="dte2-field-group">
             <label class="dte2-label" for="dte2Prompt">Recette (ADN) liée</label>
             <div class="dte2-prompt-row">
@@ -1863,7 +1879,7 @@
 <!-- C2 — drawer d'achat unifié -->
 <script src="/ui/modals/purchase-drawer.js?v=20260612"></script>
 <script src="/ui/playlists.js?v=20260612b" defer></script>
-<script src="dashboard.js?v=20260612b"></script>
+<script src="dashboard.js?v=20260613a"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260611a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
