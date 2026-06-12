@@ -27,10 +27,10 @@ function hide(id)   { const el = $(id); if (el) el.style.display = 'none'; }
 function setText(id, v) { const el = $(id); if (el) el.textContent = String(v ?? ''); }
 
 function getSlugFromUrl() {
-  // On accepte /u/<slug> (canonique) et /artiste/<slug> (legacy, avant
-  // redirection 301) pour rester robuste si la page est servie
-  // directement via l'alias ou si un vieux bookmark pointe encore ici.
-  const m = window.location.pathname.match(/\/(?:u|artiste)\/([^/]+)/);
+  // On accepte /u/<slug> (canonique), /@<slug> (C3 ① — 2026-06-13) et
+  // /artiste/<slug> (legacy, avant redirection 301) pour rester robuste
+  // si la page est servie via un alias ou un vieux bookmark.
+  const m = window.location.pathname.match(/^\/(?:(?:u|artiste)\/|@)([^/?#]+)/);
   return m ? decodeURIComponent(m[1]) : '';
 }
 
@@ -398,11 +398,11 @@ function renderHeader(artist) {
       heroBg.style.backgroundImage = '';
       heroBg.classList.remove('has-image');
     }
-    // Cover sacrée (2026-06-11) — le hero porte la classe ap-has-cover :
-    // le CSS contraint alors l'image en BANNIÈRE haute de 260px (au lieu
-    // de tapisser tout le hero derrière le texte) et pousse le bloc
-    // identité strictement dessous. Les fixes précédents visaient des
-    // règles jamais câblées — celle-ci est la liaison réelle JS→CSS.
+    // C3 v3 (2026-06-13) — #ap-hero-bg est désormais une VRAIE bannière de
+    // flux (.ap-hero-banner, 260px) : plus de div inset:0 derrière le texte.
+    // .has-image affiche la cover (background-size:cover), sinon le CSS
+    // peint un dégradé discret à partir de la couleur de marque.
+    // ap-has-cover reste posé sur .ap-hero pour les règles dépendantes.
     const hero = heroBg.closest('.ap-hero');
     if (hero) hero.classList.toggle('ap-has-cover', !!artist.coverPhotoUrl);
   }
@@ -439,6 +439,22 @@ function renderHeader(artist) {
   fillEditable('ap-artist-name', artist.artistName);
   fillEditable('ap-genre',       artist.genre);
   fillEditable('ap-city',        artist.city);
+
+  // C3 v3 — Pilule palier créateur (C0 badges.js). Le payload n'expose pas
+  // encore de palier (abonnements post-Stripe) : rendu défensif, la pilule
+  // s'allumera toute seule le jour où le champ arrivera côté backend.
+  const palierEl = $('ap-palier-pill');
+  if (palierEl) {
+    const tier = artist.palier || artist.subscriptionTier || artist.tier || '';
+    const html = (tier && window.SpBadges && typeof SpBadges.palier === 'function')
+      ? SpBadges.palier(tier) : '';
+    if (html) {
+      palierEl.innerHTML = html;
+      palierEl.style.display = '';
+    } else {
+      palierEl.style.display = 'none';
+    }
+  }
 
   // Chips de casquettes (rôles déclarés par l'utilisateur).
   // Cf. ROLE_CATALOG / renderRoles() plus bas. Le body reçoit aussi
@@ -481,8 +497,9 @@ async function _setupFollowButton(artist) {
   const isAuth = typeof getAuthToken === 'function' && !!getAuthToken();
   // Si non connecté : on masque tout le bloc pour éviter l'espace blanc
   if (!isAuth) { wrap.style.display = 'none'; return; }
+  // C3 v3 — la direction (colonne desktop / ligne mobile) est gérée par le
+  // CSS .ap-hero-actions, plus de flexDirection forcé en inline.
   wrap.style.display = 'flex';
-  wrap.style.flexDirection = 'column';
   btn.style.display = '';
 
   // ── Bouton Message ──────────────────────────────────────────────────────
@@ -507,7 +524,7 @@ async function _setupFollowButton(artist) {
     tradeBtn.onclick = () => openTradeModalProfile();
   }
 
-  const slug = artist.slug || (window.location.pathname.match(/^\/u\/([^/?#]+)/) || [])[1];
+  const slug = artist.slug || (window.location.pathname.match(/^\/(?:u\/|@)([^/?#]+)/) || [])[1];
   if (!slug) { wrap.style.display = 'none'; return; }
   function _hdr() {
     const h = { 'Accept': 'application/json' };
@@ -1062,16 +1079,59 @@ function renderBioPreview(artist) {
   el.style.display = '';
 }
 
+// ── C3 v3 — RELIQUE ADN (spec C3 ① — 2026-06-13) ─────────────────────────────
+// États : visiteur sans ADN → caché · owner sans ADN → relique incitative ·
+// ADN en vente → relique pleine largeur · possédé → bord doré sans bouton.
+// Règle absolue : le contenu ADN n'est JAMAIS visible sans achat.
 function renderDna(artist) {
   const card = $('ap-dna-card');
   if (!card) return;
   const adn = artist && artist.adn;
+  const isSelf = !!(artist && artist.isSelf);
+
+  // Reset des états visuels (la fonction est ré-appelée après chaque loadArtist)
+  card.classList.remove('ap-relic--owned', 'ap-relic--empty');
+  hide('ap-relic-owned');
+  hide('ap-relic-empty');
+  show('ap-relic-actions');
+
   if (!adn) {
-    card.style.display = 'none';
+    if (!isSelf) {
+      // Visiteur : pas d'ADN en vente → la section n'est pas rendue du tout.
+      card.style.display = 'none';
+      return;
+    }
+    // Owner : relique grisée incitative → CTA WATT BOARD.
+    card.style.display = '';
+    card.classList.add('ap-relic--empty');
+    setText('ap-relic-artist', artist.artistName || '');
+    hide('ap-relic-actions');
+    hide('ap-relic-edition');
+    setText('ap-dna-teaser', '');
+    const metaEmpty = $('ap-dna-meta');
+    if (metaEmpty) metaEmpty.innerHTML = '';
+    show('ap-relic-empty');
     return;
   }
+
   card.style.display = '';
+  setText('ap-relic-artist', artist.artistName || '');
   setText('ap-dna-price', formatCount(adn.priceCredits));
+
+  // Édition #X/N en évidence si édition limitée (le prochain exemplaire minté).
+  const editionEl = $('ap-relic-edition');
+  if (editionEl) {
+    if (adn.maxSupply != null) {
+      const sold = Number(adn.soldCount || 0);
+      editionEl.textContent = adn.isSoldOut
+        ? `#${adn.maxSupply}/${adn.maxSupply}`
+        : `#${sold + 1}/${adn.maxSupply}`;
+      editionEl.style.display = '';
+    } else {
+      editionEl.style.display = 'none';
+    }
+  }
+
   // Pas de teaser textuel — afficher uniquement longueur (ordre complexité).
   var charCount = adn.characterCount || 0;
   var teaserEl = document.getElementById('ap-dna-teaser');
@@ -1079,8 +1139,6 @@ function renderDna(artist) {
     teaserEl.textContent = charCount > 0
       ? charCount.toLocaleString('fr-FR') + ' caractères · contenu verrouillé'
       : 'Contenu verrouillé';
-    teaserEl.style.fontStyle = 'italic';
-    teaserEl.style.opacity = '0.7';
   }
 
   // Badges "Guide d'usage" / "Exemples" / IA / rareté
@@ -1144,10 +1202,41 @@ function renderDna(artist) {
       btn.disabled = false;
       btn.style.opacity = '';
       btn.style.cursor = '';
-      setText('ap-dna-unlock-label',
-        `🧬 ADN · ${formatCount(adn.priceCredits)} crédits`);
+      setText('ap-dna-unlock-label', 'Débloquer');
     }
   }
+
+  // État possédé (async, best-effort) : si le visiteur connecté détient déjà
+  // cet ADN, la relique passe en bord doré sans bouton d'achat.
+  if (!isSelf) {
+    _applyAdnOwnedState(card, adn.id).catch(() => { /* silencieux */ });
+  }
+}
+
+// Vérifie la possession de l'ADN via la bibliothèque du visiteur connecté
+// (GET /me/library/adns — auth requis). Résultat mis en cache sur state
+// pour éviter un fetch à chaque re-render.
+async function _applyAdnOwnedState(card, adnId) {
+  if (!adnId) return;
+  if (typeof getAuthToken !== 'function' || !getAuthToken()) return;
+  if (typeof apiFetch !== 'function') return;
+
+  if (state.ownedAdnIds === undefined) {
+    try {
+      const resp = await apiFetch('/me/library/adns?per_page=100');
+      state.ownedAdnIds = (resp && Array.isArray(resp.items))
+        ? resp.items.map(it => String(it.adn_id || it.adnId || ''))
+        : [];
+    } catch (_) {
+      state.ownedAdnIds = undefined; // re-tentera au prochain render
+      return;
+    }
+  }
+  if (!state.ownedAdnIds || !state.ownedAdnIds.includes(String(adnId))) return;
+
+  card.classList.add('ap-relic--owned');
+  show('ap-relic-owned');
+  hide('ap-relic-actions');
 }
 
 // P1-F4 (2026-05-04) — libellés humains des enums backend pour les
@@ -1846,6 +1935,28 @@ function renderTracks(artist) {
 async function unlockDnaFromProfile() {
   const artist = state.artist;
   if (!artist || !artist.adn || artist.isSelf) return;
+  const adn = artist.adn;
+
+  // C2/C3 — chemin canonique : drawer d'achat unifié (récap + confirmation +
+  // erreurs humanisées). Le drawer gère lui-même le cas non-connecté (401 →
+  // openAuthModal). Fallback : achat direct historique si le composant
+  // n'est pas chargé sur la page.
+  if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {
+    window.PurchaseDrawer.open({
+      type:       'adn-artist',
+      id:         adn.id,
+      price:      adn.priceCredits,
+      title:      'ADN · ' + (artist.artistName || 'Artiste'),
+      artistName: artist.artistName || '',
+      onSuccess:  () => {
+        state.ownedAdnIds = undefined; // invalide le cache possession
+        setTimeout(() => loadArtist(), 400);
+      },
+    });
+    return;
+  }
+
+  // ── Fallback historique (sans drawer) ────────────────────────────────────
   // Redirige vers la connexion si non authentifié
   if (typeof getAuthToken === 'function' && !getAuthToken()) {
     const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
@@ -1855,11 +1966,12 @@ async function unlockDnaFromProfile() {
   const btn = $('ap-dna-unlock-btn');
   if (btn) btn.disabled = true;
   try {
-    await apiFetch(`/unlocks/adns/${encodeURIComponent(artist.adn.id)}`, {
+    await apiFetch(`/unlocks/adns/${encodeURIComponent(adn.id)}`, {
       method: 'POST',
     });
     toast('ADN débloqué · -30 % sur toutes les recettes 🎉');
     // On rafraîchit le profil pour que l'état du bouton reflète le owned
+    state.ownedAdnIds = undefined;
     setTimeout(() => loadArtist(), 400);
   } catch (err) {
     handleUnlockError(err);

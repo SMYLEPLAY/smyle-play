@@ -131,6 +131,15 @@ def create_app(config_class=None):
         # existe pleinement : il peut follow, remplir sa bio, etc.
         return send_from_directory(BASE_DIR, 'artiste.html')
 
+    # C3 ① (2026-06-13) — URL courte /@<slug> : même page profil que
+    # /u/<slug> (artiste.js extrait le slug depuis les deux formes d'URL).
+    # Le préfixe statique « @ » ne peut pas entrer en collision avec les
+    # autres routes (aucune ne commence par /@). Les liens générés ailleurs
+    # migreront en livraison ②.
+    @app.route('/@<slug>')
+    def user_page_at(slug):
+        return send_from_directory(BASE_DIR, 'artiste.html')
+
     # Alias rétro-compat : les anciens liens /artiste/<slug> continuent à
     # fonctionner (redirection vers /u/<slug>). À retirer quand tous les
     # liens internes auront migré.
