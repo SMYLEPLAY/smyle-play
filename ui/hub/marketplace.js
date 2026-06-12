@@ -527,8 +527,12 @@
       const promptId    = t.promptId    || null;
       const promptPrice = t.promptPriceCredits != null ? t.promptPriceCredits : null;
       // Badge 🧬 si le track a un prompt achetable — bouton cliquable direct
+      // ⚠️ BUG FIXÉ (2026-06-13) : l'inline onclick="event.stopPropagation()"
+      // empêchait l'événement d'atteindre le délégué document (phase bulle)
+      // qui ouvre le drawer → badge mort sur les cards. Le délégué fait déjà
+      // son propre stopPropagation dans la branche badge.
       const recipeBtn   = (promptId && promptPrice != null)
-        ? `<button type="button" class="mp-recipe-badge" onclick="event.stopPropagation()"
+        ? `<button type="button" class="mp-recipe-badge"
                    data-prompt-id="${_esc(String(promptId))}"
                    data-prompt-price="${promptPrice}"
                    data-track-name="${_esc(title)}"

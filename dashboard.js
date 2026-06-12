@@ -932,6 +932,14 @@ function dte2Select(trackUuid) {
   const titleInp = document.getElementById('dte2Title');
   if (titleInp) titleInp.value = t.title || '';
 
+  // Beat (fix dissonance Instrumental/Beat 2026-06-13) — état actuel du flag
+  const beatChk = document.getElementById('dte2BeatFlag');
+  const bpmInp  = document.getElementById('dte2Bpm');
+  const bpmWrap = document.getElementById('dte2BpmWrap');
+  if (beatChk) beatChk.checked = !!t.is_beat;
+  if (bpmInp)  bpmInp.value = (t.bpm != null) ? t.bpm : '';
+  if (bpmWrap) bpmWrap.hidden = !t.is_beat;
+
   // Tags : pré-rempli depuis t.tags (migration 0038)
   const tagsInp = document.getElementById('dte2Tags');
   if (tagsInp) tagsInp.value = t.tags || '';
@@ -1061,6 +1069,15 @@ async function dte2Save() {
                    || document.getElementById('dte2ColorPicker')?.value || '';
     const newPrompt = document.getElementById('dte2Prompt')?.value || '';
     const newTags   = (document.getElementById('dte2Tags')?.value || '').trim();
+    // Beat rétroactif (fix dissonance Instrumental/Beat)
+    const newIsBeat = !!document.getElementById('dte2BeatFlag')?.checked;
+    const _bpmRaw   = (document.getElementById('dte2Bpm')?.value || '').trim();
+    let newBpm = null;
+    if (newIsBeat && _bpmRaw !== '') {
+      const n = parseInt(_bpmRaw, 10);
+      if (Number.isInteger(n) && n >= 40 && n <= 300) newBpm = n;
+      else throw new Error('BPM invalide : entre 40 et 300, ou vide.');
+    }
 
     // Upload cover si nouveau fichier sélectionné
     let newCoverUrl = t.cover_url || null;
@@ -1077,6 +1094,8 @@ async function dte2Save() {
     if (newPrompt && newPrompt !== (t.prompt_id||'')) patch.prompt_id = newPrompt;
     else if (!newPrompt && t.prompt_id)               patch.prompt_id = null;
     if (newTags !== (t.tags || ''))                   patch.tags      = newTags || null;
+    if (newIsBeat !== !!t.is_beat)                    patch.is_beat   = newIsBeat;
+    if ((newIsBeat ? newBpm : null) !== (t.bpm != null ? t.bpm : null)) patch.bpm = newIsBeat ? newBpm : null;
 
     if (Object.keys(patch).length > 0) {
       const updated = await apiFetch(`/tracks/${encodeURIComponent(_dte2TrackId)}`, {
@@ -1776,6 +1795,13 @@ function setUploadMode(mode) {
 function dashToggleBeatFlag() {
   const on  = !!document.getElementById('dashBeatFlag')?.checked;
   const wrap = document.getElementById('dashBpmWrap');
+  if (wrap) wrap.hidden = !on;
+}
+
+// Toggle beat dans l'édition catalogue (flag rétroactif, 2026-06-13)
+function dte2ToggleBeatFlag() {
+  const on  = !!document.getElementById('dte2BeatFlag')?.checked;
+  const wrap = document.getElementById('dte2BpmWrap');
   if (wrap) wrap.hidden = !on;
 }
 
@@ -4773,6 +4799,7 @@ if (typeof window !== 'undefined') {
   // Ma Musique — mode switcher + widgets live
   window.setUploadMode        = setUploadMode;
   window.dashToggleBeatFlag   = dashToggleBeatFlag;
+  window.dte2ToggleBeatFlag   = dte2ToggleBeatFlag;
   window.updatePromptCharCount = updatePromptCharCount;
   window.updateCreditGrid     = updateCreditGrid;
   // Étape 1 — CTA de la gate "profil publié obligatoire" (onclick inline).
