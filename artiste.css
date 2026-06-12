@@ -4493,3 +4493,60 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
    La bannière est désormais un élément de flux natif (.ap-hero-banner,
    section C3 v3 en tête de fichier) : plus besoin de contraindre un div
    inset:0 en bannière par overrides. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   C3 ① bis — COHÉRENCE GÉNÉRALE (retour QA Tom 2026-06-12)
+   ─────────────────────────────────────────────────────────────────────────
+   Le langage visuel de la relique ADN (tiret dégradé brand→violet, eyebrows
+   letterspacées, surfaces calmes) devient le langage de TOUTE la page.
+   Point canonique : cette définition UNIFIE les 2 anciennes variantes de
+   .ap-section-title (gold .32em / brand underline) — déclarée en fin de
+   fichier exprès pour gagner la cascade à spécificité égale.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.ap-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(245, 242, 252, .82);
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 14px;
+}
+/* Tiret signature — écho direct du bord dégradé de la relique ADN. */
+.ap-section-title::before {
+  content: '';
+  flex: 0 0 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    rgba(var(--brand-rgb, 136, 0, 255), .95), #7c5cff);
+}
+
+/* Surfaces calmes unifiées : les grandes sections de contenu partagent la
+   même respiration et le même cadre discret que la relique (en plus sobre). */
+.ap-prompts,
+.ap-tracks,
+.ap-voices,
+.ap-playlists-adn,
+.ap-section-socials {
+  border: 1px solid rgba(255, 255, 255, .055);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .015);
+  padding: 18px 20px;
+}
+
+/* Bio unique du bloc identité (fix double-bio) — calme, lisible, éditable. */
+.ap-identity-bio {
+  margin-top: 10px;
+  max-width: 68ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(214, 209, 228, .82);
+  white-space: pre-line;
+}
+body:not(.ap-owner-editing) .ap-identity-bio:empty { display: none; }
