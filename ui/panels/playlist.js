@@ -60,7 +60,7 @@ function openPlaylist(key, cardEl) {
     const linkEl = document.createElement('a');
     linkEl.id        = 'panel-profile-link';
     linkEl.className = 'panel-profile-link';
-    linkEl.href      = '/u/smyle';
+    linkEl.href      = '/@smyle';
     linkEl.title     = 'Voir sur le profil Smyle';
     linkEl.textContent = 'Voir le profil Smyle →';
     document.getElementById('panel-sub').insertAdjacentElement('afterend', linkEl);

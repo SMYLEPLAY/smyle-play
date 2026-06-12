@@ -180,7 +180,7 @@ class DashNetwork {
       const mx = (e.clientX - r.left) * sx;
       const my = (e.clientY - r.top)  * sy;
       const hit = this.nodes.find(n => Math.hypot(mx - n.x, my - n.y) < n.r + 8);
-      if (hit && hit.slug) window.location.href = `/u/${hit.slug}`;
+      if (hit && hit.slug) window.location.href = `/@${hit.slug}`;
     });
 
     // Touch support
@@ -193,7 +193,7 @@ class DashNetwork {
       const mx = (t.clientX - r.left) * sx;
       const my = (t.clientY - r.top)  * sy;
       const hit = this.nodes.find(n => Math.hypot(mx - n.x, my - n.y) < n.r + 12);
-      if (hit && hit.slug) { e.preventDefault(); window.location.href = `/u/${hit.slug}`; }
+      if (hit && hit.slug) { e.preventDefault(); window.location.href = `/@${hit.slug}`; }
     }, { passive: false });
 
     canvas.addEventListener('mouseleave', () => {
@@ -659,7 +659,7 @@ function renderUserDropdown() {
   // Le slug est garanti depuis le signup (fallback email local-part).
   // URL neutre : le statut « artiste » s'obtient en postant un son, pas
   // en s'inscrivant.
-  const href = slug ? '/u/' + encodeURIComponent(slug) : '#';
+  const href = slug ? '/@' + encodeURIComponent(slug) : '#';
   if (publicEl) {
     publicEl.href = href;
     if (!slug) {
@@ -2567,7 +2567,7 @@ function renderProfileView() {
   const pvPublicLink = document.getElementById('pvPublicLink');
   if (pvPublicLink && p && p.artistName) {
     const slug = p.slug || slugify(p.artistName);
-    const url  = `/u/${slug}`;
+    const url  = `/@${slug}`;
     pvPublicLink.innerHTML = `
       <div class="dash-public-link-label">Ton profil public</div>
       <div class="dash-public-link-row">
@@ -2754,7 +2754,7 @@ function handleGatedLayoutClick(ev) {
 function gotoMyProfile() {
   const p    = getWattProfile() || {};
   const slug = p.slug || p.artistSlug || '';
-  const base = slug ? `/u/${encodeURIComponent(slug)}` : '/u/me';
+  const base = slug ? `/@${encodeURIComponent(slug)}` : '/@me';
   window.location.href = `${base}?edit=1`;
 }
 
@@ -3595,8 +3595,8 @@ function _updateDashIdSaveButton() {
   lbl.textContent = 'Enregistrer';
 }
 
-// Remplit le hint "/u/<slug>" du bloc PLUG WATT avec le vrai slug calculé.
-// Fallback "/u/—" si pas de profil encore (cas first-run).
+// Remplit le hint "/@<slug>" du bloc PLUG WATT avec le vrai slug calculé.
+// Fallback "/@—" si pas de profil encore (cas first-run).
 function _updateDashPlugSlugHint() {
   const el = document.getElementById('dashPlugSlugHint');
   if (!el) return;
@@ -3604,7 +3604,7 @@ function _updateDashPlugSlugHint() {
   const p    = getWattProfile();
   let slug = '';
   try { slug = _deriveArtistSlug(user, p) || ''; } catch (_) { slug = ''; }
-  el.textContent = slug ? `/u/${slug}` : '/u/—';
+  el.textContent = slug ? `/@${slug}` : '/@—';
 }
 
 // Handlers onclick des boutons "Changer la couverture" / "Changer l'avatar".
@@ -3910,7 +3910,7 @@ function renderPlugSection() {
   if (open) {
     const slug = _deriveArtistSlug(user, profile);
     if (slug) {
-      open.href = `/u/${encodeURIComponent(slug)}`;
+      open.href = `/@${encodeURIComponent(slug)}`;
       open.classList.remove('is-disabled');
     } else {
       open.href = '#';
@@ -3963,7 +3963,7 @@ function dashPlugOpenShop(ev) {
   }
   // Ouvre dans un nouvel onglet : l'user garde le WATT BOARD ouvert pour
   // revenir facilement à ses réglages après inspection de sa vitrine.
-  window.open(`/u/${encodeURIComponent(slug)}`, '_blank', 'noopener');
+  window.open(`/@${encodeURIComponent(slug)}`, '_blank', 'noopener');
   return false;
 }
 

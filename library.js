@@ -213,7 +213,7 @@ function renderPrompts(items) {
     const slug     = artist.slug || '';
     const artistName = artist.artist_name || artist.artistName || 'Artiste';
     const artistLink = slug
-      ? `<a href="/u/${esc(slug)}">${esc(artistName)}</a>`
+      ? `<a href="/@${esc(slug)}">${esc(artistName)}</a>`
       : esc(artistName);
 
     const lyricsBlock = hasLyrics ? `
@@ -413,7 +413,7 @@ function renderPlaylistAdns(items) {
     const ownerName = owner.artist_name || 'Artiste';
     const color = p.color || '#cc88ff';
     const ownerLink = slug
-      ? `<a href="/u/${esc(slug)}">${esc(ownerName)}</a>`
+      ? `<a href="/@${esc(slug)}">${esc(ownerName)}</a>`
       : esc(ownerName);
 
     const seedBlock = p.seed_prompt ? `
@@ -439,7 +439,7 @@ function renderPlaylistAdns(items) {
           <div class="lib-item-artist">univers de ${ownerLink}</div>
           <div class="lib-item-desc">-20% sur tous les ADN Track de cette playlist</div>
           ${seedBlock}
-          ${slug ? `<a href="/u/${esc(slug)}" class="lib-cell-goto-btn" style="border-color:${esc(color)};color:${esc(color)}">→ Voir la playlist</a>` : ''}
+          ${slug ? `<a href="/@${esc(slug)}" class="lib-cell-goto-btn" style="border-color:${esc(color)};color:${esc(color)}">→ Voir la playlist</a>` : ''}
         </div>
       </details>`;
   }).join('');
@@ -468,7 +468,7 @@ function renderAdns(items) {
     const brand    = artist.brand_color || artist.brandColor || '#FFD700';
     const artistName = artist.artist_name || artist.artistName || 'Artiste';
     const artistLink = slug
-      ? `<a href="/u/${esc(slug)}">${esc(artistName)}</a>`
+      ? `<a href="/@${esc(slug)}">${esc(artistName)}</a>`
       : esc(artistName);
 
     const usageBlock = a.usage_guide ? `
@@ -572,7 +572,7 @@ function renderVoices(items) {
     const brandColor = (artist && artist.brand_color) || '';
     const artistBlock = artistName
       ? (artistSlug
-          ? `<div class="lib-item-artist">par <a href="/u/${esc(artistSlug)}">${esc(artistName)}</a></div>`
+          ? `<div class="lib-item-artist">par <a href="/@${esc(artistSlug)}">${esc(artistName)}</a></div>`
           : `<div class="lib-item-artist">par ${esc(artistName)}</div>`)
       : '';
     const dlBtn = v.sample_url

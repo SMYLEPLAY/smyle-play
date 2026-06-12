@@ -242,7 +242,7 @@
         <span class="smyle-vitrine-stat"><b id="smyle-vitrine-plays">—</b> écoutes</span>
       </div>
     </div>
-    <a class="smyle-vitrine-cta" id="smyle-vitrine-link" href="/u/smyle">
+    <a class="smyle-vitrine-cta" id="smyle-vitrine-link" href="/@smyle">
       Voir le profil →
     </a>
   </div>
@@ -587,9 +587,9 @@
 <script src="ui/core/dom.js"></script>
 <script src="ui/core/storage.js"></script>
 <script src="ui/player/audio.js"></script>
-<script src="ui/panels/playlist.js"></script>
+<script src="ui/panels/playlist.js?v=20260613a"></script>
 <script src="ui/panels/mix.js"></script>
-<script src="ui/modals/auth.js"></script>
+<script src="ui/modals/auth.js?v=20260613a"></script>
 <!-- C2 — drawer d'achat unifié (un seul composant d'achat pour tout le site) -->
 <script src="ui/modals/purchase-drawer.js?v=20260612"></script>
 <script src="ui/modals/boutique.js"></script>
@@ -597,23 +597,23 @@
 <script src="ui/modals/contact.js"></script>
 <script src="ui/modals/premium.js"></script>
 <script src="ui/modals/save-mix.js"></script>
-<script src="ui/hub/community.js"></script>
+<script src="ui/hub/community.js?v=20260613a"></script>
 <!-- watt-panel.js expose window.WattDNA et window.WattConnect (analyseur
      d'univers + matcher de catégories). Il doit être chargé AVANT
      marketplace.js pour que les barres de recherche DNA/CONNECT puissent
      consommer ces modules dès le premier input. -->
-<script src="ui/panels/agent.js"></script>
+<script src="ui/panels/agent.js?v=20260613a"></script>
 <script src="ui/panels/watt-panel.js"></script>
 <!-- Phase 2 refonte marketplace : fetch + render de la vitrine Smyle, des
      classements (top sons / top artistes) et des grilles (tous sons / tous
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
-<script src="/ui/playlists.js?v=20260612b" defer></script>
-<script src="ui/hub/marketplace.js?v=20260613a"></script>
+<script src="/ui/playlists.js?v=20260613a" defer></script>
+<script src="ui/hub/marketplace.js?v=20260613b"></script>
 <script src="ui/app.js"></script>
 <script src="ui/player/mini-bar.js" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
-<script src="/ui/modals/search.js?v=20260609" defer></script>
+<script src="/ui/modals/search.js?v=20260613a" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <!-- Messagerie 1:1 + services (Phase C) -->
 <link rel="stylesheet" href="/ui/messaging/messaging.css" />

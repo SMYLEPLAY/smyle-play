@@ -805,7 +805,7 @@ function renderPlaylistsAdn(artist) {
     const color     = pl.color || brandColor;
     const price     = formatCount(pl.adnPrice || 0);
     // Lien vers la page playlist (unlock se fait depuis le slug playlist)
-    const href = `/u/${encodeURIComponent(slug)}`;
+    const href = `/@${encodeURIComponent(slug)}`;
     return `
       <details class="ap-pl-adn-item" style="--pl-color:${color}">
         <summary class="ap-pl-adn-summary">
@@ -1021,30 +1021,142 @@ function renderPlayAllBtn(artist) {
   btn.style.display = '';
 }
 
-window.playAllTracks = function() {
-  const artist = state.artist;
-  if (!artist) return;
-  const tracks = (artist.tracks || []).filter(t => t.streamUrl);
-  if (!tracks.length) return;
-  const list = document.getElementById('ap-tracks-list');
-  if (!list) return;
-  // Joue les audios en séquence : quand un se termine, on lance le suivant
-  const audios = tracks.map(t => {
-    const inner = list.querySelector(`[data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"]`);
-    return inner ? inner.querySelector('audio') : null;
-  }).filter(Boolean);
-  if (!audios.length) return;
-  // Stoppe tout d'abord
-  list.querySelectorAll('audio').forEach(a => { try { a.pause(); a.currentTime = 0; } catch(_){} });
-  let idx = 0;
-  function playNext() {
-    if (idx >= audios.length) return;
-    const a = audios[idx++];
-    a.play().catch(() => { playNext(); }); // skip si bloqué
-    a.onended = playNext;
+/* ── C3 ② — MOTEUR AUDIO PARTAGÉ (section Sons publiés) ────────────────────
+   UN SEUL <audio> pour toute la liste (fini les 81 lecteurs natifs).
+   Le wrapper caché porte data-track-id / data-track-name / img.ap-track-cover
+   / span.ap-artist-name : la mini-bar globale (ui/player/mini-bar.js) capte
+   l'event play en capture et lit ces métadonnées en remontant le DOM depuis
+   l'audio — zéro modification de mini-bar.js. Le compteur d'écoutes global
+   (data-track-id) est couvert par le même wrapper. */
+
+const _AP_PLAY_SVG  = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+const _AP_PAUSE_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+
+let _apAudio     = null;  // l'unique HTMLAudioElement de la section Sons
+let _apAudioWrap = null;  // div porteur des métadonnées lues par la mini-bar
+let _apQueue     = [];    // [{id, name, streamUrl, coverUrl, color}] ordre d'affichage
+let _apCurrentId = null;  // id du track actuellement chargé
+
+// Détection MIME par extension — R2 renvoie parfois application/octet-stream
+// qui empêche le play sur Chrome (héritée de l'ancien renderTracks).
+function _apMimeFor(url) {
+  const ext = (String(url || '').split('.').pop() || '').toLowerCase();
+  return ext === 'mp3' ? 'audio/mpeg'
+       : ext === 'm4a' ? 'audio/mp4'
+       : 'audio/wav';  // .wav par défaut
+}
+
+function _ensureSharedAudio() {
+  if (_apAudio && _apAudioWrap && document.body.contains(_apAudioWrap)) return _apAudio;
+  const wrap = document.createElement('div');
+  wrap.id = 'ap-shared-audio';
+  wrap.hidden = true;  // l'UI vit dans les rows + la mini-bar globale
+  // Métadonnées lues par mini-bar._readMeta (remontée DOM depuis l'audio).
+  const img = document.createElement('img');
+  img.className = 'ap-track-cover';
+  img.alt = '';
+  const artistEl = document.createElement('span');
+  artistEl.className = 'ap-artist-name';
+  const audio = document.createElement('audio');
+  audio.preload = 'none';
+  wrap.appendChild(img);
+  wrap.appendChild(artistEl);
+  wrap.appendChild(audio);
+  document.body.appendChild(wrap);
+  audio.addEventListener('play',  () => _apSyncRows(true));
+  audio.addEventListener('pause', () => _apSyncRows(false));
+  audio.addEventListener('ended', _apPlayNext);
+  _apAudioWrap = wrap;
+  _apAudio = audio;
+  return audio;
+}
+
+// Pattern promesse anti-AbortError (Tom 2026-05-05) : play/pause rapprochés
+// rejettent une AbortError bénigne qu'on avale silencieusement.
+function _apSafePlay(audio) {
+  const p = audio.play();
+  if (p !== undefined) {
+    p.catch(err => {
+      if (err && err.name === 'AbortError') return;  // benign
+      console.error('[artiste] audio.play() rejected:', err);
+      const errMsg = err && (err.message || err.name) || 'erreur audio inconnue';
+      const audioErr = audio.error
+        ? ` (code ${audio.error.code}: ${audio.error.message || ''})`
+        : '';
+      toast('Lecture impossible : ' + errMsg + audioErr);
+    });
   }
-  playNext();
-  toast('Lecture en cours ▶ ' + tracks.length + ' sons');
+}
+
+// Lance (ou met en pause si re-clic sur la même row) un track de la queue.
+function _apPlayTrack(trackId, forcePlay) {
+  const t = _apQueue.find(q => String(q.id) === String(trackId));
+  if (!t) return;
+  if (!t.streamUrl) {
+    toast('Audio en cours de traitement, réessaie dans quelques secondes.');
+    return;
+  }
+  const audio = _ensureSharedAudio();
+
+  // Re-clic sur la row en cours → toggle pause/lecture.
+  if (String(_apCurrentId) === String(trackId)) {
+    if (audio.paused) _apSafePlay(audio);
+    else if (!forcePlay) audio.pause();
+    return;
+  }
+
+  _apCurrentId = String(trackId);
+
+  // Métadonnées à jour AVANT le play : la mini-bar les lit sur l'event.
+  _apAudioWrap.dataset.trackId   = t.id || '';
+  _apAudioWrap.dataset.trackName = t.name || '';
+  const img = _apAudioWrap.querySelector('img.ap-track-cover');
+  if (img) img.src = t.coverUrl || '';
+  const artistEl = _apAudioWrap.querySelector('.ap-artist-name');
+  if (artistEl) artistEl.textContent = (state.artist && state.artist.artistName) || '';
+  if (t.color) _apAudioWrap.style.setProperty('--son-color', t.color);
+  else _apAudioWrap.style.removeProperty('--son-color');
+
+  // Source via <source type=...> pour forcer le MIME.
+  audio.pause();
+  audio.innerHTML = '';
+  audio.removeAttribute('src');
+  const src = document.createElement('source');
+  src.src  = t.streamUrl;
+  src.type = _apMimeFor(t.streamUrl);
+  audio.appendChild(src);
+  audio.load();
+  _apSafePlay(audio);
+}
+
+// Enchaînement : à `ended`, joue la prochaine row qui a un audio.
+function _apPlayNext() {
+  if (_apCurrentId == null || !_apQueue.length) return;
+  const idx = _apQueue.findIndex(q => String(q.id) === String(_apCurrentId));
+  for (let i = idx + 1; i < _apQueue.length; i++) {
+    if (_apQueue[i].streamUrl) { _apPlayTrack(_apQueue[i].id, true); return; }
+  }
+  _apSyncRows(false);  // fin de liste
+}
+
+// Reflète l'état play/pause sur les rows (row active + icône du bouton).
+function _apSyncRows(playing) {
+  document.querySelectorAll('.ap-track-row').forEach(row => {
+    const active = _apCurrentId != null && String(row.dataset.trackId) === String(_apCurrentId);
+    row.classList.toggle('is-active',  active);
+    row.classList.toggle('is-playing', active && !!playing);
+    const btn = row.querySelector('.ap-track-play-btn');
+    if (btn) btn.innerHTML = (active && playing) ? _AP_PAUSE_SVG : _AP_PLAY_SVG;
+  });
+}
+
+// U8 — « Écouter tout » pilote le même audio partagé.
+window.playAllTracks = function() {
+  const first = _apQueue.find(t => t.streamUrl);
+  if (!first) return;
+  _apPlayTrack(first.id, true);
+  const n = _apQueue.filter(t => t.streamUrl).length;
+  toast('Lecture en cours ▶ ' + n + ' son' + (n > 1 ? 's' : ''));
 };
 
 // ── U8 — Chip ADN inline dans le hero ────────────────────────────────────────
@@ -1155,27 +1267,22 @@ function renderDna(artist) {
       meta.insertAdjacentHTML('beforeend',
         '<span class="ap-dna-badge">' + AI_LBL[adn.aiReference] + '</span>');
     }
-    // 2026-05-13 v2 — Rareté 4 tiers (mythic/legendary/limited/open)
-    const tier = adn.rarityTier || 'unlimited';
-    const left = (adn.availableCount != null) ? adn.availableCount : '?';
-    const tot  = (adn.maxSupply != null) ? adn.maxSupply : '?';
+    // C3 ② — rareté via tokens C0 (SpBadges.rarete) : fini les badges tiers
+    // codés à la main avec couleurs en dur. Le #X/N « prochain exemplaire »
+    // reste affiché en grand par #ap-relic-edition ; ici la pilule porte la
+    // rareté canonique (mythic/legendary→légendaire, limited→épique,
+    // open→rare via _rarityTierToToken). Nature 🧬 = la relique elle-même.
     if (adn.isSoldOut) {
       meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#7f1d1d;color:#fff;">SOLD OUT</span>');
-    } else if (tier === 'mythic') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#FFD700;color:#000;font-weight:600;">👑 Mythic · Pièce unique (1/1)</span>');
-    } else if (tier === 'legendary') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#FBBF24;color:#000;font-weight:600;">⭐ Legendary · Drop VIP ' + left + '/' + tot + '</span>');
-    } else if (tier === 'limited') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#A78BFA;color:#000;font-weight:600;">💎 Limited · ' + left + '/' + tot + ' restants</span>');
-    } else if (tier === 'open') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#4ADE80;color:#000;font-weight:600;">🟢 Open · ' + left + '/' + tot + '</span>');
+        '<span class="ap-dna-badge ap-dna-badge-soldout">Épuisé</span>');
+    } else if (window.SpBadges) {
+      const rToken = _rarityTierToToken(adn.rarityTier);
+      const rHtml = (adn.rarityTier === 'mythic' && adn.maxSupply != null)
+        ? SpBadges.rarete(1, adn.maxSupply, rToken)
+        : (rToken ? SpBadges.rarete(null, null, rToken) : '');
+      if (rHtml) meta.insertAdjacentHTML('beforeend', rHtml);
     }
-    // tier === 'unlimited' → pas de badge rareté affiché
+    // rarityTier 'unlimited' → pas de pilule rareté affichée
   }
 
   // Masque le bouton unlock pour l'owner (pas d'auto-achat).
@@ -1243,6 +1350,26 @@ const _PROMPT_PLATFORM_LBL = {
 };
 function _voicePromptPlatformLbl(key) {
   return _PROMPT_PLATFORM_LBL[key] || (key || '');
+}
+
+// C3 ② — passerelle entre les tiers de rareté backend (mythic / legendary /
+// limited / open / unlimited) et les 4 raretés canoniques du design system
+// C0 (SpBadges.rarete : commune / rare / epique / legendaire). 'unlimited'
+// → '' (pas de pilule). mythic = pièce unique → classe légendaire + #1/1.
+const _RARITY_TIER_TOKEN = {
+  mythic:     'legendaire',
+  legendary:  'legendaire',
+  limited:    'epique',
+  open:       'rare',
+  legendaire: 'legendaire',
+  epique:     'epique',
+  rare:       'rare',
+  commune:    'commune',
+  common:     'commune',
+  epic:       'epique',
+};
+function _rarityTierToToken(tier) {
+  return _RARITY_TIER_TOKEN[String(tier || '').toLowerCase()] || '';
 }
 
 const _PROMPT_VOCAL_GENDER_LBL = {
@@ -1639,124 +1766,79 @@ function renderTracks(artist) {
   setText('ap-tracks-count',
     `${tracks.length} son${tracks.length > 1 ? 's' : ''}`);
 
-  // Item 1 — libellé lisible des plateformes d'origine
-  const PLATFORM_LBL = {
-    suno:         'Suno',
-    udio:         'Udio',
-    riffusion:    'Riffusion',
-    stable_audio: 'Stable Audio',
-    autre:        'Autre',
-  };
-
-  // Sprint 1 PR3 (2026-05-04) — pivot écoute. Le track devient le produit
-  // visible : cover + audio public + bouton "Débloquer le prompt" si
-  // un prompt est lié (track.promptId). Pour matcher le prompt avec
-  // ses metadonnées (prix, nom, etc), on indexe la liste artist.prompts
-  // par id.
+  // C3 ② — rows légères sur le player global. Le track reste le produit
+  // visible : prompt lié (recette) = bouton prix, écoute = audio PARTAGÉ
+  // (un seul <audio> pour toute la liste — cf. moteur _apPlayTrack).
+  // On indexe artist.prompts par id pour retrouver prix / rareté.
   const promptsById = {};
   const allPrompts = Array.isArray(artist && artist.prompts) ? artist.prompts : [];
   allPrompts.forEach(p => { if (p && p.id) promptsById[String(p.id)] = p; });
 
   list.innerHTML = '';
+  _apQueue = [];
   tracks.forEach(t => {
-    const card = document.createElement('article');
-    card.className = 'ap-track-card';
-    card.dataset.trackId   = t.id || '';
-    card.dataset.trackName = t.name || '';
+    const row = document.createElement('article');
+    row.className = 'ap-track-row';
+    row.dataset.trackId   = t.id || '';
+    row.dataset.trackName = t.name || '';
     const safeName = (t.name || 'Sans titre').replace(/</g, '&lt;');
     const plays    = formatCount(t.plays);
-    const date     = t.date || '';
-    // Sprint 1 PR3 fix audio v2 (2026-05-05) — robustesse maximale :
-    // 1. <source> avec type explicite (force le MIME pour Chrome qui
-    //    refuse parfois de jouer un fichier dont le content-type R2
-    //    serait application/octet-stream au lieu de audio/wav)
-    // 2. Pas de filter CSS (retiré dans v1, controls natifs visibles)
-    // 3. Click handler sur la card entière qui force le play via JS
-    //    (data-stream-url) — fallback si controls natifs cliquables
-    //    mais inactifs pour une raison (CSP, focus, autre)
-    let audio = '';
-    if (t.streamUrl) {
-      const safeUrl = t.streamUrl.replace(/"/g, '&quot;');
-      // Détection MIME basique sur l'extension (R2 retourne parfois
-      // application/octet-stream qui empêche le play). On lui force
-      // un type audio/wav ou audio/mpeg.
-      const ext = (t.streamUrl.split('.').pop() || '').toLowerCase();
-      const mime = ext === 'mp3' ? 'audio/mpeg'
-                  : ext === 'm4a' ? 'audio/mp4'
-                  : 'audio/wav';  // .wav par défaut
-      // preload="none" (et pas "metadata") : avec 81 sons publiés, le
-      // preload metadata déclenchait 81 requêtes R2 dès l'ouverture du
-      // profil — page très lourde au chargement (constat audit 2026-06-10).
-      // Trade-off : la durée ne s'affiche qu'au clic play. Acceptable.
-      audio = `<audio controls preload="none" class="ap-track-audio" controlsList="nodownload noplaybackrate">
-        <source src="${safeUrl}" type="${mime}" />
-      </audio>`;
-    } else {
-      audio = `<div class="ap-track-audio-disabled">Audio en cours de traitement…</div>`;
-    }
-    // Cover image (Sprint 1 PR1+PR2). Fallback sur la couleur si absent.
+
+    // Queue du moteur audio partagé — ordre d'affichage = ordre de lecture.
+    _apQueue.push({
+      id:        t.id,
+      name:      t.name || '',
+      streamUrl: t.streamUrl || '',
+      coverUrl:  t.coverUrl || t.cover_url || '',
+      color:     t.playlistColor || t.color || '',
+    });
+
+    // Cover mini. Fallback sur la couleur du track si pas d'image.
     const _coverU = t.coverUrl || t.cover_url || '';
     const coverHTML = _coverU
-      ? `<img src="${_coverU.replace(/"/g, '&quot;')}" alt="" class="ap-track-cover" />`
-      : `<div class="ap-track-cover ap-track-cover-fallback"
-              style="background:${t.color || '#FFD700'}"></div>`;
-    // Item 1 — badge plateforme
-    const platformBadge = (t.platform && PLATFORM_LBL[t.platform])
-      ? `<span class="ap-track-card-platform" title="Plateforme d'origine">
-          ${PLATFORM_LBL[t.platform]}
-        </span>`
-      : '';
-    // Bouton débloquer prompt — si ce track a un prompt vendable lié.
-    // On retrouve les métadonnées du prompt (prix, vocal, etc.) dans
-    // artist.prompts (déjà chargé pour la cellule ap-prompts-section).
-    let unlockBlock = '';
+      ? `<img src="${_coverU.replace(/"/g, '&quot;')}" alt="" loading="lazy" />`
+      : `<div class="ap-track-mini-fallback"${t.color ? ` style="background:${t.color}"` : ''}></div>`;
+
+    // Repères C0 — nature toujours, palier/rareté seulement si la donnée
+    // existe (pas de palier dans le payload tant que les abos ne sont pas
+    // branchés : rendu défensif, s'allumera tout seul).
     const linkedPrompt = t.promptId ? promptsById[String(t.promptId)] : null;
+    const natureBadge = window.SpBadges
+      ? SpBadges.nature((t.beatId || t.beat_id) ? 'beat' : 'son-ia') : '';
+    const tier = t.palier || t.creatorTier || t.subscriptionTier || '';
+    const palierBadge = (tier && window.SpBadges) ? SpBadges.palier(tier) : '';
+    let rareteBadge = '';
+    if (window.SpBadges && linkedPrompt) {
+      const rToken = _rarityTierToToken(linkedPrompt.rarityTier);
+      if (linkedPrompt.rarityTier === 'mythic' && linkedPrompt.maxSupply != null) {
+        rareteBadge = SpBadges.rarete(1, linkedPrompt.maxSupply, rToken);
+      } else if (rToken) {
+        rareteBadge = SpBadges.rarete(null, null, rToken);
+      }
+    }
+    // Provenance ⚡ plateforme (token C0, remplace l'ancien badge maison).
+    const provenance = window.SpBadges ? SpBadges.provenance(t.platform) : '';
+
+    // Prix recette — badge 🧬 si un prompt vendable est lié.
+    let unlockBlock = '';
     if (linkedPrompt && !artist.isSelf) {
       const priceStr = formatCount(linkedPrompt.priceCredits);
-      const vocalLbl = linkedPrompt.promptVocalGender
-        ? _promptVocalGenderLbl(linkedPrompt.promptVocalGender)
-        : '';
-      const platformLbl = linkedPrompt.promptPlatform
-        ? _voicePromptPlatformLbl(linkedPrompt.promptPlatform)
-        : '';
-      const promptMetaLine = [vocalLbl, platformLbl, linkedPrompt.promptModelVersion]
-        .filter(Boolean).join(' · ');
-      unlockBlock = `
-        <div class="ap-track-prompt-block">
-          ${promptMetaLine ? `<div class="ap-track-prompt-meta">${promptMetaLine.replace(/</g, '&lt;')}</div>` : ''}
-          <button type="button" class="ap-track-unlock-btn"
-                  data-prompt-id="${linkedPrompt.id}"
-                  data-price="${linkedPrompt.priceCredits}">
-            🧬 Recette · ${priceStr} crédits
-          </button>
-        </div>`;
+      unlockBlock = `<button type="button" class="ap-track-unlock-btn"
+                data-prompt-id="${linkedPrompt.id}"
+                data-price="${linkedPrompt.priceCredits}"
+                title="Débloquer la recette">🧬 ${priceStr} crédits</button>`;
     } else if (linkedPrompt && artist.isSelf) {
       unlockBlock = '<span class="ap-prompt-owner-note">Recette en vente</span>';
     }
-    // Bouton supprimer — visible uniquement quand l'owner regarde son
-    // propre profil. Le DELETE backend vérifie aussi l'owner (defense
-    // in depth), donc même si un visiteur arrive à invoquer le click,
-    // il aura un 403.
+
+    // Bouton supprimer — owner uniquement (le backend re-vérifie : 403 sinon).
     const deleteBtn = artist.isSelf
       ? `<button type="button" class="ap-track-delete-btn"
                  data-track-id="${t.id}"
                  data-track-name="${(t.name || '').replace(/"/g, '&quot;')}"
                  title="Supprimer ce son">🗑</button>`
       : '';
-    // Couleur de la card : priorité playlist > couleur propre du track > défaut
-    const tc    = t.playlistColor || t.color || '';
-    const tcRgb = tc ? hexToRgbTriplet(tc) : '255,215,0';
-    // Badge playlist cliquable (si le track appartient à une playlist publique)
-    const artistSlug = (typeof state !== 'undefined' && state.artist && state.artist.slug) || '';
-    const plBadge = t.playlistTitle
-      ? `<a class="ap-track-pl-badge"
-              href="/u/${encodeURIComponent(artistSlug)}"
-              style="color:${tc};border-color:rgba(${tcRgb},.4);background:rgba(${tcRgb},.1)"
-              onclick="event.stopPropagation()">${(t.playlistTitle + '').replace(/</g,'&lt;')}</a>`
-      : '';
-    // data-stream-url permet au click handler de retrouver l'URL
-    // pour le fallback play JS sur la card entière.
-    const streamAttr = t.streamUrl ? ` data-stream-url="${t.streamUrl.replace(/"/g, '&quot;')}"` : '';
+
     // Stocke les données dans le cache — évite le problème des " en HTML
     _trackDetailCache[t.id] = {
       id:           linkedPrompt ? linkedPrompt.id : null,
@@ -1771,42 +1853,36 @@ function renderTracks(artist) {
       hasPrompt:    !!linkedPrompt,
     };
 
-    if (tc) card.style.cssText = `--tc:${tc};--tc-rgb:${tcRgb}`;
-    card.innerHTML = `
-      <div class="ap-track-card-inner" data-track-id="${t.id}"${streamAttr}${tc ? ` style="background:rgba(${tcRgb},.07);border-left:3px solid rgba(${tcRgb},.55)"` : ''}>
-        ${coverHTML}
-        <div class="ap-track-card-body">
-          <div class="ap-track-card-top">
-            <h3 class="ap-track-card-title ap-track-detail-trigger"
-                style="cursor:pointer${tc ? `;color:${tc};text-shadow:0 0 8px rgba(${tcRgb},.6),0 0 20px rgba(${tcRgb},.25)` : ''}"
-                onclick="openTrackDetailById('${t.id}')">${safeName}</h3>
-            <div class="ap-track-card-actions">
-              <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
-              <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
-              ${deleteBtn}
-            </div>
-          </div>
-          <div class="ap-track-card-meta">
-            ${(window.SpBadges) ? SpBadges.nature(t.beatId || t.beat_id ? 'beat' : 'son-ia') : ''}
-            <span class="ap-track-meta-plays">▶ ${plays}</span>
-            ${date ? `<span class="ap-track-meta-date">· ${date}</span>` : ''}
-            ${platformBadge}
-            ${plBadge}
-          </div>
-          ${audio}
-          ${unlockBlock}
+    row.innerHTML = `
+      <button type="button" class="ap-track-play-btn" data-play-track="${t.id}"
+              aria-label="Écouter"${t.streamUrl ? '' : ' disabled title="Audio en cours de traitement…"'}>${_AP_PLAY_SVG}</button>
+      <div class="ap-track-mini-cover">${coverHTML}</div>
+      <div class="ap-track-row-main">
+        <div class="ap-track-row-title">${safeName}</div>
+        <div class="ap-track-row-badges">
+          ${natureBadge}${palierBadge}${rareteBadge}${provenance}
+          <span class="ap-track-row-plays">▶ ${plays}</span>
         </div>
       </div>
+      <div class="ap-track-row-actions">
+        ${unlockBlock}
+        <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
+        <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
+        ${deleteBtn}
+      </div>
     `;
-    list.appendChild(card);
+    list.appendChild(row);
   });
+
+  // Re-render pendant une lecture en cours → re-marque la row active.
+  _apSyncRows(_apAudio && !_apAudio.paused);
 
   // ── Accordéon : 6 tracks visibles par défaut ────────────────────────────
   const TRACKS_FOLD = 6;
   const _prevTT = list.nextElementSibling;
   if (_prevTT && _prevTT.classList && _prevTT.classList.contains('ap-accordion-toggle')) _prevTT.remove();
   if (tracks.length > TRACKS_FOLD) {
-    const allCards = list.querySelectorAll('.ap-track-card');
+    const allCards = list.querySelectorAll('.ap-track-row');
     allCards.forEach((c, i) => { c.style.display = i >= TRACKS_FOLD ? 'none' : ''; });
     const tb = document.createElement('button');
     tb.type = 'button'; tb.className = 'ap-accordion-toggle';
@@ -1849,14 +1925,11 @@ function renderTracks(artist) {
     }
   }
 
-  // Délégation click + gestion robuste de play/pause via pattern promise
-  // (suggéré par Tom 2026-05-05 — évite AbortError quand play/pause
-  // s'enchaînent rapidement avant la résolution de la promesse de play).
-  // Une seule track joue à la fois sur la page (les autres se mettent
-  // en pause automatiquement).
+  // Délégation click — un seul listener pour la liste (re-rendue souvent).
+  // Play/pause passe par le moteur audio partagé (_apPlayTrack, pattern
+  // promesse anti-AbortError inclus). Clic sur la row = fiche détail.
   list.onclick = (ev) => {
     // Cas 0 : like-btn et add-to-pl-btn — délégués à playlists.js (capture)
-    // On interrompt ici pour éviter que le play/pause de la card se déclenche.
     if (ev.target.closest('[data-like-btn]') || ev.target.closest('[data-add-to-playlist]')) {
       ev.stopPropagation();
       return;
@@ -1873,53 +1946,24 @@ function renderTracks(artist) {
       }
       return;
     }
-    // Cas 2 : bouton unlock prompt
+    // Cas 2 : bouton unlock prompt (prix recette)
     const unlockBtn = ev.target.closest('.ap-track-unlock-btn');
     if (unlockBtn) {
       const id = unlockBtn.dataset.promptId;
       if (id) unlockPromptFromProfile(id, unlockBtn);
       return;
     }
-    // Cas 3 : click sur card pour play/pause
-    const inner = ev.target.closest('.ap-track-card-inner');
-    if (!inner) return;
-    if (ev.target.closest('audio')) return;
-    const url = inner.dataset.streamUrl;
-    if (!url) {
-      toast('Audio en cours de traitement, réessaie dans quelques secondes.');
+    // Cas 3 : bouton play rond → audio partagé (re-clic même row = pause)
+    const playBtn = ev.target.closest('.ap-track-play-btn');
+    if (playBtn) {
+      ev.stopPropagation();
+      const tid = playBtn.dataset.playTrack;
+      if (tid) _apPlayTrack(tid);
       return;
     }
-    const audioEl = inner.querySelector('audio');
-    if (!audioEl) return;
-
-    // Logging détaillé pour diagnostic prod (à retirer une fois stable).
-    console.log('[artiste] click play. url=', url, 'paused=', audioEl.paused, 'readyState=', audioEl.readyState, 'error=', audioEl.error);
-
-    if (audioEl.paused) {
-      // Stoppe les autres lecteurs en cours sur la page (un seul son
-      // joue à la fois — UX cohérente avec marketplace).
-      list.querySelectorAll('audio').forEach(a => {
-        if (a !== audioEl && !a.paused) {
-          try { a.pause(); } catch (_) {}
-        }
-      });
-      // Pattern Tom — on stocke la promesse pour pouvoir l'await en pause
-      const playPromise = audioEl.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          if (err && err.name === 'AbortError') return;  // benign
-          console.error('[artiste] audio.play() rejected:', err);
-          // Message d'erreur le plus parlant possible pour Tom
-          const errMsg = err && (err.message || err.name) || 'erreur audio inconnue';
-          const audioErr = audioEl.error
-            ? ` (code ${audioEl.error.code}: ${audioEl.error.message || ''})`
-            : '';
-          toast('Lecture impossible : ' + errMsg + audioErr);
-        });
-      }
-    } else {
-      audioEl.pause();
-    }
+    // Cas 4 : clic sur la row → fiche détail / déblocage
+    const row = ev.target.closest('.ap-track-row');
+    if (row && row.dataset.trackId) openTrackDetailById(row.dataset.trackId);
   };
 }
 
@@ -2097,7 +2141,7 @@ function renderResale(items) {
   section.style.display = '';
   const rows = items.map(it => {
     const author = it.original_artist_name
-      ? '<a href="/u/' + _e(it.original_artist_slug || '') + '" style="color:#c4b5fd;text-decoration:none">créé par ' + _e(it.original_artist_name) + ' →</a>'
+      ? '<a href="/@' + _e(it.original_artist_slug || '') + '" style="color:#c4b5fd;text-decoration:none">créé par ' + _e(it.original_artist_name) + ' →</a>'
       : '<span style="color:#888">créateur inconnu</span>';
     const editionBadge = (it.edition_number != null && it.max_supply != null)
       ? ' <span title="Exemplaire #' + _e(it.edition_number) + ' sur ' + _e(it.max_supply) + ' — édition limitée" style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:rgba(124,77,255,.18);color:#cbb3ff;font-size:11px;font-weight:700;vertical-align:middle">#' + _e(it.edition_number) + '/' + _e(it.max_supply) + '</span>'
@@ -2130,12 +2174,9 @@ function renderResale(items) {
   });
 }
 
-// Libellés humains des licences (alignés sur le backend VoiceLicense).
-const VOICE_LICENSE_LBL = {
-  personnel:  'Personnel',
-  commercial: 'Commercial',
-  exclusif:   'Exclusif',
-};
+// C3 ② — VOICE_LICENSE_LBL supprimé : le vocabulaire « licence » a disparu
+// des capsules publiques (remplacé par la rareté #X/N). Le drawer garde son
+// propre LICENSE_LBL local (openBoutiqueDrawer).
 
 // Mapping des keys de genres vers leurs labels affichés.
 // (Source de vérité : DASH_VOICE_GENRES côté dashboard.js. On duplique ici
@@ -2166,64 +2207,75 @@ function renderVoices(artist) {
   setText('ap-voices-count',
     `${voices.length} voix`);
 
+  // C3 ② — CAPSULES VOCALES : cards horizontales couleur nature voix
+  // (orange C0, --sp-nature-voix), lecteur de preview ROND, rareté #X/N
+  // via tokens. Impossible à confondre avec les rows de tracks.
+  // Règle stricte (voix séparées du flux musical) : preview 30s public,
+  // JAMAIS le full — sample_url n'arrive que pour owner/unlocked (router).
   list.innerHTML = '';
   voices.forEach(v => {
     const card = document.createElement('article');
-    card.className = 'ap-voice-card';
+    card.className = 'ap-voice-capsule';
+    card.dataset.voiceId = v.id;
     const safeName  = (v.name  || '').replace(/</g, '&lt;');
     const safeStyle = (v.style || '').replace(/</g, '&lt;');
     const priceStr  = formatCount(v.price_credits);
-    // Chantier Voix 2026-06-12 — le vocabulaire « licence » disparaît :
-    // la rareté #X/N prend sa place (alignée sur les prompts).
-    const _vSold = v.editions_sold || 0;
+
+    // Rareté #X/N — le payload public expose max_supply + editions_sold
+    // (audit smyleplay-api routers/voices.py + services/voices.py 2026-06-12).
+    // Prochain exemplaire minté = editions_sold + 1. 1/1 = légendaire.
+    const _vSold   = v.editions_sold || 0;
     const _vSupply = (v.max_supply != null) ? v.max_supply : null;
-    const licenseLbl = (_vSupply != null)
-      ? (_vSupply === 1
-          ? (_vSold >= 1 ? 'Vente unique · vendue' : '1/1 · vente unique')
-          : (_vSold >= _vSupply ? 'Édition épuisée' : 'Édition · ' + (_vSupply - _vSold) + '/' + _vSupply + ' dispo'))
-      : '';
-    const licenseClass = (_vSupply === 1)
-      ? 'ap-voice-badge ap-voice-license-badge is-exclusif'
-      : 'ap-voice-badge ap-voice-license-badge';
+    let rareteBadge  = '';
+    let soldOutBadge = '';
+    if (_vSupply != null && window.SpBadges) {
+      if (_vSold >= _vSupply) {
+        rareteBadge  = SpBadges.rarete(_vSupply, _vSupply);
+        soldOutBadge = '<span class="ap-voice-soldout">Épuisée</span>';
+      } else {
+        rareteBadge = SpBadges.rarete(_vSold + 1, _vSupply, _vSupply === 1 ? 'legendaire' : '');
+      }
+    }
+
+    const natureBadge = window.SpBadges ? SpBadges.nature('voix') : '';
     const genresStr = _voiceGenresStr(v.genres);
-    const genresBadge = genresStr
-      ? `<span class="ap-voice-badge">${genresStr.replace(/</g, '&lt;')}</span>`
+    const genresChip = genresStr
+      ? `<span class="ap-voice-chip">${genresStr.replace(/</g, '&lt;')}</span>`
       : '';
-    // 2026-05-13 — chantier preview 30s :
-    //   - owner/unlocked reçoit sample_url (full) → player full
-    //   - visiteur reçoit preview_url (30s) → player preview
-    //   - voix legacy sans preview → placeholder verrouillé
-    const audioSrc = v.sample_url || v.preview_url || null;
-    const audioLbl = v.sample_url ? '' : (v.preview_url ? ' · 30s preview' : '');
-    const previewBlock = audioSrc
-      ? `<audio controls preload="none" controlsList="nodownload noremoteplayback"
-                oncontextmenu="return false" class="ap-voice-preview"
-                src="${(audioSrc + '').replace(/"/g, '&quot;')}"></audio>
-         <div class="ap-voice-preview-label" style="font-size:11px;color:#a09cb8;margin-top:4px;">${audioLbl ? '🎧 Pré-écoute' + audioLbl : ''}</div>`
-      : `<div class="ap-voice-locked"
-              style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed rgba(204,136,255,.3);border-radius:8px;color:#a09cb8;font-size:12px;font-style:italic">
-           🔒 Pré-écoute après achat
-         </div>`;
-    // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
-    const unlockBtn = artist.isSelf
-      ? '<span class="ap-voice-owner-note">Ta voix</span>'
-      : `<button type="button" class="ap-voice-unlock-btn"
-                 data-voice-id="${v.id}" data-price="${v.price_credits}">
-          🎙 Voix · ${priceStr} crédits
-        </button>`;
-    // Phase B metadata 2026-05-13 : badges origine + lien track
+    // Origine déclarée (Phase B metadata 2026-05-13)
     const _originLabel = (function(o) {
       if (o === 'personal') return '🎙️ Voix personnelle';
       if (o === 'ai') return '🤖 Créée par IA';
       if (o === 'known_artist') return '🌟 Voix d\'artiste connu';
       return '';
     })(v.voice_origin);
-    const originBadge = _originLabel
-      ? `<span class="ap-voice-origin" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(204,136,255,.1);color:#cc88ff;font-size:11px;letter-spacing:.02em;margin-right:6px">${_originLabel}</span>`
+    const originChip = _originLabel
+      ? `<span class="ap-voice-chip">${_originLabel}</span>`
       : '';
-    const linkedTrackBadge = v.linked_track_id
-      ? `<span class="ap-voice-linked" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(255,215,0,.1);color:#FFD700;font-size:11px;letter-spacing:.02em">🎵 Démo dans un morceau</span>`
+
+    // Preview : owner/unlocked = sample_url (full), visiteur = preview_url
+    // (30s), legacy sans preview = bouton verrouillé. Audio CACHÉ piloté
+    // par le bouton rond (un seul lecteur visible : le bouton).
+    const audioSrc  = v.sample_url || v.preview_url || null;
+    const isPreview = !v.sample_url && !!v.preview_url;
+    const playBlock = audioSrc
+      ? `<button type="button" class="ap-voice-play" aria-label="Pré-écoute"
+                 title="${isPreview ? 'Pré-écoute 30s' : 'Écouter'}">${_AP_PLAY_SVG}</button>
+         <audio class="ap-voice-audio" preload="none" hidden
+                src="${(audioSrc + '').replace(/"/g, '&quot;')}"></audio>`
+      : `<button type="button" class="ap-voice-play" disabled
+                 title="Pré-écoute après achat">🔒</button>`;
+    const previewTag = isPreview
+      ? '<span class="ap-voice-chip ap-voice-chip-30s">🎧 30s</span>'
       : '';
+
+    // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
+    const unlockBtn = artist.isSelf
+      ? '<span class="ap-voice-owner-note">Ta voix</span>'
+      : `<button type="button" class="ap-voice-unlock-btn"
+                 data-voice-id="${v.id}" data-price="${v.price_credits}">
+          🎙 ${priceStr} crédits
+        </button>`;
 
     _voiceDetailCache[v.id] = {
       id:           v.id,
@@ -2235,21 +2287,53 @@ function renderVoices(artist) {
       previewUrl:   v.preview_url || v.previewUrl || '',
     };
 
+    // data-track-name : la mini-bar globale affiche le nom de la voix
+    // pendant la pré-écoute (pas de data-track-id : une voix n'est pas
+    // likable/playlistable — règle de séparation voix/flux musical).
+    card.dataset.trackName = (v.name || 'Voix') + ' · pré-écoute';
     card.innerHTML = `
-      <div class="ap-voice-card-top" style="cursor:pointer"
-           onclick="openVoiceDetailById('${v.id}')"
-        <h3 class="ap-voice-card-title">${safeName}</h3>
-        <span class="${licenseClass}">${licenseLbl}</span>
+      ${playBlock}
+      <div class="ap-voice-main">
+        <div class="ap-voice-top">
+          <h3 class="ap-voice-name">${safeName}</h3>
+          ${rareteBadge}${soldOutBadge}
+        </div>
+        ${safeStyle ? `<p class="ap-voice-style">${safeStyle}</p>` : ''}
+        <div class="ap-voice-badges">
+          ${natureBadge}${originChip}${genresChip}${previewTag}
+        </div>
       </div>
-      ${safeStyle ? `<p class="ap-voice-card-style">${safeStyle}</p>` : ''}
-      ${(originBadge || linkedTrackBadge) ? `<div class="ap-voice-card-badges" style="margin-bottom:6px">${originBadge}${linkedTrackBadge}</div>` : ''}
-      <div class="ap-voice-card-meta">
-        ${genresBadge}
-      </div>
-      ${previewBlock}
-      <div class="ap-voice-card-actions">${unlockBtn}</div>
+      <div class="ap-voice-side">${unlockBtn}</div>
     `;
     list.appendChild(card);
+  });
+
+  // États play/pause des capsules — une seule voix joue à la fois, et la
+  // pré-écoute coupe le player de tracks partagé (jamais l'inverse en
+  // shuffle : les voix restent hors du flux musical).
+  list.querySelectorAll('.ap-voice-audio').forEach(a => {
+    a.addEventListener('play', () => {
+      list.querySelectorAll('.ap-voice-audio').forEach(o => {
+        if (o !== a && !o.paused) { try { o.pause(); } catch (_) {} }
+      });
+      if (_apAudio && !_apAudio.paused) { try { _apAudio.pause(); } catch (_) {} }
+      const cap = a.closest('.ap-voice-capsule');
+      if (cap) {
+        cap.classList.add('is-playing');
+        const btn = cap.querySelector('.ap-voice-play');
+        if (btn) btn.innerHTML = _AP_PAUSE_SVG;
+      }
+    });
+    const onStop = () => {
+      const cap = a.closest('.ap-voice-capsule');
+      if (cap) {
+        cap.classList.remove('is-playing');
+        const btn = cap.querySelector('.ap-voice-play');
+        if (btn) btn.innerHTML = _AP_PLAY_SVG;
+      }
+    };
+    a.addEventListener('pause', onStop);
+    a.addEventListener('ended', onStop);
   });
 
   // ── Accordéon : 4 voix visibles par défaut ──────────────────────────────
@@ -2257,7 +2341,7 @@ function renderVoices(artist) {
   const _prevVT = list.nextElementSibling;
   if (_prevVT && _prevVT.classList && _prevVT.classList.contains('ap-accordion-toggle')) _prevVT.remove();
   if (voices.length > VOICES_FOLD) {
-    const allVC = list.querySelectorAll('.ap-voice-card');
+    const allVC = list.querySelectorAll('.ap-voice-capsule');
     allVC.forEach((c, i) => { c.style.display = i >= VOICES_FOLD ? 'none' : ''; });
     const tbV = document.createElement('button');
     tbV.type = 'button'; tbV.className = 'ap-accordion-toggle';
@@ -2298,11 +2382,27 @@ function renderVoices(artist) {
   }
 
   // Délégation click — un seul listener pour la liste re-rendue souvent.
+  // Bouton rond = play/pause preview · bouton prix = unlock (flux existant)
+  // · clic capsule = fiche détail (drawer).
   list.onclick = (ev) => {
+    const playBtn = ev.target.closest('.ap-voice-play');
+    if (playBtn) {
+      ev.stopPropagation();
+      const cap = playBtn.closest('.ap-voice-capsule');
+      const audio = cap && cap.querySelector('.ap-voice-audio');
+      if (!audio) return;
+      if (audio.paused) _apSafePlay(audio);
+      else audio.pause();
+      return;
+    }
     const btn = ev.target.closest('.ap-voice-unlock-btn');
-    if (!btn) return;
-    const id = btn.dataset.voiceId;
-    if (id) unlockVoiceFromProfile(id, btn);
+    if (btn) {
+      const id = btn.dataset.voiceId;
+      if (id) unlockVoiceFromProfile(id, btn);
+      return;
+    }
+    const cap = ev.target.closest('.ap-voice-capsule');
+    if (cap && cap.dataset.voiceId) openVoiceDetailById(cap.dataset.voiceId);
   };
 }
 

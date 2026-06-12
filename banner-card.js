@@ -20,7 +20,7 @@
    opts : {
      size   : 'compact' | 'default' | 'hero'
      rank   : 1                              // si présent → layout avec rang
-     href   : '/u/smyle'                     // sinon fallback `/u/${slug}`
+     href   : '/@smyle'                     // sinon fallback `/@${slug}`
    }
    ═════════════════════════════════════════════════════════════════════════ */
 
@@ -103,7 +103,7 @@
     opts = opts || {};
     const size = opts.size || 'default';
     const rank = (typeof opts.rank === 'number') ? opts.rank : null;
-    const href = opts.href || (artist.slug ? `/u/${_escape(artist.slug)}` : '#');
+    const href = opts.href || (artist.slug ? `/@${_escape(artist.slug)}` : '#');
 
     const classes = ['banner-card', `banner-card--${size}`];
     if (rank != null) classes.push('banner-card--with-rank');
