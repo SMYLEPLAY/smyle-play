@@ -592,6 +592,7 @@
             '<li class="pl-row" data-id="' + p.id + '" data-vis="' + p.visibility + '" ' +
                 'data-adn-for-sale="' + (p.adn_for_sale ? '1' : '0') + '" ' +
                 'data-adn-price="' + (p.adn_price || '') + '" ' +
+                'data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g, '&quot;') + '" ' +
                 'data-color="' + currentColor + '" ' +
                 'data-title="' + (p.title || '').replace(/"/g, '&quot;') + '">' +
               thumb +
@@ -649,7 +650,8 @@
           title: row.dataset.title || '',
           visibility: vis,
           adn_for_sale: row.dataset.adnForSale === '1',
-          adn_price: parseInt(row.dataset.adnPrice, 10) || null
+          adn_price: parseInt(row.dataset.adnPrice, 10) || null,
+          seed_prompt: row.dataset.seedPrompt || ''
         };
         openEditPlaylistAdnModal(plData, () => reload());
       } else if (ev.target.closest('.pl-act-vis')) {
@@ -878,6 +880,17 @@
     const adnTitle    = badgeEl.dataset.adnTitle || 'cette playlist';
     const seedPrompt  = badgeEl.dataset.seedPrompt || '';
 
+    // C2/ADN playlist — drawer d'achat unifié (fallback : modale historique).
+    if (window.PurchaseDrawer) {
+      window.PurchaseDrawer.open({
+        type: 'playlist',
+        id: playlistId,
+        price: adnPrice || null,
+        title: 'ADN · ' + adnTitle,
+      });
+      return;
+    }
+
     // Supprimer overlay existant
     const existing = document.getElementById('adn-buy-overlay');
     if (existing) existing.remove();
@@ -1004,6 +1017,12 @@
         '<div class="pl-edit-price-wrap" id="pl-edit-price-wrap" style="display:' + (playlistData.adn_for_sale ? '' : 'none') + '">' +
           '<label class="pl-edit-label" for="pl-edit-price">Prix en Smyles (1 – 100 000)</label>' +
           '<input type="number" id="pl-edit-price" class="pl-edit-input" min="1" max="100000" placeholder="ex : 50" value="' + (playlistData.adn_price || '') + '" />' +
+          // ADN playlist (marathon 2026-06-12) — le CONTENU vendu est éditable
+          // ici (avant, il ne pouvait être posé qu’à la création). Verrouillé
+          // publiquement tant que la vente est active (le backend masque
+          // seed_prompt si adn_for_sale).
+          '<label class="pl-edit-label" for="pl-edit-seed" style="margin-top:10px">Contenu de l\'ADN — la tranche d\'identité vendue</label>' +
+          '<textarea id="pl-edit-seed" class="pl-edit-input" rows="4" placeholder="Prompt / recette d\'identité de cette playlist (ce que l\'acheteur reçoit)…">' + _esc(playlistData.seed_prompt || '') + '</textarea>' +
         '</div>' +
         '<button class="pl-edit-save" id="pl-edit-save">Enregistrer</button>' +
         '<div class="pl-edit-err" id="pl-edit-err" style="display:none"></div>' +
@@ -1030,9 +1049,14 @@
         const vis      = document.getElementById('pl-edit-vis').value;
         const adnSale  = adnChk && adnChk.checked;
         const adnPrice = adnSale ? (parseInt(document.getElementById('pl-edit-price').value, 10) || null) : null;
+        const adnSeed  = (document.getElementById('pl-edit-seed')?.value || '').trim();
 
         if (adnSale && !adnPrice) {
           if (errEl) { errEl.textContent = 'Fixe un prix en Smyles pour activer la vente d\'ADN.'; errEl.style.display = 'block'; }
+          return;
+        }
+        if (adnSale && !adnSeed) {
+          if (errEl) { errEl.textContent = 'Écris le contenu de l\'ADN — on ne vend pas un document vide.'; errEl.style.display = 'block'; }
           return;
         }
 
@@ -1043,6 +1067,7 @@
         const patch = { visibility: vis, adn_for_sale: adnSale };
         if (adnSale && adnPrice) patch.adn_price = adnPrice;
         if (!adnSale) patch.adn_price = null;
+        if (adnSeed) patch.seed_prompt = adnSeed;
 
         try {
           await updatePlaylist(playlistData.id, patch);
