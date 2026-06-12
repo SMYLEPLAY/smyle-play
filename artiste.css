@@ -967,18 +967,10 @@ img { max-width: 100%; display: block; }
   /* C3 v3 — gabarit identité : 32-36px (fini le nom géant 52px). */
   font-size: clamp(30px, 4vw, 36px);
   font-weight: 900; letter-spacing: .06em;
-  /* Dégradé blanc → couleur de marque, pour que le nom "attrape" le regard
-     sans écraser la lecture du reste du hero. */
-  background: linear-gradient(
-    90deg,
-    rgba(245, 242, 252, .98) 0%,
-    rgba(245, 242, 252, .98) 45%,
-    var(--brand) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  /* C3 ① ter (retour QA Tom) — le dégradé blanc→brand coupait le nom en
+     deux couleurs (« SMY » blanc / « LE » rouge) : illisible. Nom plein,
+     la teinte brand vit dans le halo néon (drop-shadows ci-dessous). */
+  color: rgba(245, 242, 252, .98);
   /* Flicker néon teinté --brand (D.A WATT, même logique que .logo-text /
      .hitmix-title sur la home). Le halo lumineux autour du nom respire par
      saccades pour rester dans l'univers "enseigne néon" de SMYLE PLAY.
@@ -4550,3 +4542,102 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   white-space: pre-line;
 }
 body:not(.ap-owner-editing) .ap-identity-bio:empty { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   C3 ① ter — PASSE DE DÉTAIL (analyse visuelle réelle, retour QA Tom №2)
+   Constats faits en regardant la page rendue (profil Smyle) :
+   pilules à 2 langages + point flottant · boutons "+ réseau" visibles en
+   vue fan · 2 styles d'accordéons (Playlists néon vs SONS PUBLIÉS) ·
+   bordure brand criarde sur Playlists · texte fantôme du player.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 1. Point séparateur flottant entre rôles et genre/ville : supprimé. */
+.ap-meta-sep { display: none; }
+
+/* 2. Genre / ville : même gabarit que les pilules de rôles (géométrie
+   identique, accent neutre — la couleur reste réservée aux rôles). */
+.ap-meta-chip {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 2px;
+}
+
+/* 3. Boutons "+ TikTok / + X…" = affordances d'ÉDITION : visibles
+   uniquement en mode édition owner, jamais en vue fan. Si plus aucun
+   réseau réel à montrer hors édition, la section disparaît (pas de
+   boîte vide). */
+body:not(.ap-owner-editing) .ap-social-add { display: none; }
+body:not(.ap-owner-editing)
+  .ap-section-socials:not(:has(.ap-social-chip:not(.ap-social-add))) {
+  display: none;
+}
+
+/* 4. UN seul langage d'accordéon (Playlists + Sons publiés alignés sur
+   les titres de sections : tiret dégradé + uppercase letterspacé).
+   #ap-playlists-root prime sur les styles injectés par playlists.js. */
+#ap-playlists-root .ap-playlists-section {
+  border: 1px solid rgba(255, 255, 255, .055);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .015);
+  padding: 6px 20px;
+  margin: 0 0 18px;
+}
+#ap-playlists-root .ap-playlists-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(245, 242, 252, .82);
+  text-shadow: none;
+}
+#ap-playlists-root .ap-playlists-title::before {
+  content: '';
+  flex: 0 0 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    rgba(var(--brand-rgb, 136, 0, 255), .95), #7c5cff);
+}
+#ap-playlists-root .ap-playlists-count {
+  font-size: 11px;
+  letter-spacing: .05em;
+  color: rgba(160, 156, 184, .85);
+}
+/* Sons publiés : compteur au même registre neutre (fini le gold/brand). */
+.ap-tracks-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(245, 242, 252, .82);
+}
+.ap-tracks-title::before {
+  content: '';
+  flex: 0 0 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    rgba(var(--brand-rgb, 136, 0, 255), .95), #7c5cff);
+}
+.ap-tracks-count {
+  font-size: 11px;
+  letter-spacing: .05em;
+  color: rgba(160, 156, 184, .85);
+}
+
+/* 5. Texte fantôme du vieux player (« Sélectionne un morceau… ») :
+   le player global (mini-bar) a son propre UI — on masque le résidu. */
+.ap-page .player-empty { display: none; }
+
+/* 6. Relique : la rangée de méta-chips se tient (taille unique, calme). */
+#ap-dna-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#ap-dna-meta > * { font-size: 11px; line-height: 1.4; }
