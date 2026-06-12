@@ -1108,7 +1108,10 @@ function _apPlayTrack(trackId, forcePlay) {
   _apCurrentId = String(trackId);
 
   // Métadonnées à jour AVANT le play : la mini-bar les lit sur l'event.
+  // trackId (legacy) reste pour le compteur d'écoutes (storage.js) ;
+  // trackUuid sert au ❤️/➕ de la mini-bar (fix QA C3 ②).
   _apAudioWrap.dataset.trackId   = t.id || '';
+  _apAudioWrap.dataset.trackUuid = t.trackUuid || t.id || '';
   _apAudioWrap.dataset.trackName = t.name || '';
   const img = _apAudioWrap.querySelector('img.ap-track-cover');
   if (img) img.src = t.coverUrl || '';
@@ -1787,6 +1790,9 @@ function renderTracks(artist) {
     // Queue du moteur audio partagé — ordre d'affichage = ordre de lecture.
     _apQueue.push({
       id:        t.id,
+      // Fix QA C3 ② — UUID requis par like/wishlist et ajout playlist
+      // (la mini-bar le lit via data-track-uuid sur le wrapper).
+      trackUuid: t.trackUuid || t.id,
       name:      t.name || '',
       streamUrl: t.streamUrl || '',
       coverUrl:  t.coverUrl || t.cover_url || '',

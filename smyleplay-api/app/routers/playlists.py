@@ -78,6 +78,22 @@ async def _tracks_with_prompt_prices(
     return result
 
 
+async def _playlist_reads_with_counts(
+    db: AsyncSession, items: list
+) -> list[PlaylistRead]:
+    """Fix QA C3 ② (2026-06-12) — PlaylistRead n'expose pas les tracks
+    (projection compacte), donc le front affichait « 0 sons » sur les
+    tuiles-mondes du profil. On remplit track_count via UNE requête
+    GROUP BY, sans alourdir la projection."""
+    counts = await svc.count_tracks_by_playlists(db, [p.id for p in items])
+    out = []
+    for p in items:
+        pr = PlaylistRead.model_validate(p)
+        pr.track_count = counts.get(p.id, 0)
+        out.append(pr)
+    return out
+
+
 # ─── Owner-facing : /playlists/... ───────────────────────────────────────
 @router.post(
     "",
@@ -106,7 +122,7 @@ async def list_my_playlists(
     items = await svc.list_user_playlists(
         db, current_user.id, visibility=visibility
     )
-    return [PlaylistRead.model_validate(p) for p in items]
+    return await _playlist_reads_with_counts(db, items)
 
 
 @router.get("/wishlist", response_model=PlaylistRead)
@@ -308,7 +324,7 @@ async def list_public_playlists_by_slug(
     items = await svc.list_user_playlists(
         db, target.id, visibility="public"
     )
-    return [PlaylistRead.model_validate(p) for p in items]
+    return await _playlist_reads_with_counts(db, items)
 
 
 # ─── Public-facing : /watt/playlists/{id} — quick-play ────────────────────

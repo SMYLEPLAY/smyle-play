@@ -102,6 +102,24 @@ async def list_user_playlists(
     return list(res.scalars().all())
 
 
+async def count_tracks_by_playlists(
+    db: AsyncSession,
+    playlist_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, int]:
+    """Fix QA C3 ② (2026-06-12) — nb de tracks par playlist en UNE requête
+    GROUP BY (pas de N+1, pas de chargement des tracks). Utilisé par les
+    routeurs liste pour remplir PlaylistRead.track_count."""
+    if not playlist_ids:
+        return {}
+    stmt = (
+        select(PlaylistTrack.playlist_id, func.count())
+        .where(PlaylistTrack.playlist_id.in_(playlist_ids))
+        .group_by(PlaylistTrack.playlist_id)
+    )
+    res = await db.execute(stmt)
+    return {pid: n for pid, n in res.all()}
+
+
 async def update_playlist(
     db: AsyncSession,
     owner: User,
