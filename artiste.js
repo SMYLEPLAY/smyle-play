@@ -286,7 +286,7 @@ function renderProfile() {
   renderPlaylistsAdn(artist);
   renderDna(artist);
   renderAdnChip(artist);      // U8 — chip ADN inline hero
-  renderBioPreview(artist);   // U8 — bio preview hero
+  // C3 ① — renderBioPreview supprimée (la bio vit dans le bloc identité)
   renderPlayAllBtn(artist);   // U8 — bouton écouter tout
   renderPrompts(artist);
   renderVoices(artist);
@@ -476,9 +476,9 @@ function renderHeader(artist) {
   // et de prompts (contenu vendable) et vivent donc côté WATT BOARD.
   fillEditable('ap-bio', artist.bio);
 
-  // Pour les fans (non-self), on masque la section bio si elle est vide.
-  // Pour l'owner, on la laisse visible avec son placeholder.
-  toggleSectionForFans('ap-section-bio', artist.bio, artist.isSelf);
+  // C3 ① fix double-bio — LA bio vit dans le bloc identité (#ap-bio déplacé).
+  // Fans : masquée si vide · owner : visible avec placeholder (édition).
+  toggleSectionForFans('ap-bio', artist.bio, artist.isSelf);
   _setupFollowButton(artist).catch(e => console.warn('[follow]', e));
 }
 
@@ -1068,16 +1068,8 @@ window.scrollToAdnCard = function() {
   setTimeout(() => { card.style.boxShadow = ''; }, 1200);
 };
 
-// ── U8 — Bio preview dans le hero ────────────────────────────────────────────
-function renderBioPreview(artist) {
-  const el = document.getElementById('ap-bio-preview');
-  if (!el) return;
-  const bio = (artist && artist.bio || '').trim();
-  if (!bio) { el.style.display = 'none'; return; }
-  const MAX = 160;
-  el.textContent = bio.length > MAX ? bio.slice(0, MAX).trimEnd() + '…' : bio;
-  el.style.display = '';
-}
+// ── C3 ① — renderBioPreview SUPPRIMÉE (fix double-bio, retour QA Tom) :
+// la bio unique et éditable vit dans le bloc identité (#ap-bio).
 
 // ── C3 v3 — RELIQUE ADN (spec C3 ① — 2026-06-13) ─────────────────────────────
 // États : visiteur sans ADN → caché · owner sans ADN → relique incitative ·

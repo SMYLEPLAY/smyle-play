@@ -144,7 +144,7 @@
          • #ap-hero-bg      → reçoit backgroundImage + .has-image (cover)
          • .ap-hero         → reçoit .ap-has-cover (closest depuis #ap-hero-bg)
          • #ap-hero-bg-edit / #ap-avatar / #ap-avatar-edit / #ap-play-all-btn
-         • #ap-artist-name / #ap-adn-chip / #ap-bio-preview / #ap-roles /
+         • #ap-artist-name / #ap-adn-chip / #ap-bio (bio unique, identité) / #ap-roles /
            #ap-genre / #ap-city / #ap-social-actions / #ap-stats…        -->
   <section class="ap-hero" id="ap-hero">
 
@@ -234,8 +234,16 @@
                   data-placeholder="Ville">—</span>
           </div>
 
-          <!-- U8 — Bio preview inline (2 lignes max, tronquée) -->
-          <p id="ap-bio-preview" class="ap-hero-bio-preview" style="display:none"></p>
+          <!-- C3 ① fix double-bio (retour QA Tom) : LA bio vit ICI, dans
+               l'identité — c'est l'élément éditable historique (#ap-bio,
+               data-field) déplacé tel quel, donc l'édition in-place owner
+               est intacte. L'ancien aperçu ap-bio-preview et la section
+               « Biographie » dédiée sont supprimés. -->
+          <div class="ap-identity-bio ap-editable ap-editable-long"
+               id="ap-bio"
+               data-field="bio"
+               data-placeholder="Raconte ton parcours, ce qui t'a amené à faire de la musique, ce que tu cherches à transmettre — quelques lignes qui donnent envie de te suivre."
+               spellcheck="true"></div>
         </div>
 
         <!-- Actions sociales — alignées à droite sur desktop, sous la bio en mobile -->
@@ -370,17 +378,10 @@
     </div>
   </section>
 
-  <!-- ─ Biographie ──────────────────────────────────────────────────────── -->
-  <section class="ap-section ap-section-bio" id="ap-section-bio" aria-labelledby="ap-section-bio-title">
-    <h2 class="ap-section-title" id="ap-section-bio-title">Biographie</h2>
-    <div class="ap-section-body ap-editable ap-editable-long"
-         id="ap-bio"
-         data-field="bio"
-         data-placeholder="Raconte ton parcours, ce qui t'a amené à faire de la musique, ce que tu cherches à transmettre — quelques lignes qui donnent envie de te suivre."
-         spellcheck="true"></div>
-  </section>
+  <!-- C3 ① — section « Biographie » supprimée (doublon, retour QA Tom) :
+       la bio éditable vit dans le bloc identité. -->
 
-  <!-- ═══ Réseaux sociaux — juste sous la bio ═══════════════════════════ -->
+  <!-- ═══ Réseaux sociaux ════════════════════════════════════════════════ -->
   <section class="ap-section ap-section-socials" id="ap-socials" aria-label="Réseaux sociaux">
     <!-- Rendu par renderSocials() -->
   </section>
