@@ -366,40 +366,36 @@
       '.pl-edit-save { width:100%; background:linear-gradient(90deg,#cc88ff,#8bd9ff); color:#0d0a1a; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; }' +
       '.pl-edit-save:disabled { opacity:.5; cursor:not-allowed; }' +
       '.pl-edit-err { margin-top:10px; font-size:12px; color:#ff6b6b; text-align:center; }' +
-      // Artiste public section — accordion + cards carrées 1:1
-      '.ap-playlists-section { padding: 0 12px; margin: 20px 0 28px; }' +
-      '.ap-playlists-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: transparent; border: none; padding: 10px 0; cursor: pointer; gap: 12px; }' +
-      '.ap-playlists-toggle-left { display: flex; align-items: baseline; gap: 10px; }' +
-      '.ap-playlists-title { font-size: 18px; color: rgba(245,242,252,.95); margin: 0; letter-spacing: -.01em; text-shadow: 0 0 8px rgba(var(--brand-rgb,136,0,255),.80), 0 0 24px rgba(var(--brand-rgb,136,0,255),.40); }' +
-      '.ap-playlists-count { font-size: 12px; color: #a09cb8; }' +
-      '.ap-playlists-arrow { color: #a09cb8; font-size: 14px; transition: transform .25s ease; flex-shrink: 0; }' +
-      '.ap-playlists-body { overflow: hidden; max-height: 0; transition: max-height .35s ease; }' +
-      '.ap-playlists-body.is-open { max-height: 1200px; }' +
-      '.ap-playlists-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }' +
-      '@media (max-width: 480px) { .ap-playlists-list { grid-template-columns: repeat(2, 1fr); } }' +
-      '.ap-playlist-card { position: relative; aspect-ratio: 1/1; border-radius: 12px; overflow: hidden; cursor: pointer; background: linear-gradient(135deg, rgba(204,136,255,.15), rgba(10,10,20,1)); border: 1px solid rgba(204,136,255,.18); }' +
-      '.ap-playlist-card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .85; }' +
-      '.ap-playlist-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: .4; }' +
-      '.ap-playlist-card-info { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 10px 8px; background: linear-gradient(to top, rgba(0,0,0,.72) 0%, transparent 60%); }' +
-      '.ap-playlist-card-title { color: #fff; font-size: 13px; font-weight: 700; margin: 0; line-height: 1.3; text-shadow: 0 1px 4px rgba(0,0,0,.6); }' +
-      '.ap-playlist-card-meta { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 2px; }' +
-      // Neon title (couleur dynamique via --nc CSS var)
-      '@keyframes ap-neon-pulse {' +
-        '0%,19%,21%,54%,56%,100%{text-shadow:0 0 8px var(--nc,#cc88ff),0 0 22px var(--nc,#cc88ff),0 0 45px var(--nc,#cc88ff);opacity:1}' +
-        '20%,55%{text-shadow:none;opacity:.72}' +
-        '22%{text-shadow:0 0 6px var(--nc,#cc88ff);opacity:.88}' +
-      '}' +
-      '.ap-pl-neon { font-size:13px; font-weight:900; letter-spacing:.07em; text-transform:uppercase; line-height:1; margin:0; color:var(--nc,#cc88ff); animation:ap-neon-pulse 4.5s infinite; }' +
-      '.ap-playlist-card-meta { font-size:10px; color:rgba(255,255,255,.5); margin-top:3px; }' +
+      // ── C3 ② — TUILES-MONDES (profil public) ──────────────────────────
+      // Rangée horizontale scrollable de larges tuiles. Une tuile = un
+      // monde : cover en fond + dégradé de lisibilité + accent couleur
+      // playlist (--nc / --nc-rgb posés en inline par renderArtistPlaylists).
+      // Tokens C0 uniquement — l'accordéon historique est SUPPRIMÉ.
+      '.ap-pl-worlds { margin: 0; }' +
+      '.ap-pl-worlds-hdr { display: flex; align-items: baseline; gap: 10px; padding: 10px 0 0; }' +
+      '.ap-playlists-title { font-size: 16px; color: var(--sp-text, #e8e8f0); margin: 0; letter-spacing: -.01em; }' +
+      '.ap-playlists-count { font-size: 12px; color: var(--sp-text-faint, rgba(255,255,255,.55)); }' +
+      '.ap-pl-worlds-row { list-style: none; padding: 4px 2px 10px; margin: 12px 0 0; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }' +
+      '.ap-pl-world { position: relative; flex: 0 0 250px; height: 144px; border-radius: var(--sp-radius-lg, 16px); overflow: hidden; cursor: pointer; scroll-snap-align: start; background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid rgba(var(--nc-rgb, 204,136,255), .28); transition: border-color var(--sp-transition, 150ms ease), transform var(--sp-transition, 150ms ease); }' +
+      '.ap-pl-world:hover { border-color: rgba(var(--nc-rgb, 204,136,255), .65); transform: translateY(-2px); }' +
+      '.ap-pl-world-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }' +
+      '.ap-pl-world-fallback { display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: .55; background: linear-gradient(135deg, rgba(var(--nc-rgb, 204,136,255), .4), var(--sp-bg, #050508)); }' +
+      '.ap-pl-world-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.22) 48%, transparent 72%); }' +
+      '.ap-pl-world-info { position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 5; pointer-events: none; }' +
+      '.ap-pl-world-name { font-size: 14px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; line-height: 1.2; margin: 0; color: var(--nc, var(--sp-mauve, #cc88ff)); text-shadow: 0 1px 6px rgba(0,0,0,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
+      '.ap-pl-world-meta { font-size: 11px; color: var(--sp-text-muted, rgba(255,255,255,.72)); margin-top: 2px; }' +
+      '@media (max-width: 560px) { .ap-pl-world { flex-basis: 76vw; height: 152px; } }' +
       // Bouton quick-play centré (même pattern card-quick-play WATT)
-      '.ap-pl-qp { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.7); width:44px; height:44px; border-radius:50%; background:rgba(5,5,8,.72); backdrop-filter:blur(8px); border:1.5px solid rgba(255,255,255,.18); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .22s,transform .22s,border-color .22s,background .22s; z-index:10; }' +
+      '.ap-pl-qp { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.7); width:44px; height:44px; border-radius:50%; background:rgba(5,5,8,.72); backdrop-filter:blur(8px); border:1.5px solid var(--sp-border, rgba(255,255,255,.10)); color:var(--sp-text,#e8e8f0); cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .22s,transform .22s,border-color .22s,background .22s; z-index:10; }' +
       '.ap-pl-qp svg { width:15px; height:15px; fill:currentColor; margin-left:2px; }' +
-      '.ap-playlist-card:hover .ap-pl-qp { opacity:1; transform:translate(-50%,-50%) scale(1); }' +
-      '.ap-playlist-card:hover .ap-pl-qp:hover { transform:translate(-50%,-50%) scale(1.1); background:rgba(var(--nc-rgb,204,136,255),.45); border-color:rgba(var(--nc-rgb,204,136,255),.55); }' +
-      // Boutons like + add-to-pl sur la card playlist du profil public
+      '.ap-pl-world:hover .ap-pl-qp { opacity:1; transform:translate(-50%,-50%) scale(1); }' +
+      '.ap-pl-world:hover .ap-pl-qp:hover { transform:translate(-50%,-50%) scale(1.1); background:rgba(var(--nc-rgb,204,136,255),.45); border-color:rgba(var(--nc-rgb,204,136,255),.55); }' +
+      // Boutons like + add-to-pl sur la tuile-monde du profil public
       '.ap-pl-card-actions { position:absolute; top:7px; right:7px; display:flex; gap:5px; z-index:11; opacity:0; transition:opacity .18s; }' +
-      '.ap-playlist-card:hover .ap-pl-card-actions { opacity:1; }' +
-      '.ap-pl-card-actions .like-btn, .ap-pl-card-actions .add-to-pl-btn { width:26px !important; height:26px !important; background:rgba(5,5,8,.65) !important; border:1px solid rgba(255,255,255,.18) !important; backdrop-filter:blur(6px); }' +
+      '.ap-pl-world:hover .ap-pl-card-actions { opacity:1; }' +
+      '.ap-pl-card-actions .like-btn, .ap-pl-card-actions .add-to-pl-btn { width:26px !important; height:26px !important; background:rgba(5,5,8,.65) !important; border:1px solid var(--sp-border, rgba(255,255,255,.10)) !important; backdrop-filter:blur(6px); }' +
+      // Badge ADN : coin haut-GAUCHE sur la tuile-monde (les actions occupent la droite)
+      '.ap-pl-world .ap-pl-adn-badge { left:8px; right:auto; }' +
       // Badge ADN sur les rows de tracks dans la modale playlist
       '.pl-row-adn-badge { font-size:10px; font-weight:700; color:#cc88ff; background:rgba(204,136,255,.1); border:1px solid rgba(204,136,255,.3); border-radius:999px; padding:2px 8px; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background .15s; }' +
       '.pl-row-adn-badge:hover { background:rgba(204,136,255,.2); }'
@@ -740,57 +736,54 @@
       const playlists = all.slice(0, 12);
       root.style.display = '';
 
+      // C3 ② — tuiles-mondes : rangée horizontale scrollable (scroll-snap
+      // mobile), toujours visible (fini l'accordéon fermé par défaut).
       const FALLBACK_EMOJIS = ['🎵','🎶','🔥','✨','🎸','🎹','🌙','⚡'];
-      const sectionId  = 'ap-pl-body-' + containerId;
-      const arrowId    = 'ap-pl-arrow-' + containerId;
       const countLabel = playlists.length + ' playlist' + (playlists.length > 1 ? 's' : '');
 
       root.innerHTML = (
-        '<section class="ap-playlists-section" aria-label="Playlists publiques">' +
-          '<button class="ap-playlists-toggle" aria-expanded="false" aria-controls="' + sectionId + '">' +
-            '<span class="ap-playlists-toggle-left">' +
-              '<h2 class="ap-playlists-title">Playlists</h2>' +
-              '<span class="ap-playlists-count">' + countLabel + '</span>' +
-            '</span>' +
-            '<span class="ap-playlists-arrow" id="' + arrowId + '">▼</span>' +
-          '</button>' +
-          '<div class="ap-playlists-body" id="' + sectionId + '">' +
-            '<ul class="ap-playlists-list">' +
-              playlists.map(function(p, i) {
-                const nc     = p.color || '#cc88ff';
-                const ncRgb  = _hexToRgb(nc);
-                const mediaBg = p.cover_video_url
-                  ? '<video autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
-                  : '<div class="ap-playlist-card-fallback" style="background:linear-gradient(135deg,' + nc + ',rgba(10,10,20,1))">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
-                const qpId = 'ap-qp-' + p.id;
-                const adnBadge = p.adn_for_sale
-                  ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
-                  : '';
-                // Tracks de la playlist pour les boutons like/add
-                const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
-                const plActionsHtml = firstTrackId
-                  ? '<div class="ap-pl-card-actions" onclick="event.stopPropagation()">' +
-                      '<button type="button" class="like-btn ap-pl-like" data-like-btn="' + firstTrackId + '" title="J\'aime"></button>' +
-                      '<button type="button" class="add-to-pl-btn ap-pl-addpl" data-add-to-playlist="' + firstTrackId + '" title="+">+</button>' +
-                    '</div>'
-                  : '';
-                return (
-                  '<li class="ap-playlist-card" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
-                    mediaBg +
-                    '<button class="ap-pl-qp" id="' + qpId + '" title="Lancer">' +
-                      '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' +
-                    '</button>' +
-                    adnBadge +
-                    plActionsHtml +
-                    '<div class="ap-playlist-card-info">' +
-                      '<div class="ap-pl-neon">' + _esc(p.title) + '</div>' +
-                      '<div class="ap-playlist-card-meta">' + _fmtDate(p.created_at) + '</div>' +
-                    '</div>' +
-                  '</li>'
-                );
-              }).join('') +
-            '</ul>' +
+        '<section class="ap-pl-worlds" aria-label="Playlists publiques">' +
+          '<div class="ap-pl-worlds-hdr">' +
+            '<h2 class="ap-playlists-title">Playlists</h2>' +
+            '<span class="ap-playlists-count">' + countLabel + '</span>' +
           '</div>' +
+          '<ul class="ap-pl-worlds-row">' +
+            playlists.map(function(p, i) {
+              const nc     = p.color || '#cc88ff';
+              const ncRgb  = _hexToRgb(nc);
+              const nbTracks = (p.tracks && p.tracks.length) || 0;
+              const mediaBg = p.cover_video_url
+                ? '<video class="ap-pl-world-media" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
+                : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
+              const qpId = 'ap-qp-' + p.id;
+              const adnBadge = p.adn_for_sale
+                ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
+                : '';
+              // Tracks de la playlist pour les boutons like/add
+              const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
+              const plActionsHtml = firstTrackId
+                ? '<div class="ap-pl-card-actions" onclick="event.stopPropagation()">' +
+                    '<button type="button" class="like-btn ap-pl-like" data-like-btn="' + firstTrackId + '" title="J\'aime"></button>' +
+                    '<button type="button" class="add-to-pl-btn ap-pl-addpl" data-add-to-playlist="' + firstTrackId + '" title="+">+</button>' +
+                  '</div>'
+                : '';
+              return (
+                '<li class="ap-pl-world" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
+                  mediaBg +
+                  '<div class="ap-pl-world-scrim"></div>' +
+                  '<button class="ap-pl-qp" id="' + qpId + '" title="Lancer">' +
+                    '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' +
+                  '</button>' +
+                  adnBadge +
+                  plActionsHtml +
+                  '<div class="ap-pl-world-info">' +
+                    '<div class="ap-pl-world-name">' + _esc(p.title) + '</div>' +
+                    '<div class="ap-pl-world-meta">' + nbTracks + ' son' + (nbTracks > 1 ? 's' : '') + '</div>' +
+                  '</div>' +
+                '</li>'
+              );
+            }).join('') +
+          '</ul>' +
         '</section>'
       );
 
@@ -799,18 +792,6 @@
         const btn = document.getElementById('ap-qp-' + p.id);
         if (btn) btn.addEventListener('click', function(e) { _quickPlayUserPlaylist(e, p.id); });
       });
-
-      // Toggle accordion
-      const toggleBtn = root.querySelector('.ap-playlists-toggle');
-      const body      = document.getElementById(sectionId);
-      const arrow     = document.getElementById(arrowId);
-      if (toggleBtn && body && arrow) {
-        toggleBtn.addEventListener('click', function () {
-          const open = body.classList.toggle('is-open');
-          toggleBtn.setAttribute('aria-expanded', String(open));
-          arrow.style.transform = open ? 'rotate(180deg)' : '';
-        });
-      }
 
     } catch (e) {
       root.style.display = 'none';
@@ -1306,10 +1287,11 @@
     const apRoot = document.getElementById('ap-playlists-root');
     if (apRoot && window.SmylePlaylists) {
       // Priorité 1 : attribut data-artist-slug (ex. vitrine marketplace)
-      // Priorité 2 : slug extrait de l'URL /u/<slug>
+      // Priorité 2 : slug extrait de l'URL — accepte /u/<slug> ET /@<slug>
+      // (C3 ② : les liens générés migrent vers /@, les parseurs lisent les 2)
       let slug = apRoot.dataset.artistSlug || null;
       if (!slug) {
-        const match = (window.location.pathname || '').match(/^\/u\/([^/?#]+)/);
+        const match = (window.location.pathname || '').match(/^\/(?:u\/|@)([^/?#]+)/);
         slug = match ? decodeURIComponent(match[1]) : null;
       }
       if (slug) {
@@ -1859,8 +1841,6 @@
       '.pl-row-like.liked::before { content:"\\2665"; }' +
       '.pl-row-like:hover { color:#ff7799!important; border-color:rgba(255,119,153,.35)!important; }' +
       '.pl-row-addpl:hover { color:#cc88ff!important; border-color:rgba(204,136,255,.4)!important; }' +
-      '.ap-playlist-card { cursor: pointer; transition: border-color .15s ease; }' +
-      '.ap-playlist-card:hover { border-color: rgba(204,136,255,.4); }' +
       '.pl-row { cursor: pointer; }' +
       '.add-to-pl-btn { background: rgba(204,136,255,.1); color: #cc88ff; border: 1px solid rgba(204,136,255,.3); padding: 4px 9px; border-radius: 8px; cursor: pointer; font-size: 14px; line-height: 1; }' +
       '.add-to-pl-btn:hover { background: rgba(204,136,255,.2); }'
@@ -1874,7 +1854,7 @@
   // ── 11. CLICK DELEGATION ──────────────────────────────────────────────
   // - data-add-to-playlist="<track-id>" → openAddToPlaylistModal
   // - .pl-row[data-id] (dashboard playlist row) → openPlaylistViewModal
-  // - .ap-playlist-card[data-pl-id] (profil public playlist card) → idem
+  // - .ap-pl-world[data-pl-id] (tuile-monde profil public) → idem
 
   function _wireGlobalClicks() {
     if (window.__pl_clicks_wired) return;
@@ -1913,9 +1893,9 @@
         return;
       }
 
-      // Open playlist view from profil public card
+      // Open playlist view from profil public tile (tuile-monde C3 ②)
       // Exclure quick-play, badge ADN, like-btn et add-to-pl-btn
-      const apCard = ev.target.closest('.ap-playlist-card[data-pl-id]');
+      const apCard = ev.target.closest('.ap-pl-world[data-pl-id]');
       if (apCard && !ev.target.closest('.ap-pl-qp') && !ev.target.closest('.ap-pl-adn-badge') && !ev.target.closest('[data-like-btn]') && !ev.target.closest('[data-add-to-playlist]')) {
         const id = apCard.dataset.plId;
         if (id) openPlaylistViewModal(id);

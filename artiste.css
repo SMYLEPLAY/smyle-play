@@ -4575,14 +4575,14 @@ body:not(.ap-owner-editing)
   display: none;
 }
 
-/* 4. UN seul langage d'accordéon (Playlists + Sons publiés alignés sur
-   les titres de sections : tiret dégradé + uppercase letterspacé).
+/* 4. UN seul langage de section (Playlists tuiles-mondes + Sons publiés
+   alignés sur les titres : tiret dégradé + uppercase letterspacé).
    #ap-playlists-root prime sur les styles injectés par playlists.js. */
-#ap-playlists-root .ap-playlists-section {
+#ap-playlists-root .ap-pl-worlds {
   border: 1px solid rgba(255, 255, 255, .055);
   border-radius: 16px;
   background: rgba(255, 255, 255, .015);
-  padding: 6px 20px;
+  padding: 6px 20px 12px;
   margin: 0 0 18px;
 }
 #ap-playlists-root .ap-playlists-title {
