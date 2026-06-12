@@ -394,70 +394,427 @@ img { max-width: 100%; display: block; }
 .ap-nf-btn-watt:hover { filter: brightness(1.1); }
 
 
-/* ── HERO ────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   C3 v3 — REFONTE STRUCTURELLE PROFIL PUBLIC (spec C3 ① — 2026-06-13)
+   ─────────────────────────────────────────────────────────────────────────
+   Nouveau squelette : bannière NATIVE de flux (260px) + bloc identité
+   strictement dessous sur fond page + relique ADN pleine largeur.
+   Remplace (supprimés, pas overridés) :
+     • l'ancien hack « cover peinte sur #ap-hero-bg inset:0 »
+     • les règles mortes .ap-hero-cover (aucun élément ne portait la classe)
+     • l'ancienne .ap-dna-card-* (case vente ADN)
+   Contrat JS inchangé : #ap-hero-bg reçoit backgroundImage + .has-image,
+   .ap-hero reçoit .ap-has-cover (cf. renderHeader, artiste.js).
+   Couleurs : tokens C0 + teinte brand artiste (--brand / --brand-rgb posés
+   par applyTheme). Violet relique : #7c5cff (spec C3, aligné sur le drawer
+   d'achat C2 — pas d'équivalent rgba dans tokens.css, d'où la valeur fixe).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── C3 v3 · HERO : bannière native ─────────────────────────────────────── */
 
 .ap-hero {
   position: relative;
-  padding: 56px 48px 48px;
-  overflow: hidden;
 }
-/* 2026-06-11 (demande Tom) — la cover est SACRÉE : plus aucun contenu ne
-   chevauche dessus. Le bloc identité (avatar, nom, bio, rôles, genre)
-   commence STRICTEMENT sous la bannière (260px) + une respiration. La
-   photo de couverture exprime l'identité de l'artiste sans entache. */
-.ap-hero.ap-has-cover { padding-top: 282px; }
-/* Seule exception validée : l'AVATAR chevauche légèrement le bas de la
-   bannière (code visuel Spotify/YouTube) — le texte, lui, reste dessous. */
-.ap-hero.ap-has-cover .ap-avatar-wrap { margin-top: -48px; }
 
-/* Cover photo — bannière large en tête. Masquée par défaut, révélée par JS
-   (ap-has-cover + --ap-cover-url) quand l'artiste a renseigné coverPhotoUrl. */
-.ap-hero-cover {
-  position: absolute; left: 0; right: 0; top: 0;
+/* Bannière dédiée — élément de flux, plus jamais un fond absolu sous le
+   texte. Sans cover : dégradé discret à partir de la couleur de marque. */
+.ap-hero-banner {
+  position: relative;
   height: 260px;
-  background-image: var(--ap-cover-url, none);
+  background:
+    radial-gradient(ellipse 70% 120% at 18% 0%,
+      rgba(var(--brand-rgb), .22) 0%,
+      transparent 60%),
+    linear-gradient(135deg,
+      rgba(var(--brand-rgb), .14) 0%,
+      rgba(124, 92, 255, .08) 55%,
+      rgba(7, 6, 8, 0) 100%);
   background-size: cover;
   background-position: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .6s ease;
+  background-repeat: no-repeat;
 }
-.ap-hero-cover::after {
-  /* Fondu réduit (65 % → 38 %) : plus rien n'étant écrit sur la cover,
-     elle s'affiche presque entière — juste un raccord doux vers le fond. */
+/* Le JS pose backgroundImage inline + .has-image quand coverPhotoUrl existe :
+   l'image couvre alors la bannière (équivalent object-fit:cover). */
+.ap-hero-banner.has-image {
+  background-size: cover;
+  background-position: center;
+}
+/* Fondu bas léger — simple raccord doux vers le fond de page. */
+.ap-hero-banner::after {
   content: '';
-  position: absolute; left: 0; right: 0; bottom: -1px; height: 38%;
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 34%;
   background: linear-gradient(to bottom,
     transparent 0%,
-    rgba(7, 6, 8, .45) 60%,
-    var(--ap-bg) 100%);
+    rgba(7, 6, 8, .4) 62%,
+    var(--bg, #070608) 100%);
+  pointer-events: none;
 }
-.ap-hero.ap-has-cover .ap-hero-cover { opacity: 1; }
 
-.ap-hero-bg {
-  position: absolute; inset: 0; pointer-events: none;
-  /* Chantier 1.2 — le halo du hero reprend la couleur de marque de l'artiste.
-     On dose volontairement les opacités (.08 / .035) pour rester lisible sur
-     n'importe quelle teinte choisie (rouge, vert, violet, etc.). */
+/* ── C3 v3 · Bloc identité — strictement sous la bannière, fond page ───── */
+
+.ap-identity {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+.ap-identity-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+.ap-identity-info {
+  flex: 1;
+  min-width: 0;
+  padding-top: 16px;
+}
+
+/* Avatar 96px à cheval sur le bas de la bannière, anneau 3px brand. */
+.ap-avatar-wrap {
+  flex-shrink: 0;
+  text-align: center;
+  margin-top: -48px;
+  position: relative;
+  z-index: 2;
+}
+.ap-avatar {
+  width: 96px; height: 96px; border-radius: 50%;
   background:
-    radial-gradient(ellipse 58% 95% at 18% 50%,
-      rgba(var(--brand-rgb), .085) 0%,
-      transparent 70%),
-    linear-gradient(to bottom,
-      rgba(var(--brand-rgb), .035) 0%,
-      transparent 80%);
+    linear-gradient(135deg,
+      var(--brand) 0%,
+      rgba(var(--brand-rgb), .55) 60%,
+      rgba(var(--brand-rgb), .25) 100%);
+  border: 3px solid var(--brand, #8800FF);
+  box-shadow:
+    0 0 0 4px rgba(7, 6, 8, .85),
+    0 0 28px rgba(var(--brand-rgb), .25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38px; font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  overflow: hidden;
+  transition: box-shadow .35s, transform .35s;
 }
-.ap-hero-bg::after {
-  content: '';
-  position: absolute; left: 0; right: 0; bottom: 0; height: 40%;
-  background: linear-gradient(to bottom, transparent 0%, var(--ap-bg) 100%);
+.ap-avatar:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 4px rgba(7, 6, 8, .85),
+    0 0 44px rgba(var(--brand-rgb), .38);
+}
+.ap-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+/* Pilule palier (C0 badges.js) à côté du nom. */
+.ap-palier-pill { display: inline-flex; align-items: center; }
+
+/* ── C3 v3 · Stats compactes rattachées à l'identité ────────────────────── */
+
+.ap-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0 4px;
+}
+.ap-stat {
+  padding: 12px 10px;
+  border-radius: 10px;
+  text-align: center;
+  background: rgba(var(--brand-rgb), .04);
+  border: 1px solid rgba(var(--brand-rgb), .16);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.ap-stat:hover {
+  border-color: rgba(var(--brand-rgb), .38);
+  box-shadow: 0 0 18px rgba(var(--brand-rgb), .14);
+}
+.ap-stat-value {
+  font-size: clamp(18px, 2.6vw, 24px);
+  font-weight: 900;
+  letter-spacing: -.01em;
+  color: var(--brand, #FFD700);
+  text-shadow: 0 0 8px rgba(var(--brand-rgb), .3);
+  line-height: 1.05;
+}
+.ap-stat-label {
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(200, 196, 216, .55);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
-.ap-hero-inner {
-  position: relative; z-index: 1;
-  display: flex; align-items: flex-start; gap: 40px;
-  max-width: 980px; margin: 0 auto;
+/* ── C3 v3 · RELIQUE ADN — bannière pleine largeur ──────────────────────────
+   L'objet le plus précieux de la page : bord 1px en dégradé brand → violet
+   ADN (#7c5cff) avec lueur lente et discrète. États : --owned (bord doré,
+   pas de bouton) · --empty (owner sans ADN, relique grisée incitative). */
+
+.ap-relic {
+  max-width: 980px;
+  margin: 26px auto 0;
+  padding: 0 32px;
 }
+.ap-relic-frame {
+  position: relative;
+  border-radius: 16px;
+  padding: 1px; /* épaisseur du bord dégradé */
+  background: linear-gradient(120deg,
+    rgba(var(--brand-rgb), .85) 0%,
+    rgba(124, 92, 255, .75) 55%,
+    rgba(var(--brand-rgb), .35) 100%);
+  animation: apRelicGlow 7s ease-in-out infinite;
+}
+@keyframes apRelicGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 16px rgba(124, 92, 255, .14),
+      0 0 32px rgba(var(--brand-rgb), .08);
+  }
+  50% {
+    box-shadow:
+      0 0 24px rgba(124, 92, 255, .26),
+      0 0 46px rgba(var(--brand-rgb), .13);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-relic-frame { animation: none; }
+}
+.ap-relic-body {
+  border-radius: 15px;
+  padding: 20px 24px;
+  background: linear-gradient(180deg,
+    rgba(18, 14, 28, .98) 0%,
+    rgba(9, 7, 14, .99) 100%);
+}
+.ap-relic-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ap-relic-icon {
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border-radius: 12px;
+  flex-shrink: 0;
+  color: #fff;
+  background: linear-gradient(135deg,
+    rgba(var(--brand-rgb), .35) 0%,
+    rgba(124, 92, 255, .3) 100%);
+  border: 1px solid rgba(124, 92, 255, .35);
+}
+.ap-relic-titles { flex: 1; min-width: 0; }
+.ap-relic-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(200, 196, 216, .5);
+}
+.ap-relic-title {
+  margin: 2px 0 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: .01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ap-relic-title span { color: var(--brand, #cc88ff); }
+/* Édition #X/N en évidence (éditions limitées uniquement). */
+.ap-relic-edition {
+  flex-shrink: 0;
+  font-size: clamp(18px, 2.6vw, 26px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-shadow: 0 0 14px rgba(124, 92, 255, .45);
+}
+.ap-relic-teaser {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, .55);
+}
+.ap-relic-teaser:empty { display: none; }
+.ap-relic-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.ap-relic-meta:empty { display: none; }
+/* Badges meta (guide, exemples, IA, rareté) — rendus par renderDna. */
+.ap-dna-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .06);
+  color: rgba(255, 255, 255, .8);
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+.ap-relic-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.ap-relic-price {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.ap-relic-price > span:first-child {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.ap-relic-price-unit {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: rgba(200, 196, 216, .55);
+}
+.ap-relic-unlock-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 22px;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #fff;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 92, 255, .55);
+  background: linear-gradient(135deg,
+    rgba(var(--brand-rgb), .85) 0%,
+    #7c5cff 100%);
+  cursor: pointer;
+  box-shadow: 0 2px 16px rgba(124, 92, 255, .25);
+  transition: filter .15s, transform .1s, box-shadow .15s;
+}
+.ap-relic-unlock-btn:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 4px 22px rgba(124, 92, 255, .4);
+  transform: translateY(-1px);
+}
+.ap-relic-unlock-btn:active { transform: scale(.97); }
+.ap-relic-unlock-btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+.ap-relic-perk {
+  font-size: 11px;
+  color: rgba(200, 196, 216, .5);
+}
+
+/* État possédé : bord doré, plus de bouton (caché par renderDna). */
+.ap-relic--owned .ap-relic-frame {
+  background: linear-gradient(120deg,
+    var(--ap-gold) 0%,
+    rgba(255, 215, 0, .45) 60%,
+    rgba(255, 193, 7, .7) 100%);
+  animation: none;
+  box-shadow: 0 0 22px rgba(255, 215, 0, .16);
+}
+.ap-relic-owned {
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ap-gold);
+  letter-spacing: .03em;
+}
+
+/* État vide owner : relique grisée incitative (décision Tom 2026-06-12). */
+.ap-relic--empty .ap-relic-frame {
+  background: rgba(255, 255, 255, .12);
+  animation: none;
+  box-shadow: none;
+}
+.ap-relic--empty .ap-relic-body { filter: saturate(.35); }
+.ap-relic--empty .ap-relic-icon {
+  background: rgba(255, 255, 255, .06);
+  border-color: rgba(255, 255, 255, .14);
+  color: rgba(255, 255, 255, .55);
+}
+.ap-relic-empty { margin-top: 12px; }
+.ap-relic-empty-msg {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(200, 196, 216, .75);
+}
+.ap-relic-empty-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #0a0012;
+  background: linear-gradient(135deg, var(--ap-gold) 0%, var(--ap-gold-2) 100%);
+  transition: filter .15s, transform .1s;
+}
+.ap-relic-empty-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* ── C3 v3 · Prise PLUG WATT (barre owner) ──────────────────────────────── */
+
+.ap-owner-btn-plug {
+  color: var(--ap-gold);
+  border-color: rgba(255, 215, 0, .38);
+  background: rgba(255, 215, 0, .07);
+  text-decoration: none;
+}
+.ap-owner-btn-plug:hover {
+  color: var(--ap-gold);
+  border-color: rgba(255, 215, 0, .6);
+  background: rgba(255, 215, 0, .14);
+}
+
+/* ── C3 v3 · Mobile (≤720px) : tout s'empile proprement ─────────────────── */
+
+@media (max-width: 720px) {
+  .ap-hero-banner { height: 180px; }
+  .ap-identity { padding: 0 16px; }
+  .ap-identity-inner {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .ap-identity-info { padding-top: 0; }
+  .ap-avatar-wrap { margin-top: -44px; }
+  .ap-avatar { width: 88px; height: 88px; font-size: 32px; }
+  .ap-name-adn-row { justify-content: center; }
+  .ap-hero-meta { justify-content: center; }
+  .ap-hero-bio-preview { margin-left: auto; margin-right: auto; }
+  /* Actions sous la bio, en ligne centrée */
+  .ap-hero-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding-top: 0;
+  }
+  .ap-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 18px 0 4px;
+  }
+  /* Relique empilée */
+  .ap-relic { padding: 0 14px; margin-top: 20px; }
+  .ap-relic-body { padding: 16px 16px 18px; }
+  .ap-relic-head { flex-wrap: wrap; gap: 10px; }
+  .ap-relic-actions { gap: 10px; }
+  .ap-relic-unlock-btn { width: 100%; justify-content: center; }
+}
+
+/* ═══ Fin section C3 v3 ══════════════════════════════════════════════════ */
 
 /* ── Boutons Follow + Message dans le hero (droite, même hauteur que le nom) */
 .ap-hero-actions {
@@ -506,48 +863,11 @@ img { max-width: 100%; display: block; }
   text-align: right;
 }
 
-@media (max-width: 640px) {
-  .ap-hero-actions {
-    flex-direction: row;
-    align-items: center;
-    flex-shrink: unset;
-    width: 100%;
-    justify-content: center;
-    padding-top: 0;
-  }
-}
+/* (C3 v3 : le passage en ligne des actions sur mobile est géré par le bloc
+   @media ≤720px de la section C3 v3 — ancien bloc 640px supprimé.) */
 
-/* Avatar */
-.ap-avatar-wrap { flex-shrink: 0; text-align: center; }
-
-.ap-avatar {
-  width: 104px; height: 104px; border-radius: 50%;
-  /* Chantier 1.2 — gradient d'avatar basé sur la couleur de marque. L'initiale
-     reste visible grâce au contraste texte blanc + ombre portée. Si l'artiste
-     n'a pas encore choisi de couleur, --brand fallback = or SMYLE PLAY. */
-  background:
-    linear-gradient(135deg,
-      var(--brand) 0%,
-      rgba(var(--brand-rgb), .55) 60%,
-      rgba(var(--brand-rgb), .25) 100%);
-  border: 2px solid rgba(var(--brand-rgb), .48);
-  box-shadow:
-    0 0 0 6px rgba(var(--brand-rgb), .06),
-    0 0 34px rgba(var(--brand-rgb), .22);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 40px; font-weight: 900;
-  color: #fff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, .35);
-  overflow: hidden;
-  transition: box-shadow .35s, transform .35s;
-}
-.ap-avatar:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 0 6px rgba(var(--brand-rgb), .09),
-    0 0 48px rgba(var(--brand-rgb), .32);
-}
-.ap-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+/* Avatar — C3 v3 : styles déplacés dans la section C3 v3 en tête de fichier
+   (96px, anneau 3px brand, chevauchement bannière -48px). */
 
 .ap-watt-badge-wrap { margin-top: 10px; }
 .ap-watt-badge {
@@ -641,11 +961,11 @@ img { max-width: 100%; display: block; }
   overflow: hidden;
 }
 
-/* Info */
-.ap-hero-info { flex: 1; min-width: 0; padding-top: 6px; }
+/* Info — C3 v3 : .ap-hero-info remplacé par .ap-identity-info (section C3 v3). */
 
 .ap-artist-name {
-  font-size: clamp(28px, 5vw, 52px);
+  /* C3 v3 — gabarit identité : 32-36px (fini le nom géant 52px). */
+  font-size: clamp(30px, 4vw, 36px);
   font-weight: 900; letter-spacing: .06em;
   /* Dégradé blanc → couleur de marque, pour que le nom "attrape" le regard
      sans écraser la lecture du reste du hero. */
@@ -695,74 +1015,8 @@ img { max-width: 100%; display: block; }
   }
 }
 
-/* ═══ Chantier "Profil artiste type" (#43) — Stats publiques ═════════════
-   4 tuiles : écoutes, sons, abonnés, rang. Grille responsive, chaque
-   tuile a son petit halo néon teinté --brand qui respire au hover.
-   La valeur est la star : grande typo, teintée brand, glow subtil.
-   Le label reste discret en caps-letter-spacing WATT. */
-.ap-stats {
-  max-width: 980px;
-  margin: 32px auto 24px;
-  padding: 0 24px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  position: relative;
-  z-index: 1;
-}
-.ap-stat {
-  padding: 18px 12px;
-  border-radius: 12px;
-  text-align: center;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(var(--brand-rgb), .06) 0%,
-      rgba(10, 8, 16, .55) 100%
-    );
-  border: 1px solid rgba(var(--brand-rgb), .18);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .03),
-    0 4px 14px rgba(0, 0, 0, .3);
-  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
-}
-.ap-stat:hover {
-  border-color: rgba(var(--brand-rgb), .42);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .05),
-    0 6px 22px rgba(0, 0, 0, .38),
-    0 0 22px rgba(var(--brand-rgb), .18);
-  transform: translateY(-1px);
-}
-.ap-stat-value {
-  font-size: clamp(22px, 3.4vw, 32px);
-  font-weight: 900;
-  letter-spacing: -.01em;
-  color: var(--brand, #FFD700);
-  text-shadow:
-    0 0 8px  rgba(var(--brand-rgb), .35),
-    0 0 22px rgba(var(--brand-rgb), .14);
-  line-height: 1.05;
-}
-.ap-stat-label {
-  margin-top: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .22em;
-  text-transform: uppercase;
-  color: rgba(200, 196, 216, .55);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-}
-
-@media (max-width: 720px) {
-  .ap-stats {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    padding: 0 14px;
-    margin: 22px auto 18px;
-  }
-  .ap-stat { padding: 14px 8px; }
-}
+/* Stats publiques — C3 v3 : tuiles compactes rattachées au bloc identité,
+   styles dans la section C3 v3 en tête de fichier. */
 
 /* Ligne méta : genre + ville + date d'arrivée. Flex row, chips alignées. */
 .ap-hero-meta {
@@ -1046,32 +1300,9 @@ img { max-width: 100%; display: block; }
 .ap-follow-self:hover { background: rgba(0, 220, 120, .14); color: #8cf0bd; }
 
 
-/* ── STATS BAR ───────────────────────────────────────────────────────────── */
-
-.ap-stats-bar {
-  display: flex; align-items: stretch;
-  border-top: 1px solid rgba(var(--brand-rgb), .08);
-  border-bottom: 1px solid rgba(var(--brand-rgb), .08);
-  background: rgba(var(--brand-rgb), .025);
-}
-.ap-stat {
-  flex: 1; text-align: center;
-  padding: 18px 16px;
-  border-right: 1px solid rgba(var(--brand-rgb), .08);
-}
-.ap-stat:last-child { border-right: none; }
-.ap-stat-val {
-  display: block;
-  font-size: 30px; font-weight: 900;
-  color: var(--brand);
-  text-shadow: 0 0 16px rgba(var(--brand-rgb), .32);
-  line-height: 1.1; margin-bottom: 4px;
-}
-.ap-stat-lbl {
-  display: block;
-  font-size: 8px; letter-spacing: .24em; text-transform: uppercase;
-  color: rgba(var(--brand-rgb), .45);
-}
+/* ── STATS BAR — supprimée (C3 v3) : .ap-stats-bar/.ap-stat-val/.ap-stat-lbl
+   n'étaient référencées par aucun HTML/JS (sélecteurs morts) et la double
+   définition de .ap-stat entrait en conflit avec les tuiles réelles. ──── */
 
 
 /* ── MAIN 2-COL LAYOUT ───────────────────────────────────────────────────── */
@@ -1446,22 +1677,12 @@ img { max-width: 100%; display: block; }
   .ap-share-btn span { display: none; }
   .ap-share-btn { padding: 7px 10px; }
 
-  /* Hero : centré en colonne */
-  .ap-hero { padding: 28px 16px 24px; }
-  .ap-hero-inner {
-    flex-direction: column; align-items: center;
-    gap: 18px; text-align: center;
-  }
-  .ap-avatar { width: 82px; height: 82px; font-size: 32px; }
-  .ap-hero-info { padding-top: 0; }
-  .ap-artist-name { font-size: clamp(22px, 7.5vw, 36px); margin-bottom: 10px; }
+  /* Hero / identité / stats : gérés par le bloc @media ≤720px de la
+     section C3 v3 (anciennes règles .ap-hero-inner/.ap-hero-info/
+     .ap-stat-val/.ap-stat-lbl supprimées — sélecteurs disparus). */
+  .ap-artist-name { font-size: clamp(22px, 7.5vw, 32px); margin-bottom: 10px; }
   .ap-bio { font-size: 12px; max-width: 100%; }
   .ap-socials { justify-content: center; }
-
-  /* Stats */
-  .ap-stat { padding: 14px 10px; }
-  .ap-stat-val { font-size: 24px; }
-  .ap-stat-lbl { font-size: 8px; letter-spacing: .15em; }
 
   /* Main */
   .ap-main { padding: 24px 16px 60px; gap: 22px; }
@@ -1475,11 +1696,10 @@ img { max-width: 100%; display: block; }
 
 /* ── 390px : iPhone 14/15 Pro ───────────────────────────────────────────── */
 @media (max-width: 390px) {
-  .ap-hero { padding: 22px 12px 20px; }
-  .ap-avatar { width: 72px; height: 72px; font-size: 28px; }
+  .ap-avatar { width: 76px; height: 76px; font-size: 28px; }
+  .ap-avatar-wrap { margin-top: -38px; }
   .ap-artist-name { font-size: 22px; }
   .ap-main { padding: 18px 12px 50px; }
-  .ap-stat-val { font-size: 20px; }
   .ap-rank-num { font-size: 38px; }
   .ap-track-row { padding: 9px 8px; gap: 8px; }
 }
@@ -2216,14 +2436,8 @@ img { max-width: 100%; display: block; }
   filter: grayscale(1);
 }
 
-/* Cover en mode "wireframe" : dégradé neutre brand-aware au lieu d'une image. */
-.ap-hero.ap-preview-cover .ap-hero-cover {
-  background: linear-gradient(135deg,
-    rgba(var(--brand-rgb, 136, 0, 255), .35) 0%,
-    rgba(20, 16, 32, .8) 100%);
-  display: block;
-  opacity: 1;
-}
+/* C3 ① — règle morte .ap-preview-cover/.ap-hero-cover supprimée (aucune
+   référence HTML/JS — vestige de l'ancien hero). */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MODE SQUELETTE — profil non publié
@@ -2412,8 +2626,9 @@ body.ap-skeleton .ap-stat-label {
   color: rgba(200, 196, 216, .5);
 }
 
-/* Hero légèrement assourdi pour donner le ton "preview/wireframe". */
-body.ap-skeleton .ap-hero-bg {
+/* Hero légèrement assourdi pour donner le ton "preview/wireframe".
+   (C3 v3 : cible la bannière native .ap-hero-banner.) */
+body.ap-skeleton .ap-hero-banner {
   opacity: .35;
 }
 
@@ -2677,12 +2892,8 @@ body.ap-owner-editing .ap-artist-name:focus {
   color: #fff;
 }
 
-/* Hero bg : on prépare le fallback quand une URL cover est définie */
-.ap-hero-bg.has-image {
-  background-size: cover;
-  background-position: center;
-  opacity: 1;
-}
+/* (C3 v3 : .ap-hero-bg.has-image supprimé — la bannière .ap-hero-banner
+   gère la cover dans la section C3 v3 en tête de fichier.) */
 
 
 /* ── Pickers couleurs (bg + accent) ──────────────────────────────────────── */
@@ -2935,9 +3146,9 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
    CHANTIER "PROFIL ARTISTE VENDEUR" — sections marketplace conditionnelles
    ═══════════════════════════════════════════════════════════════════════════
 
-   3 blocs ajoutés sous les socials, tous en display:none par défaut et
-   révélés par artiste.js si la donnée correspondante est présente :
-     • .ap-dna-card       — cellule "Débloquer l'ADN" (1 max par artiste)
+   Blocs sous les socials, tous en display:none par défaut et révélés par
+   artiste.js si la donnée correspondante est présente :
+     • .ap-relic          — relique ADN (C3 v3, styles en tête de fichier)
      • .ap-prompts        — liste des recettes Suno à débloquer (N prompts)
      • .ap-tracks         — liste des sons publiés (avec <audio controls>)
 
@@ -2945,144 +3156,11 @@ body.ap-owner-editing .ap-editable.ap-editable-long {
    surlignage violet utilise --brand via rgba(var(--brand-rgb), α) pour
    réagir à la couleur de marque personnalisée de l'artiste. */
 
-/* ── DNA card ────────────────────────────────────────────────────────────── */
-/* ── ADN Artiste compact — positionné juste sous le hero ──────────────────── */
-.ap-dna-card {
-  max-width: 820px;
-  margin: 16px auto 0;
-  padding: 0 20px;
-}
-.ap-dna-card-inner {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: rgba(var(--brand-rgb), .08);
-  border: 1px solid rgba(var(--brand-rgb), .3);
-  border-left: 3px solid rgba(var(--brand-rgb), .8);
-  overflow: hidden;
-}
-.ap-dna-card-inner::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 0% 50%, rgba(var(--brand-rgb), .12) 0%, transparent 55%);
-  pointer-events: none;
-}
-.ap-dna-card-hdr {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-  position: relative;
-}
-.ap-dna-card-icon {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: rgba(var(--brand-rgb), .2);
-  color: #fff;
-  flex-shrink: 0;
-}
-.ap-dna-card-titles { flex: 1; min-width: 0; }
-.ap-dna-card-eyebrow {
-  font-size: 9px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.45);
-}
-.ap-dna-card-title {
-  font-size: 13px;
-  margin: 0;
-  color: #fff;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ap-dna-card-price {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  flex-shrink: 0;
-  position: relative;
-}
-.ap-dna-card-price > span:first-child {
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-.ap-dna-price-unit {
-  font-size: 10px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.45);
-}
-.ap-dna-card-teaser {
-  position: relative;
-  margin: 8px 0 6px;
-  color: rgba(255,255,255,.65);
-  font-size: 12px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.ap-dna-card-meta {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.ap-dna-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  font-size: 11px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.8);
-  border: 1px solid rgba(255,255,255,.1);
-}
-.ap-dna-card-actions {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-.ap-dna-unlock-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 12px;
-  font-size: 10px; font-weight: 700;
-  letter-spacing: .05em;
-  color: #cc88ff;
-  border-radius: 999px;
-  border: 1px solid rgba(204, 136, 255, .5);
-  background: rgba(0, 0, 0, .65);
-  backdrop-filter: blur(8px);
-  cursor: pointer;
-  transition: background .15s, border-color .15s;
-}
-.ap-dna-unlock-btn:hover {
-  background: rgba(204, 136, 255, .18);
-  border-color: rgba(204, 136, 255, .85);
-}
-.ap-dna-unlock-btn:disabled { opacity: .5; cursor: wait; }
-.ap-dna-perk-hint {
-  font-size: 11px;
-  color: rgba(255,255,255,.4);
-}
+/* ── DNA card — SUPPRIMÉE (C3 v3 2026-06-13) ──────────────────────────────
+   L'ancienne « case vente ADN » (.ap-dna-card-*) est remplacée par la
+   relique pleine largeur .ap-relic-* — section C3 v3 en tête de fichier. */
 
-/* ── Playlists ADN accordion — sous la card ADN ───────────────────────────── */
+/* ── Playlists ADN accordion — sous la relique ADN ────────────────────────── */
 .ap-playlists-adn {
   max-width: 820px;
   margin: 8px auto 0;
@@ -3185,7 +3263,6 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 .ap-pl-adn-goto:hover { color: #cc88ff; text-decoration: underline; }
 
 @media (max-width: 640px) {
-  .ap-dna-card { padding: 0 14px; }
   .ap-playlists-adn { padding: 0 14px; }
 }
 
@@ -4032,22 +4109,9 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 
 /* Responsive */
 @media (max-width: 640px) {
-  .ap-dna-card,
   .ap-prompts,
   .ap-voices,
   .ap-tracks { padding: 0 18px; }
-  .ap-dna-card-hdr {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .ap-dna-card-price {
-    width: 100%;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: flex-start;
-    gap: 6px;
-  }
-  .ap-dna-price-unit { margin-top: 0; }
   .ap-prompts-list,
   .ap-voices-list { grid-template-columns: 1fr; }
 }
@@ -4425,22 +4489,7 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 /* ── Respiration générale : les sections ne se touchent plus ─────────── */
 .ap-section-title { margin-bottom: 14px; }
 
-/* ── COVER SACRÉE — la liaison RÉELLE (2026-06-11) ────────────────────────
-   Le JS pose l'image sur #ap-hero-bg (position absolute inset:0 → elle
-   tapissait TOUT le hero, texte par-dessus). renderHeader ajoute désormais
-   ap-has-cover sur .ap-hero : on contraint alors l'image en bannière haute
-   de 260px, fondu doux en bas, et le contenu commence dessous. Seul
-   l'avatar chevauche le bas (règle plus haut, ap-avatar-wrap -48px). */
-.ap-hero.ap-has-cover .ap-hero-bg.has-image {
-  inset: auto;
-  top: 0; left: 0; right: 0;
-  height: 260px;
-  bottom: auto;
-}
-.ap-hero.ap-has-cover .ap-hero-bg.has-image::after {
-  height: 48%;
-  background: linear-gradient(to bottom,
-    transparent 0%,
-    rgba(7, 6, 8, .45) 60%,
-    var(--ap-bg) 100%);
-}
+/* ── COVER SACRÉE — liaison 2026-06-11 SUPPRIMÉE (C3 v3 2026-06-13) ───────
+   La bannière est désormais un élément de flux natif (.ap-hero-banner,
+   section C3 v3 en tête de fichier) : plus besoin de contraindre un div
+   inset:0 en bannière par overrides. */

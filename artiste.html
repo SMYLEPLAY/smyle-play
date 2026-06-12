@@ -9,7 +9,7 @@
   <!-- Chemins ABSOLUS obligatoires : l'URL /artiste/<slug> ajoute un
        segment dans le path, donc un href relatif "artiste.css" serait
        résolu en "/artiste/artiste.css" (404). -->
-  <link rel="stylesheet" href="/artiste.css?v=20260611b" />
+  <link rel="stylesheet" href="/artiste.css?v=20260613a" />
   <!-- Phase 4 refonte architecture : topbar partagée (ui/topbar/topbar.js).
        Remplace l'ex-header .ap-topbar spécifique à cette page. -->
   <link rel="stylesheet" href="/topbar.css" />
@@ -50,6 +50,18 @@
 
     <!-- ─ Actions ─ -->
     <div class="ap-owner-bar-actions">
+
+      <!-- C3 ① (2026-06-13) — Prise PLUG WATT : accès direct WATT BOARD
+           depuis la vitrine. Owner only (la barre entière est owner-only),
+           la page publique reste 100 % vitrine pour les visiteurs. -->
+      <a class="ap-owner-btn ap-owner-btn-plug" id="ap-owner-btn-plug"
+         href="/dashboard" title="Ouvrir le WATT BOARD">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        <span>PLUG WATT</span>
+      </a>
+
       <button type="button" class="ap-owner-btn ap-owner-btn-edit"
               id="ap-owner-btn-edit" onclick="toggleOwnerEdit()">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -123,110 +135,145 @@
        .ap-owner-editing  → mode édition activé (champs contenteditable) -->
 <main class="ap-profile" id="ap-profile" style="display:none">
 
-  <!-- ═══ Hero : cover photo + avatar + nom + bio ═══════════════════════ -->
-  <section class="ap-hero">
-    <div class="ap-hero-bg" id="ap-hero-bg"></div>
+  <!-- ═══ C3 v3 — HERO : bannière native + bloc identité STRICTEMENT dessous ═══
+       Refonte structurelle 2026-06-13 (spec C3 ①). Fini le hack « cover
+       peinte sur un div inset:0 » : la bannière est un élément de flux
+       dédié (260px), le bloc identité vit DESSOUS sur le fond de page.
+       Seul l'avatar chevauche le bas de la bannière (-48px).
+       CONTRAT JS (artiste.js renderHeader — IDs conservés à l'identique) :
+         • #ap-hero-bg      → reçoit backgroundImage + .has-image (cover)
+         • .ap-hero         → reçoit .ap-has-cover (closest depuis #ap-hero-bg)
+         • #ap-hero-bg-edit / #ap-avatar / #ap-avatar-edit / #ap-play-all-btn
+         • #ap-artist-name / #ap-adn-chip / #ap-bio-preview / #ap-roles /
+           #ap-genre / #ap-city / #ap-social-actions / #ap-stats…        -->
+  <section class="ap-hero" id="ap-hero">
 
-    <!-- Bouton d'édition du cover (mode owner-editing seulement) -->
-    <button type="button" class="ap-hero-bg-edit" id="ap-hero-bg-edit"
-            onclick="openOwnerField('coverPhotoUrl')" title="Modifier la photo de couverture"
-            style="display:none">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      Changer la couverture
-    </button>
+    <!-- ─ Bannière dédiée (260px). Sans cover : dégradé discret brand. ─ -->
+    <div class="ap-hero-banner" id="ap-hero-bg">
+      <!-- Bouton d'édition du cover (mode owner-editing seulement) -->
+      <button type="button" class="ap-hero-bg-edit" id="ap-hero-bg-edit"
+              onclick="openOwnerField('coverPhotoUrl')" title="Modifier la photo de couverture"
+              style="display:none">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Changer la couverture
+      </button>
+    </div>
 
-    <div class="ap-hero-inner">
+    <!-- ─ Bloc identité — sur fond page, avatar à cheval sur la bannière ─ -->
+    <div class="ap-identity">
+      <div class="ap-identity-inner">
 
-      <div class="ap-avatar-wrap">
-        <div class="ap-avatar ap-avatar-ghost" id="ap-avatar" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="8" r="4"/>
-            <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>
-          </svg>
-        </div>
-        <!-- Bouton d'édition avatar (mode owner-editing seulement) -->
-        <button type="button" class="ap-avatar-edit" id="ap-avatar-edit"
-                onclick="openOwnerField('avatarUrl')" title="Modifier l'avatar"
-                style="display:none">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
-        </button>
-        <!-- U8 — Bouton Écouter tout (visible uniquement si tracks disponibles) -->
-        <button type="button" id="ap-play-all-btn" class="ap-play-all-btn" style="display:none"
-                onclick="playAllTracks()">
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          Écouter tout
-        </button>
-      </div>
-
-      <div class="ap-hero-info">
-        <!-- U8 — Nom + chip ADN inline -->
-        <div class="ap-name-adn-row">
-          <h1 class="ap-artist-name ap-editable"
-              id="ap-artist-name"
-              data-field="artistName"
-              data-placeholder="Ton nom d'artiste"
-              spellcheck="false">Nom d'artiste</h1>
-          <!-- Chip ADN carré — visible si l'artiste vend son ADN -->
-          <button type="button" id="ap-adn-chip" class="ap-adn-chip" style="display:none"
-                  onclick="scrollToAdnCard()">
-            <span class="ap-adn-chip-icon">🧬</span>
-            <span class="ap-adn-chip-label">ADN</span>
-            <span class="ap-adn-chip-price" id="ap-adn-chip-price"></span>
-          </button>
-        </div>
-
-        <!-- U8 — Bio preview inline (2 lignes max, tronquée) -->
-        <p id="ap-bio-preview" class="ap-hero-bio-preview" style="display:none"></p>
-
-        <!-- Tagline courte dans le hero : casquettes déclarées + genre +
-             ville. Les casquettes sont les rôles que l'utilisateur a
-             cochés (Artiste / Producteur / Topliner / ...). L'ensemble est
-             purement déclaratif : le compte ne gagne pas de droits
-             techniques, c'est une carte d'identité pour le réseau.
-             Cf. renderRoles() + openRolesPicker() dans artiste.js. -->
-        <div class="ap-hero-meta">
-          <!-- Chips de rôles (1 par casquette). Remplis par renderRoles. -->
-          <div class="ap-roles" id="ap-roles" aria-label="Casquettes"></div>
-
-          <!-- Bouton d'édition des rôles — visible uniquement en mode owner
-               (display togglé par toggleOwnerEdit). Ouvre un popover avec
-               les 12 checkboxes. -->
-          <button type="button" class="ap-roles-edit-btn" id="ap-roles-edit-btn"
-                  onclick="openRolesPicker()" style="display:none"
-                  title="Choisir mes casquettes">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
-                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 5v14M5 12h14"/>
+        <div class="ap-avatar-wrap">
+          <div class="ap-avatar ap-avatar-ghost" id="ap-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>
             </svg>
-            <span>Casquettes</span>
+          </div>
+          <!-- Bouton d'édition avatar (mode owner-editing seulement) -->
+          <button type="button" class="ap-avatar-edit" id="ap-avatar-edit"
+                  onclick="openOwnerField('avatarUrl')" title="Modifier l'avatar"
+                  style="display:none">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4Z"/></svg>
           </button>
-
-          <span class="ap-editable ap-meta-chip"
-                id="ap-genre"
-                data-field="genre"
-                data-placeholder="Genre">—</span>
-          <span class="ap-meta-sep" aria-hidden="true">·</span>
-          <span class="ap-editable ap-meta-chip"
-                id="ap-city"
-                data-field="city"
-                data-placeholder="Ville">—</span>
+          <!-- U8 — Bouton Écouter tout (visible uniquement si tracks disponibles) -->
+          <button type="button" id="ap-play-all-btn" class="ap-play-all-btn" style="display:none"
+                  onclick="playAllTracks()">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Écouter tout
+          </button>
         </div>
+
+        <div class="ap-identity-info">
+          <!-- Nom + pilule palier + chip ADN inline -->
+          <div class="ap-name-adn-row">
+            <h1 class="ap-artist-name ap-editable"
+                id="ap-artist-name"
+                data-field="artistName"
+                data-placeholder="Ton nom d'artiste"
+                spellcheck="false">Nom d'artiste</h1>
+            <!-- Pilule palier créateur (C0 badges.js — SpBadges.palier).
+                 Rempli par renderHeader si le payload expose un palier. -->
+            <span id="ap-palier-pill" class="ap-palier-pill" style="display:none"></span>
+            <!-- Chip ADN carré — visible si l'artiste vend son ADN -->
+            <button type="button" id="ap-adn-chip" class="ap-adn-chip" style="display:none"
+                    onclick="scrollToAdnCard()">
+              <span class="ap-adn-chip-icon">🧬</span>
+              <span class="ap-adn-chip-label">ADN</span>
+              <span class="ap-adn-chip-price" id="ap-adn-chip-price"></span>
+            </button>
+          </div>
+
+          <!-- Casquettes + genre + ville (déclaratif — carte d'identité réseau).
+               Cf. renderRoles() + openRolesPicker() dans artiste.js. -->
+          <div class="ap-hero-meta">
+            <!-- Chips de rôles (1 par casquette). Remplis par renderRoles. -->
+            <div class="ap-roles" id="ap-roles" aria-label="Casquettes"></div>
+
+            <!-- Bouton d'édition des rôles — visible uniquement en mode owner
+                 (display togglé par toggleOwnerEdit). Ouvre un popover avec
+                 les 12 checkboxes. -->
+            <button type="button" class="ap-roles-edit-btn" id="ap-roles-edit-btn"
+                    onclick="openRolesPicker()" style="display:none"
+                    title="Choisir mes casquettes">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
+                   stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              <span>Casquettes</span>
+            </button>
+
+            <span class="ap-editable ap-meta-chip"
+                  id="ap-genre"
+                  data-field="genre"
+                  data-placeholder="Genre">—</span>
+            <span class="ap-meta-sep" aria-hidden="true">·</span>
+            <span class="ap-editable ap-meta-chip"
+                  id="ap-city"
+                  data-field="city"
+                  data-placeholder="Ville">—</span>
+          </div>
+
+          <!-- U8 — Bio preview inline (2 lignes max, tronquée) -->
+          <p id="ap-bio-preview" class="ap-hero-bio-preview" style="display:none"></p>
+        </div>
+
+        <!-- Actions sociales — alignées à droite sur desktop, sous la bio en mobile -->
+        <div id="ap-social-actions" class="ap-hero-actions" style="display:none;">
+          <button id="ap-follow-btn" type="button" class="ap-hero-action-btn ap-follow-hero-btn">
+            Suivre
+          </button>
+          <button id="ap-message-btn" type="button" class="ap-hero-action-btn ap-message-hero-btn" style="display:none;">
+            ✉️ Message
+          </button>
+          <button id="ap-trade-btn" type="button" class="ap-hero-action-btn ap-trade-hero-btn" style="display:none;">
+            🔄 Proposer un échange
+          </button>
+          <span id="ap-followers-count" class="ap-hero-followers"></span>
+        </div>
+
       </div>
 
-      <!-- Actions sociales — alignées à droite du hero, même hauteur que le nom -->
-      <div id="ap-social-actions" class="ap-hero-actions" style="display:none;">
-        <button id="ap-follow-btn" type="button" class="ap-hero-action-btn ap-follow-hero-btn">
-          Suivre
-        </button>
-        <button id="ap-message-btn" type="button" class="ap-hero-action-btn ap-message-hero-btn" style="display:none;">
-          ✉️ Message
-        </button>
-        <button id="ap-trade-btn" type="button" class="ap-hero-action-btn ap-trade-hero-btn" style="display:none;">
-          🔄 Proposer un échange
-        </button>
-        <span id="ap-followers-count" class="ap-hero-followers"></span>
-      </div>
-
+      <!-- ─ Stats publiques — rattachées à l'identité (abonnés · sons · écoutes).
+           Tuiles conditionnelles gérées par renderStats() (artiste.js). ─ -->
+      <section class="ap-stats" id="ap-stats" aria-label="Statistiques publiques">
+        <div class="ap-stat" id="ap-stat-cell-followers">
+          <div class="ap-stat-value" id="ap-stat-followers">—</div>
+          <div class="ap-stat-label">abonnés</div>
+        </div>
+        <div class="ap-stat" id="ap-stat-cell-tracks">
+          <div class="ap-stat-value" id="ap-stat-tracks">—</div>
+          <div class="ap-stat-label">sons</div>
+        </div>
+        <div class="ap-stat" id="ap-stat-cell-plays">
+          <div class="ap-stat-value" id="ap-stat-plays">—</div>
+          <div class="ap-stat-label">écoutes</div>
+        </div>
+        <div class="ap-stat" id="ap-stat-cell-rank">
+          <div class="ap-stat-value" id="ap-stat-rank">—</div>
+          <div class="ap-stat-label">rang WATT</div>
+        </div>
+      </section>
     </div>
   </section>
 
@@ -239,41 +286,70 @@
        gratuitement ce qui doit passer par un achat crédits côté DNA.
        — Cf. vision fan/artiste + WATT BOARD/DNA marketplace.            -->
 
-  <!-- ═══ ADN Artiste compact — juste sous le nom, achat visible dès l'arrivée
-       Fusionné avec la boutique : plus de doublon. C'est le seul endroit
-       où l'ADN artiste est proposé à l'achat.
-       Rendu par renderDna(artist). Masqué si l'artiste n'a pas d'ADN publié. -->
-  <section class="ap-dna-card" id="ap-dna-card" style="display:none"
+  <!-- ═══ C3 v3 — RELIQUE ADN : bannière pleine largeur ═══════════════════
+       L'objet le plus précieux de la page (spec C3 ① — 2026-06-13).
+       Bord 1px en dégradé brand→violet ADN + lueur lente. Remplace
+       l'ancienne « case vente ADN » (.ap-dna-card-*).
+       Rendu par renderDna(artist) — IDs conservés : #ap-dna-card,
+       #ap-dna-price, #ap-dna-teaser, #ap-dna-meta, #ap-dna-unlock-btn,
+       #ap-dna-unlock-label. Nouveaux : #ap-relic-artist, #ap-relic-edition,
+       #ap-relic-owned, #ap-relic-actions, #ap-relic-empty.
+       États :
+         • visiteur, pas d'ADN  → section non rendue (display:none)
+         • owner, pas d'ADN     → relique grisée incitative (CTA /dashboard)
+         • ADN possédé          → .ap-relic--owned (bord doré, pas de bouton)
+       Règle absolue : le contenu ADN n'est JAMAIS visible sans achat
+       (le backend n'expose que characterCount — pas de teaser textuel). -->
+  <section class="ap-relic" id="ap-dna-card" style="display:none"
            aria-label="ADN de l'artiste">
-    <div class="ap-dna-card-inner">
-      <div class="ap-dna-card-hdr">
-        <div class="ap-dna-card-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
-            <path d="M7 7h10M7 17h10M9 11h6M9 13h6"/>
-          </svg>
+    <div class="ap-relic-frame">
+      <div class="ap-relic-body">
+
+        <div class="ap-relic-head">
+          <div class="ap-relic-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4c4 4 12 12 16 16M20 4c-4 4-12 12-16 16"/>
+              <path d="M7 7h10M7 17h10M9 11h6M9 13h6"/>
+            </svg>
+          </div>
+          <div class="ap-relic-titles">
+            <div class="ap-relic-eyebrow">Signature créative</div>
+            <h3 class="ap-relic-title">ADN <span id="ap-relic-artist"></span></h3>
+          </div>
+          <!-- Édition #X/N en évidence (rempli par renderDna si édition limitée) -->
+          <div class="ap-relic-edition" id="ap-relic-edition" style="display:none"></div>
         </div>
-        <div class="ap-dna-card-titles">
-          <div class="ap-dna-card-eyebrow">Signature créative</div>
-          <h3 class="ap-dna-card-title">ADN Artiste</h3>
+
+        <p class="ap-relic-teaser" id="ap-dna-teaser"></p>
+        <div class="ap-relic-meta" id="ap-dna-meta"></div>
+
+        <!-- État possédé — affiché par renderDna après check bibliothèque -->
+        <div class="ap-relic-owned" id="ap-relic-owned" style="display:none">
+          🧬 Tu détiens cet ADN
         </div>
-        <div class="ap-dna-card-price">
-          <span id="ap-dna-price">—</span>
-          <span class="ap-dna-price-unit">crédits</span>
+
+        <div class="ap-relic-actions" id="ap-relic-actions">
+          <div class="ap-relic-price">
+            <span id="ap-dna-price">—</span>
+            <span class="ap-relic-price-unit">Smyles</span>
+          </div>
+          <button type="button" class="ap-relic-unlock-btn"
+                  id="ap-dna-unlock-btn" onclick="unlockDnaFromProfile()">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+            </svg>
+            <span id="ap-dna-unlock-label">Débloquer</span>
+          </button>
+          <span class="ap-relic-perk">−30&nbsp;% sur tout le catalogue de l'artiste</span>
         </div>
-      </div>
-      <p class="ap-dna-card-teaser" id="ap-dna-teaser"></p>
-      <div class="ap-dna-card-meta" id="ap-dna-meta"></div>
-      <div class="ap-dna-card-actions">
-        <button type="button" class="ap-dna-unlock-btn"
-                id="ap-dna-unlock-btn" onclick="unlockDnaFromProfile()">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="10" rx="2"/>
-            <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-          </svg>
-          <span id="ap-dna-unlock-label">Débloquer l'ADN</span>
-        </button>
-        <span class="ap-dna-perk-hint">-30&nbsp;% sur toutes les recettes de l'artiste</span>
+
+        <!-- État vide owner — relique incitative (décision Tom 2026-06-12) -->
+        <div class="ap-relic-empty" id="ap-relic-empty" style="display:none">
+          <p class="ap-relic-empty-msg">Crée ton ADN — les fans paient pour ton identité.</p>
+          <a href="/dashboard" class="ap-relic-empty-cta">⚡ Créer mon ADN sur le WATT BOARD</a>
+        </div>
+
       </div>
     </div>
   </section>
@@ -476,29 +552,9 @@
   </section>
 
   <!-- ═══ Stats publiques ═══════════════════════════════════════════════
-       Les 4 tuiles sont toutes présentes dans le DOM mais 2 d'entre elles
-       (sons + rang WATT) ne s'affichent QUE pour les utilisateurs qui ont
-       publié au moins 1 son. Un fan (compte sans son) ne voit que ses
-       abonnés (+ éventuellement les écoutes à 0 si owner). Un artiste
-       voit les 4. Cf. renderStats() dans artiste.js.               -->
-  <section class="ap-stats" id="ap-stats" aria-label="Statistiques publiques">
-    <div class="ap-stat" id="ap-stat-cell-plays">
-      <div class="ap-stat-value" id="ap-stat-plays">—</div>
-      <div class="ap-stat-label">écoutes</div>
-    </div>
-    <div class="ap-stat" id="ap-stat-cell-tracks">
-      <div class="ap-stat-value" id="ap-stat-tracks">—</div>
-      <div class="ap-stat-label">sons</div>
-    </div>
-    <div class="ap-stat" id="ap-stat-cell-followers">
-      <div class="ap-stat-value" id="ap-stat-followers">—</div>
-      <div class="ap-stat-label">abonnés</div>
-    </div>
-    <div class="ap-stat" id="ap-stat-cell-rank">
-      <div class="ap-stat-value" id="ap-stat-rank">—</div>
-      <div class="ap-stat-label">rang WATT</div>
-    </div>
-  </section>
+       C3 v3 (2026-06-13) — la section #ap-stats a été REMONTÉE dans le
+       bloc identité du hero (cf. .ap-identity plus haut). Plus de doublon
+       ici : renderStats() cible toujours les mêmes IDs.              -->
 </main>
 
 <!-- ─── Modal mini "champ libre" (avatar URL, cover URL, socials) ──────────
@@ -606,7 +662,7 @@
 <!-- C2 — drawer d'achat unifié -->
 <script src="/ui/modals/purchase-drawer.js?v=20260612"></script>
 <script src="/ui/playlists.js?v=20260612b" defer></script>
-<script src="/artiste.js?v=20260612b"></script>
+<script src="/artiste.js?v=20260613a"></script>
 <script src="/ui/player/mini-bar.js" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
