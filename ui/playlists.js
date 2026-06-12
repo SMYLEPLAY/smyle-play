@@ -965,6 +965,9 @@
       { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
     ));
   }
+  // (C3 ② : plus utilisé par les tuiles-mondes — conservé pour les autres
+  // renderers qui datent les playlists, ex. modale vue playlist.)
+  // eslint-disable-next-line no-unused-vars
   function _fmtDate(iso) {
     try {
       const d = new Date(iso);

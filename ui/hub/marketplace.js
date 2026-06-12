@@ -286,7 +286,7 @@
     if (d.vitrineFollowers) d.vitrineFollowers.textContent = _fmt(a.followersCount || 0);
     if (d.vitrineTracks)    d.vitrineTracks.textContent    = _fmt(a.trackCount || 0);
     if (d.vitrinePlays)     d.vitrinePlays.textContent     = _fmt(a.plays || 0);
-    if (d.vitrineLink)      d.vitrineLink.href             = '/u/' + (a.slug || 'smyle');
+    if (d.vitrineLink)      d.vitrineLink.href             = '/@' + (a.slug || 'smyle');
   }
 
   function _renderTopSons() {
@@ -330,7 +330,7 @@
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title" style="cursor:pointer" title="Voir les détails">${_esc(title)}</div>` +
             `<div class="mp-ranking-sub">` +
-              `<a href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();" style="color:inherit;text-decoration:none">${_esc(artistName)}</a>` +
+              `<a href="/@${_esc(artistSlug)}" onclick="event.stopPropagation();" style="color:inherit;text-decoration:none">${_esc(artistName)}</a>` +
             `</div>` +
           `</div>` +
           playBtn +
@@ -388,7 +388,7 @@
     const _spot = (a, rankIdx) => {
       const big = rankIdx === 0;
       const sz = big ? 80 : 60;
-      const href = a.slug ? '/u/' + a.slug : '#';
+      const href = a.slug ? '/@' + a.slug : '#';
       const name = a.artistName || 'Sans nom';
       const color = a.brandColor || '#7C3AED';
       const avatar = a.avatarUrl
@@ -413,7 +413,7 @@
         '<div style="display:flex;align-items:flex-end;justify-content:center;gap:14px;padding:18px 8px 8px">' + spots.join('') + '</div>' +
       '</li>';
     const list = rest.map((a, i) => {
-      const href = a.slug ? '/u/' + a.slug : '#';
+      const href = a.slug ? '/@' + a.slug : '#';
       const name = a.artistName || 'Sans nom';
       const parts = [a.city, a.genre].filter(Boolean).map(_esc).join(' · ');
       return (
@@ -542,7 +542,7 @@
         : '';
       // Lien perma vers le profil artiste
       const permalinkBtn = artistSlug
-        ? `<a class="mp-son-card-permalink" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();" title="Voir le profil artiste" aria-label="Voir le profil artiste">\u2197</a>`
+        ? `<a class="mp-son-card-permalink" href="/@${_esc(artistSlug)}" onclick="event.stopPropagation();" title="Voir le profil artiste" aria-label="Voir le profil artiste">\u2197</a>`
         : '';
       // Carte ID enrichie (avant achat) : badge plateforme/IA + chips mood.
       const _PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
@@ -572,7 +572,7 @@
           `</div>` +
           `<div class="mp-son-card-title">${_esc(title)}</div>` +
           `<div class="mp-son-card-artist">` +
-            `<a class="mp-son-card-artist-name" href="/u/${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
+            `<a class="mp-son-card-artist-name" href="/@${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
             permalinkBtn +
           `</div>` +
           tagsRow +
@@ -686,7 +686,7 @@
     }
 
     el.innerHTML = items.map(a => {
-      const href  = a.slug ? '/u/' + a.slug : '#';
+      const href  = a.slug ? '/@' + a.slug : '#';
       const color = a.brandColor || '#7C3AED';
       const name  = a.artistName || 'Sans nom';
       const parts = [a.city, a.genre].filter(Boolean).map(_esc).join(' · ');
@@ -966,7 +966,7 @@
           <div class="mp-td-color-bar" style="background:${_esc(color)}"></div>
           <div class="mp-td-type">Son</div>
           <h2 class="mp-td-title">${_esc(title)}</h2>
-          <a class="mp-td-artist" href="/u/${_esc(artistSlug)}">${_esc(artistName)}</a>
+          <a class="mp-td-artist" href="/@${_esc(artistSlug)}">${_esc(artistName)}</a>
           <div class="mp-td-plays">${plays} écoutes</div>
           ${tagsMetaHTML}
           ${audioHTML}
@@ -1090,7 +1090,7 @@
           '</div>' +
           '<div style="font-size:.8rem;color:#b9b3c8;margin-top:2px">' + style + '</div>' +
           (aSlug
-            ? '<a href="/u/' + aSlug + '" style="font-size:.75rem;color:#a09cb8;text-decoration:none">par ' + aName + '</a>'
+            ? '<a href="/@' + aSlug + '" style="font-size:.75rem;color:#a09cb8;text-decoration:none">par ' + aName + '</a>'
             : '<span style="font-size:.75rem;color:#a09cb8">par ' + aName + '</span>') +
           preview + btn +
         '</article>'

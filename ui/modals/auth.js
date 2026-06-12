@@ -239,7 +239,7 @@ function renderAuthArea() {
     }
     const fullName = user.name || user.email;
     const slug = _userMenuSlug();
-    const profileHref = slug ? `/u/${slug}` : '/dashboard';
+    const profileHref = slug ? `/@${slug}` : '/dashboard';
     // Effigie "petit bonhomme" : raccourci direct vers /u/<slug>.
     // URL neutre : un compte peut exister comme fan (sans son publié) et
     // l'URL ne présume pas du statut artiste. Le statut « artiste » est

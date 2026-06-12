@@ -411,7 +411,7 @@
       const slug = card.getAttribute('data-artist-slug');
       const id   = card.getAttribute('data-track-id');
       if (slug) {
-        window.location.href = '/u/' + encodeURIComponent(slug) + '#son-' + encodeURIComponent(id || '');
+        window.location.href = '/@' + encodeURIComponent(slug) + '#son-' + encodeURIComponent(id || '');
         return;
       }
       _ssPlayTrack(card); // pas de slug → fallback lecture
@@ -572,7 +572,7 @@
       : initials;
     const sub  = [a.genre, a.city].filter(Boolean).join(' · ') || (a.bio || '').slice(0, 60) || 'Artiste WATT';
     const meta = `${_fmt(a.plays || 0)} écoutes`;
-    const href = `/u/${encodeURIComponent(a.slug || '')}`;
+    const href = `/@${encodeURIComponent(a.slug || '')}`;
     return `
       <a class="ss-artist-card" href="${escAttr(href)}">
         <span class="ss-artist-avatar" style="background:${escAttr(color)};color:#fff">${avatar}</span>

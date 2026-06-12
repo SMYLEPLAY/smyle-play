@@ -147,7 +147,7 @@
     if (root && root.dataset.context) return root.dataset.context;
     const p = (location.pathname || '/').toLowerCase();
     if (p === '/' || p === '/index.html')         return 'marketplace';
-    if (p.startsWith('/u/') || p.startsWith('/artiste/')) return 'profile';
+    if (p.startsWith('/u/') || p.startsWith('/@') || p.startsWith('/artiste/')) return 'profile';
     if (p.startsWith('/dashboard'))               return 'dashboard';
     if (p.startsWith('/library'))                 return 'library';
     return 'marketplace';
@@ -474,7 +474,7 @@
         // Ouvre le panel messaging si dispo sur la page, sinon ignore
         extraClick = `if(window.SmyleMessaging){event.preventDefault();window.SmyleMessaging.open('${_esc(n.actor_id)}');}`;
       } else if (n.type === 'follow' && n.actor_id) {
-        href = `/u/${_esc((n.actor_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-'))}`;
+        href = `/@${_esc((n.actor_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-'))}`;
       } else if (n.type === 'trade') {
         // Ouvre l'écran de proposition directement (offre = n.target_id),
         // sans quitter la page. Fallback : section échanges du dashboard.
@@ -595,7 +595,7 @@
       ? `<img src="${_esc(avatarUrl)}" alt="" />`
       : _esc(_initial(name));
 
-    const profileHref = mySlug ? `/u/${mySlug}` : '#';
+    const profileHref = mySlug ? `/@${mySlug}` : '#';
 
     return `
       <div class="stb-user-wrap">

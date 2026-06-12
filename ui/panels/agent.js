@@ -133,7 +133,7 @@ async function _agentRenderCockpit(body) {
         const medals = ['🥇', '🥈', '🥉'];
         const medal  = i < 3 ? `<span class="agent-medal">${medals[i]}</span>` : `<span class="agent-rank-num">${String(i + 1).padStart(2, '0')}</span>`;
         return `
-          <div class="agent-rank-row" onclick="window.location.href='/u/${_esc(a.slug)}'">
+          <div class="agent-rank-row" onclick="window.location.href='/@${_esc(a.slug)}'">
             ${medal}
             <div class="agent-rank-info">
               <span class="agent-rank-name">${_esc(a.artistName)}</span>
@@ -192,7 +192,7 @@ async function _agentRenderMonitoring(body) {
         const dateStr = d.toLocaleDateString('fr', { day: 'numeric', month: 'short', year: 'numeric' });
         const timeStr = d.toLocaleTimeString('fr', { hour: '2-digit', minute: '2-digit' });
         return `
-          <div class="agent-track-row" onclick="window.location.href='/u/${_esc(t.artistSlug || '')}'">
+          <div class="agent-track-row" onclick="window.location.href='/@${_esc(t.artistSlug || '')}'">
             <div class="agent-track-avatar">${(t.artistName || '?')[0].toUpperCase()}</div>
             <div class="agent-track-info">
               <div class="agent-track-name">${_esc(t.name || 'Sans titre')}</div>
@@ -253,7 +253,7 @@ async function _agentRenderInbox(body) {
           <div class="agent-collab-row">
             <div class="agent-collab-header">
               <div class="agent-collab-from">
-                <a href="/u/${_esc(c.from.slug)}" class="agent-collab-name">${_esc(c.from.name)}</a>
+                <a href="/@${_esc(c.from.slug)}" class="agent-collab-name">${_esc(c.from.name)}</a>
                 <span class="agent-collab-arrow">→</span>
                 <span class="agent-collab-to">${_esc(c.to.name)}</span>
               </div>

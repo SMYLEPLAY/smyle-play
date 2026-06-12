@@ -655,6 +655,13 @@ img { max-width: 100%; display: block; }
   color: rgba(255, 255, 255, .8);
   border: 1px solid rgba(255, 255, 255, .1);
 }
+/* C3 ② — état épuisé tokenisé (remplace le SOLD OUT couleur en dur) */
+.ap-dna-badge-soldout {
+  font-weight: 700;
+  color: var(--sp-danger, #ff5577);
+  border-color: color-mix(in srgb, var(--sp-danger, #ff5577) 45%, transparent);
+  background: color-mix(in srgb, var(--sp-danger, #ff5577) 10%, transparent);
+}
 .ap-relic-actions {
   display: flex;
   align-items: center;

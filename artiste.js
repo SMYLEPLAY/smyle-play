@@ -805,7 +805,7 @@ function renderPlaylistsAdn(artist) {
     const color     = pl.color || brandColor;
     const price     = formatCount(pl.adnPrice || 0);
     // Lien vers la page playlist (unlock se fait depuis le slug playlist)
-    const href = `/u/${encodeURIComponent(slug)}`;
+    const href = `/@${encodeURIComponent(slug)}`;
     return `
       <details class="ap-pl-adn-item" style="--pl-color:${color}">
         <summary class="ap-pl-adn-summary">
@@ -1267,27 +1267,22 @@ function renderDna(artist) {
       meta.insertAdjacentHTML('beforeend',
         '<span class="ap-dna-badge">' + AI_LBL[adn.aiReference] + '</span>');
     }
-    // 2026-05-13 v2 — Rareté 4 tiers (mythic/legendary/limited/open)
-    const tier = adn.rarityTier || 'unlimited';
-    const left = (adn.availableCount != null) ? adn.availableCount : '?';
-    const tot  = (adn.maxSupply != null) ? adn.maxSupply : '?';
+    // C3 ② — rareté via tokens C0 (SpBadges.rarete) : fini les badges tiers
+    // codés à la main avec couleurs en dur. Le #X/N « prochain exemplaire »
+    // reste affiché en grand par #ap-relic-edition ; ici la pilule porte la
+    // rareté canonique (mythic/legendary→légendaire, limited→épique,
+    // open→rare via _rarityTierToToken). Nature 🧬 = la relique elle-même.
     if (adn.isSoldOut) {
       meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#7f1d1d;color:#fff;">SOLD OUT</span>');
-    } else if (tier === 'mythic') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#FFD700;color:#000;font-weight:600;">👑 Mythic · Pièce unique (1/1)</span>');
-    } else if (tier === 'legendary') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#FBBF24;color:#000;font-weight:600;">⭐ Legendary · Drop VIP ' + left + '/' + tot + '</span>');
-    } else if (tier === 'limited') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#A78BFA;color:#000;font-weight:600;">💎 Limited · ' + left + '/' + tot + ' restants</span>');
-    } else if (tier === 'open') {
-      meta.insertAdjacentHTML('beforeend',
-        '<span class="ap-dna-badge" style="background:#4ADE80;color:#000;font-weight:600;">🟢 Open · ' + left + '/' + tot + '</span>');
+        '<span class="ap-dna-badge ap-dna-badge-soldout">Épuisé</span>');
+    } else if (window.SpBadges) {
+      const rToken = _rarityTierToToken(adn.rarityTier);
+      const rHtml = (adn.rarityTier === 'mythic' && adn.maxSupply != null)
+        ? SpBadges.rarete(1, adn.maxSupply, rToken)
+        : (rToken ? SpBadges.rarete(null, null, rToken) : '');
+      if (rHtml) meta.insertAdjacentHTML('beforeend', rHtml);
     }
-    // tier === 'unlimited' → pas de badge rareté affiché
+    // rarityTier 'unlimited' → pas de pilule rareté affichée
   }
 
   // Masque le bouton unlock pour l'owner (pas d'auto-achat).
@@ -2146,7 +2141,7 @@ function renderResale(items) {
   section.style.display = '';
   const rows = items.map(it => {
     const author = it.original_artist_name
-      ? '<a href="/u/' + _e(it.original_artist_slug || '') + '" style="color:#c4b5fd;text-decoration:none">créé par ' + _e(it.original_artist_name) + ' →</a>'
+      ? '<a href="/@' + _e(it.original_artist_slug || '') + '" style="color:#c4b5fd;text-decoration:none">créé par ' + _e(it.original_artist_name) + ' →</a>'
       : '<span style="color:#888">créateur inconnu</span>';
     const editionBadge = (it.edition_number != null && it.max_supply != null)
       ? ' <span title="Exemplaire #' + _e(it.edition_number) + ' sur ' + _e(it.max_supply) + ' — édition limitée" style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:rgba(124,77,255,.18);color:#cbb3ff;font-size:11px;font-weight:700;vertical-align:middle">#' + _e(it.edition_number) + '/' + _e(it.max_supply) + '</span>'

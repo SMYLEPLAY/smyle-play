@@ -216,7 +216,7 @@ async function _renderHubFromAPI() {
 
   el.innerHTML = src.map((a, i) => {
     const slug   = a.slug || _slugify(a.artistName);
-    const url    = slug ? `/u/${slug}` : '/watt';
+    const url    = slug ? `/@${slug}` : '/watt';
     // Chantier 1.2 — on privilégie `brandColor` (canonique) défini par
     // l'artiste dans son wattboard. `avatarColor` reste le fallback legacy
     // pour les comptes qui n'ont pas encore choisi de couleur explicite.
