@@ -169,6 +169,11 @@ def create_app(config_class=None):
     def beats_page():
         return send_from_directory(BASE_DIR, 'index.html')
 
+    # Chantier Voix (2026-06-12) — catalogue public des voix, même shell.
+    @app.route('/voix')
+    def voix_page():
+        return send_from_directory(BASE_DIR, 'index.html')
+
     @app.route('/artistes')
     def artistes_page():
         return send_from_directory(BASE_DIR, 'index.html')

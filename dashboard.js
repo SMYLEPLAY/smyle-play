@@ -3149,12 +3149,20 @@ async function dashVoiceSave() {
   const price  = parseInt((document.getElementById('dashVoicePrice') || {}).value || '0', 10);
   const d = _getVoiceDraft();
   const genres = Array.isArray(d.genres) ? d.genres : [];
-  const license = d.license || 'personnel';
+  // Chantier Voix 2026-06-12 — plus de licence dans l'UI : la rareté #X/N
+  // porte la mécanique. Le backend pose 'personnel' par défaut en DB.
   const isEdit = Boolean(_voicesState.editingId);
+  const supplyRaw = ((document.getElementById('dashVoiceMaxSupply') || {}).value || '').trim();
+  let maxSupply = null;
+  if (supplyRaw !== '') {
+    const n = parseInt(supplyRaw, 10);
+    if (Number.isInteger(n) && n >= 1) maxSupply = n;
+  }
   const errs = [];
   if (!name.trim())           errs.push('Nom de la voix');
   if (!style.trim())          errs.push('Style de voix');
   if (genres.length === 0)    errs.push('Au moins 1 genre');
+  if (supplyRaw !== '' && maxSupply === null) errs.push('Nombre d\'exemplaires (entier ≥ 1, ou vide)');
   // En mode édition, le sample est optionnel (on garde celui en DB si pas
   // de nouveau fichier). En création, il est obligatoire.
   if (!isEdit && !_voicesState.pendingFile) errs.push('Sample audio');
@@ -3191,7 +3199,8 @@ async function dashVoiceSave() {
   const linked_track_id = linkedTrackEl && linkedTrackEl.value ? linkedTrackEl.value : null;
 
   // ── Étape 2 : POST (création) ou PATCH (mise à jour) /api/voices ────
-  const payload = { name, style, genres, license, price_credits: price };
+  const payload = { name, style, genres, price_credits: price };
+  if (!isEdit && maxSupply !== null) payload.max_supply = maxSupply;
   if (sample_url)  payload.sample_url  = sample_url;
   if (preview_url) payload.preview_url = preview_url;
   if (voice_origin) payload.voice_origin = voice_origin;
@@ -3314,9 +3323,15 @@ function renderMyVoicesList() {
     const statusLbl   = v.is_published ? 'Publié' : 'Brouillon';
     const cardClass   = v.is_published ? 'dash-voice-card is-published' : 'dash-voice-card';
     const genres = _voiceGenresLabel(v.genres);
+    // Chantier Voix — la rareté #X/N remplace la licence dans le récap.
+    const _vSupplyLbl = (v.max_supply != null)
+      ? (v.max_supply === 1
+          ? ((v.editions_sold || 0) >= 1 ? '1/1 · vendue' : '1/1 vente unique')
+          : `${(v.editions_sold || 0)}/${v.max_supply} vendus`)
+      : 'illimité';
     const meta = [
       `${v.price_credits} SMYLES`,
-      _voiceLicenseLabel(v.license),
+      _vSupplyLbl,
       genres,
     ].filter(Boolean).join(' · ');
     return `

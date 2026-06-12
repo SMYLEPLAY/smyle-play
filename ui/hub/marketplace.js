@@ -48,6 +48,7 @@
     const p = (typeof location !== 'undefined' ? location.pathname : '') || '';
     if (p === '/sons' || p === '/sons/') return 'sons';
     if (p === '/beats' || p === '/beats/') return 'beats';  // C2 — étagère beats
+    if (p === '/voix' || p === '/voix/') return 'voix';     // chantier Voix
     if (p === '/artistes' || p === '/artistes/') return 'artists';
     return 'home';
   })();
@@ -90,6 +91,8 @@
     s.textContent =
       '.mp-only-sons .smyle-vitrine,.mp-only-sons .mp-section-top-sons,.mp-only-sons .mp-section-top-artists,.mp-only-sons .mp-section-artists{display:none!important}' +
       '.mp-only-artists .smyle-vitrine,.mp-only-artists .mp-section-top-sons,.mp-only-artists .mp-section-top-artists,.mp-only-artists .mp-section-sons{display:none!important}' +
+      // Chantier Voix — la page /voix masque tout et injecte sa section.
+      '.mp-only-voix .smyle-vitrine,.mp-only-voix .mp-section-top-sons,.mp-only-voix .mp-section-top-artists,.mp-only-voix .mp-section-sons,.mp-only-voix .mp-section-artists{display:none!important}' +
       // MODE RÉSULTATS (2026-06-11) — dès qu'une recherche ou un filtre est
       // actif sur la home, la vitrine et les podiums s'effacent : les
       // grilles résultats prennent toute la place (sans plafond de 3).
@@ -501,6 +504,7 @@
       _capNote = '<div style="grid-column:1/-1;display:flex;gap:10px;justify-content:center;margin-top:14px">'
         + '<a class="mp-voir-tout" href="/sons" style="margin:0">Voir tous les sons (' + totalSons + ') →</a>'
         + '<a class="mp-voir-tout" href="/beats" style="margin:0">🥁 Étagère beats →</a>'
+        + '<a class="mp-voir-tout" href="/voix" style="margin:0">🎙 Voix →</a>'
         + '</div>';
     }
 
@@ -1017,6 +1021,94 @@
     }
   }
 
+  // ── Page /voix (chantier Voix 2026-06-12) ────────────────────────────────
+  // Catalogue public des voix : preview 30 s, rareté #X/N, achat via le
+  // drawer unifié. Section autonome injectée à la place des cellules home.
+  async function _renderVoixPage() {
+    const anchor = document.querySelector('.mp-section-sons');
+    if (!anchor || !anchor.parentNode) return;
+
+    const section = document.createElement('section');
+    section.className = 'mp-section mp-section-voix';
+    section.innerHTML =
+      '<div class="mp-section-head">' +
+        '<span class="mp-section-kicker">Catalogue</span>' +
+        '<h2 class="mp-section-title">🎙 Voix</h2>' +
+        '<span class="mp-section-sub">Pré-écoute 30 s libre — l\'achat débloque le fichier vocal complet</span>' +
+      '</div>' +
+      '<div class="mp-voix-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px">' +
+        '<div class="mp-grid-empty">Chargement des voix…</div>' +
+      '</div>';
+    anchor.parentNode.insertBefore(section, anchor);
+    const grid = section.querySelector('.mp-voix-grid');
+
+    let voices = [];
+    try {
+      voices = await window.apiFetch('/api/voices?limit=100') || [];
+    } catch (_) {
+      grid.innerHTML = '<div class="mp-grid-empty">Impossible de charger les voix. Recharge la page.</div>';
+      return;
+    }
+    if (!voices.length) {
+      grid.innerHTML = '<div class="mp-grid-empty">Aucune voix en vente pour le moment. Les artistes les publient depuis leur WATT BOARD.</div>';
+      return;
+    }
+
+    grid.innerHTML = voices.map(v => {
+      const name   = _esc(v.name || 'Voix');
+      const style  = _esc(v.style || '');
+      const artist = v.artist || {};
+      const aName  = _esc(artist.artist_name || '—');
+      const aSlug  = _esc(artist.slug || '');
+      const color  = artist.brand_color || '#7C3AED';
+      const price  = v.price_credits || 0;
+      const sold   = v.editions_sold || 0;
+      const supply = (v.max_supply != null) ? v.max_supply : null;
+      const soldOut = supply != null && sold >= supply;
+      const rarete = supply != null
+        ? (supply === 1
+            ? (soldOut ? '1/1 · vendue' : '1/1 vente unique')
+            : (soldOut ? 'Édition épuisée' : (supply - sold) + '/' + supply + ' dispo'))
+        : '';
+      const rareteChip = rarete
+        ? '<span style="display:inline-block;padding:2px 8px;border-radius:9px;background:rgba(255,215,0,.12);color:#ffd700;font-size:.68rem;font-weight:700">' + rarete + '</span>'
+        : '';
+      const preview = v.preview_url
+        ? '<audio controls preload="none" controlsList="nodownload noremoteplayback" oncontextmenu="return false" style="width:100%;height:32px;margin:8px 0 4px" src="' + _esc(v.preview_url) + '"></audio><div style="font-size:10px;color:#8b84a3">🎧 Pré-écoute 30 s</div>'
+        : '<div style="font-size:11px;color:#8b84a3;margin:10px 0 4px">🔒 Pré-écoute bientôt disponible</div>';
+      const btn = soldOut
+        ? '<button type="button" disabled style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:none;background:rgba(255,255,255,.08);color:#8b84a3;font-weight:700;cursor:default">Épuisé</button>'
+        : '<button type="button" class="mp-voix-buy" data-voice-id="' + _esc(String(v.id)) + '" data-voice-price="' + price + '" data-voice-name="' + name + '" data-artist-name="' + aName + '" style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,#7c5cff,#9d4dff);color:#fff;font-weight:700;cursor:pointer">Débloquer · ' + price + ' Smyles ⚡</button>';
+      return (
+        '<article style="border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px;background:rgba(255,255,255,.025)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">' +
+            '<strong style="color:' + _esc(color) + '">🎙 ' + name + '</strong>' + rareteChip +
+          '</div>' +
+          '<div style="font-size:.8rem;color:#b9b3c8;margin-top:2px">' + style + '</div>' +
+          (aSlug
+            ? '<a href="/u/' + aSlug + '" style="font-size:.75rem;color:#a09cb8;text-decoration:none">par ' + aName + '</a>'
+            : '<span style="font-size:.75rem;color:#a09cb8">par ' + aName + '</span>') +
+          preview + btn +
+        '</article>'
+      );
+    }).join('');
+
+    grid.addEventListener('click', (e) => {
+      const b = e.target.closest('.mp-voix-buy');
+      if (!b) return;
+      if (window.PurchaseDrawer) {
+        window.PurchaseDrawer.open({
+          type: 'voix',
+          id: b.dataset.voiceId,
+          price: parseInt(b.dataset.voicePrice, 10) || null,
+          title: b.dataset.voiceName || 'Voix',
+          artistName: b.dataset.artistName || '',
+          onSuccess: () => { b.disabled = true; b.textContent = 'À toi ✓ — fichier dans ta bibliothèque'; },
+        });
+      }
+    });
+  }
+
   // ── Modale achat recette (depuis badge Recette sur une track card) ────────
   // badgeEl a : data-prompt-id, data-prompt-price, data-track-name
   function _openRecipeUnlockModal(badgeEl) {
@@ -1171,6 +1263,11 @@
       if (_s) _s.textContent = 'Des bases prêtes à chanter dessus — achat = fichier + recette';
     }
     if (_VIEW === 'artists') { document.body.classList.add('mp-only-artists'); document.title = 'Tous les artistes — WATT'; }
+    if (_VIEW === 'voix') {
+      document.body.classList.add('mp-only-voix');
+      document.title = 'Voix — WATT';
+      _renderVoixPage(); // async, autonome (fetch /api/voices + section dédiée)
+    }
     _resolveDom();
     _bindSearch();
     _bindBus();

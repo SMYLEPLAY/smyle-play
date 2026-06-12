@@ -2069,8 +2069,16 @@ function renderVoices(artist) {
     const safeName  = (v.name  || '').replace(/</g, '&lt;');
     const safeStyle = (v.style || '').replace(/</g, '&lt;');
     const priceStr  = formatCount(v.price_credits);
-    const licenseLbl = VOICE_LICENSE_LBL[v.license] || v.license || '';
-    const licenseClass = (v.license === 'exclusif')
+    // Chantier Voix 2026-06-12 — le vocabulaire « licence » disparaît :
+    // la rareté #X/N prend sa place (alignée sur les prompts).
+    const _vSold = v.editions_sold || 0;
+    const _vSupply = (v.max_supply != null) ? v.max_supply : null;
+    const licenseLbl = (_vSupply != null)
+      ? (_vSupply === 1
+          ? (_vSold >= 1 ? 'Vente unique · vendue' : '1/1 · vente unique')
+          : (_vSold >= _vSupply ? 'Édition épuisée' : 'Édition · ' + (_vSupply - _vSold) + '/' + _vSupply + ' dispo'))
+      : '';
+    const licenseClass = (_vSupply === 1)
       ? 'ap-voice-badge ap-voice-license-badge is-exclusif'
       : 'ap-voice-badge ap-voice-license-badge';
     const genresStr = _voiceGenresStr(v.genres);

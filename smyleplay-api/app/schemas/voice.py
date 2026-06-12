@@ -86,8 +86,13 @@ class VoiceCreate(BaseModel):
     preview_url: HttpUrl | None = Field(default=None, max_length=500)
     voice_origin: VoiceOrigin | None = None
     linked_track_id: UUID | None = None
-    license: VoiceLicense
+    # Chantier Voix 2026-06-12 — le vocabulaire « licence » disparaît des
+    # UI : optionnel ici (défaut 'personnel' appliqué au router), la colonne
+    # DB reste pour l'historique des achats passés.
+    license: VoiceLicense | None = None
     price_credits: int = Field(ge=50, le=5000)
+    # #X/N — NULL = illimité · 1 = vente unique · N = édition limitée.
+    max_supply: int | None = Field(default=None, ge=1)
 
 
 class VoiceUpdate(BaseModel):
@@ -136,6 +141,10 @@ class VoicePublicRead(BaseModel):
     genres: list[str]
     license: VoiceLicense
     price_credits: int
+    # #X/N (chantier Voix 2026-06-12) — rareté affichée à la place de la
+    # licence dans toutes les UI. editions_sold permet « 2/5 restants ».
+    max_supply: int | None = None
+    editions_sold: int | None = None
     is_published: bool
     created_at: datetime
     voice_origin: VoiceOrigin | None = None

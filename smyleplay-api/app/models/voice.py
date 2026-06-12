@@ -108,6 +108,9 @@ class Voice(Base):
     )
     license: Mapped[str] = mapped_column(String(16), nullable=False)
     price_credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Chantier Voix (migration 0056) — rareté #X/N alignée sur les prompts.
+    # NULL = illimité · 1 = vente unique (retrait à l'achat) · N = édition.
+    max_supply: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_published: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -182,3 +185,6 @@ class OwnedVoice(Base):
         server_default=func.now(),
         nullable=False,
     )
+    # #X/N (migration 0056) — numéro d'exemplaire, NULL si tirage illimité.
+    # UNIQUE(voice_id, edition_number) en base (uq_owned_voices_edition).
+    edition_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
