@@ -375,7 +375,15 @@
       '.ap-pl-worlds-hdr { display: flex; align-items: baseline; gap: 10px; padding: 10px 0 0; }' +
       '.ap-playlists-title { font-size: 16px; color: var(--sp-text, #e8e8f0); margin: 0; letter-spacing: -.01em; }' +
       '.ap-playlists-count { font-size: 12px; color: var(--sp-text-faint, rgba(255,255,255,.55)); }' +
+      // C3 ② bis — bascule rangée compacte ↔ grandes cards carrées (format
+      // historique 1:1 : la cover vidéo montre toute sa hauteur, ex. le
+      // personnage de Night City). Choix mémorisé en localStorage.
+      '.ap-pl-view-toggle { margin-left: auto; background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid var(--sp-border, rgba(255,255,255,.10)); color: var(--sp-text-muted, rgba(255,255,255,.72)); border-radius: 8px; padding: 3px 9px; font-size: 13px; line-height: 1.4; cursor: pointer; transition: border-color var(--sp-transition, 150ms ease), color var(--sp-transition, 150ms ease); }' +
+      '.ap-pl-view-toggle:hover { border-color: rgba(var(--brand-rgb, 204,136,255), .55); color: var(--sp-text, #e8e8f0); }' +
       '.ap-pl-worlds-row { list-style: none; padding: 4px 2px 10px; margin: 12px 0 0; display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }' +
+      '.ap-pl-worlds-row.is-grid { display: grid; grid-template-columns: repeat(3, 1fr); overflow-x: visible; scroll-snap-type: none; }' +
+      '.ap-pl-worlds-row.is-grid .ap-pl-world { flex: none; width: auto; height: auto; aspect-ratio: 1/1; scroll-snap-align: none; }' +
+      '@media (max-width: 560px) { .ap-pl-worlds-row.is-grid { grid-template-columns: repeat(2, 1fr); } }' +
       '.ap-pl-world { position: relative; flex: 0 0 250px; height: 144px; border-radius: var(--sp-radius-lg, 16px); overflow: hidden; cursor: pointer; scroll-snap-align: start; background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid rgba(var(--nc-rgb, 204,136,255), .28); transition: border-color var(--sp-transition, 150ms ease), transform var(--sp-transition, 150ms ease); }' +
       '.ap-pl-world:hover { border-color: rgba(var(--nc-rgb, 204,136,255), .65); transform: translateY(-2px); }' +
       '.ap-pl-world-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }' +
@@ -746,8 +754,9 @@
           '<div class="ap-pl-worlds-hdr">' +
             '<h2 class="ap-playlists-title">Playlists</h2>' +
             '<span class="ap-playlists-count">' + countLabel + '</span>' +
+            '<button type="button" class="ap-pl-view-toggle" id="ap-pl-view-toggle" aria-label="Changer l\'affichage des playlists"></button>' +
           '</div>' +
-          '<ul class="ap-pl-worlds-row">' +
+          '<ul class="ap-pl-worlds-row" id="ap-pl-worlds-row">' +
             playlists.map(function(p, i) {
               const nc     = p.color || '#cc88ff';
               const ncRgb  = _hexToRgb(nc);
@@ -792,6 +801,30 @@
         const btn = document.getElementById('ap-qp-' + p.id);
         if (btn) btn.addEventListener('click', function(e) { _quickPlayUserPlaylist(e, p.id); });
       });
+
+      // C3 ② bis — bascule rangée ↔ grille carrée, mémorisée par navigateur.
+      // 'grid' = format historique 1:1 (cover vidéo non recadrée en hauteur).
+      (function wireViewToggle() {
+        const tog = document.getElementById('ap-pl-view-toggle');
+        const row = document.getElementById('ap-pl-worlds-row');
+        if (!tog || !row) return;
+        let mode = 'row';
+        try { mode = localStorage.getItem('sp-pl-view') === 'grid' ? 'grid' : 'row'; } catch (_) {}
+        function apply() {
+          row.classList.toggle('is-grid', mode === 'grid');
+          // L'icône montre la vue CIBLE (celle qu'on obtient en cliquant)
+          tog.textContent = mode === 'grid' ? '☰' : '⊞';
+          tog.title = mode === 'grid'
+            ? 'Affichage compact (rangée)'
+            : 'Affichage normal (grandes cards)';
+        }
+        apply();
+        tog.addEventListener('click', function() {
+          mode = (mode === 'grid') ? 'row' : 'grid';
+          try { localStorage.setItem('sp-pl-view', mode); } catch (_) {}
+          apply();
+        });
+      })();
 
     } catch (e) {
       root.style.display = 'none';
