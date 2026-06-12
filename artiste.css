@@ -1309,130 +1309,10 @@ img { max-width: 100%; display: block; }
 }
 
 
-/* ── TRACKS ──────────────────────────────────────────────────────────────── */
-
-.ap-tracks-header {
-  display: flex; align-items: center; gap: 12px;
-  margin-bottom: 18px;
-}
-.ap-section-title {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 10px; font-weight: 700;
-  letter-spacing: .32em; text-transform: uppercase;
-  color: rgba(255, 215, 0, .55);
-}
-.ap-tracks-count {
-  font-size: 9px; letter-spacing: .12em;
-  color: rgba(255, 215, 0, .28);
-}
-
-.ap-tracks-list { display: flex; flex-direction: column; gap: 3px; }
-
-/* ─── Les track rows adoptent la brand color de l'artiste (--brand-rgb)
-   plutôt que le gold hardcodé. Permet à chaque artiste d'avoir un
-   catalogue teinté à sa couleur. Fallback = gold SMYLE via --brand-rgb
-   (défini en :root). ──────────────────────────────────────────────────── */
-.ap-track-row {
-  display: flex; align-items: center; gap: 14px;
-  padding: 10px 14px;
-  border: 1px solid rgba(var(--brand-rgb), .04);
-  border-radius: 3px;
-  background: rgba(var(--brand-rgb), .018);
-  transition: background .15s, border-color .15s, padding-left .15s;
-  cursor: default;
-}
-.ap-track-row.clickable { cursor: pointer; }
-.ap-track-row.clickable:hover {
-  background: rgba(var(--brand-rgb), .048);
-  border-color: rgba(var(--brand-rgb), .1);
-  padding-left: 18px;
-}
-.ap-track-row.playing {
-  background: rgba(var(--brand-rgb), .07);
-  border-color: rgba(var(--brand-rgb), .22);
-}
-
-.ap-track-num {
-  font-size: 10px; font-weight: 700;
-  color: rgba(var(--brand-rgb), .28);
-  min-width: 18px; text-align: center; flex-shrink: 0;
-}
-.ap-track-row.playing .ap-track-num { color: var(--brand); }
-
-.ap-track-cover {
-  width: 42px; height: 42px; border-radius: 3px;
-  background: rgba(var(--brand-rgb), .07);
-  border: 1px solid rgba(var(--brand-rgb), .1);
-  flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(var(--brand-rgb), .22);
-  overflow: hidden;
-}
-.ap-track-cover img { width: 100%; height: 100%; object-fit: cover; }
-
-.ap-track-info { flex: 1; min-width: 0; }
-.ap-track-name {
-  font-size: 13px; font-weight: 500;
-  color: rgba(232, 228, 240, .88);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: color .15s; letter-spacing: .02em;
-}
-.ap-track-row.playing .ap-track-name { color: var(--brand); }
-
-.ap-track-meta { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
-.ap-track-genre {
-  font-size: 9px; letter-spacing: .15em; text-transform: uppercase;
-  color: rgba(var(--brand-rgb), .3);
-}
-.ap-track-date { font-size: 9px; color: rgba(255, 255, 255, .18); }
-
-.ap-track-right {
-  flex-shrink: 0; display: flex; align-items: center; gap: 10px;
-}
-.ap-track-plays { font-size: 10px; color: rgba(var(--brand-rgb), .32); font-weight: 600; }
-
-.ap-track-play-btn {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: rgba(var(--brand-rgb), .09);
-  border: 1px solid rgba(var(--brand-rgb), .2);
-  color: rgba(var(--brand-rgb), .65);
-  display: flex; align-items: center; justify-content: center;
-  transition: all .2s; flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.ap-track-play-btn:hover { background: rgba(var(--brand-rgb), .2); color: var(--brand); }
-.ap-track-row.playing .ap-track-play-btn {
-  background: rgba(var(--brand-rgb), .18);
-  border-color: rgba(var(--brand-rgb), .55);
-  color: var(--brand);
-}
-.ap-track-no-stream {
-  font-size: 9px; color: rgba(255,255,255,.18);
-  letter-spacing: .06em; padding: 0 4px;
-}
-
-/* EQ animation */
-.ap-track-eq {
-  display: none; gap: 2px; align-items: flex-end; height: 14px;
-  width: 14px; justify-content: center;
-}
-.ap-track-row.playing .ap-track-eq { display: flex; }
-.ap-track-row.playing .ap-track-play-icon { display: none; }
-.ap-track-eq span {
-  width: 2px; background: var(--ap-gold); border-radius: 1px;
-  animation: ap-eq 1.1s ease-in-out infinite;
-}
-.ap-track-eq span:nth-child(2) { animation-delay: .22s; }
-.ap-track-eq span:nth-child(3) { animation-delay: .44s; }
-@keyframes ap-eq { 0%,100% { height: 3px; } 50% { height: 14px; } }
-
-/* Empty */
-.ap-tracks-empty {
-  padding: 48px 20px; text-align: center;
-  font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
-  color: rgba(255, 215, 0, .18); line-height: 2;
-}
+/* ── TRACKS (legacy 2-col) — SUPPRIMÉ (C3 ② 2026-06-13) ──────────────────
+   L'ancien design « track rows » du layout 2 colonnes (ap-track-num,
+   ap-track-eq, ap-tracks-header…) était mort depuis la refonte hero.
+   Les nouvelles rows C3 ② vivent dans la section « Tracks rows » plus bas. */
 
 
 /* ── ASIDE ───────────────────────────────────────────────────────────────── */
@@ -3413,40 +3293,105 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   color: rgba(255,255,255,.5);
   letter-spacing: .04em;
 }
-.ap-tracks-list { display: flex; flex-direction: column; gap: 10px; }
-.ap-track-card {
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.08);
-}
-.ap-track-card-top {
+/* ── Tracks rows (C3 ② — 2026-06-13) ─────────────────────────────────────
+   Liste DENSE de rows sur le player global : bouton play rond, cover mini,
+   titre, repères C0 (nature/palier/rareté/provenance), prix recette,
+   like/+, 🗑 owner. Zebra subtile, hover teinté brand, row active marquée.
+   L'audio est UNIQUE et partagé (wrapper #ap-shared-audio caché, body). */
+.ap-tracks-list { display: flex; flex-direction: column; gap: 2px; }
+.ap-track-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--sp-radius-md, 10px);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--sp-transition, 150ms ease),
+              border-color var(--sp-transition, 150ms ease);
 }
-.ap-track-card-title {
-  font-size: 14px;
-  margin: 0;
-  color: #fff;
+.ap-track-row:nth-child(even) { background: var(--sp-surface, rgba(255,255,255,.04)); }
+.ap-track-row:hover { background: rgba(var(--brand-rgb), .07); }
+.ap-track-row.is-active {
+  background: rgba(var(--brand-rgb), .10);
+  border-color: rgba(var(--brand-rgb), .35);
+}
+.ap-track-row.is-active .ap-track-row-title { color: var(--brand); }
+
+.ap-track-play-btn {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--brand-rgb), .10);
+  border: 1px solid rgba(var(--brand-rgb), .30);
+  color: var(--sp-text, #e8e8f0);
+  cursor: pointer;
+  transition: background var(--sp-transition, 150ms ease),
+              border-color var(--sp-transition, 150ms ease);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.ap-track-play-btn:hover { background: rgba(var(--brand-rgb), .22); }
+.ap-track-play-btn:disabled { opacity: .35; cursor: default; }
+.ap-track-row.is-playing .ap-track-play-btn {
+  background: rgba(var(--brand-rgb), .25);
+  border-color: rgba(var(--brand-rgb), .60);
+  color: var(--brand);
+}
+
+.ap-track-mini-cover {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--sp-radius-sm, 6px);
+  overflow: hidden;
+  background: var(--sp-surface-2, rgba(255,255,255,.07));
+}
+.ap-track-mini-cover img,
+.ap-track-mini-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ap-track-row-main { flex: 1; min-width: 0; }
+.ap-track-row-title {
+  font-size: 13.5px;
   font-weight: 600;
-  flex: 1;
-  min-width: 0;
+  color: var(--sp-text, #e8e8f0);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
-/* Actions : like + add + delete — rangée droite propre, alignée en ligne */
-.ap-track-card-actions {
+.ap-track-row-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.ap-track-row-badges .sp-pill { font-size: 10px; padding: 1px 7px; flex-shrink: 0; }
+.ap-track-row-badges .sp-provenance { flex-shrink: 0; }
+.ap-track-row-plays {
+  font-size: 11px;
+  color: var(--sp-text-faint, rgba(255,255,255,.55));
+  flex-shrink: 0;
+}
+
+.ap-track-row-actions {
   display: flex;
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
 }
-.ap-track-card-actions .like-btn,
-.ap-track-card-actions .add-to-pl-btn {
+.ap-track-row-actions .like-btn,
+.ap-track-row-actions .add-to-pl-btn {
   width: 28px !important;
   height: 28px !important;
   min-width: 28px !important;
@@ -3454,41 +3399,11 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   font-size: 13px !important;
   border-radius: 7px !important;
 }
-/* Meta : plays + date + badge — sous le titre, texte discret */
-.ap-track-card-meta {
-  font-size: 11px;
-  color: rgba(255,255,255,.4);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: nowrap;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-.ap-track-meta-plays { flex-shrink: 0; }
-.ap-track-meta-date  { flex-shrink: 0; }
-.ap-track-audio {
-  width: 100%;
-  height: 40px;
-  outline: none;
-  border-radius: 6px;
-  display: block;
-  /* Sprint 1 PR3 fix audio (2026-05-05) — retire le filter invert qui
-     pouvait masquer les controls natifs sur certains thèmes Chrome. On
-     garde le skin natif tel quel, plus visible et plus fiable. */
-}
-.ap-track-audio-disabled {
-  width: 100%;
-  height: 40px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  background: rgba(255,255,255,.04);
-  color: rgba(255,255,255,.45);
-  border: 1px dashed rgba(255,255,255,.1);
-  font-style: italic;
+
+@media (max-width: 640px) {
+  /* Dense en mobile : la provenance saute, les pilules restent */
+  .ap-track-row-badges .sp-provenance { display: none; }
+  .ap-track-row { gap: 9px; padding: 7px 8px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -3644,28 +3559,9 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   margin-right: 6px;
 }
 
-/* Sprint 1 PR3 (2026-05-04) — pivot écoute : track card riche
-   (cover + audio + bouton débloquer prompt) */
-.ap-track-card-inner {
-  display: flex;
-  gap: 14px;
-  align-items: stretch;
-}
-.ap-track-cover {
-  flex: 0 0 80px;
-  width: 80px;
-  height: 80px;
-  border-radius: 10px;
-  object-fit: cover;
-  background: rgba(255, 255, 255, .04);
-  cursor: pointer;  /* indique que c'est cliquable pour play */
-}
-.ap-track-card-inner {
-  cursor: pointer;  /* toute la zone hors audio = play */
-}
-.ap-track-card-inner audio {
-  cursor: default;  /* mais l'audio garde son curseur natif */
-}
+/* C3 ② — l'ancienne « track card riche » (.ap-track-card-inner, cover 80px,
+   <audio controls> par card) est SUPPRIMÉE : remplacée par les rows denses
+   sur audio partagé (section « Tracks rows » plus haut). */
 .ap-track-delete-btn {
   background: transparent;
   border: 1px solid rgba(255, 80, 80, .35);
@@ -3683,31 +3579,6 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 .ap-track-delete-btn:disabled {
   opacity: .5;
   cursor: wait;
-}
-.ap-track-cover-fallback {
-  display: block;
-  /* couleur fallback inline via style="background:..." */
-}
-.ap-track-card-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ap-track-prompt-block {
-  margin-top: 6px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.ap-track-prompt-meta {
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: rgba(204, 136, 255, .7);
-  font-weight: 600;
 }
 .ap-track-unlock-btn {
   display: inline-flex; align-items: center; gap: 5px;
@@ -3730,10 +3601,6 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 }
 .ap-track-unlock-btn:disabled { opacity: .5; cursor: wait; }
 
-@media (max-width: 640px) {
-  .ap-track-card-inner { flex-direction: column; }
-  .ap-track-cover { width: 100%; height: 180px; flex-basis: auto; }
-}
 /* Lecteur de pré-écoute publique (P1-F9 enhancement 2026-05-03).
    Audio jouable avant achat — le bouton Télécharger n'apparaît qu'après
    unlock dans /library. */
@@ -4162,24 +4029,8 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   font-weight: 600;
 }
 
-/* Badge playlist sur les cards track — cliquable, couleur héritée de la playlist */
-.ap-track-pl-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 20px;
-  border: 1px solid;
-  text-decoration: none;
-  cursor: pointer;
-  transition: opacity .15s ease;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-.ap-track-pl-badge:hover { opacity: .7; }
+/* C3 ② — badge playlist sur card track (.ap-track-pl-badge) SUPPRIMÉ :
+   il pointait vers la page courante, info redondante avec les tuiles-mondes. */
 
 /* Réseaux sociaux : flex centré dans sa card */
 .ap-section-socials {
@@ -4468,15 +4319,7 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   overflow: hidden;
 }
 
-/* ── Cards de tracks : relief moderne au survol ──────────────────────── */
-.ap-track-card-inner {
-  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
-}
-.ap-track-card-inner:hover {
-  transform: translateY(-2px);
-  border-color: rgba(var(--brand-rgb), .35);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
-}
+/* C3 ② — overrides hover de l'ancienne track card SUPPRIMÉS (rows denses). */
 
 /* ── Respiration générale : les sections ne se touchent plus ─────────── */
 .ap-section-title { margin-bottom: 14px; }

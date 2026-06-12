@@ -2067,7 +2067,7 @@
 /* ── Boutons d'action sur cellules track ─────────────────────────────────
    Design unifié minimaliste : icône carrée 26px, bordure très discrète,
    couleur de base gris doux, hover coloré subtil. Même look sur les 3
-   emplacements : Top Sons row, mp-son-card marketplace, ap-track-card profil. */
+   emplacements : Top Sons row, mp-son-card marketplace, rows profil. */
 .add-to-pl-btn, .like-btn {
   display: inline-flex !important;
   align-items: center;
@@ -2116,9 +2116,6 @@
 .mp-ranking-row .add-to-pl-btn,
 .mp-ranking-row .like-btn { margin-left: 4px; }
 
-/* Cellule profil artiste : la zone meta est déjà flex */
-.ap-track-card-meta .add-to-pl-btn,
-.ap-track-card-meta .like-btn { margin-left: 4px; }
 `;
     const s = document.createElement('style');
     s.id = 'pl-compact-styles';

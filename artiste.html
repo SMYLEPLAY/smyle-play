@@ -428,9 +428,10 @@
   </section>
 
   <!-- ═══ Sons publiés (visibles ssi l'artiste a au moins 1 track) ═════════
-       Liste compacte : pochette (initiale), titre, plays, date. Lecteur
-       audio natif <audio controls> pour pré-écoute directe (le catalogue
-       WATT principal reste le /watt avec lecteur flottant). -->
+       C3 ② — rows denses sur le player global : play rond, cover mini,
+       titre, repères C0, prix recette. UN SEUL <audio> partagé (créé en JS,
+       wrapper caché #ap-shared-audio) — la mini-bar capte le play et lit
+       les métadonnées (data-track-id / data-track-name / img.ap-track-cover). -->
   <section class="ap-tracks" id="ap-tracks-section" style="display:none"
            aria-label="Sons publiés">
     <div class="ap-tracks-hdr">
@@ -495,21 +496,8 @@
     #ap-sale-disclaimer .ap-sale-disclaimer-text {
       flex: 1;
     }
-    /* Item 1 · Badge plateforme d'origine sur les cards track */
-    .ap-track-card-platform {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(136, 0, 255, .12);
-      border: 1px solid rgba(136, 0, 255, .32);
-      color: rgba(255, 255, 255, .85);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: .2px;
-    }
-    .ap-track-card-platform svg { opacity: .8; }
+    /* C3 ② — l'ancien badge plateforme maison (.ap-track-card-platform) est
+       remplacé par le token C0 SpBadges.provenance() sur les rows. */
   </style>
   <section class="ap-sale-disclaimer" id="ap-sale-disclaimer" style="display:none"
            aria-label="Informations légales sur les achats de prompts">
@@ -663,7 +651,7 @@
 <!-- C2 — drawer d'achat unifié -->
 <script src="/ui/modals/purchase-drawer.js?v=20260612"></script>
 <script src="/ui/playlists.js?v=20260613a" defer></script>
-<script src="/artiste.js?v=20260613a"></script>
+<script src="/artiste.js?v=20260613b"></script>
 <script src="/ui/player/mini-bar.js" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
