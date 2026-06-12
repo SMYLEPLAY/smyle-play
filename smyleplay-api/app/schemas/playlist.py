@@ -67,6 +67,10 @@ class PlaylistRead(BaseModel):
     adn_for_sale: bool
     adn_price: int | None
     created_at: datetime
+    # Fix QA C3 ② (2026-06-12) — nb de tracks SANS charger les tracks
+    # (la projection reste compacte). Rempli par les routeurs liste via
+    # svc.count_tracks_by_playlists ; défaut 0 pour rétro-compat.
+    track_count: int = 0
 
 
 class PlaylistWithTracks(BaseModel):

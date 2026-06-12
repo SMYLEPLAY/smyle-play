@@ -760,7 +760,11 @@
             playlists.map(function(p, i) {
               const nc     = p.color || '#cc88ff';
               const ncRgb  = _hexToRgb(nc);
-              const nbTracks = (p.tracks && p.tracks.length) || 0;
+              // Fix QA C3 ② — le endpoint liste renvoie track_count (les
+              // tracks ne sont pas chargées dans cette projection compacte).
+              const nbTracks = (p.track_count != null)
+                ? p.track_count
+                : ((p.tracks && p.tracks.length) || 0);
               const mediaBg = p.cover_video_url
                 ? '<video class="ap-pl-world-media" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
                 : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';

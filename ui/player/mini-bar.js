@@ -205,10 +205,15 @@
     let el = audioEl.parentElement;
     for (let i = 0; i < 8 && el; i++) {
       const tid  = el.dataset.trackId  || el.getAttribute('data-track-id');
+      // Fix QA C3 ② — ❤️/➕ de la bar appellent toggleLike /
+      // openAddToPlaylistModal qui attendent l'UUID du track (comme les
+      // boutons des rows), pas l'id legacy. data-track-uuid est posé par
+      // le wrapper audio partagé du profil ; fallback tid sinon.
+      const tuid = el.dataset.trackUuid || el.getAttribute('data-track-uuid');
       const name = el.dataset.trackName || el.getAttribute('data-track-name');
       const titleEl = el.querySelector('.mp-son-card-title, .ap-track-card-title, h3.ap-track-card-title');
-      if (tid || name || titleEl) {
-        info.id   = tid || null;
+      if (tid || tuid || name || titleEl) {
+        info.id   = tuid || tid || null;
         info.name = name || (titleEl && titleEl.textContent.trim()) || '—';
         // Artist depuis la card
         const artistEl = el.querySelector('.mp-son-card-artist-name, .ap-artist-name');
