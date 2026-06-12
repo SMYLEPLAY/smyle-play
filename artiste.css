@@ -3407,10 +3407,12 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   VOICES — cellule "Voix à vendre" (P1-F9 frontend public)
-   Calque .ap-prompts. Différences :
-   - badge licence (Personnel / Commercial / Exclusif) au lieu de "Avec paroles"
-   - sample_url JAMAIS dans cette cellule publique (gated jusqu'à unlock)
+   VOICES — CAPSULES VOCALES (C3 ② — 2026-06-13)
+   Une nature = une forme + une couleur : la voix est ORANGE (token C0
+   --sp-nature-voix) et CAPSULE (card horizontale très arrondie), donc
+   impossible à confondre avec les rows de tracks (teintées brand).
+   Lecteur de preview ROND — l'<audio> est caché, piloté par le bouton.
+   sample_url JAMAIS exposé publiquement (preview 30s only, gating router).
    ═══════════════════════════════════════════════════════════════════════ */
 .ap-voices {
   max-width: 920px;
@@ -3437,95 +3439,143 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   letter-spacing: .04em;
 }
 .ap-voices-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-}
-.ap-voice-card {
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.08);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: border-color .12s ease, background .12s ease;
 }
-.ap-voice-card:hover {
-  border-color: rgba(var(--brand-rgb), .35);
-  background: rgba(var(--brand-rgb), .05);
-}
-.ap-voice-card-top {
+.ap-voice-capsule {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 10px;
+  border-radius: 32px;  /* capsule */
+  background: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sp-nature-voix, #ff9500) 30%, transparent);
+  cursor: pointer;
+  transition: border-color var(--sp-transition, 150ms ease),
+              background var(--sp-transition, 150ms ease);
 }
-.ap-voice-card-title {
+.ap-voice-capsule:hover {
+  border-color: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 55%, transparent);
+  background: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 11%, transparent);
+}
+/* Fallback navigateurs sans color-mix : surfaces neutres tokens. */
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+  .ap-voice-capsule {
+    background: var(--sp-surface, rgba(255,255,255,.04));
+    border-color: var(--sp-border, rgba(255,255,255,.10));
+  }
+}
+.ap-voice-capsule.is-playing {
+  border-color: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 75%, transparent);
+}
+.ap-voice-play {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sp-nature-voix, #ff9500) 55%, transparent);
+  color: var(--sp-nature-voix, #ff9500);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background var(--sp-transition, 150ms ease);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.ap-voice-play:hover { background: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 30%, transparent); }
+.ap-voice-play:disabled { opacity: .45; cursor: default; }
+.ap-voice-capsule.is-playing .ap-voice-play {
+  background: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 35%, transparent);
+}
+.ap-voice-main { flex: 1; min-width: 0; }
+.ap-voice-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ap-voice-name {
   font-size: 14px;
   margin: 0;
-  color: #fff;
-  font-weight: 600;
-}
-.ap-voice-card-style {
-  font-size: 12.5px;
-  margin: 0;
-  color: rgba(255,255,255,.62);
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  color: var(--sp-text, #e8e8f0);
+  font-weight: 700;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
-.ap-voice-card-meta {
+.ap-voice-style {
+  font-size: 12px;
+  margin: 2px 0 0;
+  color: var(--sp-text-faint, rgba(255,255,255,.55));
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ap-voice-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
 }
-.ap-voice-badge {
+.ap-voice-badges .sp-pill { font-size: 10px; padding: 1px 7px; }
+.ap-voice-chip {
   font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.78);
-  border: 1px solid rgba(255,255,255,.12);
+  padding: 2px 8px;
+  border-radius: var(--sp-radius-pill, 999px);
+  background: var(--sp-surface, rgba(255,255,255,.04));
+  color: var(--sp-text-muted, rgba(255,255,255,.72));
+  border: 1px solid var(--sp-border, rgba(255,255,255,.10));
   white-space: nowrap;
 }
-.ap-voice-license-badge {
-  background: rgba(255,215,0,.1);
-  color: #FFD700;
-  border-color: rgba(255,215,0,.25);
+.ap-voice-soldout {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--sp-radius-pill, 999px);
+  color: var(--sp-danger, #ff5577);
+  border: 1px solid color-mix(in srgb, var(--sp-danger, #ff5577) 45%, transparent);
+  background: color-mix(in srgb, var(--sp-danger, #ff5577) 10%, transparent);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.ap-voice-license-badge.is-exclusif {
-  background: rgba(255,80,80,.12);
-  color: #ff8a8a;
-  border-color: rgba(255,80,80,.3);
+.ap-voice-side {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
-.ap-voice-card-actions { margin-top: auto; }
 .ap-voice-unlock-btn {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 10px;
-  font-size: 10px; font-weight: 700;
+  padding: 6px 12px;
+  font-size: 11px; font-weight: 700;
   letter-spacing: .05em;
-  color: #cc88ff;
-  border-radius: 999px;
-  border: 1px solid rgba(204, 136, 255, .45);
-  background: rgba(0, 0, 0, .65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  color: var(--sp-nature-voix, #ff9500);
+  border-radius: var(--sp-radius-pill, 999px);
+  border: 1px solid color-mix(in srgb, var(--sp-nature-voix, #ff9500) 50%, transparent);
+  background: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 10%, transparent);
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  transition: background var(--sp-transition, 150ms ease),
+              border-color var(--sp-transition, 150ms ease);
   white-space: nowrap;
 }
 .ap-voice-unlock-btn:hover {
-  background: rgba(204, 136, 255, .18);
-  border-color: rgba(204, 136, 255, .8);
+  background: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 22%, transparent);
+  border-color: color-mix(in srgb, var(--sp-nature-voix, #ff9500) 80%, transparent);
 }
 .ap-voice-unlock-btn:disabled { opacity: .5; cursor: wait; }
 .ap-voice-owner-note {
   font-size: 12px;
-  color: rgba(255,255,255,.5);
+  color: var(--sp-text-faint, rgba(255,255,255,.55));
   font-style: italic;
+}
+@media (max-width: 640px) {
+  .ap-voice-capsule { gap: 9px; padding: 8px 12px 8px 8px; }
+  .ap-voice-style { display: none; }
 }
 /* P1-F4 (2026-05-04) — réglages génération sur card prompt publique.
    Badges plateforme/modèle/vocal gender + bloc weirdness/style influence. */
@@ -3601,16 +3651,8 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 }
 .ap-track-unlock-btn:disabled { opacity: .5; cursor: wait; }
 
-/* Lecteur de pré-écoute publique (P1-F9 enhancement 2026-05-03).
-   Audio jouable avant achat — le bouton Télécharger n'apparaît qu'après
-   unlock dans /library. */
-.ap-voice-preview {
-  width: 100%;
-  height: 32px;
-  outline: none;
-  border-radius: 6px;
-  filter: invert(1) hue-rotate(180deg) brightness(.85);
-}
+/* C3 ② — .ap-voice-preview (audio controls natif) SUPPRIMÉ : la pré-écoute
+   passe par le bouton rond des capsules (.ap-voice-play, audio caché). */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    BOUTIQUE v2 — Cards compactes + Drawer de détail
@@ -3971,8 +4013,7 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   .ap-prompts,
   .ap-voices,
   .ap-tracks { padding: 0 18px; }
-  .ap-prompts-list,
-  .ap-voices-list { grid-template-columns: 1fr; }
+  .ap-prompts-list { grid-template-columns: 1fr; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

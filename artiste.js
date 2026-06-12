@@ -2179,12 +2179,9 @@ function renderResale(items) {
   });
 }
 
-// Libellés humains des licences (alignés sur le backend VoiceLicense).
-const VOICE_LICENSE_LBL = {
-  personnel:  'Personnel',
-  commercial: 'Commercial',
-  exclusif:   'Exclusif',
-};
+// C3 ② — VOICE_LICENSE_LBL supprimé : le vocabulaire « licence » a disparu
+// des capsules publiques (remplacé par la rareté #X/N). Le drawer garde son
+// propre LICENSE_LBL local (openBoutiqueDrawer).
 
 // Mapping des keys de genres vers leurs labels affichés.
 // (Source de vérité : DASH_VOICE_GENRES côté dashboard.js. On duplique ici
@@ -2215,64 +2212,75 @@ function renderVoices(artist) {
   setText('ap-voices-count',
     `${voices.length} voix`);
 
+  // C3 ② — CAPSULES VOCALES : cards horizontales couleur nature voix
+  // (orange C0, --sp-nature-voix), lecteur de preview ROND, rareté #X/N
+  // via tokens. Impossible à confondre avec les rows de tracks.
+  // Règle stricte (voix séparées du flux musical) : preview 30s public,
+  // JAMAIS le full — sample_url n'arrive que pour owner/unlocked (router).
   list.innerHTML = '';
   voices.forEach(v => {
     const card = document.createElement('article');
-    card.className = 'ap-voice-card';
+    card.className = 'ap-voice-capsule';
+    card.dataset.voiceId = v.id;
     const safeName  = (v.name  || '').replace(/</g, '&lt;');
     const safeStyle = (v.style || '').replace(/</g, '&lt;');
     const priceStr  = formatCount(v.price_credits);
-    // Chantier Voix 2026-06-12 — le vocabulaire « licence » disparaît :
-    // la rareté #X/N prend sa place (alignée sur les prompts).
-    const _vSold = v.editions_sold || 0;
+
+    // Rareté #X/N — le payload public expose max_supply + editions_sold
+    // (audit smyleplay-api routers/voices.py + services/voices.py 2026-06-12).
+    // Prochain exemplaire minté = editions_sold + 1. 1/1 = légendaire.
+    const _vSold   = v.editions_sold || 0;
     const _vSupply = (v.max_supply != null) ? v.max_supply : null;
-    const licenseLbl = (_vSupply != null)
-      ? (_vSupply === 1
-          ? (_vSold >= 1 ? 'Vente unique · vendue' : '1/1 · vente unique')
-          : (_vSold >= _vSupply ? 'Édition épuisée' : 'Édition · ' + (_vSupply - _vSold) + '/' + _vSupply + ' dispo'))
-      : '';
-    const licenseClass = (_vSupply === 1)
-      ? 'ap-voice-badge ap-voice-license-badge is-exclusif'
-      : 'ap-voice-badge ap-voice-license-badge';
+    let rareteBadge  = '';
+    let soldOutBadge = '';
+    if (_vSupply != null && window.SpBadges) {
+      if (_vSold >= _vSupply) {
+        rareteBadge  = SpBadges.rarete(_vSupply, _vSupply);
+        soldOutBadge = '<span class="ap-voice-soldout">Épuisée</span>';
+      } else {
+        rareteBadge = SpBadges.rarete(_vSold + 1, _vSupply, _vSupply === 1 ? 'legendaire' : '');
+      }
+    }
+
+    const natureBadge = window.SpBadges ? SpBadges.nature('voix') : '';
     const genresStr = _voiceGenresStr(v.genres);
-    const genresBadge = genresStr
-      ? `<span class="ap-voice-badge">${genresStr.replace(/</g, '&lt;')}</span>`
+    const genresChip = genresStr
+      ? `<span class="ap-voice-chip">${genresStr.replace(/</g, '&lt;')}</span>`
       : '';
-    // 2026-05-13 — chantier preview 30s :
-    //   - owner/unlocked reçoit sample_url (full) → player full
-    //   - visiteur reçoit preview_url (30s) → player preview
-    //   - voix legacy sans preview → placeholder verrouillé
-    const audioSrc = v.sample_url || v.preview_url || null;
-    const audioLbl = v.sample_url ? '' : (v.preview_url ? ' · 30s preview' : '');
-    const previewBlock = audioSrc
-      ? `<audio controls preload="none" controlsList="nodownload noremoteplayback"
-                oncontextmenu="return false" class="ap-voice-preview"
-                src="${(audioSrc + '').replace(/"/g, '&quot;')}"></audio>
-         <div class="ap-voice-preview-label" style="font-size:11px;color:#a09cb8;margin-top:4px;">${audioLbl ? '🎧 Pré-écoute' + audioLbl : ''}</div>`
-      : `<div class="ap-voice-locked"
-              style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed rgba(204,136,255,.3);border-radius:8px;color:#a09cb8;font-size:12px;font-style:italic">
-           🔒 Pré-écoute après achat
-         </div>`;
-    // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
-    const unlockBtn = artist.isSelf
-      ? '<span class="ap-voice-owner-note">Ta voix</span>'
-      : `<button type="button" class="ap-voice-unlock-btn"
-                 data-voice-id="${v.id}" data-price="${v.price_credits}">
-          🎙 Voix · ${priceStr} crédits
-        </button>`;
-    // Phase B metadata 2026-05-13 : badges origine + lien track
+    // Origine déclarée (Phase B metadata 2026-05-13)
     const _originLabel = (function(o) {
       if (o === 'personal') return '🎙️ Voix personnelle';
       if (o === 'ai') return '🤖 Créée par IA';
       if (o === 'known_artist') return '🌟 Voix d\'artiste connu';
       return '';
     })(v.voice_origin);
-    const originBadge = _originLabel
-      ? `<span class="ap-voice-origin" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(204,136,255,.1);color:#cc88ff;font-size:11px;letter-spacing:.02em;margin-right:6px">${_originLabel}</span>`
+    const originChip = _originLabel
+      ? `<span class="ap-voice-chip">${_originLabel}</span>`
       : '';
-    const linkedTrackBadge = v.linked_track_id
-      ? `<span class="ap-voice-linked" style="display:inline-block;padding:3px 8px;border-radius:999px;background:rgba(255,215,0,.1);color:#FFD700;font-size:11px;letter-spacing:.02em">🎵 Démo dans un morceau</span>`
+
+    // Preview : owner/unlocked = sample_url (full), visiteur = preview_url
+    // (30s), legacy sans preview = bouton verrouillé. Audio CACHÉ piloté
+    // par le bouton rond (un seul lecteur visible : le bouton).
+    const audioSrc  = v.sample_url || v.preview_url || null;
+    const isPreview = !v.sample_url && !!v.preview_url;
+    const playBlock = audioSrc
+      ? `<button type="button" class="ap-voice-play" aria-label="Pré-écoute"
+                 title="${isPreview ? 'Pré-écoute 30s' : 'Écouter'}">${_AP_PLAY_SVG}</button>
+         <audio class="ap-voice-audio" preload="none" hidden
+                src="${(audioSrc + '').replace(/"/g, '&quot;')}"></audio>`
+      : `<button type="button" class="ap-voice-play" disabled
+                 title="Pré-écoute après achat">🔒</button>`;
+    const previewTag = isPreview
+      ? '<span class="ap-voice-chip ap-voice-chip-30s">🎧 30s</span>'
       : '';
+
+    // Pas de bouton unlock pour l'owner (évite l'auto-achat 400).
+    const unlockBtn = artist.isSelf
+      ? '<span class="ap-voice-owner-note">Ta voix</span>'
+      : `<button type="button" class="ap-voice-unlock-btn"
+                 data-voice-id="${v.id}" data-price="${v.price_credits}">
+          🎙 ${priceStr} crédits
+        </button>`;
 
     _voiceDetailCache[v.id] = {
       id:           v.id,
@@ -2284,21 +2292,53 @@ function renderVoices(artist) {
       previewUrl:   v.preview_url || v.previewUrl || '',
     };
 
+    // data-track-name : la mini-bar globale affiche le nom de la voix
+    // pendant la pré-écoute (pas de data-track-id : une voix n'est pas
+    // likable/playlistable — règle de séparation voix/flux musical).
+    card.dataset.trackName = (v.name || 'Voix') + ' · pré-écoute';
     card.innerHTML = `
-      <div class="ap-voice-card-top" style="cursor:pointer"
-           onclick="openVoiceDetailById('${v.id}')"
-        <h3 class="ap-voice-card-title">${safeName}</h3>
-        <span class="${licenseClass}">${licenseLbl}</span>
+      ${playBlock}
+      <div class="ap-voice-main">
+        <div class="ap-voice-top">
+          <h3 class="ap-voice-name">${safeName}</h3>
+          ${rareteBadge}${soldOutBadge}
+        </div>
+        ${safeStyle ? `<p class="ap-voice-style">${safeStyle}</p>` : ''}
+        <div class="ap-voice-badges">
+          ${natureBadge}${originChip}${genresChip}${previewTag}
+        </div>
       </div>
-      ${safeStyle ? `<p class="ap-voice-card-style">${safeStyle}</p>` : ''}
-      ${(originBadge || linkedTrackBadge) ? `<div class="ap-voice-card-badges" style="margin-bottom:6px">${originBadge}${linkedTrackBadge}</div>` : ''}
-      <div class="ap-voice-card-meta">
-        ${genresBadge}
-      </div>
-      ${previewBlock}
-      <div class="ap-voice-card-actions">${unlockBtn}</div>
+      <div class="ap-voice-side">${unlockBtn}</div>
     `;
     list.appendChild(card);
+  });
+
+  // États play/pause des capsules — une seule voix joue à la fois, et la
+  // pré-écoute coupe le player de tracks partagé (jamais l'inverse en
+  // shuffle : les voix restent hors du flux musical).
+  list.querySelectorAll('.ap-voice-audio').forEach(a => {
+    a.addEventListener('play', () => {
+      list.querySelectorAll('.ap-voice-audio').forEach(o => {
+        if (o !== a && !o.paused) { try { o.pause(); } catch (_) {} }
+      });
+      if (_apAudio && !_apAudio.paused) { try { _apAudio.pause(); } catch (_) {} }
+      const cap = a.closest('.ap-voice-capsule');
+      if (cap) {
+        cap.classList.add('is-playing');
+        const btn = cap.querySelector('.ap-voice-play');
+        if (btn) btn.innerHTML = _AP_PAUSE_SVG;
+      }
+    });
+    const onStop = () => {
+      const cap = a.closest('.ap-voice-capsule');
+      if (cap) {
+        cap.classList.remove('is-playing');
+        const btn = cap.querySelector('.ap-voice-play');
+        if (btn) btn.innerHTML = _AP_PLAY_SVG;
+      }
+    };
+    a.addEventListener('pause', onStop);
+    a.addEventListener('ended', onStop);
   });
 
   // ── Accordéon : 4 voix visibles par défaut ──────────────────────────────
@@ -2306,7 +2346,7 @@ function renderVoices(artist) {
   const _prevVT = list.nextElementSibling;
   if (_prevVT && _prevVT.classList && _prevVT.classList.contains('ap-accordion-toggle')) _prevVT.remove();
   if (voices.length > VOICES_FOLD) {
-    const allVC = list.querySelectorAll('.ap-voice-card');
+    const allVC = list.querySelectorAll('.ap-voice-capsule');
     allVC.forEach((c, i) => { c.style.display = i >= VOICES_FOLD ? 'none' : ''; });
     const tbV = document.createElement('button');
     tbV.type = 'button'; tbV.className = 'ap-accordion-toggle';
@@ -2347,11 +2387,27 @@ function renderVoices(artist) {
   }
 
   // Délégation click — un seul listener pour la liste re-rendue souvent.
+  // Bouton rond = play/pause preview · bouton prix = unlock (flux existant)
+  // · clic capsule = fiche détail (drawer).
   list.onclick = (ev) => {
+    const playBtn = ev.target.closest('.ap-voice-play');
+    if (playBtn) {
+      ev.stopPropagation();
+      const cap = playBtn.closest('.ap-voice-capsule');
+      const audio = cap && cap.querySelector('.ap-voice-audio');
+      if (!audio) return;
+      if (audio.paused) _apSafePlay(audio);
+      else audio.pause();
+      return;
+    }
     const btn = ev.target.closest('.ap-voice-unlock-btn');
-    if (!btn) return;
-    const id = btn.dataset.voiceId;
-    if (id) unlockVoiceFromProfile(id, btn);
+    if (btn) {
+      const id = btn.dataset.voiceId;
+      if (id) unlockVoiceFromProfile(id, btn);
+      return;
+    }
+    const cap = ev.target.closest('.ap-voice-capsule');
+    if (cap && cap.dataset.voiceId) openVoiceDetailById(cap.dataset.voiceId);
   };
 }
 
