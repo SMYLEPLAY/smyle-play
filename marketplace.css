@@ -491,6 +491,8 @@
 /* --- Carte son (catalogue) ----------------------------------- */
 
 .mp-son-card {
+  /* position:relative = ancre du badge recette en coin (QA 2026-06-13) */
+  position: relative;
   padding: 14px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.035);
@@ -1075,29 +1077,11 @@
   margin: 0;
 }
 
-/* ── Badge Recette sur track cards ─────────────────────────────────────── */
-.mp-recipe-badge {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  background: rgba(0,0,0,.72);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,200,80,.45);
-  border-radius: 999px;
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #ffc850;
-  letter-spacing: .02em;
-  cursor: pointer;
-  z-index: 8;
-  transition: background .15s, border-color .15s;
-  pointer-events: auto;
-}
-.mp-recipe-badge:hover {
-  background: rgba(255,200,80,.18);
-  border-color: rgba(255,200,80,.85);
-}
+/* ── Badge Recette sur track cards ───────────────────────────────────────
+   ⚠️ Définition canonique déplacée plus bas (« Bouton recette cliquable »).
+   Ce bloc dupliqué FUSIONNAIT avec l'autre (absolu haut-gauche + pleine
+   largeur translucide) → barre illisible qui mangeait la cover (retour QA
+   Tom 2026-06-13). Un seul bloc fait foi désormais. */
 .mp-recipe-badge.is-owned {
   border-color: rgba(100,220,100,.5);
   color: #88dd88;
@@ -1460,26 +1444,35 @@
 .mp-son-card-recipe-row {
   padding: 0 4px 4px;
 }
+/* Définition CANONIQUE (retour QA Tom 2026-06-13) : pastille compacte dans
+   le COIN haut-droit de la card — elle ne mange plus la cover — fond quasi
+   opaque pour rester lisible sur n'importe quelle pochette. */
 .mp-recipe-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  left: auto;
+  width: auto;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(204,136,255,.12);
-  border: 1px solid rgba(204,136,255,.35);
-  border-radius: 8px;
-  padding: 4px 9px;
+  background: rgba(12, 9, 20, .92);
+  border: 1px solid rgba(204, 136, 255, .65);
+  border-radius: 999px;
+  padding: 4px 10px;
   font-size: 11px;
-  color: #cc88ff;
+  color: #e7d9ff;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: background .15s, border-color .15s;
-  width: 100%;
-  justify-content: center;
+  z-index: 8;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+  transition: background .15s, border-color .15s, transform .15s;
 }
 .mp-recipe-badge:hover {
-  background: rgba(204,136,255,.25);
-  border-color: rgba(204,136,255,.7);
+  background: rgba(50, 28, 78, .96);
+  border-color: rgba(204, 136, 255, .95);
+  transform: scale(1.04);
 }
 .mp-recipe-badge.is-owned {
   color: #6fffb0;
