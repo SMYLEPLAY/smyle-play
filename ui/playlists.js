@@ -384,15 +384,19 @@
       '.ap-pl-worlds-row.is-grid { display: grid; grid-template-columns: repeat(3, 1fr); overflow-x: visible; scroll-snap-type: none; }' +
       '.ap-pl-worlds-row.is-grid .ap-pl-world { flex: none; width: auto; height: auto; aspect-ratio: 1/1; scroll-snap-align: none; }' +
       '@media (max-width: 560px) { .ap-pl-worlds-row.is-grid { grid-template-columns: repeat(2, 1fr); } }' +
-      '.ap-pl-world { position: relative; flex: 0 0 250px; height: 144px; border-radius: var(--sp-radius-lg, 16px); overflow: hidden; cursor: pointer; scroll-snap-align: start; background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid rgba(var(--nc-rgb, 204,136,255), .28); transition: border-color var(--sp-transition, 150ms ease), transform var(--sp-transition, 150ms ease); }' +
-      '.ap-pl-world:hover { border-color: rgba(var(--nc-rgb, 204,136,255), .65); transform: translateY(-2px); }' +
+      // C3 ② ter (2026-06-12) — passe « plus fine » : bordure discrète, voile
+      // léger, nom moins gras (600, casse normale) ; un mince filet de couleur
+      // en bas remplace le gros titre coloré pour l'accent « stylisé ».
+      '.ap-pl-world { position: relative; flex: 0 0 230px; height: 134px; border-radius: var(--sp-radius-lg, 14px); overflow: hidden; cursor: pointer; scroll-snap-align: start; background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid rgba(var(--nc-rgb, 204,136,255), .14); transition: border-color var(--sp-transition, 150ms ease), transform var(--sp-transition, 150ms ease), box-shadow var(--sp-transition, 150ms ease); }' +
+      '.ap-pl-world::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:linear-gradient(90deg, rgba(var(--nc-rgb,204,136,255),.85), rgba(var(--nc-rgb,204,136,255),0)); z-index:6; pointer-events:none; }' +
+      '.ap-pl-world:hover { border-color: rgba(var(--nc-rgb, 204,136,255), .4); transform: translateY(-2px); box-shadow: 0 6px 20px -8px rgba(var(--nc-rgb,204,136,255),.4); }' +
       '.ap-pl-world-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }' +
-      '.ap-pl-world-fallback { display: flex; align-items: center; justify-content: center; font-size: 2rem; opacity: .55; background: linear-gradient(135deg, rgba(var(--nc-rgb, 204,136,255), .4), var(--sp-bg, #050508)); }' +
-      '.ap-pl-world-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.22) 48%, transparent 72%); }' +
-      '.ap-pl-world-info { position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 5; pointer-events: none; }' +
-      '.ap-pl-world-name { font-size: 14px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; line-height: 1.2; margin: 0; color: var(--nc, var(--sp-mauve, #cc88ff)); text-shadow: 0 1px 6px rgba(0,0,0,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
-      '.ap-pl-world-meta { font-size: 11px; color: var(--sp-text-muted, rgba(255,255,255,.72)); margin-top: 2px; }' +
-      '@media (max-width: 560px) { .ap-pl-world { flex-basis: 76vw; height: 152px; } }' +
+      '.ap-pl-world-fallback { display: flex; align-items: center; justify-content: center; font-size: 1.6rem; opacity: .5; background: linear-gradient(135deg, rgba(var(--nc-rgb, 204,136,255), .28), var(--sp-bg, #050508)); }' +
+      '.ap-pl-world-scrim { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.62) 0%, rgba(0,0,0,.12) 42%, transparent 64%); }' +
+      '.ap-pl-world-info { position: absolute; left: 12px; right: 12px; bottom: 9px; z-index: 5; pointer-events: none; }' +
+      '.ap-pl-world-name { font-size: 13px; font-weight: 600; letter-spacing: .005em; line-height: 1.25; margin: 0; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
+      '.ap-pl-world-meta { font-size: 10.5px; font-weight: 500; color: var(--sp-text-muted, rgba(255,255,255,.6)); margin-top: 1px; }' +
+      '@media (max-width: 560px) { .ap-pl-world { flex-basis: 72vw; height: 144px; } }' +
       // Bouton quick-play centré (même pattern card-quick-play WATT)
       '.ap-pl-qp { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.7); width:44px; height:44px; border-radius:50%; background:rgba(5,5,8,.72); backdrop-filter:blur(8px); border:1.5px solid var(--sp-border, rgba(255,255,255,.10)); color:var(--sp-text,#e8e8f0); cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .22s,transform .22s,border-color .22s,background .22s; z-index:10; }' +
       '.ap-pl-qp svg { width:15px; height:15px; fill:currentColor; margin-left:2px; }' +
@@ -1530,9 +1534,17 @@
         (typeof getAuthToken === 'function' && getAuthToken())
           ? { 'Authorization': 'Bearer ' + getAuthToken() } : {}
       );
-      const resp = await fetch('/playlists/' + encodeURIComponent(playlistId), {
+      // Fix QA C3 ② ter — /playlists/{id} exige d'être connecté ET owner :
+      // un visiteur (ou un fan sur le profil d'un autre) ne pouvait plus
+      // ouvrir une playlist. On tente l'endpoint public d'abord (playlists
+      // publiques, sans auth) puis on retombe sur l'owner pour les privées.
+      const pid = encodeURIComponent(playlistId);
+      let resp = await fetch('/watt/playlists/' + pid, {
         credentials: 'same-origin', headers
       });
+      if (!resp.ok && (typeof getAuthToken === 'function' && getAuthToken())) {
+        resp = await fetch('/playlists/' + pid, { credentials: 'same-origin', headers });
+      }
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const playlist = await resp.json();
       const content = overlay.querySelector('#pl-view-content');
