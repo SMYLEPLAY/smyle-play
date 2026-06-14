@@ -36,10 +36,11 @@
     trades:    { ids: ['sec-trades'],                label: 'Échanges' },
     stats:     { ids: ['sec-stats', 'sec-ranking'],  label: 'Analytique' },
     trophees:  { ids: ['sec-trophees'],              label: 'Trophées' },
+    images:    { ids: ['sec-image-create'],          label: 'Créer une image' },
   };
 
   /* Compteurs (cache local au module, rafraîchi au retour board) */
-  var counts = { sons: null, adn: null, voix: null };
+  var counts = { sons: null, adn: null, voix: null, images: null };
   var hero   = { plays: null, followers: null, rank: null, smyles: null };
 
   function $(id) { return document.getElementById(id); }
@@ -97,6 +98,12 @@
   };
   function createAction(kind) {
     closeCreateMenu();
+    if (kind === 'image') {
+      openScreen('images');
+      // Le formulaire image gère son propre reset à l'ouverture (idempotent).
+      try { if (window.ImageCreate && typeof window.ImageCreate.focus === 'function') window.ImageCreate.focus(); } catch (_) {}
+      return;
+    }
     if (kind === 'adn')  { openScreen('adn');  return; }
     if (kind === 'voix') { openScreen('voix'); return; }
     openScreen('sons');
@@ -218,8 +225,11 @@
       // Décisions 2026-06-10 : Images + ADN visuel arrivent en C4 (upload
       // + provenance IA obligatoire) ; FX = phase 2 du monde Visuel
       // (doublon avec le prompt vendu avec l'image, miroir des Voix).
-      return tileHtml('images',     '🖼️', 'Images IA',  null, { locked: true, lockLabel: 'Chantier C4' })
-           + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { locked: true, lockLabel: 'Chantier C4' })
+      // C4 livraison ② : la tuile Images IA est débloquée (création image
+      // avec provenance IA obligatoire). ADN visuel = V2 ("Bientôt"),
+      // FX = phase 2 du monde Visuel.
+      return tileHtml('images',     '🖼️', 'Images IA',  'images', { createKind: 'image', viewKey: 'images', countLabel: 'publiées' })
+           + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { locked: true, lockLabel: 'Bientôt' })
            + tileHtml('fx',         '✨', 'FX',         null, { locked: true, lockLabel: 'Phase 2' });
     }
     // DÉCISION 100 % IA (Tom, 2026-06-10) : aucun produit non-IA vendu sur
@@ -239,7 +249,11 @@
   /* ── Menu "+ Créer" ─────────────────────────────────────────────────── */
 
   function createMenuHtml(monde) {
-    if (monde === 'visuel') return '';
+    if (monde === 'visuel') {
+      // C4 livraison ② : monde Visuel ouvert à la création d'image.
+      return '' +
+        '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette (prompt + réglages) + le fichier original</em></span></button>';
+    }
     return '' +
       '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>' +
@@ -284,7 +298,7 @@
           '<button type="button" class="wb3-monde-btn' + (monde === 'visuel' ? ' is-active' : '') + '" data-monde="visuel" role="tab" aria-selected="' + (monde === 'visuel') + '">🎨 Visuel</button>' +
         '</div>' +
         '<div class="wb3-create-wrap">' +
-          '<button type="button" class="wb3-create-btn" id="wb3-create-btn"' + (monde === 'visuel' ? ' disabled title="Le monde Visuel ouvre au chantier C4"' : '') + '>+ Créer</button>' +
+          '<button type="button" class="wb3-create-btn" id="wb3-create-btn">+ Créer</button>' +
           '<div class="wb3-create-menu" id="wb3-create-menu" role="menu">' + createMenuHtml(monde) + '</div>' +
         '</div>' +
       '</div>' +
@@ -458,5 +472,12 @@
   }
 
   // API publique (debug / autres scripts)
-  window.WattBoardV3 = { open: openScreen, back: backToBoard, refresh: refreshCounts };
+  // bumpImages : appelé par images-create.js après une création réussie.
+  // Pas d'endpoint liste image en livraison ② (arrive en ③ avec la vitrine) :
+  // on incrémente le compteur localement pour un retour visuel immédiat.
+  function bumpImages() {
+    var cur = (typeof counts.images === 'number') ? counts.images : 0;
+    setCount('images', cur + 1);
+  }
+  window.WattBoardV3 = { open: openScreen, back: backToBoard, refresh: refreshCounts, bumpImages: bumpImages };
 })();

@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="/ui/core/badges.css" />
   <script src="/ui/core/badges.js" defer></script>
   <!-- C1 — WattBoard v3 (bandeau + 2 mondes + tuiles + création Audio) -->
-  <link rel="stylesheet" href="wattboard-v3.css?v=20260610e" />
+  <link rel="stylesheet" href="wattboard-v3.css?v=20260610f" />
 
 <style>
 /* SLIDER PROMPT SETTINGS */
@@ -1618,6 +1618,272 @@
 
 
   <!-- ──────────────────────────────────────────────────────────────────────────
+       C4 LIVRAISON ② — CRÉATION D'UNE IMAGE IA (monde 🎨 Visuel)
+       ──────────────────────────────────────────────────────────────────────────
+       Écran dédié (dash-section) ouvert par le WattBoard via la tuile
+       « Images IA » ou le menu « + Créer » du monde Visuel. Mirroir du flux
+       audio : la section est masquée par défaut (body.wb3-active .dash-section)
+       et affichée via .wb3-open. Logique dans images-create.js.
+
+       Tronc commun + champs spécifiques par plateforme (assemblés dans
+       image_settings). Soumission multipart vers POST /artist/me/images.
+       ────────────────────────────────────────────────────────────────────────── -->
+  <section class="dash-section" id="sec-image-create" data-img-platform="">
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">🎨</span>
+      <span class="dash-subhdr-title">Vendre une image IA</span>
+      <span class="dash-subhdr-sub">le visuel est écoutable… enfin, visible — la recette (prompt + réglages) se débloque à l'achat</span>
+    </div>
+
+    <div class="dash-voice-banner imgc-honesty">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.6" fill="currentColor"/></svg>
+      Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>. La reproductibilité dépend de la plateforme (le seed aide sur Stable Diffusion / Flux ; DALL·E n'en a pas).
+    </div>
+
+    <div class="dash-field-col">
+      <!-- ── Tronc commun ──────────────────────────────────────────────── -->
+      <label class="dash-label">Titre <span class="dash-req">*</span></label>
+      <input type="text" class="dash-input" id="imgcTitle" maxlength="120"
+             placeholder="ex : Néon Tokyo, Chrome Angel, Sunset Liquid..." />
+      <div class="dash-help">Le nom affiché sur la carte produit.</div>
+
+      <label class="dash-label">Plateforme de génération <span class="dash-req">*</span></label>
+      <select class="dash-input" id="imgcPlatform">
+        <option value="">— Sélectionne la plateforme —</option>
+        <option value="midjourney">Midjourney</option>
+        <option value="dalle">DALL·E / GPT Image (OpenAI)</option>
+        <option value="flux">Flux</option>
+        <option value="stable_diffusion">Stable Diffusion</option>
+        <option value="autre">Autre</option>
+      </select>
+      <div class="dash-help">Provenance obligatoire — c'est ce qui donne de la valeur à la recette. Elle pilote les réglages affichés ci-dessous.</div>
+
+      <label class="dash-label">Version / modèle <span class="dash-req">*</span></label>
+      <input type="text" class="dash-input" id="imgcModelVersion" maxlength="100"
+             placeholder="ex : v6.1, DALL·E 3, Flux 1.1 Pro, SDXL 1.0..." />
+      <div class="dash-help">La version exacte du moteur utilisé (max 100 caractères).</div>
+
+      <label class="dash-label">Prompt <span class="dash-req">*</span></label>
+      <textarea class="dash-input imgc-textarea" id="imgcPrompt" rows="4" maxlength="5000"
+                placeholder="Le prompt complet qui a généré l'image. Gaté derrière l'achat — c'est ta recette."></textarea>
+      <div class="dash-help">1 à 5000 caractères. Invisible publiquement, dévoilé à l'acheteur.</div>
+
+      <label class="dash-label">Ratio / format <span style="font-weight:400;">(optionnel)</span></label>
+      <input type="text" class="dash-input" id="imgcRatio" maxlength="20"
+             placeholder="ex : 1:1, 16:9, 3:2..." />
+
+      <label class="dash-label">Description <span style="font-weight:400;">(optionnel)</span></label>
+      <textarea class="dash-input imgc-textarea" id="imgcDescription" rows="2" maxlength="2000"
+                placeholder="Contexte, intention, univers... (visible publiquement)"></textarea>
+
+      <!-- ── Champs spécifiques par plateforme (→ image_settings) ───────── -->
+      <div class="imgc-dyn" data-img-block="midjourney">
+        <div class="imgc-dyn-hdr">Réglages Midjourney</div>
+        <div class="imgc-grid">
+          <div>
+            <label class="dash-label">Version</label>
+            <select class="dash-input" id="imgcMjVersion">
+              <option value="">—</option>
+              <option value="v6.1">v6.1</option>
+              <option value="v7">v7</option>
+              <option value="niji 6">niji 6</option>
+            </select>
+          </div>
+          <div>
+            <label class="dash-label">--stylize (0-1000)</label>
+            <input type="number" class="dash-input" id="imgcMjStylize" min="0" max="1000" placeholder="ex : 250" />
+          </div>
+          <div>
+            <label class="dash-label">--chaos (0-100)</label>
+            <input type="number" class="dash-input" id="imgcMjChaos" min="0" max="100" placeholder="ex : 0" />
+          </div>
+          <div>
+            <label class="dash-label">--weird (0-3000)</label>
+            <input type="number" class="dash-input" id="imgcMjWeird" min="0" max="3000" placeholder="ex : 0" />
+          </div>
+          <div>
+            <label class="dash-label">--seed</label>
+            <input type="text" class="dash-input" id="imgcMjSeed" maxlength="40" placeholder="ex : 123456" />
+          </div>
+          <div>
+            <label class="dash-label">--quality</label>
+            <input type="text" class="dash-input" id="imgcMjQuality" maxlength="20" placeholder="ex : 1, 2..." />
+          </div>
+        </div>
+        <label class="imgc-check">
+          <input type="checkbox" id="imgcMjStyleRaw" /> <span>Mode <code>--style raw</code></span>
+        </label>
+      </div>
+
+      <div class="imgc-dyn" data-img-block="dalle">
+        <div class="imgc-dyn-hdr">Réglages DALL·E / GPT Image</div>
+        <div class="imgc-warn">⚠️ Reproductibilité faible : OpenAI n'expose pas de seed. La même recette donnera un résultat dans le même esprit, jamais identique.</div>
+        <div class="imgc-grid">
+          <div>
+            <label class="dash-label">Modèle</label>
+            <select class="dash-input" id="imgcDalleModel">
+              <option value="">—</option>
+              <option value="DALL-E 3">DALL·E 3</option>
+              <option value="GPT-Image-1">GPT-Image-1</option>
+            </select>
+          </div>
+          <div>
+            <label class="dash-label">Qualité</label>
+            <select class="dash-input" id="imgcDalleQuality">
+              <option value="">—</option>
+              <option value="standard">standard</option>
+              <option value="hd">HD</option>
+            </select>
+          </div>
+          <div>
+            <label class="dash-label">Style</label>
+            <select class="dash-input" id="imgcDalleStyle">
+              <option value="">—</option>
+              <option value="vivid">vivid</option>
+              <option value="natural">natural</option>
+            </select>
+          </div>
+          <div>
+            <label class="dash-label">Taille</label>
+            <input type="text" class="dash-input" id="imgcDalleSize" maxlength="20" placeholder="ex : 1024x1024" />
+          </div>
+        </div>
+      </div>
+
+      <div class="imgc-dyn" data-img-block="flux">
+        <div class="imgc-dyn-hdr">Réglages Flux</div>
+        <div class="imgc-grid">
+          <div>
+            <label class="dash-label">Variante</label>
+            <select class="dash-input" id="imgcFluxVariant">
+              <option value="">—</option>
+              <option value="1.1 Pro">1.1 Pro</option>
+              <option value="Pro">Pro</option>
+              <option value="Dev">Dev</option>
+              <option value="Schnell">Schnell</option>
+            </select>
+          </div>
+          <div>
+            <label class="dash-label">Guidance</label>
+            <input type="number" class="dash-input" id="imgcFluxGuidance" step="0.1" placeholder="ex : 3.5" />
+          </div>
+          <div>
+            <label class="dash-label">Steps</label>
+            <input type="number" class="dash-input" id="imgcFluxSteps" min="1" placeholder="ex : 28" />
+          </div>
+          <div>
+            <label class="dash-label">Seed</label>
+            <input type="text" class="dash-input" id="imgcFluxSeed" maxlength="40" placeholder="ex : 123456" />
+          </div>
+        </div>
+      </div>
+
+      <div class="imgc-dyn" data-img-block="stable_diffusion">
+        <div class="imgc-dyn-hdr">Réglages Stable Diffusion</div>
+        <div class="imgc-grid">
+          <div>
+            <label class="dash-label">Modèle / checkpoint <span class="dash-req">*</span></label>
+            <input type="text" class="dash-input" id="imgcSdCheckpoint" maxlength="120" placeholder="ex : SDXL 1.0, RealVisXL..." />
+          </div>
+          <div>
+            <label class="dash-label">Sampler</label>
+            <input type="text" class="dash-input" id="imgcSdSampler" maxlength="60" placeholder="ex : DPM++ 2M Karras" />
+          </div>
+          <div>
+            <label class="dash-label">Steps</label>
+            <input type="number" class="dash-input" id="imgcSdSteps" min="1" placeholder="ex : 30" />
+          </div>
+          <div>
+            <label class="dash-label">CFG scale</label>
+            <input type="number" class="dash-input" id="imgcSdCfg" step="0.1" placeholder="ex : 7" />
+          </div>
+          <div>
+            <label class="dash-label">Seed</label>
+            <input type="text" class="dash-input" id="imgcSdSeed" maxlength="40" placeholder="ex : 123456" />
+          </div>
+          <div>
+            <label class="dash-label">Résolution native</label>
+            <input type="text" class="dash-input" id="imgcSdResolution" maxlength="20" placeholder="ex : 1024x1024" />
+          </div>
+        </div>
+        <label class="dash-label">LoRA(s) + poids</label>
+        <input type="text" class="dash-input" id="imgcSdLoras" maxlength="300" placeholder="ex : add-detail-xl:0.6, film-grain:0.3" />
+        <label class="dash-label">Prompt négatif <span style="font-weight:400;">(optionnel)</span></label>
+        <textarea class="dash-input imgc-textarea" id="imgcNegativePrompt" rows="2" maxlength="5000"
+                  placeholder="ex : blurry, lowres, extra fingers, watermark..."></textarea>
+        <div class="dash-help">Champ dédié — il NE part PAS dans les réglages, il a son propre emplacement chez l'acheteur.</div>
+      </div>
+
+      <div class="imgc-dyn" data-img-block="autre">
+        <div class="imgc-dyn-hdr">Réglages (autre plateforme)</div>
+        <div class="imgc-grid">
+          <div>
+            <label class="dash-label">Version</label>
+            <input type="text" class="dash-input" id="imgcOtherVersion" maxlength="100" placeholder="version du moteur" />
+          </div>
+          <div>
+            <label class="dash-label">Seed</label>
+            <input type="text" class="dash-input" id="imgcOtherSeed" maxlength="40" placeholder="ex : 123456" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Champ libre commun à toutes les plateformes -->
+      <label class="dash-label">Autres réglages <span style="font-weight:400;">(optionnel)</span></label>
+      <textarea class="dash-input imgc-textarea" id="imgcExtraSettings" rows="2" maxlength="1000"
+                placeholder="Tout réglage non couvert ci-dessus (upscaler, post-traitement, ControlNet...)"></textarea>
+
+      <!-- ── Fichier + aperçu ──────────────────────────────────────────── -->
+      <label class="dash-label">Fichier image <span class="dash-req">*</span></label>
+      <div class="imgc-dropzone" id="imgcDropzone">
+        <div class="imgc-preview-wrap">
+          <img id="imgcPreview" class="imgc-preview" alt="" hidden />
+          <div class="imgc-preview-ph" id="imgcPreviewPh">🖼️</div>
+        </div>
+        <div class="imgc-file-info" id="imgcFileInfo">PNG, JPG ou WebP — 20 Mo max</div>
+        <label class="dash-btn-secondary" style="cursor:pointer;margin:0">
+          <input type="file" id="imgcFile" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                 style="display:none" />
+          Choisir un fichier
+        </label>
+      </div>
+
+      <!-- ── Exemplaires + prix + visibilité ───────────────────────────── -->
+      <label class="dash-label">Nombre d'exemplaires <span style="font-weight:400;">(optionnel)</span></label>
+      <input class="dash-input" id="imgcMaxSupply" type="number" min="1" placeholder="Laisse vide = illimité" />
+      <div class="dash-help">1 = pièce unique (#1/1, retirée dès l'achat) · N = édition limitée #X/N · vide = illimité.</div>
+
+      <label class="dash-label">Prix <span class="dash-req">*</span></label>
+      <div class="dash-voice-price-row">
+        <input type="number" class="dash-input" id="imgcPrice" min="3" max="500" value="50" />
+        <span class="dash-voice-price-suffix">SMYLES</span>
+      </div>
+      <div class="dash-help">Entre 3 et 500 SMYLES.</div>
+
+      <label class="dash-label">Visibilité</label>
+      <div class="wb3-license-choice">
+        <label class="wb3-license-opt">
+          <input type="radio" name="imgcVisibility" value="draft" checked />
+          <span><strong>Brouillon</strong><em>Enregistrée mais pas en vente. Tu pourras la publier plus tard.</em></span>
+        </label>
+        <label class="wb3-license-opt">
+          <input type="radio" name="imgcVisibility" value="published" />
+          <span><strong>Publier maintenant</strong><em>Visible sur ton profil et achetable immédiatement.</em></span>
+        </label>
+      </div>
+
+      <div class="dash-adn-editor-actions" style="margin-top:14px">
+        <button type="button" class="dash-btn-ghost" id="imgcResetBtn">Réinitialiser</button>
+        <button type="button" class="dash-btn-primary" id="imgcSaveBtn">
+          <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span id="imgcSaveLbl">Enregistrer l'image</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ──────────────────────────────────────────────────────────────────────────
        BLOC 2 — ANALYTIQUE
        ──────────────────────────────────────────────────────────────────────────
        Zone de mesure / performance, en trois sous-blocs :
@@ -1881,7 +2147,9 @@
 <script src="/ui/playlists.js?v=20260613d" defer></script>
 <script src="dashboard.js?v=20260613b"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
-<script src="wattboard-v3.js?v=20260611a" defer></script>
+<script src="wattboard-v3.js?v=20260611b" defer></script>
+<!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
+<script src="images-create.js?v=20260614a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>
