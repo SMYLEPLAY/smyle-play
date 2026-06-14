@@ -11,7 +11,7 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -41,16 +41,26 @@ class Prompt(Base):
             "char_length(title) >= 5",
             name="ck_prompts_title_min_length",
         ),
-        # Beats (migration 0052) : la longueur de prompt_text n'est exigée que
-        # pour les recettes ; un beat n'a pas de prompt (prompt_text NULL).
+        # Beats (0052) + Images (0057) : la borne 100..1000 de prompt_text n'est
+        # exigée que pour les recettes (compat Suno) ; un beat n'a pas de prompt
+        # (NULL) ; une image exige un prompt NOT NULL mais SANS borne (un prompt
+        # d'image peut faire 3 mots comme 500).
         CheckConstraint(
             "(product_type = 'recipe' AND char_length(prompt_text) BETWEEN 100 AND 1000) "
-            "OR (product_type = 'beat' AND prompt_text IS NULL)",
+            "OR (product_type = 'beat' AND prompt_text IS NULL) "
+            "OR (product_type = 'image' AND prompt_text IS NOT NULL)",
             name="ck_prompts_prompt_text_length",
         ),
         CheckConstraint(
-            "product_type IN ('recipe', 'beat')",
+            "product_type IN ('recipe', 'beat', 'image')",
             name="ck_prompts_product_type",
+        ),
+        # C4 (0057) — provenance obligatoire UNIQUEMENT pour les images
+        # (plateforme + version de modèle). recipe/beat non concernés.
+        CheckConstraint(
+            "product_type <> 'image' "
+            "OR (image_platform IS NOT NULL AND image_model_version IS NOT NULL)",
+            name="ck_prompts_image_provenance",
         ),
         CheckConstraint(
             "license_type IS NULL OR license_type IN ('lease', 'exclusive')",
@@ -87,7 +97,8 @@ class Prompt(Base):
     # NULLable depuis 0052 (Beats) : un beat n'a pas de prompt. La contrainte
     # de longueur ne s'applique qu'aux recettes (cf. ck_prompts_prompt_text_length).
     prompt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Type de produit vendable : 'recipe' (recette IA, l'existant) | 'beat'.
+    # Type de produit vendable : 'recipe' (recette IA, l'existant) | 'beat'
+    # | 'image' (image IA, C4 — fichier original+aperçu portés ci-dessous).
     product_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="recipe", server_default="recipe"
     )
@@ -148,6 +159,19 @@ class Prompt(Base):
     prompt_vocal_gender: Mapped[str | None] = mapped_column(
         String(20), nullable=True
     )
+
+    # ── C4 Monde Visuel V1 (migration 0057) — champs IMAGE ────────────────
+    # Tous nullable côté DB : remplis SEULEMENT pour product_type='image'.
+    # La provenance (image_platform + image_model_version) est rendue
+    # obligatoire pour les images par ck_prompts_image_provenance.
+    # image_r2_key = ORIGINAL (jamais servi publiquement, gated derrière achat).
+    # preview_r2_key = APERÇU réduit (≤1024px), public.
+    image_platform: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    image_model_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    image_settings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    negative_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_r2_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    preview_r2_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
