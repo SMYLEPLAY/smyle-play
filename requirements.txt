@@ -39,3 +39,8 @@ boto3>=1.34.0
 
 # ── Audio processing (preview 30s voix) ───────────────────────────────────
 pydub>=0.25.1
+
+# ── Images (C4 Monde Visuel) ────────────────────────────────────────────────
+# Génération d'aperçu réduit (≤1024px, JPEG q80) à l'upload d'une image IA.
+# NB : surveiller mémoire/timeout sur Railway pour les gros PNG.
+Pillow>=10.4.0
