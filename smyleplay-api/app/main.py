@@ -47,6 +47,7 @@ from app.routers.streak import router as streak_router
 from app.routers.packs import router as packs_router
 from app.routers.resale import router as resale_router
 from app.routers.beats import router as beats_router
+from app.routers.images import router as images_router
 
 
 def create_app() -> FastAPI:
@@ -124,6 +125,7 @@ def create_app() -> FastAPI:
     app.include_router(packs_router)
     app.include_router(resale_router)
     app.include_router(beats_router)
+    app.include_router(images_router)
 
     return app
 
