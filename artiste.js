@@ -178,6 +178,7 @@ async function loadArtist() {
     renderProfile();
     loadArtistVoices(state.artist.id);
     loadArtistResale(state.artist.id);
+    loadArtistImages(state.artist.slug);   // C4 ③ — section visuelle du profil
     // Si le profil est vide ET l'utilisateur est owner, on active direct le
     // mode édition pour qu'il puisse remplir sans clic supplémentaire.
     maybePromptFirstEdit();
@@ -2175,6 +2176,119 @@ function renderResale(items) {
         const st = e && e.status;
         const msg = st === 401 ? 'Connecte-toi pour acheter.' : st === 402 ? 'Crédits insuffisants.' : st === 409 ? 'Tu possèdes déjà cette recette.' : 'Erreur lors de l’achat.';
         if (window.showToast) window.showToast(msg);
+      }
+    });
+  });
+}
+
+// ── C4 ③ — Section visuelle du profil (images IA) ────────────────────────────
+// Miroir des rows audio C3 : une section de plus dans la MÊME page, pas de
+// double interface. Grille de cards-aperçu alimentée par
+// GET /watt/users/{slug}/images. Aperçu public ; recette/original gatés à
+// l'achat (jamais exposés ici — payload ImagePublicRead). Clic → drawer C2.
+async function loadArtistImages(slug) {
+  if (!slug || typeof apiFetch !== 'function') return;
+  let images = [];
+  try {
+    const data = await apiFetch('/watt/users/' + encodeURIComponent(slug) + '/images', { auth: false });
+    images = (data && Array.isArray(data.images)) ? data.images : [];
+  } catch (e) {
+    console.warn('[artiste.js] loadArtistImages', e);
+    images = [];
+  }
+  renderArtistImages(images);
+}
+
+function _apImgEsc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function _apImgPreviewUrl(key) {
+  if (!key) return '';
+  return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
+}
+
+function renderArtistImages(images) {
+  const isSelf = !!(state.artist && state.artist.isSelf);
+  let section = document.getElementById('ap-images-section');
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'ap-images-section';
+    section.className = 'ap-section ap-images';
+    section.style.cssText = 'max-width:760px;margin:0 auto;padding:18px 20px';
+    // Placée juste après les voix (ou rattachée au profil) — cohérent C3.
+    const anchor = document.getElementById('ap-voices-section') || document.getElementById('ap-profile');
+    if (anchor && anchor.id === 'ap-profile') anchor.appendChild(section);
+    else if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(section, anchor.nextSibling);
+    else document.body.appendChild(section);
+  }
+
+  if (!images.length) {
+    // État vide soigné : owner = invitation à publier ; visiteur = section masquée.
+    if (isSelf) {
+      section.style.display = '';
+      section.innerHTML =
+        '<div style="margin-bottom:10px"><h2 class="ap-section-title" style="margin:0">🖼️ Images IA</h2></div>' +
+        '<div style="text-align:center;padding:24px 16px;border:1px dashed rgba(255,255,255,.13);border-radius:14px;background:rgba(255,255,255,.02);color:#a09cb8;font-size:.86rem">' +
+          'Tu n\'as pas encore publié d\'image. Crée-en une depuis ton <a href="/dashboard#sec-image-create" style="color:#c4b5fd">WATT BOARD (monde Visuel)</a>.' +
+        '</div>';
+    } else {
+      section.style.display = 'none';
+    }
+    return;
+  }
+
+  section.style.display = '';
+  const B = window.SpBadges;
+  const cards = images.map(im => {
+    const url = _apImgPreviewUrl(im.previewKey);
+    const cover = url
+      ? '<img src="' + _apImgEsc(url) + '" alt="' + _apImgEsc(im.title || 'Image') + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" />'
+      : '<div style="font-size:2.2rem;opacity:.5;display:flex;align-items:center;justify-content:center;width:100%;height:100%">🖼️</div>';
+    const nature = B ? B.nature('image') : '';
+    const prov   = B ? B.provenance(im.imagePlatform, im.imageModelVersion) : '';
+    let rar = '';
+    if (B && im.maxSupply != null) {
+      const sold = im.soldCount || 0;
+      rar = im.isSoldOut
+        ? B.rarete(im.maxSupply, im.maxSupply)
+        : B.rarete(sold + 1, im.maxSupply, im.maxSupply === 1 ? 'legendaire' : '');
+    }
+    return '' +
+      '<article class="ap-img-card" data-image-id="' + _apImgEsc(im.id) + '" ' +
+        'data-price="' + _apImgEsc(im.priceCredits != null ? im.priceCredits : '') + '" ' +
+        'data-title="' + _apImgEsc(im.title || '') + '" ' +
+        'data-platform="' + _apImgEsc(im.imagePlatform || '') + '" ' +
+        'tabindex="0" role="button" title="Voir la fiche" ' +
+        'style="border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.025);cursor:pointer;display:flex;flex-direction:column">' +
+        '<div style="position:relative;aspect-ratio:1/1;background:rgba(124,58,237,.10);overflow:hidden">' + cover + '</div>' +
+        '<div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px">' +
+          '<div style="font-weight:700;color:#f3f0ff;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _apImgEsc(im.title || 'Sans titre') + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">' + nature + rar + prov + '</div>' +
+          '<div style="font-size:.84rem;color:#cbb3ff;font-weight:700">' + _apImgEsc(im.priceCredits) + ' <span style="font-size:.7rem;color:#8b7bd8;font-weight:600">Smyles</span></div>' +
+        '</div>' +
+      '</article>';
+  }).join('');
+
+  section.innerHTML =
+    '<div style="margin-bottom:10px"><h2 class="ap-section-title" style="margin:0">🖼️ Images IA</h2>' +
+      '<span style="font-size:.8rem;color:#a09cb8">L\'aperçu est public — l\'achat débloque la recette + l\'image originale</span></div>' +
+    '<div class="ap-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">' + cards + '</div>';
+
+  // Clic carte → drawer d'achat unifié (recette gatée avant achat).
+  section.querySelectorAll('.ap-img-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.imageId;
+      if (id && window.PurchaseDrawer) {
+        window.PurchaseDrawer.open({
+          type: 'image',
+          id: id,
+          price: parseInt(card.dataset.price, 10) || null,
+          title: card.dataset.title || 'Image IA',
+          platform: card.dataset.platform || '',
+        });
       }
     });
   });
