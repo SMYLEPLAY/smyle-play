@@ -37,6 +37,9 @@
     stats:     { ids: ['sec-stats', 'sec-ranking'],  label: 'Analytique' },
     trophees:  { ids: ['sec-trophees'],              label: 'Trophées' },
     images:    { ids: ['sec-image-create'],          label: 'Créer une image' },
+    // C4 ③ — écran « Mes images » (grille de cards-aperçu owner). Section
+    // injectée par images-list.js si absente du HTML.
+    'images-list': { ids: ['sec-image-list'],        label: 'Mes images' },
   };
 
   /* Compteurs (cache local au module, rafraîchi au retour board) */
@@ -228,7 +231,7 @@
       // C4 livraison ② : la tuile Images IA est débloquée (création image
       // avec provenance IA obligatoire). ADN visuel = V2 ("Bientôt"),
       // FX = phase 2 du monde Visuel.
-      return tileHtml('images',     '🖼️', 'Images IA',  'images', { createKind: 'image', viewKey: 'images', countLabel: 'publiées' })
+      return tileHtml('images',     '🖼️', 'Images IA',  'images', { createKind: 'image', viewKey: 'images-list', countLabel: 'publiées' })
            + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { locked: true, lockLabel: 'Bientôt' })
            + tileHtml('fx',         '✨', 'FX',         null, { locked: true, lockLabel: 'Phase 2' });
     }
@@ -339,6 +342,13 @@
     apiFetch('/api/voices/me')
       .then(function (voices) { setCount('voix', Array.isArray(voices) ? voices.length : 0); })
       .catch(function () { setCount('voix', counts.voix); });
+
+    // C4 ③ — compteur réel des images (remplace bumpImages placeholder).
+    // L'endpoint renvoie {count, published} ; la tuile affiche le total
+    // (publiées + brouillons) avec le libellé « publiées » défini sur la tuile.
+    apiFetch('/artist/me/images/count')
+      .then(function (r) { setCount('images', (r && typeof r.count === 'number') ? r.count : 0); })
+      .catch(function () { setCount('images', counts.images); });
   }
 
   function refreshHeroStats() {
@@ -473,11 +483,19 @@
 
   // API publique (debug / autres scripts)
   // bumpImages : appelé par images-create.js après une création réussie.
-  // Pas d'endpoint liste image en livraison ② (arrive en ③ avec la vitrine) :
-  // on incrémente le compteur localement pour un retour visuel immédiat.
+  // C4 ③ — on incrémente d'abord localement pour un retour immédiat, puis
+  // on re-synchronise depuis l'endpoint réel /artist/me/images/count (source
+  // de vérité, couvre brouillons + publiées). La liste owner est aussi
+  // rafraîchie si elle est montée.
   function bumpImages() {
     var cur = (typeof counts.images === 'number') ? counts.images : 0;
     setCount('images', cur + 1);
+    if (typeof apiFetch === 'function') {
+      apiFetch('/artist/me/images/count')
+        .then(function (r) { if (r && typeof r.count === 'number') setCount('images', r.count); })
+        .catch(function () {});
+    }
+    try { if (window.ImagesList && typeof window.ImagesList.refresh === 'function') window.ImagesList.refresh(); } catch (_) {}
   }
   window.WattBoardV3 = { open: openScreen, back: backToBoard, refresh: refreshCounts, bumpImages: bumpImages };
 })();

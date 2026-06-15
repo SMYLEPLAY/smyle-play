@@ -17,6 +17,7 @@ restent INTACTES. La vérification de possession est identique (UnlockedPrompt
 current_owner_id OU artiste propriétaire).
 """
 import json
+from typing import Optional
 from uuid import UUID
 
 from fastapi import (
@@ -25,12 +26,13 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     UploadFile,
     status,
 )
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
@@ -51,6 +53,13 @@ from app.services.images import (
 )
 
 router = APIRouter(tags=["images"])
+
+# Limite dure de résultats (miroir de /watt/search/*). Pagination simple par
+# offset/limit ; l'UI affiche une grille compacte, pas d'infinite scroll au MVP.
+_MAX_IMAGE_RESULTS = 60
+
+# Plateformes reconnues pour le filtre provenance (miroir de ImagePlatform).
+_VALID_PLATFORMS = {"midjourney", "dalle", "stable_diffusion", "flux", "autre"}
 
 
 @router.post(
@@ -174,6 +183,324 @@ async def create_my_image(
     await db.refresh(image)
     # L'artiste créateur est propriétaire → lecture complète (recette dévoilée).
     return ImageOwnerRead.model_validate(image)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Helpers de sérialisation publique (aperçu + provenance + rareté — JAMAIS
+# image_r2_key / prompt_text / image_settings / negative_prompt).
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _image_public_dict(p: Prompt, sold_count: int | None) -> dict:
+    """
+    Carte-aperçu publique d'une image. Reproduit les champs rareté/supply des
+    cartes ADN/prompts (compute_rarity_tier + sold/available) attendus par
+    SpBadges côté front. N'expose AUCUN champ gaté.
+    """
+    from app.services.marketplace import compute_rarity_tier
+
+    max_sup = p.max_supply
+    ratio = None
+    # `ratio` est purement descriptif et vit dans image_settings (clé 'ratio')
+    # OU absent ; on ne dévoile RIEN d'autre de image_settings.
+    if isinstance(p.image_settings, dict):
+        r = p.image_settings.get("ratio")
+        if isinstance(r, str):
+            ratio = r[:20]
+    return {
+        "id":               str(p.id),
+        "artistId":         str(p.artist_id),
+        "title":            p.title,
+        "description":      p.description or "",
+        "productType":      p.product_type,
+        "imagePlatform":    p.image_platform,
+        "imageModelVersion": p.image_model_version,
+        # Clé d'aperçu uniquement — l'original image_r2_key est OMIS. Le front
+        # construit l'URL proxy via /watt/images/<previewKey>.
+        "previewKey":       p.preview_r2_key or "",
+        "ratio":            ratio,
+        "priceCredits":     p.price_credits,
+        "maxSupply":        max_sup,
+        "rarityTier":       compute_rarity_tier(max_sup),
+        "soldCount":        (sold_count if max_sup is not None else None),
+        "availableCount":   ((max_sup - (sold_count or 0)) if max_sup is not None else None),
+        "isSoldOut":        (max_sup is not None and (sold_count or 0) >= max_sup),
+        "createdAt":        p.created_at.isoformat() if p.created_at else None,
+    }
+
+
+async def _sold_counts_for(db: AsyncSession, image_ids: list[UUID]) -> dict:
+    """
+    Compte vendu (UnlockedPrompt) pour un lot d'images en UNE requête groupée
+    (pas de N+1). Retourne {prompt_id: sold_count}.
+    """
+    if not image_ids:
+        return {}
+    rows = (await db.execute(
+        select(
+            UnlockedPrompt.prompt_id,
+            func.count(UnlockedPrompt.id),
+        )
+        .where(UnlockedPrompt.prompt_id.in_(image_ids))
+        .group_by(UnlockedPrompt.prompt_id)
+    )).all()
+    return {pid: int(cnt) for pid, cnt in rows}
+
+
+def _apply_image_filters(
+    stmt,
+    *,
+    q: str | None,
+    platform: str | None,
+    rarity: str | None,
+    price_min: int | None,
+    price_max: int | None,
+    ratio: str | None,
+):
+    """
+    Filtres serveur partagés (miroir du style /watt/search/tracks). La facette
+    nature ('image') est appliquée par l'appelant ; ici on raffine provenance,
+    prix, rareté et texte. Le ratio est filtré en JSONB (image_settings->>ratio).
+    """
+    if q:
+        pattern = f"%{q}%"
+        stmt = stmt.where(or_(Prompt.title.ilike(pattern), User.artist_name.ilike(pattern)))
+    if platform and platform in _VALID_PLATFORMS:
+        stmt = stmt.where(Prompt.image_platform == platform)
+    if price_min is not None:
+        stmt = stmt.where(Prompt.price_credits >= price_min)
+    if price_max is not None:
+        stmt = stmt.where(Prompt.price_credits <= price_max)
+    if ratio:
+        # image_settings->>'ratio' (JSONB). Si la clé manque → exclu.
+        stmt = stmt.where(Prompt.image_settings["ratio"].astext == ratio)
+    if rarity:
+        # Filtre par tier dérivé du max_supply (pas une colonne stockée).
+        if rarity == "unlimited":
+            stmt = stmt.where(Prompt.max_supply.is_(None))
+        elif rarity == "mythic":
+            stmt = stmt.where(Prompt.max_supply == 1)
+        elif rarity == "legendary":
+            stmt = stmt.where(Prompt.max_supply.between(2, 10))
+        elif rarity == "limited":
+            stmt = stmt.where(Prompt.max_supply.between(11, 10000))
+        elif rarity == "open":
+            stmt = stmt.where(Prompt.max_supply > 10000)
+    return stmt
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /images — listing PUBLIC filtrable (vitrine + page /images)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/images")
+async def list_public_images(
+    q: str = Query(default="", max_length=100),
+    platform: Optional[str] = Query(default=None, max_length=50),
+    rarity: Optional[str] = Query(default=None, max_length=20),
+    price_min: Optional[int] = Query(default=None, ge=0),
+    price_max: Optional[int] = Query(default=None, ge=0),
+    ratio: Optional[str] = Query(default=None, max_length=20),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=_MAX_IMAGE_RESULTS, ge=1, le=_MAX_IMAGE_RESULTS),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Catalogue public d'images IA publiées (artistes publiés uniquement).
+
+    Emplacement choisi : sous le router /images (même router que la création
+    et le download) plutôt que dans watt_compat. Raison : cohérence — toute la
+    nature 'image' vit dans ce module dédié, on évite d'alourdir le compat
+    layer historique destiné à disparaître. Le gate profile_public est appliqué
+    en JOIN sur User, comme /watt/search/tracks.
+
+    Renvoie {images:[ImagePublicRead-like], count} — aperçu + provenance +
+    rareté + prix. JAMAIS image_r2_key / prompt_text / image_settings (hors
+    'ratio' descriptif) / negative_prompt.
+    """
+    base = (
+        select(Prompt, User)
+        .join(User, Prompt.artist_id == User.id)
+        .where(
+            Prompt.product_type == "image",
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            User.profile_public.is_(True),
+        )
+    )
+    base = _apply_image_filters(
+        base,
+        q=q or None,
+        platform=platform,
+        rarity=rarity,
+        price_min=price_min,
+        price_max=price_max,
+        ratio=ratio,
+    )
+    base = base.order_by(desc(Prompt.created_at)).offset(offset).limit(limit)
+
+    rows = (await db.execute(base)).all()
+    prompts = [p for (p, _u) in rows]
+    sold = await _sold_counts_for(db, [p.id for p in prompts])
+    images = [_image_public_dict(p, sold.get(p.id)) for p in prompts]
+    return {"query": q, "count": len(images), "images": images}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /watt/users/{slug}/images — listing PUBLIC par artiste (profil)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/watt/users/{slug}/images")
+async def list_public_images_by_slug(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Images publiées d'un artiste exposées sur /u/<slug> (miroir de
+    /watt/users/{slug}/playlists). Réutilise _find_artist_by_slug (gate
+    profile_public). Renvoie {images, count} en lecture publique.
+    """
+    from app.routers.follows import _find_artist_by_slug
+
+    target = await _find_artist_by_slug(db, slug)
+    rows = (await db.execute(
+        select(Prompt)
+        .where(
+            Prompt.artist_id == target.id,
+            Prompt.product_type == "image",
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+        )
+        .order_by(desc(Prompt.created_at))
+        .limit(_MAX_IMAGE_RESULTS)
+    )).scalars().all()
+    sold = await _sold_counts_for(db, [p.id for p in rows])
+    images = [_image_public_dict(p, sold.get(p.id)) for p in rows]
+    return {"slug": slug, "count": len(images), "images": images}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /artist/me/images — listing OWNER (compte / WattBoard)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/artist/me/images", response_model=list[ImageOwnerRead])
+async def list_my_images(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[ImageOwnerRead]:
+    """
+    Mes images (owner) — recette dévoilée (ImageOwnerRead). Inclut les
+    brouillons (is_published=False) pour que le WattBoard montre l'état.
+    Exclut les soft-deleted.
+    """
+    rows = (await db.execute(
+        select(Prompt)
+        .where(
+            Prompt.artist_id == current_user.id,
+            Prompt.product_type == "image",
+            Prompt.is_deleted.is_(False),
+        )
+        .order_by(desc(Prompt.created_at))
+    )).scalars().all()
+    return [ImageOwnerRead.model_validate(p) for p in rows]
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /artist/me/images/count — compteur (tuile WattBoard)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/artist/me/images/count")
+async def count_my_images(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Compteur d'images de l'artiste connecté (publiées + brouillons, hors
+    soft-deleted) pour la tuile « Images IA » du WattBoard. Une seule requête
+    COUNT — pas de N+1.
+    """
+    total = (await db.execute(
+        select(func.count(Prompt.id)).where(
+            Prompt.artist_id == current_user.id,
+            Prompt.product_type == "image",
+            Prompt.is_deleted.is_(False),
+        )
+    )).scalar_one()
+    published = (await db.execute(
+        select(func.count(Prompt.id)).where(
+            Prompt.artist_id == current_user.id,
+            Prompt.product_type == "image",
+            Prompt.is_deleted.is_(False),
+            Prompt.is_published.is_(True),
+        )
+    )).scalar_one()
+    return {"count": int(total), "published": int(published)}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /watt/images/{key} — proxy aperçu PUBLIC (preview_r2_key uniquement)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/watt/images/{key:path}")
+async def stream_image_preview(key: str):
+    """
+    Proxy same-origin de l'APERÇU R2 (miroir de /watt/stream pour l'audio).
+    Sert UNIQUEMENT les clés du préfixe `images/previews/` : l'original
+    `images/originals/...` n'est JAMAIS atteignable par ce proxy (gate dur
+    ci-dessous) — il passe exclusivement par /images/{id}/download après achat.
+    """
+    # Gate dur : seules les clés d'aperçu sont servables publiquement.
+    if not key.startswith("images/previews/"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+
+    from app.services.r2 import get_r2_client, is_configured
+
+    if not is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+    client = get_r2_client()
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 client unavailable",
+        )
+
+    try:
+        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"R2 object not found: {type(e).__name__}",
+        )
+
+    ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
+    mime = IMAGE_MIME_BY_EXT.get(ext, "image/jpeg")
+
+    def _iter_chunks():
+        try:
+            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
+                yield chunk
+        finally:
+            try:
+                obj["Body"].close()
+            except Exception:
+                pass
+
+    headers = {"Cache-Control": "public, max-age=3600"}
+    content_length = obj.get("ContentLength")
+    if content_length:
+        headers["Content-Length"] = str(content_length)
+
+    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
 
 
 @router.get("/images/{image_id}/download")
