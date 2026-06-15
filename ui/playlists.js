@@ -2111,6 +2111,53 @@
     }, true);
   }
 
+  // ── C4 ④ — Wishlist IMAGE (cœur ❤️ sur les cards image) ───────────────────
+  // Le marché secondaire / la wishlist serveur s'appuient sur la table
+  // playlist_tracks dont track_id est une FK DURE vers tracks.id. Une image
+  // est une ligne `prompts` SANS Track → impossible de l'insérer sans relâcher
+  // cette FK (migration risquée sur une table cœur) ou créer une table dédiée.
+  // Pour cette livraison on délivre la PARITÉ VISUELLE du cœur avec une
+  // persistance locale (localStorage), réutilisant le composant .like-btn.
+  // La wishlist serveur côté image est notée comme suite (petite migration
+  // `prompt_likes` à venir). Aucun appel réseau ici → zéro 404, ne casse rien.
+  const IMG_LIKES_KEY = 'sp_img_likes_v1';
+  function _readImgLiked() {
+    try { return new Set(JSON.parse(localStorage.getItem(IMG_LIKES_KEY) || '[]')); }
+    catch (_) { return new Set(); }
+  }
+  function _writeImgLiked(set) {
+    try { localStorage.setItem(IMG_LIKES_KEY, JSON.stringify(Array.from(set))); }
+    catch (_) {}
+  }
+  function hydrateImgLikes() {
+    const set = _readImgLiked();
+    document.querySelectorAll('[data-img-like-btn]').forEach(btn => {
+      const id = btn.getAttribute('data-img-like-btn');
+      if (id && set.has(String(id))) btn.classList.add('liked');
+      else btn.classList.remove('liked');
+    });
+  }
+  function toggleImgLike(imageId, btn) {
+    const set = _readImgLiked();
+    const sid = String(imageId);
+    if (set.has(sid)) { set.delete(sid); if (btn) btn.classList.remove('liked'); }
+    else { set.add(sid); if (btn) btn.classList.add('liked'); }
+    _writeImgLiked(set);
+  }
+  function _wireImgLikeClicks() {
+    if (window.__pl_img_like_wired) return;
+    window.__pl_img_like_wired = true;
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-img-like-btn]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation();
+      const id = btn.getAttribute('data-img-like-btn');
+      if (id) toggleImgLike(id, btn);
+    }, true);
+  }
+
   // ── CSS COMPACT UNIFIÉ — override les anciens styles .add-to-pl-btn
   // pour avoir un design minimaliste cohérent sur Top Sons + cards + profil.
   function _injectCompactStyles() {
@@ -2178,6 +2225,8 @@
   async function _boot() {
     _injectCompactStyles();
     _wireLikeClicks();
+    _wireImgLikeClicks();
+    hydrateImgLikes();
     _applyLikedClass(_readLiked());
     let freshSet = null;
     if (_isAuth()) {
@@ -2204,6 +2253,7 @@
   if (window.SmylePlaylists) {
     window.SmylePlaylists.toggleLike = toggleLike;
     window.SmylePlaylists.loadLikedTrackIds = loadLikedTrackIds;
+    window.SmylePlaylists.hydrateImgLikes = hydrateImgLikes;
   }
 })();
 

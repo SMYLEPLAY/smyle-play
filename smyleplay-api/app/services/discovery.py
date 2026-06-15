@@ -397,6 +397,15 @@ async def list_user_library_prompts(
             "price_credits": p.price_credits,
             "created_at": p.created_at,
             "artist": _artist_card(u),
+            # C4 ④ — champs IMAGE exposés UNIQUEMENT pour les images possédées
+            # (item possédé → recette autorisée, comme prompt_text). audio_url /
+            # cover_url restent NULL (pas de Track), c'est normal. Pour l'audio
+            # ces clés sont None et le front continue d'afficher la card audio.
+            "preview_r2_key": (p.preview_r2_key if p.product_type == "image" else None),
+            "image_platform": (p.image_platform if p.product_type == "image" else None),
+            "image_model_version": (p.image_model_version if p.product_type == "image" else None),
+            "image_settings": (p.image_settings if p.product_type == "image" else None),
+            "negative_prompt": (p.negative_prompt if p.product_type == "image" else None),
             # Sprint 1 PR3 — réglages génération (P1-F4) exposés ici
             # car library = possession. Weirdness + style_influence sont
             # GATED ailleurs (retirés du payload public watt_compat).

@@ -25,6 +25,12 @@ class ResaleMarketItem(BaseModel):
     # NULL pour les tirages illimités. Le front affiche "#X/N" si
     # edition_number ET max_supply sont présents.
     edition_number: int | None = None
+    # C4 ④ — nature ('recipe' | 'beat' | 'image' | 'voice'). Le front rend une
+    # vignette + label image quand product_type == 'image'.
+    product_type: str | None = None
+    # Aperçu public d'une image revendue (None pour l'audio). Sert via le proxy
+    # /watt/images/{preview_r2_key}. Jamais l'original ni la recette.
+    preview_r2_key: str | None = None
 
 
 class ResaleBuyResult(BaseModel):

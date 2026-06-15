@@ -1154,6 +1154,10 @@
     return SpBadges.rarete(sold + 1, img.maxSupply, img.maxSupply === 1 ? 'legendaire' : '');
   }
 
+  // Set des IDs d'images possédées par l'user courant (rempli par _renderImagesPage).
+  var _ownedImageIds = new Set();
+  var _myUserId = null;
+
   function _imgCardHtml(img) {
     var url = _imgPreviewUrl(img.previewKey);
     var cover = url
@@ -1166,15 +1170,49 @@
     var ratioChip = img.ratio
       ? '<span class="mp-img-card-ratio">' + _esc(img.ratio) + '</span>'
       : '';
+    // C4 ④ #3 — possession / auteur : on remplace « Acheter »/prix par « ✓ À toi »
+    // (possédé) ou un état neutre auteur. mine = je suis le créateur de l'image.
+    var owned = _ownedImageIds.has(String(img.id));
+    var mine  = (_myUserId && img.artistId && String(img.artistId) === String(_myUserId));
+    var priceOrState;
+    if (mine) {
+      priceOrState = '<div class="mp-img-card-state mine">À toi (créateur)</div>';
+    } else if (owned) {
+      priceOrState = '<div class="mp-img-card-state owned">✓ À toi</div>';
+    } else {
+      priceOrState = '<div class="mp-img-card-price">' + _esc(img.priceCredits) + ' <span>Smyles</span></div>';
+    }
+    // C4 ④ #4 — bouton ❤️ wishlist (UUID du prompt image). Pas d'ajout playlist.
+    var likeBtn = '<button type="button" class="like-btn mp-img-card-like" data-img-like-btn="' + _esc(img.id) + '" title="Wishlist" aria-label="Ajouter à ma Wishlist" onclick="event.stopPropagation()"></button>';
     return '' +
-      '<article class="mp-img-card" data-image-id="' + _esc(img.id) + '" tabindex="0" role="button" title="Voir la fiche">' +
+      '<article class="mp-img-card" data-image-id="' + _esc(img.id) + '" data-owned="' + ((owned || mine) ? '1' : '0') + '" tabindex="0" role="button" title="' + ((owned || mine) ? 'Image possédée' : 'Voir la fiche') + '">' +
         '<div class="mp-img-card-cover">' + cover + ratioChip + '</div>' +
         '<div class="mp-img-card-body">' +
           '<div class="mp-img-card-title">' + _esc(img.title || 'Sans titre') + '</div>' +
           '<div class="mp-img-card-badges">' + nature + palier + rar + prov + '</div>' +
-          '<div class="mp-img-card-price">' + _esc(img.priceCredits) + ' <span>Smyles</span></div>' +
+          '<div class="mp-img-card-foot">' + priceOrState + likeBtn + '</div>' +
         '</div>' +
       '</article>';
+  }
+
+  // IDs d'images possédées + id user courant (pour l'état possession/auteur).
+  async function _loadOwnedImages() {
+    _ownedImageIds = new Set();
+    _myUserId = null;
+    try {
+      if (typeof getAuthToken === 'function' && !getAuthToken()) return;
+    } catch (_) { /* pas de helper auth → on tente quand même */ }
+    try {
+      var me = await window.apiFetch('/users/me');
+      if (me && me.id) _myUserId = String(me.id);
+    } catch (_) { return; } // non connecté → state public, pas de possession
+    try {
+      var lib = await window.apiFetch('/me/library/prompts?per_page=100');
+      var items = (lib && Array.isArray(lib.items)) ? lib.items : [];
+      items.forEach(function (it) {
+        if (it.product_type === 'image') _ownedImageIds.add(String(it.prompt_id));
+      });
+    } catch (_) { /* dégrade proprement */ }
   }
 
   function _injectImagesStyles() {
@@ -1198,7 +1236,13 @@
       '.mp-img-card-title{font-weight:700;color:#f3f0ff;font-size:.95rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '.mp-img-card-badges{display:flex;flex-wrap:wrap;gap:5px;align-items:center}' +
       '.mp-img-card-price{margin-top:2px;font-size:.86rem;color:#cbb3ff;font-weight:700}' +
-      '.mp-img-card-price span{font-size:.7rem;color:#8b7bd8;font-weight:600}';
+      '.mp-img-card-price span{font-size:.7rem;color:#8b7bd8;font-weight:600}' +
+      '.mp-img-card-foot{margin-top:2px;display:flex;align-items:center;justify-content:space-between;gap:8px}' +
+      '.mp-img-card-state{font-weight:700;font-size:.82rem}' +
+      '.mp-img-card-state.owned{color:#4ADE80}' +
+      '.mp-img-card-state.mine{color:#8b7bd8;font-size:.78rem}' +
+      '.mp-img-card[data-owned="1"]{cursor:default}' +
+      '.mp-img-card[data-owned="1"]:hover{transform:none}';
     document.head.appendChild(st);
   }
 
@@ -1263,6 +1307,10 @@
       grid.innerHTML = imgs.map(_imgCardHtml).join('');
       grid._cache = {};
       imgs.forEach(function (im) { grid._cache[im.id] = im; });
+      // Hydrate le cœur ❤️ (état liked) via le système wishlist partagé.
+      if (window.SmylePlaylists && typeof window.SmylePlaylists.hydrateImgLikes === 'function') {
+        window.SmylePlaylists.hydrateImgLikes();
+      }
     }
 
     // Branchements facettes (debounce léger sur le texte/prix).
@@ -1281,14 +1329,19 @@
     platEl.addEventListener('change', function () { _imgFacets.platform = platEl.value; _reload(); });
     rarEl.addEventListener('change', function () { _imgFacets.rarity = rarEl.value; _reload(); });
 
-    // Clic carte → fiche/drawer d'achat (recette masquée avant achat).
+    // Clic carte → fiche/drawer d'achat (recette masquée avant achat). On NE
+    // rouvre PAS le drawer pour une image déjà possédée / dont on est l'auteur.
     grid.addEventListener('click', function (e) {
       var card = e.target.closest('.mp-img-card');
       if (!card) return;
+      if (card.dataset.owned === '1') return; // possédé / auteur → état neutre
       var im = grid._cache && grid._cache[card.dataset.imageId];
       if (im) _openImageDetailDrawer(im);
     });
 
+    // Possession chargée AVANT le 1er rendu (sinon flash « Acheter » sur une
+    // image possédée). Auth requise ; dégrade en état public si non connecté.
+    await _loadOwnedImages();
     await _reload();
   }
 
