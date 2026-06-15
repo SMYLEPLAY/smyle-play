@@ -1628,6 +1628,20 @@
        Tronc commun + champs spécifiques par plateforme (assemblés dans
        image_settings). Soumission multipart vers POST /artist/me/images.
        ────────────────────────────────────────────────────────────────────────── -->
+  <!-- ── C4 ③ — Mes images (grille de cards-aperçu owner) ───────────────────
+       Écran « Voir » de la tuile Images IA. Liste mes images publiées +
+       brouillons via GET /artist/me/images. Rempli par images-list.js. -->
+  <section class="dash-section" id="sec-image-list">
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">🖼️</span>
+      <span class="dash-subhdr-title">Mes images IA</span>
+      <span class="dash-subhdr-sub">tes visuels publiés et tes brouillons — l'aperçu est public, la recette reste gatée à l'achat</span>
+    </div>
+    <div id="imgl-grid" class="imgl-grid" aria-live="polite">
+      <div class="imgl-empty">Chargement de tes images…</div>
+    </div>
+  </section>
+
   <section class="dash-section" id="sec-image-create" data-img-platform="">
     <div class="dash-subhdr">
       <span class="dash-subhdr-num">🎨</span>
@@ -2147,9 +2161,10 @@
 <script src="/ui/playlists.js?v=20260613d" defer></script>
 <script src="dashboard.js?v=20260613b"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
-<script src="wattboard-v3.js?v=20260611b" defer></script>
+<script src="wattboard-v3.js?v=20260615a" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
 <script src="images-create.js?v=20260614a" defer></script>
+<script src="images-list.js?v=20260615a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>
