@@ -278,6 +278,12 @@ async def get_resale_market(
             "original_artist_slug": (derive_artist_slug(oa) if oa else None),
             "max_supply": p.max_supply,
             "edition_number": up.edition_number,
+            # C4 ④ — nature du produit + aperçu pour rendre correctement une
+            # revente d'IMAGE (le front affiche la vignette + label image au
+            # lieu de la card audio). preview_r2_key est NON gaté (aperçu
+            # public). On ne dévoile JAMAIS image_r2_key / la recette ici.
+            "product_type": p.product_type,
+            "preview_r2_key": (p.preview_r2_key if p.product_type == "image" else None),
         }
         for up, p, oa in rows
     ]

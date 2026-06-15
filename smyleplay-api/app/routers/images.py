@@ -41,7 +41,7 @@ from app.database import get_db
 from app.models.prompt import Prompt
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
-from app.schemas.image import ImageCreate, ImageOwnerRead
+from app.schemas.image import ImageCreate, ImageOwnerRead, ImageUpdate
 from app.services.images import (
     ALLOWED_CONTENT_TYPES,
     IMAGE_MAX_BYTES,
@@ -442,6 +442,93 @@ async def count_my_images(
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# PATCH /artist/me/images/{image_id} — édition métadonnées de vente (owner)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+async def _get_owned_image_or_404(
+    db: AsyncSession, *, image_id: UUID, owner_id: UUID
+) -> Prompt:
+    """
+    Charge une image appartenant à l'utilisateur courant, ou lève 404
+    (anti-énumération : inexistante / pas une image / soft-deleted / pas owner
+    → même 404 indistinct). Source de vérité : Prompt.artist_id == owner_id.
+    """
+    image = (await db.execute(
+        select(Prompt).where(
+            Prompt.id == image_id,
+            Prompt.product_type == "image",
+            Prompt.is_deleted.is_(False),
+            Prompt.artist_id == owner_id,
+        )
+    )).scalar_one_or_none()
+    if image is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Image not found"
+        )
+    return image
+
+
+@router.patch("/artist/me/images/{image_id}", response_model=ImageOwnerRead)
+async def update_my_image(
+    image_id: UUID,
+    payload: ImageUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Édite les métadonnées de VENTE d'une image possédée (title, description,
+    price_credits 3..500, is_published). Ne touche NI au fichier NI à la
+    recette (re-uploader = créer une nouvelle image). PATCH partiel : seuls les
+    champs fournis sont appliqués. Les bornes sont validées par ImageUpdate.
+    """
+    image = await _get_owned_image_or_404(
+        db, image_id=image_id, owner_id=current_user.id
+    )
+    data = payload.model_dump(exclude_unset=True)
+    if "title" in data and data["title"] is not None:
+        image.title = data["title"]
+    if "description" in data:
+        image.description = data["description"]
+    if "price_credits" in data and data["price_credits"] is not None:
+        image.price_credits = data["price_credits"]
+    if "is_published" in data and data["is_published"] is not None:
+        image.is_published = data["is_published"]
+    await db.commit()
+    await db.refresh(image)
+    return ImageOwnerRead.model_validate(image)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# DELETE /artist/me/images/{image_id} — soft-delete (owner)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.delete(
+    "/artist/me/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_my_image(
+    image_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Soft-delete d'une image possédée (réutilise Prompt.is_deleted, cf migration
+    0028 — même mécanique que tracks/beats). L'image disparaît des listings
+    publics, du profil et du WattBoard. Les exemplaires DÉJÀ VENDUS
+    (UnlockedPrompt) ne sont PAS touchés : l'acheteur garde sa biblio et son
+    download (le filtre is_deleted n'est appliqué qu'aux listings, pas au
+    download possédé). 404 indistinct si inexistante / pas owner.
+    """
+    image = await _get_owned_image_or_404(
+        db, image_id=image_id, owner_id=current_user.id
+    )
+    image.is_deleted = True
+    image.is_published = False
+    await db.commit()
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # GET /watt/images/{key} — proxy aperçu PUBLIC (preview_r2_key uniquement)
 # ──────────────────────────────────────────────────────────────────────────
 
@@ -516,12 +603,15 @@ async def download_image(
 
     404 indistinct si l'image n'existe pas (anti-énumération). 403 si l'user
     ne la possède pas. La vérification de possession précède tout accès R2.
+
+    NB (C4 ④) : on n'exclut PAS is_deleted ici. Si l'artiste soft-delete une
+    image après l'avoir vendue, l'acheteur qui la possède (UnlockedPrompt) doit
+    conserver son download. La possession ci-dessous reste le seul gate d'accès.
     """
     product = (await db.execute(
         select(Prompt).where(
             Prompt.id == image_id,
             Prompt.product_type == "image",
-            Prompt.is_deleted.is_(False),
         )
     )).scalar_one_or_none()
     if product is None:

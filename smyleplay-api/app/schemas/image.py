@@ -73,6 +73,24 @@ class ImageCreate(BaseModel):
     is_published: bool = False
 
 
+class ImageUpdate(BaseModel):
+    """
+    Édition des métadonnées de VENTE d'une image (owner only, C4 ④).
+
+    V1 : titre / description / prix / publication. On ne touche NI au fichier
+    (image_r2_key / preview_r2_key) NI au prompt_text / image_settings —
+    re-uploader une image = en créer une nouvelle. Tous les champs sont
+    optionnels (PATCH partiel) ; on applique seulement ceux fournis.
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    title: str | None = Field(default=None, min_length=PROMPT_TITLE_MIN, max_length=PROMPT_TITLE_MAX)
+    description: str | None = Field(default=None, max_length=PROMPT_DESCRIPTION_MAX)
+    price_credits: int | None = Field(default=None, ge=PROMPT_PRICE_MIN, le=PROMPT_PRICE_MAX)
+    is_published: bool | None = None
+
+
 class ImagePublicRead(BaseModel):
     """
     Lecture PUBLIQUE (visiteur / acheteur potentiel).
