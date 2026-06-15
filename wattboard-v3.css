@@ -352,3 +352,91 @@ body.wb3-active.wb3-screen-open #wb3-backbar { display: block; }
 /* champ prix pack : visible uniquement en mode pack */
 #dashPackPriceField { display: none; }
 [data-mode="pack"] #dashPackPriceField { display: block; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   C4 livraison ② — Écran création d'image (monde 🎨 Visuel)
+   Champs dynamiques par plateforme + dropzone avec aperçu local.
+   RÈGLE C0 : tout en tokens, aucune couleur en dur.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Bandeau honnêteté (réutilise dash-voice-banner, teinte monde visuel) */
+.imgc-honesty { border-color: var(--sp-monde-visuel); }
+.imgc-honesty strong { color: var(--sp-text); }
+
+/* Bloc spécifique à une plateforme : masqué par défaut, révélé quand le
+   <select> #imgcPlatform pose data-img-platform sur la section. */
+.imgc-dyn { display: none; }
+#sec-image-create[data-img-platform="midjourney"]       [data-img-block="midjourney"],
+#sec-image-create[data-img-platform="dalle"]            [data-img-block="dalle"],
+#sec-image-create[data-img-platform="flux"]             [data-img-block="flux"],
+#sec-image-create[data-img-platform="stable_diffusion"] [data-img-block="stable_diffusion"],
+#sec-image-create[data-img-platform="autre"]            [data-img-block="autre"] {
+  display: block;
+}
+
+.imgc-dyn {
+  margin-top: var(--sp-gap-md);
+  padding: var(--sp-gap-md);
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-monde-visuel);
+  border-radius: var(--sp-radius-md);
+}
+.imgc-dyn-hdr {
+  font-size: .9rem; font-weight: 700; color: var(--sp-text);
+  margin-bottom: 10px;
+}
+.imgc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--sp-gap-md);
+}
+.imgc-warn {
+  font-size: .74rem; line-height: 1.5;
+  color: var(--sp-text-faint);
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+.imgc-check {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 12px;
+  font-size: .82rem; color: var(--sp-text);
+  cursor: pointer;
+}
+.imgc-check input { accent-color: var(--sp-monde-visuel); }
+.imgc-check code {
+  font-size: .78rem;
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  padding: 1px 6px;
+}
+
+.imgc-textarea { resize: vertical; min-height: 56px; font-family: inherit; }
+
+/* Dropzone + aperçu local */
+.imgc-dropzone {
+  display: flex; align-items: center; gap: var(--sp-gap-md);
+  flex-wrap: wrap;
+  padding: var(--sp-gap-md);
+  background: var(--sp-surface);
+  border: 1px dashed var(--sp-border-strong);
+  border-radius: var(--sp-radius-md);
+}
+.imgc-preview-wrap {
+  width: 84px; height: 84px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  overflow: hidden;
+}
+.imgc-preview { width: 100%; height: 100%; object-fit: cover; }
+.imgc-preview-ph { font-size: 1.6rem; opacity: .5; }
+.imgc-file-info {
+  flex: 1; min-width: 140px;
+  font-size: .78rem; color: var(--sp-text-faint);
+}
