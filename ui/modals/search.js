@@ -178,6 +178,27 @@
 .smyle-search-col-hdr.connect { color: rgba(100,200,255,.6); }
 .smyle-search-col-hdr.dna     { color: rgba(204,136,255,.7); }
 
+/* Facette nature Sons / Images (C4 ③) */
+.ss-nature-toggle { display:inline-flex; gap:4px; margin-left:auto; }
+.ss-nature-btn {
+  font: inherit; font-size: 10px; letter-spacing: .04em; cursor: pointer;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(204,136,255,.2);
+  background: rgba(204,136,255,.06); color: rgba(204,136,255,.7);
+  transition: all .12s ease; text-transform: none;
+}
+.ss-nature-btn:hover { border-color: rgba(204,136,255,.5); color:#cc88ff; }
+.ss-nature-btn.is-active { border-color: rgba(204,136,255,.85); background: rgba(204,136,255,.2); color:#fff; }
+
+/* Cards images dans la recherche */
+.ss-img-card { display:flex; align-items:center; gap:11px; padding:8px 14px; cursor:pointer; transition:background .1s ease; }
+.ss-img-card:hover { background: rgba(255,255,255,.04); }
+.ss-img-thumb { width:40px; height:40px; border-radius:8px; flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(124,58,237,.18); }
+.ss-img-thumb img { width:100%; height:100%; object-fit:cover; }
+.ss-img-body { flex:1; min-width:0; }
+.ss-img-title { font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ss-img-sub { font-size:11px; color:rgba(255,255,255,.4); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ss-img-meta { font-size:10px; color:#cbb3ff; font-weight:700; flex-shrink:0; }
+
 /* Chips filtre */
 .smyle-search-chips {
   display: flex; flex-wrap: wrap; gap: 5px;
@@ -332,6 +353,8 @@
   // Multi-select : Sets de valeurs actives par colonne
   let activeConnectChips = new Set();
   let activeDnaChips     = new Set();
+  // Facette nature de la colonne droite : 'sons' (défaut) | 'images' (C4 ③)
+  let dnaNature          = 'sons';
 
   // ── Build modal ───────────────────────────────────────────────────────
   function buildModal() {
@@ -375,10 +398,14 @@
             <div class="smyle-search-results" id="ss-results-connect" aria-live="polite"></div>
           </div>
 
-          <!-- Colonne DNA -->
+          <!-- Colonne DNA (Sons) / Images — facette nature C4 ③ -->
           <div class="smyle-search-col" id="ss-col-dna">
             <div class="smyle-search-col-hdr dna">
-              ${ICO_DISC} DNA — Sons
+              ${ICO_DISC} <span id="ss-dna-hdr-lbl">DNA — Sons</span>
+              <span class="ss-nature-toggle" role="tablist" aria-label="Nature">
+                <button type="button" class="ss-nature-btn is-active" data-nature="sons" role="tab" aria-selected="true">🎵 Sons</button>
+                <button type="button" class="ss-nature-btn" data-nature="images" role="tab" aria-selected="false">🖼️ Images</button>
+              </span>
             </div>
             <div class="smyle-search-chips" id="ss-dna-chips">${dnaChipsHtml}</div>
             <div class="smyle-search-results" id="ss-results-dna" aria-live="polite"></div>
@@ -401,6 +428,24 @@
     //     avec la carte détail du son ouverte (achat direct ou navigation).
     // Zone de navigation large (toute la carte sauf la pochette) → fiable au clic.
     dnaEl.addEventListener('click', (e) => {
+      // Mode Images (C4 ③) : clic carte → fiche/drawer d'achat (recette gatée).
+      const imgCard = e.target.closest('.ss-img-card');
+      if (imgCard) {
+        e.preventDefault();
+        const id = imgCard.getAttribute('data-image-id');
+        if (id && window.PurchaseDrawer) {
+          window.PurchaseDrawer.open({
+            type: 'image',
+            id: id,
+            price: parseInt(imgCard.getAttribute('data-price'), 10) || null,
+            title: imgCard.getAttribute('data-title') || 'Image IA',
+            platform: imgCard.getAttribute('data-platform') || '',
+          });
+        } else if (id) {
+          window.location.href = '/images';
+        }
+        return;
+      }
       const card = e.target.closest('.ss-track-card');
       if (!card) return;
       e.preventDefault();
@@ -433,6 +478,26 @@
     // Chips DNA
     modalRoot.querySelectorAll('#ss-dna-chips .smyle-search-chip').forEach(chip => {
       chip.addEventListener('click', () => onChipClick(chip, 'dna'));
+    });
+
+    // Facette nature Sons / Images (C4 ③) — bascule la colonne droite.
+    modalRoot.querySelectorAll('.ss-nature-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nat = btn.dataset.nature || 'sons';
+        if (nat === dnaNature) return;
+        dnaNature = nat;
+        modalRoot.querySelectorAll('.ss-nature-btn').forEach(b => {
+          const on = b.dataset.nature === nat;
+          b.classList.toggle('is-active', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        // Les chips moods ne s'appliquent qu'aux sons : on les masque en mode image.
+        const chips = modalRoot.querySelector('#ss-dna-chips');
+        if (chips) chips.style.display = (nat === 'images') ? 'none' : '';
+        const lbl = modalRoot.querySelector('#ss-dna-hdr-lbl');
+        if (lbl) lbl.textContent = (nat === 'images') ? 'Images IA' : 'DNA — Sons';
+        _trigger();
+      });
     });
 
     document.addEventListener('keydown', onGlobalKey);
@@ -501,15 +566,28 @@
     // sans critère → placeholder, pas tout le catalogue (demande Tom).
     const hasQ      = !!(q && q.trim());
     const doArtists = hasQ || (connectChips && connectChips.size > 0);
-    const doTracks  = hasQ || (dnaChips && dnaChips.size > 0);
+    // Mode Images (C4 ③) : la colonne droite cherche des images. Les chips
+    // moods ne s'appliquent pas (facette image ≠ mood) → seul le texte filtre.
+    const imageMode = dnaNature === 'images';
+    const doRight   = imageMode ? hasQ : (hasQ || (dnaChips && dnaChips.size > 0));
     if (doArtists) setLoading(connectEl); else renderArtists([], q);
-    if (doTracks)  setLoading(dnaEl);     else renderTracks([], q);
-    const [artists, tracks] = await Promise.all([
+    if (doRight)   setLoading(dnaEl);     else (imageMode ? renderImages([], q) : renderTracks([], q));
+    const [artists, right] = await Promise.all([
       doArtists ? fetchArtists(q, connectChips) : Promise.resolve([]),
-      doTracks  ? fetchTracks(q, dnaChips)      : Promise.resolve([]),
+      doRight   ? (imageMode ? fetchImages(q) : fetchTracks(q, dnaChips)) : Promise.resolve([]),
     ]);
     if (doArtists && connectEl) renderArtists(artists, q);
-    if (doTracks  && dnaEl)     renderTracks(tracks, q);
+    if (doRight && dnaEl) { if (imageMode) renderImages(right, q); else renderTracks(right, q); }
+  }
+
+  async function fetchImages(q) {
+    try {
+      const params = new URLSearchParams({ q: q || '', limit: '12' });
+      const res = await fetch(`${API_BASE}/images?${params}`, { credentials: 'omit' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.images || [];
+    } catch { return []; }
   }
 
   async function fetchArtists(q, rolesSet) {
@@ -562,6 +640,38 @@
       return;
     }
     dnaEl.innerHTML = list.map(t => trackCardHtml(t)).join('');
+  }
+
+  function renderImages(list, q) {
+    if (!dnaEl) return;
+    if (!list.length) {
+      dnaEl.innerHTML = `<div class="ss-empty">${q ? `Aucune image pour "${escHtml(q)}"` : 'Tape pour explorer les images IA'}</div>`;
+      return;
+    }
+    dnaEl.innerHTML = list.map(im => imgCardHtml(im)).join('');
+  }
+
+  function imgCardHtml(im) {
+    // Aperçu via proxy public (sert UNIQUEMENT images/previews/). Aucune
+    // donnée de recette n'arrive ici (endpoint ImagePublicRead).
+    const key = im.previewKey || '';
+    const url = key ? '/watt/images/' + key.split('/').map(encodeURIComponent).join('/') : '';
+    const thumb = url ? `<img src="${escAttr(url)}" alt="" />` : '🖼️';
+    const platLbl = { midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', autre: 'Autre' }[im.imagePlatform] || (im.imagePlatform || '');
+    const sub = [platLbl, im.ratio].filter(Boolean).join(' · ');
+    return `
+      <div class="ss-img-card" role="button" tabindex="0"
+           data-image-id="${escAttr(im.id || '')}"
+           data-price="${escAttr(im.priceCredits != null ? im.priceCredits : '')}"
+           data-title="${escAttr(im.title || '')}"
+           data-platform="${escAttr(im.imagePlatform || '')}">
+        <span class="ss-img-thumb">${thumb}</span>
+        <span class="ss-img-body">
+          <span class="ss-img-title">${escHtml(im.title || 'Image IA')}</span>
+          <span class="ss-img-sub">${escHtml(sub || 'Image IA')}</span>
+        </span>
+        <span class="ss-img-meta">${escHtml(im.priceCredits != null ? im.priceCredits + ' ⚡' : '')}</span>
+      </div>`;
   }
 
   function artistCardHtml(a) {
