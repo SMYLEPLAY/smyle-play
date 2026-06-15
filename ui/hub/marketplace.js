@@ -49,6 +49,7 @@
     if (p === '/sons' || p === '/sons/') return 'sons';
     if (p === '/beats' || p === '/beats/') return 'beats';  // C2 — étagère beats
     if (p === '/voix' || p === '/voix/') return 'voix';     // chantier Voix
+    if (p === '/images' || p === '/images/') return 'images'; // C4 ③ — vitrine images
     if (p === '/artistes' || p === '/artistes/') return 'artists';
     return 'home';
   })();
@@ -93,6 +94,8 @@
       '.mp-only-artists .smyle-vitrine,.mp-only-artists .mp-section-top-sons,.mp-only-artists .mp-section-top-artists,.mp-only-artists .mp-section-sons{display:none!important}' +
       // Chantier Voix — la page /voix masque tout et injecte sa section.
       '.mp-only-voix .smyle-vitrine,.mp-only-voix .mp-section-top-sons,.mp-only-voix .mp-section-top-artists,.mp-only-voix .mp-section-sons,.mp-only-voix .mp-section-artists{display:none!important}' +
+      // C4 ③ — la page /images masque tout et injecte sa section vitrine images.
+      '.mp-only-images .smyle-vitrine,.mp-only-images .mp-section-top-sons,.mp-only-images .mp-section-top-artists,.mp-only-images .mp-section-sons,.mp-only-images .mp-section-artists{display:none!important}' +
       // MODE RÉSULTATS (2026-06-11) — dès qu'une recherche ou un filtre est
       // actif sur la home, la vitrine et les podiums s'effacent : les
       // grilles résultats prennent toute la place (sans plafond de 3).
@@ -505,6 +508,7 @@
         + '<a class="mp-voir-tout" href="/sons" style="margin:0">Voir tous les sons (' + totalSons + ') →</a>'
         + '<a class="mp-voir-tout" href="/beats" style="margin:0">🥁 Étagère beats →</a>'
         + '<a class="mp-voir-tout" href="/voix" style="margin:0">🎙 Voix →</a>'
+        + '<a class="mp-voir-tout" href="/images" style="margin:0">🖼️ Images IA →</a>'
         + '</div>';
     }
 
@@ -1113,6 +1117,198 @@
     });
   }
 
+  // ── Page /images (C4 ③ — vitrine Monde Visuel) ───────────────────────────
+  // Grille de cards-aperçu : aperçu en fond, titre, 4 repères (nature image ·
+  // palier · rareté #X/N · provenance via SpBadges), prix. Moteur de filtres
+  // partagé (façon /sons) : provenance/plateforme · rareté · prix · ratio ·
+  // texte. Clic carte → fiche/drawer d'achat (circuit unlock prompt C2).
+  // Règle stricte : on n'affiche QUE l'aperçu + provenance + prix + rareté.
+  // La recette (prompt/réglages) n'arrive JAMAIS dans /images (endpoint
+  // ImagePublicRead) — elle se débloque à l'achat (ImageOwnerRead).
+  var _IMG_PLATFORMS = [
+    { val: 'midjourney',       label: 'Midjourney'       },
+    { val: 'dalle',            label: 'DALL·E'           },
+    { val: 'flux',             label: 'Flux'             },
+    { val: 'stable_diffusion', label: 'Stable Diffusion' },
+    { val: 'autre',            label: 'Autre'            },
+  ];
+  var _IMG_RARITIES = [
+    { val: 'mythic',    label: '👑 Unique 1/1' },
+    { val: 'legendary', label: '⭐ Légendaire' },
+    { val: 'limited',   label: '💎 Limitée'    },
+    { val: 'open',      label: '🟢 Ouverte'    },
+    { val: 'unlimited', label: '♾️ Illimitée'  },
+  ];
+
+  // URL same-origin de l'aperçu (proxy backend, sert UNIQUEMENT images/previews/).
+  function _imgPreviewUrl(key) {
+    if (!key) return '';
+    return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
+  }
+
+  // Badge rareté #X/N depuis le payload public (maxSupply + soldCount).
+  function _imgRareteBadge(img) {
+    if (!window.SpBadges || img.maxSupply == null) return '';
+    var sold = img.soldCount || 0;
+    if (img.isSoldOut) return SpBadges.rarete(img.maxSupply, img.maxSupply);
+    return SpBadges.rarete(sold + 1, img.maxSupply, img.maxSupply === 1 ? 'legendaire' : '');
+  }
+
+  function _imgCardHtml(img) {
+    var url = _imgPreviewUrl(img.previewKey);
+    var cover = url
+      ? '<img src="' + _esc(url) + '" alt="' + _esc(img.title || 'Image') + '" loading="lazy" class="mp-img-card-cover-img" />'
+      : '<div class="mp-img-card-cover-fallback" aria-hidden="true">🖼️</div>';
+    var nature = window.SpBadges ? SpBadges.nature('image') : '';
+    var palier = window.SpBadges ? SpBadges.palier('standard') : '';
+    var rar    = _imgRareteBadge(img);
+    var prov   = window.SpBadges ? SpBadges.provenance(img.imagePlatform, img.imageModelVersion) : '';
+    var ratioChip = img.ratio
+      ? '<span class="mp-img-card-ratio">' + _esc(img.ratio) + '</span>'
+      : '';
+    return '' +
+      '<article class="mp-img-card" data-image-id="' + _esc(img.id) + '" tabindex="0" role="button" title="Voir la fiche">' +
+        '<div class="mp-img-card-cover">' + cover + ratioChip + '</div>' +
+        '<div class="mp-img-card-body">' +
+          '<div class="mp-img-card-title">' + _esc(img.title || 'Sans titre') + '</div>' +
+          '<div class="mp-img-card-badges">' + nature + palier + rar + prov + '</div>' +
+          '<div class="mp-img-card-price">' + _esc(img.priceCredits) + ' <span>Smyles</span></div>' +
+        '</div>' +
+      '</article>';
+  }
+
+  function _injectImagesStyles() {
+    if (document.getElementById('mp-img-style')) return;
+    var st = document.createElement('style');
+    st.id = 'mp-img-style';
+    st.textContent =
+      '.mp-img-facets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:6px auto 16px;width:min(760px,96%)}' +
+      '.mp-img-facets input,.mp-img-facets select{font-family:inherit;font-size:.82rem;color:#fff;background:rgba(255,255,255,.04);border:1px solid rgba(124,58,237,.4);border-radius:999px;padding:8px 14px;outline:none}' +
+      '.mp-img-facets input::placeholder{color:rgba(255,255,255,.4)}' +
+      '.mp-img-facets input:focus,.mp-img-facets select:focus{border-color:rgba(124,58,237,.9)}' +
+      '.mp-img-facets .mp-img-price{width:88px}' +
+      '.mp-img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}' +
+      '.mp-img-card{border:1px solid rgba(255,255,255,.09);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.025);cursor:pointer;display:flex;flex-direction:column;transition:border-color .15s,transform .15s}' +
+      '.mp-img-card:hover{border-color:rgba(124,58,237,.6);transform:translateY(-2px)}' +
+      '.mp-img-card-cover{position:relative;aspect-ratio:1/1;background:rgba(124,58,237,.10);overflow:hidden;display:flex;align-items:center;justify-content:center}' +
+      '.mp-img-card-cover-img{width:100%;height:100%;object-fit:cover;display:block}' +
+      '.mp-img-card-cover-fallback{font-size:2.4rem;opacity:.5}' +
+      '.mp-img-card-ratio{position:absolute;bottom:8px;right:8px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:.66rem;font-weight:600}' +
+      '.mp-img-card-body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:6px}' +
+      '.mp-img-card-title{font-weight:700;color:#f3f0ff;font-size:.95rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.mp-img-card-badges{display:flex;flex-wrap:wrap;gap:5px;align-items:center}' +
+      '.mp-img-card-price{margin-top:2px;font-size:.86rem;color:#cbb3ff;font-weight:700}' +
+      '.mp-img-card-price span{font-size:.7rem;color:#8b7bd8;font-weight:600}';
+    document.head.appendChild(st);
+  }
+
+  // État des facettes images (page /images).
+  var _imgFacets = { q: '', platform: '', rarity: '', ratio: '', priceMin: '', priceMax: '' };
+
+  async function _fetchImages() {
+    var p = new URLSearchParams();
+    if (_imgFacets.q) p.set('q', _imgFacets.q);
+    if (_imgFacets.platform) p.set('platform', _imgFacets.platform);
+    if (_imgFacets.rarity) p.set('rarity', _imgFacets.rarity);
+    if (_imgFacets.ratio) p.set('ratio', _imgFacets.ratio);
+    if (_imgFacets.priceMin !== '') p.set('price_min', _imgFacets.priceMin);
+    if (_imgFacets.priceMax !== '') p.set('price_max', _imgFacets.priceMax);
+    try {
+      var data = await window.apiFetch('/images?' + p.toString(), { auth: false });
+      return (data && Array.isArray(data.images)) ? data.images : [];
+    } catch (_) { return []; }
+  }
+
+  async function _renderImagesPage() {
+    _injectImagesStyles();
+    var anchor = document.querySelector('.mp-section-sons');
+    if (!anchor || !anchor.parentNode) return;
+
+    var section = document.createElement('section');
+    section.className = 'mp-section mp-section-images';
+    var platformOpts = '<option value="">Toute provenance</option>' +
+      _IMG_PLATFORMS.map(function (o) { return '<option value="' + o.val + '">' + _esc(o.label) + '</option>'; }).join('');
+    var rarityOpts = '<option value="">Toute rareté</option>' +
+      _IMG_RARITIES.map(function (o) { return '<option value="' + o.val + '">' + _esc(o.label) + '</option>'; }).join('');
+    section.innerHTML =
+      '<div class="mp-section-head">' +
+        '<span class="mp-section-kicker">Catalogue</span>' +
+        '<h2 class="mp-section-title">🖼️ Images IA</h2>' +
+        '<span class="mp-section-sub">L\'aperçu est public — l\'achat débloque la recette (prompt + réglages) + l\'image originale</span>' +
+      '</div>' +
+      '<div class="mp-img-facets">' +
+        '<input type="search" class="mp-img-q" placeholder="Titre, artiste…" autocomplete="off">' +
+        '<select class="mp-img-platform" aria-label="Provenance">' + platformOpts + '</select>' +
+        '<select class="mp-img-rarity" aria-label="Rareté">' + rarityOpts + '</select>' +
+        '<input type="text" class="mp-img-ratio" placeholder="Ratio (ex 1:1)" style="width:120px">' +
+        '<input type="number" min="0" class="mp-img-price mp-img-pmin" placeholder="Prix min">' +
+        '<input type="number" min="0" class="mp-img-price mp-img-pmax" placeholder="Prix max">' +
+      '</div>' +
+      '<div class="mp-img-grid"><div class="mp-grid-empty">Chargement des images…</div></div>';
+    anchor.parentNode.insertBefore(section, anchor);
+
+    var grid = section.querySelector('.mp-img-grid');
+
+    async function _reload() {
+      var imgs = await _fetchImages();
+      if (!imgs.length) {
+        var anyFilter = _imgFacets.q || _imgFacets.platform || _imgFacets.rarity || _imgFacets.ratio || _imgFacets.priceMin !== '' || _imgFacets.priceMax !== '';
+        grid.innerHTML = '<div class="mp-grid-empty">' +
+          (anyFilter
+            ? 'Aucune image ne correspond à ta sélection.'
+            : 'Aucune image en vente pour le moment. Les artistes les publient depuis leur WATT BOARD (monde Visuel).') +
+          '</div>';
+        return;
+      }
+      grid.innerHTML = imgs.map(_imgCardHtml).join('');
+      grid._cache = {};
+      imgs.forEach(function (im) { grid._cache[im.id] = im; });
+    }
+
+    // Branchements facettes (debounce léger sur le texte/prix).
+    var qEl = section.querySelector('.mp-img-q');
+    var platEl = section.querySelector('.mp-img-platform');
+    var rarEl = section.querySelector('.mp-img-rarity');
+    var ratioEl = section.querySelector('.mp-img-ratio');
+    var pminEl = section.querySelector('.mp-img-pmin');
+    var pmaxEl = section.querySelector('.mp-img-pmax');
+    var _t = null;
+    function _deb() { clearTimeout(_t); _t = setTimeout(_reload, 240); }
+    qEl.addEventListener('input', function () { _imgFacets.q = qEl.value.trim(); _deb(); });
+    ratioEl.addEventListener('input', function () { _imgFacets.ratio = ratioEl.value.trim(); _deb(); });
+    pminEl.addEventListener('input', function () { _imgFacets.priceMin = pminEl.value; _deb(); });
+    pmaxEl.addEventListener('input', function () { _imgFacets.priceMax = pmaxEl.value; _deb(); });
+    platEl.addEventListener('change', function () { _imgFacets.platform = platEl.value; _reload(); });
+    rarEl.addEventListener('change', function () { _imgFacets.rarity = rarEl.value; _reload(); });
+
+    // Clic carte → fiche/drawer d'achat (recette masquée avant achat).
+    grid.addEventListener('click', function (e) {
+      var card = e.target.closest('.mp-img-card');
+      if (!card) return;
+      var im = grid._cache && grid._cache[card.dataset.imageId];
+      if (im) _openImageDetailDrawer(im);
+    });
+
+    await _reload();
+  }
+
+  // Fiche/drawer image : aperçu + provenance + prix + rareté, recette MASQUÉE.
+  // Achat via PurchaseDrawer (type 'image' → /unlocks/prompts/{id}).
+  function _openImageDetailDrawer(im) {
+    if (!window.PurchaseDrawer) {
+      // Fallback ultra-simple si le drawer n'est pas chargé.
+      if (window.showToast) window.showToast('Chargement du module d\'achat…');
+      return;
+    }
+    window.PurchaseDrawer.open({
+      type: 'image',
+      id: im.id,
+      price: (im.priceCredits != null ? im.priceCredits : null),
+      title: im.title || 'Image IA',
+      platform: im.imagePlatform || '',
+    });
+  }
+
   // ── Modale achat recette (depuis badge Recette sur une track card) ────────
   // badgeEl a : data-prompt-id, data-prompt-price, data-track-name
   function _openRecipeUnlockModal(badgeEl) {
@@ -1271,6 +1467,11 @@
       document.body.classList.add('mp-only-voix');
       document.title = 'Voix — WATT';
       _renderVoixPage(); // async, autonome (fetch /api/voices + section dédiée)
+    }
+    if (_VIEW === 'images') {
+      document.body.classList.add('mp-only-images');
+      document.title = 'Images IA — WATT';
+      _renderImagesPage(); // async, autonome (fetch /images + section + facettes)
     }
     _resolveDom();
     _bindSearch();

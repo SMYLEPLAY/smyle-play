@@ -183,6 +183,12 @@ def create_app(config_class=None):
     def voix_page():
         return send_from_directory(BASE_DIR, 'index.html')
 
+    # C4 ③ (2026-06-15) — vitrine publique des images IA, même shell index.html,
+    # vue 'images' pilotée par marketplace.js (fetch /images + facettes).
+    @app.route('/images')
+    def images_page():
+        return send_from_directory(BASE_DIR, 'index.html')
+
     @app.route('/artistes')
     def artistes_page():
         return send_from_directory(BASE_DIR, 'index.html')
