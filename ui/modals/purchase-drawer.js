@@ -25,23 +25,29 @@
 
   var ENDPOINTS = {
     'son':        '/unlocks/prompts/',
+    // C4 ③ — une image est une ligne `prompts` (product_type='image') : achat
+    // via le MÊME endpoint d'unlock prompt (mint #X/N inclus). On distingue
+    // juste le type pour adapter les repères/toasts.
+    'image':      '/unlocks/prompts/',
     'adn-artist': '/unlocks/adns/',
     'voix':       '/unlocks/voices/',
     'playlist':   '/unlocks/playlist-adn/',
   };
   var TYPE_LABELS = {
     'son':        '🧬 Recette + fichier',
+    'image':      '🖼️ Recette + image originale',
     'adn-artist': '🧬 ADN d’artiste',
     'voix':       '🎙 Voix',
     'playlist':   '🎚 ADN de playlist',
   };
   var SUCCESS_TOASTS = {
     'son':        'Exemplaire débloqué 🔓 — fichier + recette dans ta bibliothèque',
+    'image':      'Image débloquée 🔓 — recette + original dans ta bibliothèque',
     'adn-artist': 'ADN débloqué 🧬 — retrouve-le dans ta bibliothèque',
     'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
     'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
   };
-  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
+  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', autre: 'Autre' };
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -104,12 +110,23 @@
     var platformKey = (opts.platform || '').trim().toLowerCase();
     var platformLbl = PLATFORM_LABELS[platformKey] || (platformKey || null);
 
-    var reperes =
-      '<li>🎧 <span>L’écoute reste <strong>libre pour tout le monde</strong> — tu achètes la possession, pas l’accès.</span></li>' +
-      (type === 'voix'
-        ? '<li>🔓 <span>Achat = <strong>le fichier voix complet</strong> (la preview 30 s devient intégrale).</span></li>'
-        : '<li>🔓 <span>Achat = <strong>fichier + recette</strong> — l’exemplaire complet, téléchargeable depuis ta bibliothèque.</span></li>') +
-      '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>';
+    var reperes;
+    if (type === 'image') {
+      // C4 ③ — repères image : aperçu public, achat = recette + original,
+      // provenance, + règle d'honnêteté (résultats similaires, jamais identiques).
+      reperes =
+        '<li>👁️ <span>L’aperçu reste <strong>public pour tout le monde</strong> — tu achètes la possession, pas la vue.</span></li>' +
+        '<li>🔓 <span>Achat = <strong>recette (prompt + réglages) + image originale</strong>, téléchargeable depuis ta bibliothèque.</span></li>' +
+        '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
+        '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>';
+    } else {
+      reperes =
+        '<li>🎧 <span>L’écoute reste <strong>libre pour tout le monde</strong> — tu achètes la possession, pas l’accès.</span></li>' +
+        (type === 'voix'
+          ? '<li>🔓 <span>Achat = <strong>le fichier voix complet</strong> (la preview 30 s devient intégrale).</span></li>'
+          : '<li>🔓 <span>Achat = <strong>fichier + recette</strong> — l’exemplaire complet, téléchargeable depuis ta bibliothèque.</span></li>') +
+        '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>';
+    }
 
     var ov = document.createElement('div');
     ov.id = 'pd-overlay';
@@ -136,8 +153,10 @@
     ov.querySelector('.pd-cancel').addEventListener('click', close);
     document.addEventListener('keydown', _onEsc);
 
-    // Marché primaire/secondaire (sons uniquement) — modèle fiche canonique.
-    if (type === 'son' && window.apiFetch) {
+    // Marché primaire/secondaire — modèle fiche canonique. Sons ET images
+    // (toutes deux des lignes `prompts`, donc /resale/prompt/{id}/market gère
+    // l'édition limitée #X/N et les reventes de la même façon).
+    if ((type === 'son' || type === 'image') && window.apiFetch) {
       (function () {
         window.apiFetch('/resale/prompt/' + encodeURIComponent(id) + '/market').then(function (m) {
           var el = document.getElementById('pd-market');
