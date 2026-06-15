@@ -39,6 +39,7 @@ from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.database import get_db
 from app.models.prompt import Prompt
+from app.models.prompt_like import PromptLike
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 from app.schemas.image import ImageCreate, ImageOwnerRead, ImageUpdate
@@ -682,3 +683,120 @@ async def download_image(
         headers["Content-Length"] = str(content_length)
 
     return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Likes durables de prompts (C4 livraison 5)
+#
+# Store dédié `prompt_likes` (PK composite user_id+prompt_id) — remplace le hack
+# localStorage `sp_img_likes_v1`. Générique (clé prompt) mais utilisé pour les
+# IMAGES en V1. Séparation son/image respectée : le ❤️ audio reste sur la
+# wishlist (playlist privée → track), les likes image ont leur propre store.
+#
+# Emplacement : ici, dans images.py, plutôt qu'un router likes.py dédié, parce
+# que l'usage V1 est 100 % image et que toute la sérialisation publique d'image
+# (_image_public_dict, _sold_counts_for) vit déjà dans ce module — un router
+# séparé devrait réimporter ces helpers. Les routes restent génériques
+# (/me/likes/prompts/...) donc réutilisables si un autre type devient likable.
+#
+# IMPORTANT : un like ne débloque RIEN. Le payload renvoyé pour "mes images
+# likées" est l'aperçu public (_image_public_dict) — JAMAIS image_r2_key /
+# prompt_text / image_settings / negative_prompt.
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.post("/me/likes/prompts/{prompt_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def like_prompt(
+    prompt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Like un prompt (idempotent). 404 si le prompt n'existe pas ou est
+    soft-deleted. Un re-like ne crée pas de doublon (PK composite +
+    vérification d'existence). Ne débloque aucun contenu gaté.
+    """
+    prompt = (await db.execute(
+        select(Prompt.id).where(
+            Prompt.id == prompt_id,
+            Prompt.is_deleted.is_(False),
+        )
+    )).scalar_one_or_none()
+    if prompt is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Prompt not found"
+        )
+
+    existing = (await db.execute(
+        select(PromptLike.user_id).where(
+            PromptLike.user_id == current_user.id,
+            PromptLike.prompt_id == prompt_id,
+        )
+    )).scalar_one_or_none()
+    if existing is None:
+        db.add(PromptLike(user_id=current_user.id, prompt_id=prompt_id))
+        await db.commit()
+
+
+@router.delete("/me/likes/prompts/{prompt_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def unlike_prompt(
+    prompt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retire le like d'un prompt (idempotent : 204 même si pas liké).
+    On ne 404 pas sur un prompt soft-deleted ici : l'utilisateur doit
+    pouvoir nettoyer un like résiduel.
+    """
+    like = (await db.execute(
+        select(PromptLike).where(
+            PromptLike.user_id == current_user.id,
+            PromptLike.prompt_id == prompt_id,
+        )
+    )).scalar_one_or_none()
+    if like is not None:
+        await db.delete(like)
+        await db.commit()
+
+
+@router.get("/me/likes/prompts")
+async def list_my_liked_prompts(
+    product_type: Optional[str] = Query(default=None, max_length=20),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Liste mes prompts likés, filtrable par product_type.
+
+    - Avec product_type='image' (cas V1) : renvoie {ids, images} où `images`
+      sont les aperçus publics (_image_public_dict) — sert à la fois à hydrater
+      l'état des ❤️ (set d'ids) ET à afficher « mes images likées ».
+    - Sans filtre : renvoie {ids} (les UUID likés, tous types), suffisant pour
+      hydrater l'état des boutons.
+
+    Les prompts soft-deleted sont exclus (un like résiduel n'apparaît plus).
+    Ne renvoie AUCUN champ gaté.
+    """
+    base = (
+        select(Prompt)
+        .join(PromptLike, PromptLike.prompt_id == Prompt.id)
+        .where(
+            PromptLike.user_id == current_user.id,
+            Prompt.is_deleted.is_(False),
+        )
+    )
+    if product_type:
+        base = base.where(Prompt.product_type == product_type)
+    base = base.order_by(desc(PromptLike.created_at))
+
+    prompts = (await db.execute(base)).scalars().all()
+    ids = [str(p.id) for p in prompts]
+
+    if product_type == "image":
+        images_only = [p for p in prompts if p.product_type == "image"]
+        sold = await _sold_counts_for(db, [p.id for p in images_only])
+        images = [_image_public_dict(p, sold.get(p.id)) for p in images_only]
+        return {"ids": ids, "count": len(images), "images": images}
+
+    return {"ids": ids, "count": len(ids)}

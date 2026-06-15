@@ -8,6 +8,7 @@ from .password_reset_token import PasswordResetToken
 from .play_event import PlayEvent
 from .playlist import Playlist, PlaylistTrack
 from .prompt import Prompt
+from .prompt_like import PromptLike
 from .referral import Referral, ReferralStatus
 from .track import Track
 from .transaction import Transaction, TransactionStatus, TransactionType
@@ -28,6 +29,7 @@ __all__ = [
     "Playlist",
     "PlaylistTrack",
     "Prompt",
+    "PromptLike",
     "Referral",
     "ReferralStatus",
     "Track",
