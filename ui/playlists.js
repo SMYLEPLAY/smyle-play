@@ -2111,38 +2111,73 @@
     }, true);
   }
 
-  // ── C4 ④ — Wishlist IMAGE (cœur ❤️ sur les cards image) ───────────────────
-  // Le marché secondaire / la wishlist serveur s'appuient sur la table
-  // playlist_tracks dont track_id est une FK DURE vers tracks.id. Une image
-  // est une ligne `prompts` SANS Track → impossible de l'insérer sans relâcher
-  // cette FK (migration risquée sur une table cœur) ou créer une table dédiée.
-  // Pour cette livraison on délivre la PARITÉ VISUELLE du cœur avec une
-  // persistance locale (localStorage), réutilisant le composant .like-btn.
-  // La wishlist serveur côté image est notée comme suite (petite migration
-  // `prompt_likes` à venir). Aucun appel réseau ici → zéro 404, ne casse rien.
-  const IMG_LIKES_KEY = 'sp_img_likes_v1';
-  function _readImgLiked() {
-    try { return new Set(JSON.parse(localStorage.getItem(IMG_LIKES_KEY) || '[]')); }
-    catch (_) { return new Set(); }
+  // ── C4 ⑤ — Likes IMAGE durables (cœur ❤️ sur les cards image) ─────────────
+  // La wishlist audio s'appuie sur playlist_tracks (track_id FK dure vers
+  // tracks.id) ; une image (ligne `prompts` SANS Track) ne peut pas y entrer.
+  // La livraison ④ avait donc stocké les likes image en localStorage
+  // (sp_img_likes_v1) — non durable. La livraison ⑤ remplace ce hack par un
+  // store serveur DÉDIÉ (table prompt_likes), exposé via :
+  //   POST   /me/likes/prompts/{id}          → like (idempotent)
+  //   DELETE /me/likes/prompts/{id}          → unlike
+  //   GET    /me/likes/prompts?product_type=image → {ids:[...], images:[...]}
+  // Store séparé = séparation son/image respectée (ne pollue pas la wishlist).
+  let _imgLikedSet = null;  // cache mémoire des ids likés (hydraté au boot)
+
+  async function loadLikedImageIds() {
+    if (!_isAuth()) { _imgLikedSet = new Set(); return _imgLikedSet; }
+    try {
+      const resp = await fetch('/me/likes/prompts?product_type=image', {
+        credentials: 'same-origin', headers: _authHeaders()
+      });
+      if (!resp.ok) { _imgLikedSet = new Set(); return _imgLikedSet; }
+      const data = await resp.json();
+      _imgLikedSet = new Set((data.ids || []).map(String));
+      return _imgLikedSet;
+    } catch (_) { _imgLikedSet = _imgLikedSet || new Set(); return _imgLikedSet; }
   }
-  function _writeImgLiked(set) {
-    try { localStorage.setItem(IMG_LIKES_KEY, JSON.stringify(Array.from(set))); }
-    catch (_) {}
-  }
-  function hydrateImgLikes() {
-    const set = _readImgLiked();
+
+  function _applyImgLikedClass(set) {
     document.querySelectorAll('[data-img-like-btn]').forEach(btn => {
       const id = btn.getAttribute('data-img-like-btn');
       if (id && set.has(String(id))) btn.classList.add('liked');
       else btn.classList.remove('liked');
     });
   }
-  function toggleImgLike(imageId, btn) {
-    const set = _readImgLiked();
+
+  // Conservé pour compat (appelé par marketplace.js après rendu async des
+  // cards image). Applique le cache serveur ; si le cache n'est pas encore
+  // chargé et qu'on est authentifié, on le charge puis on ré-applique.
+  function hydrateImgLikes() {
+    _applyImgLikedClass(_imgLikedSet || new Set());
+    if (_imgLikedSet === null && _isAuth()) {
+      loadLikedImageIds().then((set) => _applyImgLikedClass(set)).catch(() => {});
+    }
+  }
+
+  async function toggleImgLike(imageId, btn) {
+    if (!_isAuth()) {
+      _showToast('Connecte-toi pour aimer.');
+      return;
+    }
+    if (!_imgLikedSet) _imgLikedSet = new Set();
     const sid = String(imageId);
-    if (set.has(sid)) { set.delete(sid); if (btn) btn.classList.remove('liked'); }
-    else { set.add(sid); if (btn) btn.classList.add('liked'); }
-    _writeImgLiked(set);
+    const wasLiked = _imgLikedSet.has(sid);
+
+    // Optimiste : on bascule l'UI tout de suite, rollback en cas d'échec.
+    if (wasLiked) { _imgLikedSet.delete(sid); if (btn) btn.classList.remove('liked'); }
+    else { _imgLikedSet.add(sid); if (btn) btn.classList.add('liked'); }
+
+    try {
+      const r = await fetch('/me/likes/prompts/' + encodeURIComponent(imageId), {
+        method: wasLiked ? 'DELETE' : 'POST',
+        credentials: 'same-origin', headers: _authHeaders()
+      });
+      if (!r.ok && r.status !== 204 && r.status !== 404) throw new Error('HTTP ' + r.status);
+    } catch (e) {
+      if (wasLiked) { _imgLikedSet.add(sid); if (btn) btn.classList.add('liked'); }
+      else { _imgLikedSet.delete(sid); if (btn) btn.classList.remove('liked'); }
+      _showToast('Like impossible : ' + (e && e.message || 'erreur'));
+    }
   }
   function _wireImgLikeClicks() {
     if (window.__pl_img_like_wired) return;
@@ -2226,22 +2261,30 @@
     _injectCompactStyles();
     _wireLikeClicks();
     _wireImgLikeClicks();
-    hydrateImgLikes();
     _applyLikedClass(_readLiked());
     let freshSet = null;
+    let freshImgSet = null;
     if (_isAuth()) {
       try {
         freshSet = await loadLikedTrackIds();
         _applyLikedClass(freshSet);
       } catch (_) {}
+      // Likes image : hydratés depuis le store serveur (plus de localStorage).
+      try {
+        freshImgSet = await loadLikedImageIds();
+        _applyImgLikedClass(freshImgSet);
+      } catch (_) {}
+    } else {
+      hydrateImgLikes();
     }
     // Ces timeouts couvrent les cards rendues en async APRÈS le boot
     // (marketplace, artiste page, etc.). On utilise la donnée API si dispo,
     // sinon localStorage — jamais de retour en arrière vers localStorage
     // quand l'API a déjà répondu (ce serait un état périmé).
     const src = () => freshSet || _readLiked();
-    setTimeout(() => _applyLikedClass(src()), 1500);
-    setTimeout(() => _applyLikedClass(src()), 4000);
+    const imgSrc = () => freshImgSet || _imgLikedSet || new Set();
+    setTimeout(() => { _applyLikedClass(src()); _applyImgLikedClass(imgSrc()); }, 1500);
+    setTimeout(() => { _applyLikedClass(src()); _applyImgLikedClass(imgSrc()); }, 4000);
   }
 
   if (document.readyState === 'loading') {
@@ -2254,6 +2297,8 @@
     window.SmylePlaylists.toggleLike = toggleLike;
     window.SmylePlaylists.loadLikedTrackIds = loadLikedTrackIds;
     window.SmylePlaylists.hydrateImgLikes = hydrateImgLikes;
+    window.SmylePlaylists.loadLikedImageIds = loadLikedImageIds;
+    window.SmylePlaylists.toggleImgLike = toggleImgLike;
   }
 })();
 

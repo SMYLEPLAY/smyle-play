@@ -136,6 +136,10 @@ def _eligible_pool_query(buyer_id: UUID):
             Prompt.artist_id != buyer_id,
             ~exists(owned),
             or_(Prompt.max_supply.is_(None), sold_count < Prompt.max_supply),
+            # C4 (séparation son/image) — les packs aléatoires sont une surface
+            # AUDIO (recettes/beats). Une image ne doit jamais être tirée dans
+            # un pack de prompts audio.
+            Prompt.product_type != "image",
         )
     )
 
