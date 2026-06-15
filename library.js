@@ -178,6 +178,156 @@ function switchTab(tab) {
 }
 
 
+/* ── Render image possédée (C4 ④) ────────────────────────────────────────── */
+
+// URL same-origin de l'aperçu via le proxy backend (sert UNIQUEMENT
+// images/previews/). Identique à _imgPreviewUrl de marketplace.js.
+function libImgPreviewUrl(key) {
+  if (!key) return '';
+  return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
+}
+
+const IMG_PLATFORM_LBL_LIB = {
+  midjourney: 'Midjourney', dalle: 'DALL·E', stable_diffusion: 'Stable Diffusion',
+  flux: 'Flux', autre: 'Autre',
+};
+
+function renderLibraryImageCell(p, i, artistName, artistLink) {
+  const previewUrl = libImgPreviewUrl(p.preview_r2_key);
+  const editionBadge = (p.edition_number != null && p.max_supply != null)
+    ? ` <span class="lib-edition-badge" title="Exemplaire #${p.edition_number} sur ${p.max_supply} — édition limitée" style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:rgba(124,77,255,.18);color:#cbb3ff;font-size:11px;font-weight:700;vertical-align:middle">#${p.edition_number}/${p.max_supply}</span>`
+    : '';
+
+  // Vignette d'aperçu (publique). Fallback emoji si absente.
+  const previewBlock = previewUrl
+    ? `<div class="lib-content-block">
+         <div class="lib-content-header"><span class="lib-content-label">🖼 Aperçu</span></div>
+         <div class="lib-content-body">
+           <img src="${esc(previewUrl)}" alt="${esc(p.title || 'Image')}" loading="lazy"
+                style="max-width:100%;border-radius:10px;display:block;border:1px solid rgba(255,255,255,.08)">
+         </div>
+       </div>`
+    : '';
+
+  // Provenance plateforme · version.
+  const platformLbl = IMG_PLATFORM_LBL_LIB[p.image_platform] || p.image_platform || '';
+  const provBadges = [platformLbl, p.image_model_version]
+    .filter(Boolean).map(s => `<span class="lib-prompt-badge">${esc(s)}</span>`).join('');
+  const provBlock = provBadges ? `<div class="lib-prompt-badges">${provBadges}</div>` : '';
+
+  // Recette image (possédé → autorisé) : prompt + réglages + négatif.
+  const settingsStr = (p.image_settings && typeof p.image_settings === 'object')
+    ? Object.entries(p.image_settings).map(([k, v]) => `${k}: ${v}`).join(' · ')
+    : '';
+  const settingsBlock = settingsStr ? `
+    <div class="lib-content-block">
+      <div class="lib-content-header">
+        <span class="lib-content-label">🎛 Réglages</span>
+        <button class="lib-copy-btn" onclick="copyContent('lib-imgset-${i}', this)">Copier</button>
+      </div>
+      <div class="lib-content-body lib-content-body-short" id="lib-imgset-${i}">${esc(settingsStr)}</div>
+    </div>` : '';
+  const negBlock = (p.negative_prompt && p.negative_prompt.trim()) ? `
+    <div class="lib-content-block">
+      <div class="lib-content-header">
+        <span class="lib-content-label">🚫 Prompt négatif</span>
+        <button class="lib-copy-btn" onclick="copyContent('lib-imgneg-${i}', this)">Copier</button>
+      </div>
+      <div class="lib-content-body" id="lib-imgneg-${i}">${esc(p.negative_prompt)}</div>
+    </div>` : '';
+
+  const promptBlock = `
+    <div class="lib-content-block">
+      <div class="lib-content-header">
+        <span class="lib-content-label">🎨 Prompt image</span>
+        <button class="lib-copy-btn" onclick="copyContent('lib-imgprompt-${i}', this)">Copier</button>
+      </div>
+      <div class="lib-content-body" id="lib-imgprompt-${i}">${esc(p.prompt_text || '')}</div>
+    </div>`;
+
+  // Download de l'ORIGINAL — endpoint DÉDIÉ image (gaté possession serveur).
+  const downloadBlock = `
+    <div class="lib-content-block">
+      <div class="lib-content-header"><span class="lib-content-label">🖼 Image originale</span></div>
+      <div class="lib-content-body">
+        <button class="lib-copy-btn" onclick="libDownloadImage('${p.prompt_id}', this)">⬇ Télécharger l'image</button>
+        <span style="display:block;margin-top:4px;font-size:11px;color:#a09cb8">Achat = image originale + recette — le fichier exact est à toi.</span>
+      </div>
+    </div>`;
+
+  // Revente — bloc générique inchangé (mécanique resale partagée).
+  const resaleBlock = `
+    <div class="lib-content-block">
+      <div class="lib-content-header"><span class="lib-content-label">💱 Revente</span></div>
+      ${p.resale_price != null
+        ? `<div class="lib-content-body" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+             <span style="color:#4ADE80;font-weight:700;">En vente : ${p.resale_price} Smyles</span>
+             <button class="lib-copy-btn" onclick="libUnlistResale('${p.prompt_id}')">Retirer de la vente</button>
+           </div>`
+        : `<div class="lib-content-body" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+             <button class="lib-copy-btn" onclick="libListResale('${p.prompt_id}')">Mettre en vente</button>
+             <span style="font-size:11px;color:#a09cb8;">Transfert : tu cèdes cette image. L'artiste d'origine touche une royaltie.</span>
+           </div>`}
+    </div>`;
+
+  return `
+    <details class="lib-item-cell" style="border-left:3px solid #7c4dff">
+      <summary class="lib-item-cell-hdr">
+        <span class="lib-item-cell-icon">🖼</span>
+        <span class="lib-item-cell-info">
+          <span class="lib-item-cell-title">${esc(p.title || 'Image IA')}${editionBadge}</span>
+          <span class="lib-item-cell-meta">🖼 Image · par ${esc(artistName)} · ${fmtDate(p.unlocked_at)}</span>
+        </span>
+        <span class="lib-item-cell-chevron">▼</span>
+      </summary>
+      <div class="lib-item-cell-body">
+        <div class="lib-item-artist">par ${artistLink}</div>
+        ${p.description ? `<div class="lib-item-desc">${esc(p.description)}</div>` : ''}
+        ${provBlock}
+        ${previewBlock}
+        ${promptBlock}
+        ${settingsBlock}
+        ${negBlock}
+        ${downloadBlock}
+        ${resaleBlock}
+      </div>
+    </details>`;
+}
+
+// Download de l'ORIGINAL d'une image possédée (endpoint dédié, gaté serveur).
+async function libDownloadImage(imageId, btn) {
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Téléchargement…'; }
+  try {
+    const resp = await apiFetch('/images/' + encodeURIComponent(imageId) + '/download', { raw: true });
+    if (!resp || !resp.ok) {
+      if (window.smyleToast) window.smyleToast('Téléchargement indisponible.', { type: 'error' });
+      return;
+    }
+    const cd = resp.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    const filename = (m && m[1]) ? m[1] : 'image';
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  } catch (_) {
+    if (window.smyleToast) window.smyleToast('Échec du téléchargement.', { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.libDownloadImage = libDownloadImage;
+}
+
+
 /* ── Render prompts ──────────────────────────────────────────────────────── */
 
 function renderPrompts(items) {
@@ -215,6 +365,13 @@ function renderPrompts(items) {
     const artistLink = slug
       ? `<a href="/@${esc(slug)}">${esc(artistName)}</a>`
       : esc(artistName);
+
+    // C4 ④ — une image possédée se rend différemment d'un son (pas de Track,
+    // donc pas d'audio/cover ; vignette d'aperçu + recette image + download
+    // via /images/{id}/download au lieu de /products/{id}/download).
+    if (p.product_type === 'image') {
+      return renderLibraryImageCell(p, i, artistName, artistLink);
+    }
 
     const lyricsBlock = hasLyrics ? `
       <div class="lib-content-block lyrics">

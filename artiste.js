@@ -2153,9 +2153,17 @@ function renderResale(items) {
     const editionBadge = (it.edition_number != null && it.max_supply != null)
       ? ' <span title="Exemplaire #' + _e(it.edition_number) + ' sur ' + _e(it.max_supply) + ' — édition limitée" style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:999px;background:rgba(124,77,255,.18);color:#cbb3ff;font-size:11px;font-weight:700;vertical-align:middle">#' + _e(it.edition_number) + '/' + _e(it.max_supply) + '</span>'
       : '';
+    // C4 ④ — une revente d'IMAGE affiche une vignette d'aperçu + label image
+    // (au lieu de la ligne audio). preview_r2_key est non gaté (aperçu public).
+    const isImage = it.product_type === 'image';
+    const thumb = (isImage && it.preview_r2_key)
+      ? '<img src="' + _e(_apImgPreviewUrl(it.preview_r2_key)) + '" alt="" loading="lazy" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.1);flex:0 0 auto">'
+      : (isImage ? '<span style="width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(124,77,255,.12);flex:0 0 auto">🖼</span>' : '');
+    const natureLbl = isImage ? '<span style="display:inline-block;margin-right:6px;font-size:.7rem;color:#cbb3ff">🖼 Image</span>' : '';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.02);margin-bottom:8px">' +
-      '<div><div style="font-weight:700;color:#fff">' + _e(it.title) + editionBadge + '</div>' +
-        '<div style="font-size:.78rem;margin-top:2px">' + author + '</div></div>' +
+      '<div style="display:flex;align-items:center;gap:10px;min-width:0">' + thumb +
+        '<div style="min-width:0"><div style="font-weight:700;color:#fff">' + natureLbl + _e(it.title) + editionBadge + '</div>' +
+        '<div style="font-size:.78rem;margin-top:2px">' + author + '</div></div></div>' +
       '<div style="display:flex;align-items:center;gap:10px">' +
         '<div style="font-weight:700;color:#fff">' + Number(it.resale_price) + ' <span style="font-size:.72rem;color:#a09cb8">Smyles</span></div>' +
         '<button class="ap-resale-buy" data-up-id="' + _e(it.unlocked_prompt_id) + '" style="padding:8px 14px;border-radius:999px;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.5);color:#c4b5fd;font-size:.8rem;font-weight:700;cursor:pointer">Acheter</button>' +
@@ -2196,7 +2204,28 @@ async function loadArtistImages(slug) {
     console.warn('[artiste.js] loadArtistImages', e);
     images = [];
   }
+  await _ensureOwnedImageIds();
   renderArtistImages(images);
+}
+
+// C4 ④ — IDs d'images POSSÉDÉES par l'user courant (miroir de ownedAdnIds).
+// Mise en cache sur state ; utilisé pour afficher « ✓ À toi » + download au
+// lieu de « Acheter » sur les cards image du profil et de /images.
+async function _ensureOwnedImageIds() {
+  if (state.ownedImageIds !== undefined) return;
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    state.ownedImageIds = [];
+    return;
+  }
+  try {
+    const resp = await apiFetch('/me/library/prompts?per_page=100');
+    const items = (resp && Array.isArray(resp.items)) ? resp.items : [];
+    state.ownedImageIds = items
+      .filter(it => it.product_type === 'image')
+      .map(it => String(it.prompt_id));
+  } catch (_) {
+    state.ownedImageIds = []; // dégrade proprement (pas de blocage)
+  }
 }
 
 function _apImgEsc(s) {
@@ -2242,6 +2271,7 @@ function renderArtistImages(images) {
 
   section.style.display = '';
   const B = window.SpBadges;
+  const ownedSet = new Set((state.ownedImageIds || []).map(String));
   const cards = images.map(im => {
     const url = _apImgPreviewUrl(im.previewKey);
     const cover = url
@@ -2256,18 +2286,35 @@ function renderArtistImages(images) {
         ? B.rarete(im.maxSupply, im.maxSupply)
         : B.rarete(sold + 1, im.maxSupply, im.maxSupply === 1 ? 'legendaire' : '');
     }
+    // C4 ④ #3 — état possession / auteur : on n'affiche « Acheter » que si
+    // l'user ne possède PAS l'image et n'en est PAS l'auteur.
+    const owned = ownedSet.has(String(im.id));
+    const mine  = isSelf; // toutes les images de cette page appartiennent à l'artiste affiché
+    let priceOrState;
+    if (mine) {
+      priceOrState = '<div style="font-size:.78rem;color:#8b7bd8;font-weight:700">À toi (créateur)</div>';
+    } else if (owned) {
+      priceOrState = '<div style="font-size:.82rem;color:#4ADE80;font-weight:700">✓ À toi</div>';
+    } else {
+      priceOrState = '<div style="font-size:.84rem;color:#cbb3ff;font-weight:700">' + _apImgEsc(im.priceCredits) + ' <span style="font-size:.7rem;color:#8b7bd8;font-weight:600">Smyles</span></div>';
+    }
+    // C4 ④ #4 — bouton ❤️ wishlist (pas d'ajout playlist : non pertinent pour
+    // une image). data-img-like-btn = UUID du prompt image.
+    const likeBtn = '<button type="button" class="like-btn ap-img-like" data-img-like-btn="' + _apImgEsc(im.id) + '" title="Wishlist" aria-label="Ajouter à ma Wishlist" onclick="event.stopPropagation()"></button>';
+    const clickable = (mine || owned) ? '' : 'cursor:pointer;';
     return '' +
       '<article class="ap-img-card" data-image-id="' + _apImgEsc(im.id) + '" ' +
         'data-price="' + _apImgEsc(im.priceCredits != null ? im.priceCredits : '') + '" ' +
         'data-title="' + _apImgEsc(im.title || '') + '" ' +
         'data-platform="' + _apImgEsc(im.imagePlatform || '') + '" ' +
-        'tabindex="0" role="button" title="Voir la fiche" ' +
-        'style="border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.025);cursor:pointer;display:flex;flex-direction:column">' +
+        'data-owned="' + (owned || mine ? '1' : '0') + '" ' +
+        'tabindex="0" role="button" title="' + ((mine || owned) ? 'Image possédée' : 'Voir la fiche') + '" ' +
+        'style="border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.025);' + clickable + 'display:flex;flex-direction:column">' +
         '<div style="position:relative;aspect-ratio:1/1;background:rgba(124,58,237,.10);overflow:hidden">' + cover + '</div>' +
         '<div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px">' +
           '<div style="font-weight:700;color:#f3f0ff;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _apImgEsc(im.title || 'Sans titre') + '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">' + nature + rar + prov + '</div>' +
-          '<div style="font-size:.84rem;color:#cbb3ff;font-weight:700">' + _apImgEsc(im.priceCredits) + ' <span style="font-size:.7rem;color:#8b7bd8;font-weight:600">Smyles</span></div>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' + priceOrState + likeBtn + '</div>' +
         '</div>' +
       '</article>';
   }).join('');
@@ -2277,9 +2324,16 @@ function renderArtistImages(images) {
       '<span style="font-size:.8rem;color:#a09cb8">L\'aperçu est public — l\'achat débloque la recette + l\'image originale</span></div>' +
     '<div class="ap-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">' + cards + '</div>';
 
-  // Clic carte → drawer d'achat unifié (recette gatée avant achat).
+  // Hydrate l'état liked (cœur plein) via le système wishlist partagé.
+  if (window.SmylePlaylists && typeof window.SmylePlaylists.hydrateImgLikes === 'function') {
+    window.SmylePlaylists.hydrateImgLikes();
+  }
+
+  // Clic carte → drawer d'achat unifié (recette gatée). On NE rouvre PAS le
+  // drawer d'achat pour une image déjà possédée / dont on est l'auteur.
   section.querySelectorAll('.ap-img-card').forEach(card => {
     card.addEventListener('click', () => {
+      if (card.dataset.owned === '1') return; // possédé / auteur → état neutre
       const id = card.dataset.imageId;
       if (id && window.PurchaseDrawer) {
         window.PurchaseDrawer.open({
