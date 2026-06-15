@@ -672,6 +672,10 @@ async def build_artist_detail_payload(
             (Prompt.artist_id == target.id)
             & (Prompt.is_published == True)  # noqa: E712
             & (Prompt.is_deleted == False)  # noqa: E712
+            # C4 (séparation son/image) — la section "prompts publiés" du
+            # profil ne liste QUE des recettes audio. Les images ont leur
+            # propre surface (/images) et ne doivent jamais y apparaître.
+            & (Prompt.product_type != "image")
         )
         .order_by(desc(Prompt.created_at))
         .limit(50)
@@ -1283,12 +1287,14 @@ async def get_adn(slug: str, db: AsyncSession = Depends(get_db)) -> dict:
     if adn is None:
         raise HTTPException(status_code=404, detail="DNA Playlist non publiée")
 
-    # Prompts publics de l'artiste
+    # Prompts publics de l'artiste (recettes audio uniquement — C4 séparation
+    # son/image : les images ne sont pas listées sur cette surface audio).
     prompts_stmt = (
         select(Prompt)
         .where(
             (Prompt.artist_id == target.id)
             & (Prompt.is_published == True)  # noqa: E712
+            & (Prompt.product_type != "image")
         )
         .order_by(Prompt.title)
     )
@@ -1353,6 +1359,9 @@ async def list_prompts(
         select(Prompt, User)
         .join(User, User.id == Prompt.artist_id)
         .where(Prompt.is_published == True)  # noqa: E712
+        # C4 (séparation son/image) — catalogue public des recettes audio :
+        # jamais d'images (elles ont leur propre surface /images).
+        .where(Prompt.product_type != "image")
     )
 
     if universe:
@@ -1417,6 +1426,10 @@ async def get_prompt(prompt_id: str, db: AsyncSession = Depends(get_db)) -> dict
     prompt, artist = row
     if not prompt.is_published:
         raise HTTPException(status_code=404, detail="Prompt non publié")
+    # C4 (séparation son/image) — cette fiche dessert une recette audio. Une
+    # image a sa propre fiche via /images : on renvoie 404 pour un id image.
+    if prompt.product_type == "image":
+        raise HTTPException(status_code=404, detail="Prompt introuvable")
 
     return {
         "prompt": {

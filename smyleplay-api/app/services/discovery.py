@@ -141,10 +141,14 @@ async def get_public_artist_profile(
     )
     has_adn = bool((await db.execute(has_adn_q)).scalar())
 
+    # C4 (séparation son/image) — "prompts_published_count" compte les
+    # recettes audio publiées de l'artiste ; les images ne gonflent pas
+    # ce compteur (elles ont leur propre surface).
     prompts_count_q = select(func.count(Prompt.id)).where(
         Prompt.artist_id == artist_id,
         Prompt.is_published.is_(True),
         Prompt.is_deleted.is_(False),
+        Prompt.product_type != "image",
     )
     prompts_count = int((await db.execute(prompts_count_q)).scalar() or 0)
 
@@ -181,7 +185,14 @@ async def list_public_prompts(
     Retourne des dicts {prompt fields + artist sub-dict} prêts pour
     PromptPublicCard, sans le champ prompt_text (gated).
     """
-    base_filter = [Prompt.is_published.is_(True), Prompt.is_deleted.is_(False)]
+    # C4 (séparation son/image) — ce catalogue public alimente les surfaces de
+    # recettes audio ; les images (product_type='image') ont leur propre
+    # surface (/images) et ne doivent jamais y figurer.
+    base_filter = [
+        Prompt.is_published.is_(True),
+        Prompt.is_deleted.is_(False),
+        Prompt.product_type != "image",
+    ]
     if artist_id is not None:
         base_filter.append(Prompt.artist_id == artist_id)
 
@@ -224,6 +235,10 @@ async def get_public_prompt(
             Prompt.id == prompt_id,
             Prompt.is_published.is_(True),
             Prompt.is_deleted.is_(False),
+            # C4 (séparation son/image) — cette fiche dessert une recette audio.
+            # Un id d'image ne doit pas y résoudre (les images ont leur propre
+            # fiche via /images). On renvoie donc None (=> 404) pour un id image.
+            Prompt.product_type != "image",
         )
     )
     row = (await db.execute(q)).first()
