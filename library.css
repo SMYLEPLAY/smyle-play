@@ -128,6 +128,51 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 }
 
 
+/* ── Commutateur Musique ⇄ Image (C4 biblio) ─────────────────────────────────
+   Pilule à 2 onglets, calquée sur le commutateur marketplace (.mp-mode-*),
+   préfixe local lib-mode-* (indépendant de marketplace.js). Le show/hide des
+   deux mondes est piloté par les classes body lib-mode-musique / lib-mode-image
+   posées par library.js (_libApplyMode). Persistance localStorage `lib_mode`. */
+.lib-mode-switch {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 0 auto 24px;
+  padding: 5px;
+  width: max-content;
+  max-width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 58, 237, .35);
+  background: rgba(255, 255, 255, .03);
+}
+.lib-mode-btn {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, .6);
+  font-family: inherit;
+  font-size: .92rem;
+  font-weight: 700;
+  padding: 9px 22px;
+  border-radius: 999px;
+  transition: all .15s;
+}
+.lib-mode-btn:hover { color: #fff; }
+.lib-mode-btn.is-active {
+  background: linear-gradient(90deg, #7C3AED, #a855f7);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, .35);
+}
+
+/* ── Deux mondes — show/hide piloté par la classe body ───────────────────── */
+.lib-world { display: none; }
+body.lib-mode-musique .lib-world-musique { display: block; }
+body.lib-mode-image   .lib-world-image   { display: block; }
+/* Garde-fou : si aucune classe posée (JS pas encore exécuté), on montre la
+   musique par défaut pour éviter une page vide. */
+body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: block; }
+
+
 /* ── Tabs ────────────────────────────────────────────────────────────────── */
 
 .lib-tabs {
@@ -629,31 +674,69 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 .lib-tabs { display: none; }
 .lib-tab-panel { display: block !important; }
 
-/* ── C4 « Mes images » — sous-sections + cards likées ────────────────────── */
-/* La colonne images peut contenir achetées + likées : on relâche le cap de
-   max-height de .lib-adn-col-body.is-open (2000px) pour éviter le clip. */
-#lib-col-images-body.is-open { max-height: 6000px; }
-
-.lib-img-subhdr {
-  padding: 10px 12px 4px;
+/* ── C4 biblio — ESPACE DÉDIÉ « Mes images » (monde Visuel) ──────────────────
+   Sorti de la grille ADN étroite : section pleine largeur, vignettes plus
+   grandes et aérées. Deux sous-sections claires (Achetées / Likées). */
+.lib-images-space {
+  background: rgba(124, 58, 237, .04);
+  border: 1px solid rgba(124, 58, 237, .18);
+  border-radius: 18px;
+  padding: 20px 22px 24px;
+}
+.lib-images-space-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.lib-images-space-icon { font-size: 22px; line-height: 1; flex-shrink: 0; }
+.lib-images-space-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f3f0ff;
+  letter-spacing: .02em;
+  flex: 1;
+}
+.lib-images-space-count {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .04em;
+  background: rgba(124, 58, 237, .18);
+  color: #cbb3ff;
+  border: 1px solid rgba(124, 58, 237, .35);
+  border-radius: 999px;
+  padding: 3px 11px;
+  flex-shrink: 0;
+}
+.lib-img-section { margin-top: 18px; }
+.lib-img-section:first-of-type { margin-top: 10px; }
+
+.lib-img-subhdr {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: #8b7bd8;
-}
-.lib-img-subhdr:not(:first-child) {
-  margin-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, .06);
-  padding-top: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
 }
 
-/* Grille de cards-aperçu pour les images likées (compactes). */
+/* Grille « Achetées » : les cartes possédées sont des <details> accordéon
+   (renderLibraryImageCell). On les laisse en colonne, mais on aère et on
+   élargit le conteneur pleine largeur. */
+#lib-images-owned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#lib-images-owned-list .lib-item-cell { margin: 0; }
+
+/* Grille de cards-aperçu pour les images likées : vignettes PLUS GRANDES
+   que l'ancienne colonne étroite (espace dédié = plus aéré). */
 #lib-images-liked-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
-  padding: 8px 12px 14px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
 }
 #lib-images-liked-list .lib-empty { grid-column: 1 / -1; }
 
@@ -720,4 +803,7 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
   .lib-tabs { overflow-x: auto; }
   .lib-tab { padding: 10px 12px; font-size: 10px; }
   .lib-adn-grid { grid-template-columns: 1fr; gap: 10px; }
+  .lib-images-space { padding: 16px 14px 18px; border-radius: 14px; }
+  #lib-images-liked-list { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .lib-mode-btn { padding: 9px 18px; font-size: .86rem; }
 }

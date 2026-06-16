@@ -559,7 +559,6 @@
         + '<a class="mp-voir-tout" href="/sons" style="margin:0">Voir tous les sons (' + totalSons + ') →</a>'
         + '<a class="mp-voir-tout" href="/beats" style="margin:0">🥁 Étagère beats →</a>'
         + '<a class="mp-voir-tout" href="/voix" style="margin:0">🎙 Voix →</a>'
-        + '<a class="mp-voir-tout" href="/images" style="margin:0">🖼️ Images IA →</a>'
         + '</div>';
     }
 
