@@ -45,6 +45,7 @@ from app.services.unlocks import (
     PromptNotPurchasable,
     SelfPurchaseForbidden,
     unlock_adn_atomic,
+    unlock_album_adn_atomic,
     unlock_playlist_adn_atomic,
     unlock_prompt_atomic,
 )
@@ -431,6 +432,66 @@ async def unlock_playlist_adn(
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             detail="Tu possèdes déjà l'ADN de cette playlist",
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Échec de l'achat",
+        )
+
+
+# -----------------------------------------------------------------------------
+# POST /unlocks/album-adn/{album_id}  (ADN Album — génome de style visuel)
+# -----------------------------------------------------------------------------
+
+@router.post(
+    "/album-adn/{album_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Achète l'ADN d'un album d'images public",
+)
+@limiter.limit(LIMIT_PURCHASE)
+async def unlock_album_adn(
+    album_id: UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Achète l'ADN d'un album d'images public (génome de style) avec des Smyles.
+    Calque STRICT de /unlocks/playlist-adn. Donne accès au génome complet
+    (seed_prompt + palette) via /me/library/album-adns.
+    """
+    try:
+        result = await unlock_album_adn_atomic(
+            db=db,
+            buyer_id=current_user.id,
+            album_id=album_id,
+        )
+        await db.commit()
+
+        # Parrainage (mécanique 1) : 1er achat = action qualifiante. Idempotent.
+        try:
+            from app.services.referrals import maybe_reward_referral
+            if await maybe_reward_referral(db, current_user.id):
+                await db.commit()
+        except Exception:
+            await db.rollback()
+
+        return {
+            "ok": True,
+            "album_id": str(album_id),
+            "paid": result.paid,
+            "message": "ADN album débloqué — génome de style révélé dans ta bibliothèque",
+        }
+    except ValueError as e:
+        await db.rollback()
+        _raise_unlock_error(e)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Tu possèdes déjà l'ADN de cet album",
         )
     except Exception:
         await db.rollback()

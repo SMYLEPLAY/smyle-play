@@ -86,3 +86,21 @@ async def list_my_library_playlist_adns(
         db, user_id=current_user.id, page=page, per_page=per_page
     )
     return {"items": items, "total": total, "page": page, "per_page": per_page}
+
+
+@router.get("/album-adns")
+async def list_my_library_album_adns(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Mes ADN Album achetés. Inclut le génome COMPLET (seed_prompt + adn_palette)
+    car possédé. Expose aussi owner (slug artiste) pour lier vers son profil.
+    """
+    from app.services.discovery import list_user_library_album_adns
+    items, total = await list_user_library_album_adns(
+        db, user_id=current_user.id, page=page, per_page=per_page
+    )
+    return {"items": items, "total": total, "page": page, "per_page": per_page}

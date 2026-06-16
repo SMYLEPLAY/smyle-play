@@ -120,12 +120,12 @@
       // image existent dans le DOM mais sont masquées en mode musique, et
       // inversement. La vitrine Smyle est partagée (jamais masquée par le mode).
       // Sections Monde Image masquées par défaut (avant que le mode soit posé).
-      '.mp-section-top-images,.mp-section-top-artists-image,.mp-section-images-home{display:none}' +
-      // Mode Musique : on masque les sections Image (top-images, top-artistes-image, catalogue images).
-      '.mp-mode-musique .mp-section-top-images,.mp-mode-musique .mp-section-top-artists-image,.mp-mode-musique .mp-section-images-home{display:none!important}' +
+      '.mp-section-top-images,.mp-section-top-artists-image,.mp-section-images-home,.mp-section-albums-adn{display:none}' +
+      // Mode Musique : on masque les sections Image (top-images, top-artistes-image, catalogue images, catalogue ADN Album).
+      '.mp-mode-musique .mp-section-top-images,.mp-mode-musique .mp-section-top-artists-image,.mp-mode-musique .mp-section-images-home,.mp-mode-musique .mp-section-albums-adn{display:none!important}' +
       // Mode Image : on masque les sections Musique (top-sons, top-artistes, catalogue sons, grille artistes) ; on RÉVÈLE les sections Image.
       '.mp-mode-image .mp-section-top-sons,.mp-mode-image .mp-section-top-artists,.mp-mode-image .mp-section-sons,.mp-mode-image .mp-section-artists{display:none!important}' +
-      '.mp-mode-image .mp-section-top-images,.mp-mode-image .mp-section-top-artists-image,.mp-mode-image .mp-section-images-home{display:block!important}' +
+      '.mp-mode-image .mp-section-top-images,.mp-mode-image .mp-section-top-artists-image,.mp-mode-image .mp-section-images-home,.mp-mode-image .mp-section-albums-adn{display:block!important}' +
       // Commutateur : pilule à deux onglets, centrée au-dessus de la vitrine.
       '.mp-mode-switch{display:flex;gap:6px;justify-content:center;margin:0 auto 18px;padding:5px;width:max-content;border-radius:999px;border:1px solid rgba(124,58,237,.35);background:rgba(255,255,255,.03)}' +
       '.mp-mode-btn{cursor:pointer;border:0;background:transparent;color:rgba(255,255,255,.6);font-family:inherit;font-size:.92rem;font-weight:700;padding:9px 22px;border-radius:999px;transition:all .15s}' +
@@ -1574,6 +1574,85 @@
     }
   }
 
+  // ── C4 ADN Album — catalogue des génomes de style visuel en vente ─────────
+  // Miroir du catalogue ADN Playlist. GET /catalog/albums-adn renvoie un teaser
+  // GATÉ : { id, title, dna_description, adn_style, adn_price, owner }. Le
+  // génome (seedPrompt + palette) n'est JAMAIS exposé ici — clic → fiche album
+  // (openAlbumViewModal) où l'achat se fait, puis le génome est révélé.
+  async function _fetchAlbumAdns() {
+    try {
+      const data = await window.apiFetch('/catalog/albums-adn?per_page=24', { auth: false });
+      return (data && Array.isArray(data.items)) ? data.items : [];
+    } catch (_) { return []; }
+  }
+
+  function _albumAdnCardHtml(a) {
+    const owner = a.owner || {};
+    const ownerName = owner.artist_name || owner.artistName || 'Artiste';
+    const styleChip = a.adn_style
+      ? '<span class="mp-adn-card-style">' + _esc(a.adn_style) + '</span>' : '';
+    const desc = a.dna_description
+      ? '<div class="mp-adn-card-desc">' + _esc(a.dna_description) + '</div>'
+      : '<div class="mp-adn-card-desc mp-adn-card-desc--muted">Un ADN donne des résultats dans le même esprit, jamais identiques.</div>';
+    return '' +
+      '<article class="mp-adn-card" data-album-id="' + _esc(a.id) + '" tabindex="0" role="button" title="Voir l\'ADN de l\'album">' +
+        '<div class="mp-adn-card-top">' +
+          '<span class="mp-adn-card-ico">🎨</span>' +
+          '<span class="mp-adn-card-title">' + _esc(a.title || 'Album') + '</span>' +
+          styleChip +
+        '</div>' +
+        desc +
+        '<div class="mp-adn-card-foot">' +
+          '<span class="mp-adn-card-owner">' + _esc(ownerName) + '</span>' +
+          '<span class="mp-adn-card-price">' + _esc(a.adn_price) + ' <span>Smyles</span></span>' +
+        '</div>' +
+      '</article>';
+  }
+
+  function _injectAlbumAdnStyles() {
+    if (document.getElementById('mp-adn-style')) return;
+    const st = document.createElement('style');
+    st.id = 'mp-adn-style';
+    st.textContent =
+      '.mp-adn-card{border:1px solid rgba(204,136,255,.2);border-radius:16px;padding:14px 15px;background:rgba(204,136,255,.05);cursor:pointer;display:flex;flex-direction:column;gap:9px;transition:border-color .15s,transform .15s}' +
+      '.mp-adn-card:hover{border-color:rgba(204,136,255,.6);transform:translateY(-2px)}' +
+      '.mp-adn-card-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}' +
+      '.mp-adn-card-ico{font-size:18px}' +
+      '.mp-adn-card-title{font-weight:700;color:#f3e9ff;font-size:.98rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.mp-adn-card-style{font-size:10px;font-weight:700;color:#cc88ff;background:rgba(204,136,255,.14);border:1px solid rgba(204,136,255,.3);border-radius:999px;padding:1px 8px}' +
+      '.mp-adn-card-desc{font-size:12.5px;color:#cdc7e2;line-height:1.5;min-height:36px}' +
+      '.mp-adn-card-desc--muted{color:#8b86a3;font-style:italic}' +
+      '.mp-adn-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}' +
+      '.mp-adn-card-owner{font-size:11.5px;color:#a09cb8}' +
+      '.mp-adn-card-price{font-size:.92rem;color:#cbb3ff;font-weight:700}' +
+      '.mp-adn-card-price span{font-size:.68rem;color:#8b7bd8;font-weight:600}';
+    document.head.appendChild(st);
+  }
+
+  function _renderAlbumAdnCatalog(items) {
+    const el = document.getElementById('mp-grid-albums-adn');
+    if (!el) return;
+    if (!items.length) {
+      el.innerHTML = '<div class="mp-grid-empty">Aucun ADN Album en vente pour le moment. Les artistes les mettent en vente depuis leurs albums (My Mix, monde Image).</div>';
+      return;
+    }
+    _injectAlbumAdnStyles();
+    el.innerHTML = items.map(_albumAdnCardHtml).join('');
+    if (!el._bound) {
+      el._bound = true;
+      el.addEventListener('click', (e) => {
+        const card = e.target.closest('.mp-adn-card');
+        if (!card) return;
+        const id = card.dataset.albumId;
+        // Clic → fiche album (teaser + bouton d'achat de l'ADN). Le génome
+        // reste gaté côté backend tant que l'ADN n'est pas acheté.
+        if (id && window.SmyleAlbums && typeof window.SmyleAlbums.openAlbumViewModal === 'function') {
+          window.SmyleAlbums.openAlbumViewModal(id);
+        }
+      });
+    }
+  }
+
   // Section Œuvre complète — affichée dans LES DEUX modes. Carte = cover son +
   // vignette image + badge oeuvre. Clic → ouvre la fiche son (drawer existant).
   function _renderOeuvres(oeuvres) {
@@ -1647,14 +1726,16 @@
   async function _loadImageWorld() {
     if (_imageWorldLoaded) return;
     _imageWorldLoaded = true;
-    const [topImgs, topArts, homeImgs] = await Promise.all([
+    const [topImgs, topArts, homeImgs, albumAdns] = await Promise.all([
       _fetchTopImages(10),
       _fetchTopImageArtists(10),
       _fetchHomeImages(),
+      _fetchAlbumAdns(),
     ]);
     _renderTopImages(topImgs);
     _renderTopImageArtists(topArts);
     _renderHomeImagesGrid(homeImgs);
+    _renderAlbumAdnCatalog(albumAdns);
   }
 
   // Applique un mode (musique|image) : pose la classe body, met à jour les

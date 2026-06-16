@@ -80,11 +80,34 @@ def _image_preview(p: Prompt) -> dict:
     }
 
 
-async def _album_with_images(db: AsyncSession, album) -> AlbumWithImages:
-    """Construit AlbumWithImages : métadonnées + aperçus PUBLICS des images."""
+async def _album_with_images(
+    db: AsyncSession,
+    album,
+    *,
+    viewer_id: uuid.UUID | None = None,
+) -> AlbumWithImages:
+    """Construit AlbumWithImages : métadonnées + aperçus PUBLICS des images
+    + l'ADN Album (calque ADN Playlist).
+
+    GATING du génome (seed_prompt + adn_palette) — identique à l'ADN Playlist :
+    masqué si l'ADN est en vente (adn_for_sale) ET que le viewer n'est ni
+    l'owner ni détenteur de l'ADN. Le teaser (adn_for_sale / adn_price /
+    adn_style / dna_description) reste toujours exposé.
+    """
     images = await svc.list_album_images(db, album.id)
     counts = await svc.count_images_by_albums(db, [album.id])
     covers = await svc.cover_preview_keys_by_albums(db, [album])
+
+    # Le viewer voit le génome s'il est owner, ou s'il possède l'ADN, ou si
+    # l'ADN n'est tout simplement pas en vente.
+    is_owner = viewer_id is not None and album.owner_id == viewer_id
+    genome_visible = is_owner or not album.adn_for_sale
+    if not genome_visible and viewer_id is not None:
+        from app.services.marketplace import user_owns_album_adn
+        genome_visible = await user_owns_album_adn(
+            db, user_id=viewer_id, album_id=album.id
+        )
+
     return AlbumWithImages(
         id=album.id,
         owner_id=album.owner_id,
@@ -94,6 +117,14 @@ async def _album_with_images(db: AsyncSession, album) -> AlbumWithImages:
         image_count=counts.get(album.id, 0),
         created_at=album.created_at,
         images=[_image_preview(p) for p in images],
+        # ADN — teaser toujours exposé
+        adn_for_sale=album.adn_for_sale,
+        adn_price=album.adn_price,
+        adn_style=album.adn_style,
+        dna_description=album.dna_description,
+        # ADN — génome gaté
+        adn_palette=album.adn_palette if genome_visible else None,
+        seed_prompt=album.seed_prompt if genome_visible else None,
     )
 
 
@@ -150,7 +181,7 @@ async def get_album_endpoint(
     if album.owner_id != current_user.id and album.visibility != "public":
         raise HTTPException(status_code=404, detail="Album introuvable")
 
-    return await _album_with_images(db, album)
+    return await _album_with_images(db, album, viewer_id=current_user.id)
 
 
 @router.patch("/{album_id}", response_model=AlbumRead)

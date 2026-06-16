@@ -160,6 +160,27 @@ async def user_owns_playlist_adn(
     return result.first() is not None
 
 
+async def user_owns_album_adn(
+    db: AsyncSession, *, user_id: UUID, album_id: UUID
+) -> bool:
+    """
+    True si user_id possède l'ADN Album (génome de style) de cet album.
+    Calque STRICT de user_owns_playlist_adn — sert au gating du génome
+    (seed_prompt + palette) dans la lecture album.
+    """
+    from app.models.owned_album_adn import OwnedAlbumAdn
+
+    result = await db.execute(
+        select(OwnedAlbumAdn.album_id)
+        .where(
+            OwnedAlbumAdn.user_id == user_id,
+            OwnedAlbumAdn.album_id == album_id,
+        )
+        .limit(1)
+    )
+    return result.first() is not None
+
+
 async def get_playlist_containing_adn_track(
     db: AsyncSession, *, user_id: UUID, adn_id: UUID
 ) -> UUID | None:

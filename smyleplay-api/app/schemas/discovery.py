@@ -268,3 +268,29 @@ class PlaylistAdnCatalogResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+# -----------------------------------------------------------------------------
+# Albums ADN publics (catalog marketplace — génome de style visuel en vente)
+# -----------------------------------------------------------------------------
+
+class AlbumAdnCard(BaseModel):
+    """
+    Vignette album dont l'ADN (génome de style) est en vente.
+    GATING : n'expose que le teaser (dna_description, adn_style) + prix.
+    Le génome (seed_prompt + adn_palette) n'est révélé qu'après achat.
+    """
+
+    id: UUID
+    owner: ArtistPublicCard
+    title: str
+    dna_description: str | None = None
+    adn_style: str | None = None
+    adn_price: int
+
+
+class AlbumAdnCatalogResponse(BaseModel):
+    items: list[AlbumAdnCard]
+    total: int
+    page: int
+    per_page: int

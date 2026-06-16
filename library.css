@@ -721,6 +721,33 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
   border-bottom: 1px solid rgba(255, 255, 255, .06);
 }
 
+/* Compteur d'éléments dans un sous-en-tête du monde Image (ex. ADN Album). */
+.lib-img-subcount {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(204, 136, 255, .14);
+  color: #cc88ff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Chip de style dominant sur une cellule ADN Album. */
+.lib-adn-style-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(204, 136, 255, .12);
+  border: 1px solid rgba(204, 136, 255, .3);
+  color: #cc88ff;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 /* Grille « Achetées » : les cartes possédées sont des <details> accordéon
    (renderLibraryImageCell). On les laisse en colonne, mais on aère et on
    élargit le conteneur pleine largeur. */

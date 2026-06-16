@@ -32,6 +32,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -39,7 +40,9 @@ from sqlalchemy import (
     Integer,
     PrimaryKeyConstraint,
     String,
+    Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -87,6 +90,33 @@ class Album(Base):
         ForeignKey("prompts.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+    # ─── ADN Album — génome de style VENDABLE (chantier C4 ADN Album) ─────
+    # Analogue VISUEL de l'ADN Playlist : ce sont des COLONNES sur l'album
+    # (pas une table séparée). Calque STRICT de Playlist.seed_prompt /
+    # dna_description / adn_for_sale / adn_price, enrichi des deux champs
+    # propres au visuel (style dominant + palette).
+    #
+    # GATING (identique à l'ADN Playlist) : le génome (seed_prompt + palette
+    # détaillée) n'est JAMAIS exposé publiquement si adn_for_sale ; il est
+    # révélé à l'owner ou à l'acheteur (library) uniquement. L'album reste
+    # avec son toggle public/privé ; l'ADN ne se vend QUE si l'album est
+    # public ET adn_for_sale ET adn_price IS NOT NULL.
+
+    # Prompt/réglages représentatifs du style de l'album (gaté).
+    seed_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Description du génome de style (exposée — teaser).
+    dna_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Style dominant — réutilise les codes STYLES de images.py (exposé).
+    adn_style: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Palette : CSV de hex ou mots-clés couleur (gaté, fait partie du génome).
+    adn_palette: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Toggle mise en vente de l'ADN.
+    adn_for_sale: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    # Prix en Smyles (NULL = pas de prix fixé → non vendable même si flag on).
+    adn_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

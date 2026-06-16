@@ -30,6 +30,7 @@ from app.schemas.discovery import (
     AdnPublicDetail,
     ArtistPublicProfile,
     ArtistsListResponse,
+    AlbumAdnCatalogResponse,
     EffectivePricePreview,
     PlaylistAdnCatalogResponse,
     PromptCatalogResponse,
@@ -43,6 +44,7 @@ from app.services.discovery import (
     get_public_artist_profile,
     get_public_prompt,
     list_public_adns,
+    list_public_albums_adn,
     list_public_artists,
     list_public_playlists_adn,
     list_public_prompts,
@@ -187,6 +189,25 @@ async def list_playlists_adn(
         db, artist_id=artist_id, page=page, per_page=per_page
     )
     return PlaylistAdnCatalogResponse(
+        items=items, total=total, page=page, per_page=per_page
+    )
+
+
+# -----------------------------------------------------------------------------
+# Albums ADN en vente (génome de style visuel)
+# -----------------------------------------------------------------------------
+
+@catalog_router.get("/albums-adn", response_model=AlbumAdnCatalogResponse)
+async def list_albums_adn(
+    artist_id: UUID | None = Query(None, description="Filtre par artiste"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    items, total = await list_public_albums_adn(
+        db, artist_id=artist_id, page=page, per_page=per_page
+    )
+    return AlbumAdnCatalogResponse(
         items=items, total=total, page=page, per_page=per_page
     )
 
