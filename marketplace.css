@@ -1440,6 +1440,152 @@
   .mp-td-cover { max-height: 200px; }
 }
 
+/* ── Fiche ID IMAGE — panneau latéral (C4) ──────────────────────────────────
+   Miroir de .mp-td-* (drawer son) mais le héros est une grande zone d'aperçu
+   visuel : médium visuel → image plus grande, object-fit:contain sur fond
+   sombre pour respecter le ratio. Préfixe dédié .mp-id-* (pas de collision). */
+.mp-id-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity .25s;
+  pointer-events: none;
+}
+.mp-id-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+.mp-id-drawer {
+  position: fixed; right: 0; top: 0; bottom: 0;
+  width: min(460px, 100vw);
+  background: #0f0d14;
+  border-left: 1px solid rgba(255,255,255,.1);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform .28s cubic-bezier(.22,.68,0,1.2);
+  z-index: 1201;
+}
+.mp-id-drawer.is-open { transform: translateX(0); }
+
+.mp-id-close {
+  position: absolute; top: 14px; right: 16px;
+  background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.8); border-radius: 50%;
+  width: 30px; height: 30px; cursor: pointer;
+  font-size: 14px; line-height: 1; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.mp-id-close:hover { background: rgba(0,0,0,.7); }
+
+/* Héros image agrandie : grande zone, fond sombre, ratio respecté. */
+.mp-id-hero {
+  width: 100%;
+  min-height: 300px; max-height: 60vh;
+  background: radial-gradient(120% 120% at 50% 0%, #1a1622 0%, #0a0810 100%);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.mp-id-hero-img {
+  max-width: 100%; max-height: 60vh;
+  width: auto; height: auto;
+  object-fit: contain; display: block;
+  user-select: none; -webkit-user-drag: none;
+}
+.mp-id-hero-fallback {
+  width: 100%; min-height: 300px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 4rem; opacity: .35;
+}
+
+.mp-id-body { padding: 18px 20px 32px; display: flex; flex-direction: column; gap: 10px; }
+.mp-id-type { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.4); }
+.mp-id-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0; line-height: 1.2; }
+.mp-id-artist { font-size: 13px; color: rgba(204,136,255,.9); text-decoration: none; }
+.mp-id-artist:hover { text-decoration: underline; }
+.mp-id-badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 2px; }
+.mp-id-meta-line { font-size: 12px; color: rgba(255,255,255,.45); }
+.mp-id-desc { font-size: 13px; color: rgba(255,255,255,.62); line-height: 1.5; }
+
+.mp-id-social-row { display: flex; gap: 8px; padding: 6px 0 2px; }
+.mp-id-like-btn {
+  flex: 0 0 auto;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.65);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: color .14s, border-color .14s, background .14s;
+}
+.mp-id-like-btn:hover {
+  color: #ff7799;
+  border-color: rgba(255,119,153,.35);
+  background: rgba(255,119,153,.06);
+}
+.mp-id-like-btn.liked {
+  color: #ff5577;
+  border-color: rgba(255,85,119,.5);
+  background: rgba(255,85,119,.08);
+}
+
+/* Bloc « Œuvre complète » — son lié (aperçu only, achat séparé). */
+.mp-id-linked {
+  margin-top: 6px; padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(124,58,237,.07);
+  border: 1px solid rgba(124,58,237,.2);
+}
+.mp-id-linked-label { font-size: 11px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.mp-id-linked-row { display: flex; align-items: center; gap: 10px; }
+.mp-id-linked-cover { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.mp-id-linked-cover-fallback { display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.06); font-size: 1.2rem; }
+.mp-id-linked-main { flex: 1; min-width: 0; }
+.mp-id-linked-title { font-size: 13px; font-weight: 700; color: #f3f0ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-id-linked-price { font-size: 12px; color: #cbb3ff; font-weight: 700; }
+.mp-id-linked-price span { font-size: 10px; color: #8b7bd8; }
+.mp-id-linked-btn {
+  flex-shrink: 0;
+  padding: 8px 14px; border-radius: 999px;
+  background: rgba(204,136,255,.18);
+  border: 1px solid rgba(204,136,255,.5);
+  color: #cc88ff; font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; font-family: inherit;
+  transition: background .15s, border-color .15s;
+}
+.mp-id-linked-btn:hover { background: rgba(204,136,255,.3); border-color: #cc88ff; }
+
+/* CTA achat / état possession. */
+.mp-id-cta { margin-top: 8px; }
+.mp-id-buy {
+  width: 100%;
+  padding: 13px 18px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg,#7c5cff,#9d4dff);
+  color: #fff; font-size: 14px; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+  transition: filter .15s, transform .1s;
+}
+.mp-id-buy:hover { filter: brightness(1.08); }
+.mp-id-buy:active { transform: translateY(1px); }
+.mp-id-buy:disabled {
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.45);
+  cursor: default;
+}
+.mp-id-state {
+  text-align: center; padding: 13px 18px; border-radius: 12px;
+  font-size: 14px; font-weight: 800;
+}
+.mp-id-state.owned { color: #4ADE80; background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.25); }
+.mp-id-state.mine  { color: #8b7bd8; background: rgba(139,123,216,.08); border: 1px solid rgba(139,123,216,.25); }
+
+@media (max-width: 480px) {
+  .mp-id-drawer { width: 100vw; }
+  .mp-id-hero { min-height: 240px; max-height: 50vh; }
+  .mp-id-hero-img { max-height: 50vh; }
+}
+
 /* Bouton recette cliquable sur la card (remplace le simple indicateur) */
 .mp-son-card-recipe-row {
   padding: 0 4px 4px;

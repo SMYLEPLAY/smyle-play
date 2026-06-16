@@ -1685,23 +1685,173 @@
     _applyMode(_readMode(), { persist: false });
   }
 
-  // Fiche/drawer image : aperçu + provenance + prix + rareté, recette MASQUÉE.
-  // Achat via PurchaseDrawer (type 'image' → /unlocks/prompts/{id}).
+  // Fiche/drawer image : panneau latéral (miroir du drawer son) qui AGRANDIT
+  // l'aperçu en haut + métadonnées publiques + prix + rareté/œuvre. La recette
+  // (prompt/réglages/original) reste MASQUÉE — débloquée à l'achat via
+  // PurchaseDrawer (type 'image' → /unlocks/prompts/{id}). N'expose AUCUN champ
+  // gaté : on ne lit que les champs publics de _image_public_dict.
   function _openImageDetailDrawer(im) {
-    if (!window.PurchaseDrawer) {
-      // Fallback ultra-simple si le drawer n'est pas chargé.
-      if (window.showToast) window.showToast('Chargement du module d\'achat…');
-      return;
+    const existing = document.getElementById('mp-image-detail-drawer');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    const title    = im.title || 'Image IA';
+    const price    = (im.priceCredits != null) ? im.priceCredits : null;
+    const previewUrl = _imgPreviewUrl(im.previewKey);
+    const owned    = _ownedImageIds.has(String(im.id));
+    const mine     = (_myUserId && im.artistId && String(im.artistId) === String(_myUserId));
+
+    // Héros : grande zone d'aperçu (object-fit:contain pour respecter le ratio
+    // de l'image), fond sombre. Fallback joli si pas de previewKey.
+    const heroHTML = previewUrl
+      ? `<img src="${_esc(previewUrl)}" alt="${_esc(title)}" class="mp-id-hero-img" loading="lazy" oncontextmenu="return false" draggable="false" />`
+      : `<div class="mp-id-hero-fallback" aria-hidden="true">🖼️</div>`;
+
+    // Badges publics : nature image · palier · rareté #X/N · provenance · œuvre.
+    const bNature = window.SpBadges ? SpBadges.nature('image') : '';
+    const bPalier = window.SpBadges ? SpBadges.palier('standard') : '';
+    const bRar    = _imgRareteBadge(im);
+    const bProv   = window.SpBadges ? SpBadges.provenance(im.imagePlatform, im.imageModelVersion) : '';
+    const bOeuvre = (im.isOeuvreComplete && window.SpBadges && SpBadges.oeuvre) ? SpBadges.oeuvre() : '';
+    const badgesHTML = (bNature || bPalier || bRar || bProv || bOeuvre)
+      ? `<div class="mp-id-badges">${bNature}${bPalier}${bRar}${bProv}${bOeuvre}</div>`
+      : '';
+
+    // Artiste (nom + lien /@slug) — parité fiche son. Affiché seulement si le
+    // payload public l'expose (artistName + artistSlug) ; sinon rien (pas de
+    // « — » moche).
+    const artistHTML = (im.artistName && im.artistSlug)
+      ? `<a class="mp-id-artist" href="/@${_esc(im.artistSlug)}">${_esc(im.artistName)}</a>`
+      : '';
+
+    const ratioMeta = im.ratio
+      ? `<div class="mp-id-meta-line">Format ${_esc(im.ratio)}</div>`
+      : '';
+    const descMeta = im.description
+      ? `<div class="mp-id-desc">${_esc(im.description)}</div>`
+      : '';
+
+    // Bloc « Œuvre complète » : son lié (aperçu only, achat séparé du son).
+    const ls = im.linkedSound || null;
+    const oeuvreBlockHTML = ls
+      ? `<div class="mp-id-linked">
+           <div class="mp-id-linked-label">Œuvre complète</div>
+           <div class="mp-id-linked-row">
+             ${ls.coverUrl
+               ? `<img src="${_esc(ls.coverUrl)}" alt="" class="mp-id-linked-cover" loading="lazy" />`
+               : `<div class="mp-id-linked-cover mp-id-linked-cover-fallback">🎵</div>`}
+             <div class="mp-id-linked-main">
+               <div class="mp-id-linked-title">${_esc(ls.title || 'Son lié')}</div>
+               <div class="mp-id-linked-price">🎵 ${_esc(ls.priceCredits)} <span>Smyles</span></div>
+             </div>
+             <button class="mp-id-linked-btn" id="mp-id-linked-btn" type="button">Voir le son</button>
+           </div>
+         </div>`
+      : '';
+
+    // Bouton ❤️ wishlist image : réutilise le mécanisme global (capturing
+    // listener sur [data-img-like-btn] dans playlists.js) → fonctionne et reste
+    // synchro avec les cards (hydrateImgLikes applique la classe .liked).
+    const likeHTML = `
+      <div class="mp-id-social-row">
+        <button class="like-btn mp-id-like-btn" type="button" data-img-like-btn="${_esc(im.id)}"
+                title="Ajouter à ma Wishlist" aria-label="Ajouter à ma Wishlist"></button>
+      </div>`;
+
+    // CTA achat / état possession. On GARDE PurchaseDrawer pour la confirmation
+    // d'achat ; cette fiche vient AVANT.
+    let ctaHTML;
+    if (mine) {
+      ctaHTML = `<div class="mp-id-state mine">À toi (créateur)</div>`;
+    } else if (owned) {
+      ctaHTML = `<div class="mp-id-state owned">✓ Possédée — recette dans ta bibliothèque</div>`;
+    } else if (im.isSoldOut) {
+      ctaHTML = `<button class="mp-id-buy" type="button" disabled>Édition épuisée</button>`;
+    } else {
+      const priceLabel = (price != null) ? (price + ' Smyles') : 'Smyles';
+      ctaHTML = `<button class="mp-id-buy" id="mp-id-buy-btn" type="button">🔓 Débloquer · ${_esc(priceLabel)}</button>`;
     }
-    window.PurchaseDrawer.open({
-      type: 'image',
-      id: im.id,
-      price: (im.priceCredits != null ? im.priceCredits : null),
-      title: im.title || 'Image IA',
-      platform: im.imagePlatform || '',
-      // C4 Œuvre complète — son lié (aperçu only, achat séparé).
-      linkedSound: im.linkedSound || null,
+
+    const overlay = document.createElement('div');
+    overlay.id        = 'mp-image-detail-drawer';
+    overlay.className = 'mp-id-overlay';
+    overlay.innerHTML = `
+      <aside class="mp-id-drawer" role="dialog" aria-modal="true" aria-label="Détail de l'image">
+        <button class="mp-id-close" aria-label="Fermer">✕</button>
+        <div class="mp-id-hero">${heroHTML}</div>
+        <div class="mp-id-body">
+          <div class="mp-id-type">Image</div>
+          <h2 class="mp-id-title">${_esc(title)}</h2>
+          ${artistHTML}
+          ${badgesHTML}
+          ${ratioMeta}
+          ${descMeta}
+          ${likeHTML}
+          ${oeuvreBlockHTML}
+          <div class="mp-id-cta">${ctaHTML}</div>
+        </div>
+      </aside>`;
+
+    document.body.appendChild(overlay);
+    // Synchronise l'état liked du cœur (classe .liked) avec le cache wishlist.
+    if (window.SmylePlaylists && typeof window.SmylePlaylists.hydrateImgLikes === 'function') {
+      window.SmylePlaylists.hydrateImgLikes();
+    }
+    requestAnimationFrame(() => {
+      overlay.classList.add('is-open');
+      const dr = overlay.querySelector('.mp-id-drawer');
+      if (dr) dr.classList.add('is-open');
     });
+
+    function _close() {
+      overlay.classList.remove('is-open');
+      const dr = overlay.querySelector('.mp-id-drawer');
+      if (dr) dr.classList.remove('is-open');
+      setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300);
+    }
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) _close(); });
+    overlay.querySelector('.mp-id-close').addEventListener('click', _close);
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', onEsc); }
+    });
+
+    // Achat → modale PurchaseDrawer (confirmation + débit + déblocage recette).
+    const buyBtn = overlay.querySelector('#mp-id-buy-btn');
+    if (buyBtn) {
+      buyBtn.addEventListener('click', () => {
+        if (!window.PurchaseDrawer) {
+          if (window.showToast) window.showToast('Chargement du module d\'achat…');
+          return;
+        }
+        _close();
+        window.PurchaseDrawer.open({
+          type: 'image',
+          id: im.id,
+          price: price,
+          title: title,
+          platform: im.imagePlatform || '',
+          linkedSound: im.linkedSound || null,
+        });
+      });
+    }
+
+    // « Voir le son » lié → fiche du son si chargé, sinon drawer d'achat son.
+    const lsBtn = overlay.querySelector('#mp-id-linked-btn');
+    if (lsBtn && ls) {
+      lsBtn.addEventListener('click', () => {
+        const track = (_state.tracks || []).find(t => String(t.promptId) === String(ls.id));
+        if (track) { _close(); _openTrackDetailDrawer(track); return; }
+        if (window.PurchaseDrawer) {
+          _close();
+          window.PurchaseDrawer.open({
+            type: 'son',
+            id: ls.id,
+            price: (ls.priceCredits != null ? ls.priceCredits : null),
+            title: ls.title || 'Son lié',
+          });
+        }
+      });
+    }
   }
 
   // ── Modale achat recette (depuis badge Recette sur une track card) ────────
