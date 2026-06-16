@@ -194,13 +194,21 @@ async def create_my_image(
 # ──────────────────────────────────────────────────────────────────────────
 
 
-def _image_public_dict(p: Prompt, sold_count: int | None) -> dict:
+def _image_public_dict(
+    p: Prompt, sold_count: int | None, artist: User | None = None
+) -> dict:
     """
     Carte-aperçu publique d'une image. Reproduit les champs rareté/supply des
     cartes ADN/prompts (compute_rarity_tier + sold/available) attendus par
     SpBadges côté front. N'expose AUCUN champ gaté.
+
+    `artist` (optionnel) : le User créateur, pour exposer nom + slug PUBLICS
+    (artistName / artistSlug) — parité avec la fiche son. AUCUN champ privé de
+    l'artiste n'est exposé. Si None, les deux clés sont omises (le front
+    n'affiche rien plutôt qu'un « — » moche).
     """
     from app.services.marketplace import compute_rarity_tier
+    from app.routers.watt_compat import _derive_artist_slug
 
     max_sup = p.max_supply
     ratio = None
@@ -210,7 +218,7 @@ def _image_public_dict(p: Prompt, sold_count: int | None) -> dict:
         r = p.image_settings.get("ratio")
         if isinstance(r, str):
             ratio = r[:20]
-    return {
+    out = {
         "id":               str(p.id),
         "artistId":         str(p.artist_id),
         "title":            p.title,
@@ -239,6 +247,28 @@ def _image_public_dict(p: Prompt, sold_count: int | None) -> dict:
         # elle, l'affiche quand meme — le front s'en sert pour ne pas dupliquer.
         "bundleExclusive":  bool(p.bundle_exclusive),
     }
+    # Artiste public (nom + slug) — parité fiche son. Omis si non résolu.
+    if artist is not None:
+        out["artistName"] = artist.artist_name or ""
+        out["artistSlug"] = _derive_artist_slug(artist)
+    return out
+
+
+async def _artist_map_for(
+    db: AsyncSession, prompts: list[Prompt]
+) -> dict[UUID, User]:
+    """
+    Charge en UNE requête groupée (pas de N+1) les User créateurs d'un lot
+    d'images, indexés par id. Sert à enrichir _image_public_dict avec le nom +
+    slug PUBLICS de l'artiste sans requête par image.
+    """
+    artist_ids = {p.artist_id for p in prompts if p.artist_id is not None}
+    if not artist_ids:
+        return {}
+    users = (await db.execute(
+        select(User).where(User.id.in_(list(artist_ids)))
+    )).scalars().all()
+    return {u.id: u for u in users}
 
 
 async def _enrich_linked_sounds(
@@ -421,8 +451,13 @@ async def list_public_images(
 
     rows = (await db.execute(base)).all()
     prompts = [p for (p, _u) in rows]
+    # Le User créateur est déjà joint dans les rows → map sans requête extra.
+    artist_map = {u.id: u for (_p, u) in rows if u is not None}
     sold = await _sold_counts_for(db, [p.id for p in prompts])
-    images = [_image_public_dict(p, sold.get(p.id)) for p in prompts]
+    images = [
+        _image_public_dict(p, sold.get(p.id), artist_map.get(p.artist_id))
+        for p in prompts
+    ]
     await _enrich_linked_sounds(db, prompts, images)
     return {"query": q, "count": len(images), "images": images}
 
@@ -524,7 +559,11 @@ async def list_top_images(
         reverse=True,
     )[:limit]
 
-    images = [_image_public_dict(p, sold.get(p.id)) for p in ranked]
+    artist_map = await _artist_map_for(db, ranked)
+    images = [
+        _image_public_dict(p, sold.get(p.id), artist_map.get(p.artist_id))
+        for p in ranked
+    ]
     # Enrichit le badge likeCount sur la carte (utile pour un futur compteur),
     # sans jamais exposer de champ gaté.
     for p, d in zip(ranked, images):
@@ -734,7 +773,8 @@ async def list_public_images_by_slug(
         .limit(_MAX_IMAGE_RESULTS)
     )).scalars().all()
     sold = await _sold_counts_for(db, [p.id for p in rows])
-    images = [_image_public_dict(p, sold.get(p.id)) for p in rows]
+    # Toutes les images appartiennent à `target` → pas de requête par image.
+    images = [_image_public_dict(p, sold.get(p.id), target) for p in rows]
     await _enrich_linked_sounds(db, list(rows), images)
     return {"slug": slug, "count": len(images), "images": images}
 
@@ -1158,7 +1198,11 @@ async def list_my_liked_prompts(
     if product_type == "image":
         images_only = [p for p in prompts if p.product_type == "image"]
         sold = await _sold_counts_for(db, [p.id for p in images_only])
-        images = [_image_public_dict(p, sold.get(p.id)) for p in images_only]
+        artist_map = await _artist_map_for(db, images_only)
+        images = [
+            _image_public_dict(p, sold.get(p.id), artist_map.get(p.artist_id))
+            for p in images_only
+        ]
         await _enrich_linked_sounds(db, images_only, images)
         return {"ids": ids, "count": len(images), "images": images}
 
