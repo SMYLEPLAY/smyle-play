@@ -81,7 +81,24 @@
       '.imgl-modal-actions button{flex:1;padding:10px 0;border-radius:9px;font-size:.84rem;font-weight:700;cursor:pointer;border:none}' +
       '.imgl-cancel{background:rgba(255,255,255,.07);color:#cbb3ff}' +
       '.imgl-save{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff}' +
-      '.imgl-save:disabled{opacity:.55;cursor:default}';
+      '.imgl-save:disabled{opacity:.55;cursor:default}' +
+      '.imgl-oeuvre-hint{display:block;font-size:.72rem;color:#a09cb8;margin-top:5px;line-height:1.4}' +
+      '.imgl-oeuvre-link{padding:8px 14px;border-radius:9px;font-size:.8rem;font-weight:700;cursor:pointer;border:1px solid rgba(124,58,237,.45);background:rgba(124,58,237,.1);color:#cbb3ff}' +
+      '.imgl-oeuvre-link:hover{background:rgba(124,58,237,.18)}' +
+      '.imgl-oeuvre-link:disabled{opacity:.55;cursor:default}' +
+      '.imgl-oeuvre-linked{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid rgba(124,58,237,.4);border-radius:10px;background:rgba(124,58,237,.08)}' +
+      '.imgl-oeuvre-linked-title{flex:1;font-size:.82rem;font-weight:700;color:#cbb3ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.imgl-oeuvre-unlink{padding:5px 12px;border-radius:8px;font-size:.74rem;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#ff9aa8}' +
+      '.imgl-oeuvre-unlink:hover{border-color:rgba(255,85,119,.5);background:rgba(255,85,119,.1)}' +
+      '.imgl-oeuvre-unlink:disabled{opacity:.55;cursor:default}' +
+      '.imgl-oeuvre-cands{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:220px;overflow-y:auto}' +
+      '.imgl-oeuvre-cand{display:flex;align-items:center;gap:10px;width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:rgba(255,255,255,.03);color:#e6e1f5;cursor:pointer;text-align:left;transition:border-color .12s,background .12s}' +
+      '.imgl-oeuvre-cand:hover{border-color:rgba(124,58,237,.6);background:rgba(124,58,237,.12)}' +
+      '.imgl-oeuvre-cand:disabled{opacity:.5;cursor:default}' +
+      '.imgl-oeuvre-thumb{width:36px;height:36px;flex:0 0 36px;border-radius:7px;object-fit:cover;display:flex;align-items:center;justify-content:center;background:rgba(124,58,237,.12);font-size:1.05rem}' +
+      '.imgl-oeuvre-thumb-ph{color:#8b7bd8}' +
+      '.imgl-oeuvre-cand-title{flex:1;font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.imgl-oeuvre-cand-price{font-size:.74rem;color:#cbb3ff;font-weight:700;white-space:nowrap}';
     document.head.appendChild(s);
   }
 
@@ -159,12 +176,17 @@
         '<div class="imgl-field"><label>Prix (Smyles · 3 à 500)</label>' +
           '<input type="number" id="imgl-e-price" min="3" max="500" value="' + esc(img.priceCredits != null ? img.priceCredits : '') + '"></div>' +
         '<label class="imgl-toggle"><input type="checkbox" id="imgl-e-pub"' + (img.isPublished ? ' checked' : '') + '> Publié (visible à la vente)</label>' +
+        '<div class="imgl-field"><label>Œuvre complète</label><div id="imgl-e-oeuvre"></div></div>' +
         '<div class="imgl-modal-actions">' +
           '<button type="button" class="imgl-cancel">Annuler</button>' +
           '<button type="button" class="imgl-save">Enregistrer</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(ov);
+
+    // C4 « Œuvre complète » — rend le bloc lien/délien (pivot = img.id, le
+    // prompt de l'image elle-même). Nature opposée → on lie à un SON.
+    renderOeuvreComplete(ov.querySelector('#imgl-e-oeuvre'), img);
 
     function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
@@ -209,6 +231,110 @@
       .catch(function () { toast('Échec de la suppression.', 'error'); });
   }
 
+  // ── C4 « Œuvre complète » (lien rétroactif image <-> son) ────────────────
+  // Construit l'URL same-origin de l'aperçu d'une image candidate (previewKey).
+  function candThumb(c) {
+    if (c.coverUrl) {
+      return '<img src="' + esc(c.coverUrl) + '" alt="" class="imgl-oeuvre-thumb">';
+    }
+    if (c.previewKey) {
+      return '<img src="' + esc(previewUrl(c.previewKey)) + '" alt="" class="imgl-oeuvre-thumb">';
+    }
+    return '<span class="imgl-oeuvre-thumb imgl-oeuvre-thumb-ph">🎵</span>';
+  }
+
+  // Rend le bloc : si l'image est liée → partenaire + Délier ; sinon →
+  // « Lier à un son » + sélecteur de candidats (/linkable). POST link en
+  // bundle_exclusive=false (rétroactif : les deux restent vendables séparément).
+  function renderOeuvreComplete(box, img) {
+    if (!box) return;
+    if (img.isOeuvreComplete && img.linkedSound) {
+      var s = img.linkedSound;
+      box.innerHTML =
+        '<div class="imgl-oeuvre-linked">' +
+          candThumb({ coverUrl: s.coverUrl }) +
+          '<span class="imgl-oeuvre-linked-title">🔗 ' + esc(s.title || 'Son lié') + '</span>' +
+          '<button type="button" class="imgl-oeuvre-unlink">Délier</button>' +
+        '</div>' +
+        '<span class="imgl-oeuvre-hint">Les deux produits restent vendables séparément.</span>';
+      box.querySelector('.imgl-oeuvre-unlink').addEventListener('click', function () {
+        var b = box.querySelector('.imgl-oeuvre-unlink');
+        b.disabled = true;
+        window.apiFetch('/artist/me/prompts/' + encodeURIComponent(img.id) + '/link',
+          { method: 'DELETE', raw: true })
+          .then(function () {
+            toast('Œuvre déliée ✓', 'success');
+            img.isOeuvreComplete = false; img.linkedSound = null;
+            renderOeuvreComplete(box, img);
+          })
+          .catch(function () { b.disabled = false; toast('Échec de la déliaison.', 'error'); });
+      });
+      return;
+    }
+    box.innerHTML =
+      '<button type="button" class="imgl-oeuvre-link">🔗 Lier à un son</button>' +
+      '<span class="imgl-oeuvre-hint">Réunis cette image avec un de tes sons en « Œuvre complète » (les deux restent vendables séparément).</span>' +
+      '<div class="imgl-oeuvre-cands" style="display:none"></div>';
+    var linkBtn = box.querySelector('.imgl-oeuvre-link');
+    var cands   = box.querySelector('.imgl-oeuvre-cands');
+    linkBtn.addEventListener('click', function () {
+      linkBtn.disabled = true;
+      cands.style.display = 'block';
+      cands.innerHTML = '<span class="imgl-oeuvre-hint">Chargement…</span>';
+      window.apiFetch('/artist/me/prompts/' + encodeURIComponent(img.id) + '/linkable')
+        .then(function (list) {
+          list = Array.isArray(list) ? list : [];
+          if (list.length === 0) {
+            cands.innerHTML = '<span class="imgl-oeuvre-hint">Aucun son disponible à lier — crée-en un d\'abord.</span>';
+            linkBtn.disabled = false;
+            return;
+          }
+          cands.innerHTML = list.map(function (c) {
+            return '<button type="button" class="imgl-oeuvre-cand" data-cand="' + esc(c.id) + '">' +
+              candThumb(c) +
+              '<span class="imgl-oeuvre-cand-title">' + esc(c.title || 'Sans titre') + '</span>' +
+              '<span class="imgl-oeuvre-cand-price">' + esc(String(c.priceCredits)) + ' Smyles</span>' +
+            '</button>';
+          }).join('');
+          Array.prototype.forEach.call(cands.querySelectorAll('.imgl-oeuvre-cand'), function (cb) {
+            cb.addEventListener('click', function () {
+              var otherId = cb.getAttribute('data-cand');
+              Array.prototype.forEach.call(cands.querySelectorAll('.imgl-oeuvre-cand'),
+                function (x) { x.disabled = true; });
+              // bundle_exclusive=false EN DUR (lien rétroactif).
+              window.apiFetch('/artist/me/prompts/' + encodeURIComponent(img.id) + '/link', {
+                method: 'POST',
+                json: { other_prompt_id: otherId, bundle_exclusive: false },
+                raw: true,
+              })
+                .then(function () {
+                  toast('Œuvre complète créée ✓', 'success');
+                  img.isOeuvreComplete = true;
+                  // On marque lié ; le détail du partenaire sera ré-hydraté au
+                  // prochain refresh de la liste. Affiche l'état lié générique.
+                  img.linkedSound = img.linkedSound || { title: '' };
+                  renderOeuvreComplete(box, img);
+                  refresh();
+                  refreshCount();
+                })
+                .catch(function (e) {
+                  var msg = (e && e.status === 409)
+                    ? 'Lien impossible (déjà lié ou natures incompatibles).'
+                    : 'Échec du lien.';
+                  toast(msg, 'error');
+                  Array.prototype.forEach.call(cands.querySelectorAll('.imgl-oeuvre-cand'),
+                    function (x) { x.disabled = false; });
+                });
+            });
+          });
+        })
+        .catch(function () {
+          cands.innerHTML = '<span class="imgl-oeuvre-hint">Erreur de chargement des candidats.</span>';
+          linkBtn.disabled = false;
+        });
+    });
+  }
+
   // Délégation des actions Éditer / Supprimer sur la grille.
   function wireActions() {
     if (window.__imgl_actions_wired) return;
@@ -236,6 +362,9 @@
       previewKey:       o.preview_r2_key || o.previewKey || '',
       soldCount:        o.soldCount || 0,
       isSoldOut:        !!o.isSoldOut,
+      // C4 « Œuvre complète » — état de lien (apercu public du son partenaire).
+      isOeuvreComplete: !!o.isOeuvreComplete,
+      linkedSound:      o.linkedSound || null,
     };
   }
 

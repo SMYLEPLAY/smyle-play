@@ -1112,6 +1112,54 @@ html { scroll-behavior: smooth; }
   line-height: 1.4;
 }
 
+/* C4 — Œuvre complète (lien rétroactif son <-> image) */
+.dte-oeuvre-linked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(124,58,237,.4);
+  border-radius: 10px;
+  background: rgba(124,58,237,.08);
+}
+.dte-oeuvre-linked-label { font-size: .82rem; font-weight: 700; color: #cbb3ff; }
+.dte-oeuvre-unlink-btn { padding: 5px 12px !important; font-size: .76rem !important; }
+.dte-oeuvre-link-btn { align-self: flex-start; }
+.dte-oeuvre-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.dte-oeuvre-cand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px;
+  background: rgba(255,255,255,.03);
+  color: #e6e1f5;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .12s, background .12s;
+}
+.dte-oeuvre-cand:hover { border-color: rgba(124,58,237,.6); background: rgba(124,58,237,.12); }
+.dte-oeuvre-cand:disabled { opacity: .5; cursor: default; }
+.dte-oeuvre-thumb {
+  width: 38px; height: 38px; flex: 0 0 38px;
+  border-radius: 7px; object-fit: cover;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(124,58,237,.12); font-size: 1.1rem;
+}
+.dte-oeuvre-thumb-ph { color: #8b7bd8; }
+.dte-oeuvre-cand-title { flex: 1; font-size: .82rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dte-oeuvre-cand-price { font-size: .74rem; color: #cbb3ff; font-weight: 700; white-space: nowrap; }
+
 /* Cover area */
 .dte-cover-area {
   display: flex;
