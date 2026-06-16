@@ -30,6 +30,17 @@
   function $(id) { return document.getElementById(id); }
   function val(id) { var el = $(id); return el ? String(el.value || '').trim() : ''; }
 
+  /* C4 — codes de tags d'usage actuellement sélectionnés (chips .is-on).
+     Ordre = ordre du DOM. Optionnel : peut renvoyer []. */
+  function selectedImageTags() {
+    var box = $('imgcTags');
+    if (!box) return [];
+    var on = box.querySelectorAll('.imgc-tag-chip.is-on');
+    return Array.prototype.map.call(on, function (b) {
+      return b.getAttribute('data-img-tag');
+    }).filter(Boolean);
+  }
+
   /* État local : le fichier choisi (pas encore envoyé). */
   var pendingFile = null;
 
@@ -169,8 +180,16 @@
       'imgcFluxGuidance', 'imgcFluxSteps', 'imgcFluxSeed', 'imgcSdCheckpoint',
       'imgcSdSampler', 'imgcSdSteps', 'imgcSdCfg', 'imgcSdSeed',
       'imgcSdResolution', 'imgcSdLoras', 'imgcNegativePrompt', 'imgcOtherVersion',
-      'imgcOtherSeed', 'imgcExtraSettings', 'imgcMaxSupply'
+      'imgcOtherSeed', 'imgcExtraSettings', 'imgcMaxSupply', 'imgcStyle'
     ].forEach(function (id) { var el = $(id); if (el) el.value = ''; });
+    /* C4 — désélectionne tous les chips de tags d'usage. */
+    var tagsBox = $('imgcTags');
+    if (tagsBox) {
+      tagsBox.querySelectorAll('.imgc-tag-chip.is-on').forEach(function (c) {
+        c.classList.remove('is-on');
+        c.setAttribute('aria-pressed', 'false');
+      });
+    }
     var price = $('imgcPrice'); if (price) price.value = '50';
     var raw = $('imgcMjStyleRaw'); if (raw) raw.checked = false;
     var draft = document.querySelector('input[name="imgcVisibility"][value="draft"]');
@@ -305,6 +324,13 @@
     var ratio = val('imgcRatio'); if (ratio) fd.append('ratio', ratio);
     if (maxSupply !== null) fd.append('max_supply', String(maxSupply));
 
+    /* C4 — taxonomie visuelle : style (1 valeur) + tags d'usage (CSV).
+       Optionnels ; codes alignés sur STYLES / USAGE_TAGS backend. */
+    var imgStyle = val('imgcStyle');
+    if (imgStyle) fd.append('image_style', imgStyle);
+    var imgTags = selectedImageTags();
+    if (imgTags.length) fd.append('image_tags', imgTags.join(','));
+
     setBusy(true);
     /* apiFetch ajoute le Bearer JWT ; body FormData => pas de Content-Type
        forcé (le navigateur pose le boundary multipart lui-même). */
@@ -373,6 +399,17 @@
     }
     var linkChk = $('imgcLinkSound');
     if (linkChk) linkChk.addEventListener('change', toggleLinkSound);
+
+    /* C4 — chips tags d'usage : toggle .is-on au clic (délégation). */
+    var tagsBox = $('imgcTags');
+    if (tagsBox) {
+      tagsBox.addEventListener('click', function (ev) {
+        var chip = ev.target.closest && ev.target.closest('.imgc-tag-chip');
+        if (!chip || !tagsBox.contains(chip)) return;
+        var on = chip.classList.toggle('is-on');
+        chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
 
     var saveBtn = $('imgcSaveBtn');
     if (saveBtn) saveBtn.addEventListener('click', submit);

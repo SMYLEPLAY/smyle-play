@@ -416,6 +416,24 @@ body.wb3-active.wb3-screen-open #wb3-backbar { display: block; }
 
 .imgc-textarea { resize: vertical; min-height: 56px; font-family: inherit; }
 
+/* C4 — Tags d'usage image (chips multi-sélection) */
+.imgc-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 2px; }
+.imgc-tag-chip {
+  font-size: .78rem; font-weight: 600;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  color: var(--sp-text-faint);
+  cursor: pointer; font-family: inherit;
+  transition: all .15s ease;
+}
+.imgc-tag-chip:hover { color: var(--sp-text); border-color: var(--sp-monde-visuel); }
+.imgc-tag-chip.is-on {
+  background: color-mix(in srgb, var(--sp-monde-visuel) 18%, transparent);
+  border-color: var(--sp-monde-visuel);
+  color: var(--sp-text);
+}
+
 /* Dropzone + aperçu local */
 .imgc-dropzone {
   display: flex; align-items: center; gap: var(--sp-gap-md);

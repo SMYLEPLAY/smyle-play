@@ -7,7 +7,7 @@
         stats écoutes/abonnés/Smyles · accès édition identité)
      2. bascule 2 mondes 🎧 Audio / 🎨 Visuel + bouton "+ Créer" contextuel
      3. tuiles de contenu à compteurs réels (Sons IA · Beats · ADN · Voix —
-        monde Visuel verrouillé : Images C4 · ADN visuel C4 · FX phase 2)
+        monde Visuel : Images C4 actif · ADN visuel "Bientôt")
      4. rangée transversale (Playlists · Échanges · Trophées · Analytique)
 
    Les 7 accordéons existants ne sont PAS supprimés : ils deviennent des
@@ -226,14 +226,14 @@
   function tilesHtml(monde) {
     if (monde === 'visuel') {
       // Décisions 2026-06-10 : Images + ADN visuel arrivent en C4 (upload
-      // + provenance IA obligatoire) ; FX = phase 2 du monde Visuel
-      // (doublon avec le prompt vendu avec l'image, miroir des Voix).
+      // + provenance IA obligatoire).
       // C4 livraison ② : la tuile Images IA est débloquée (création image
-      // avec provenance IA obligatoire). ADN visuel = V2 ("Bientôt"),
-      // FX = phase 2 du monde Visuel.
+      // avec provenance IA obligatoire). ADN visuel = V2 ("Bientôt").
+      // C4 taxonomie visuelle (2026-06-16) : « FX » n'est PLUS une catégorie /
+      // tuile — c'est devenu un TAG d'usage d'image (cf. images-create). La
+      // tuile FX verrouillée est donc supprimée.
       return tileHtml('images',     '🖼️', 'Images IA',  'images', { createKind: 'image', viewKey: 'images-list', countLabel: 'publiées' })
-           + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { locked: true, lockLabel: 'Bientôt' })
-           + tileHtml('fx',         '✨', 'FX',         null, { locked: true, lockLabel: 'Phase 2' });
+           + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { locked: true, lockLabel: 'Bientôt' });
     }
     // DÉCISION 100 % IA (Tom, 2026-06-10) : aucun produit non-IA vendu sur
     // la plateforme. La tuile « Musique perso » (humaine, gated palier) est

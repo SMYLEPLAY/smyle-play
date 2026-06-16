@@ -173,6 +173,18 @@ class Prompt(Base):
     image_r2_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     preview_r2_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # ── C4 Taxonomie visuelle (migration 0061) — DNA image ────────────────
+    # Nullable : remplis SEULEMENT pour product_type='image', et facultatifs
+    # même alors (le style est recommandé, pas obligatoire — ne casse pas la
+    # création existante). Servent à la recherche/découverte du Monde Image
+    # (filtres ?style= et ?tag= sur GET /images).
+    #   image_style : style de rendu (valeur unique parmi STYLES, cf. images.py)
+    #   image_tags  : tags d'usage CSV (sous-ensemble de USAGE_TAGS, incl. 'fx')
+    # Aucune contrainte DB enum : la validation (valeur hors-liste ignorée) est
+    # portée côté router pour rester souple et portable.
+    image_style: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    image_tags: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     # ── C4 « Oeuvre complete » (migration 0059) — liaison 1:1 son <-> image ──
     # Pointe vers l'AUTRE produit de la paire (un son lie a une image ou
     # l'inverse). NULL = produit non lie. Self-FK ON DELETE SET NULL. La regle
