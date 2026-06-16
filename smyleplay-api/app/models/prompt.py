@@ -173,6 +173,18 @@ class Prompt(Base):
     image_r2_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     preview_r2_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # ── C4 « Oeuvre complete » (migration 0059) — liaison 1:1 son <-> image ──
+    # Pointe vers l'AUTRE produit de la paire (un son lie a une image ou
+    # l'inverse). NULL = produit non lie. Self-FK ON DELETE SET NULL. La regle
+    # 1:1 + nature croisee (image <-> son, jamais image <-> image) est portee
+    # par le service link_products ; la colonne ne contraint que le type.
+    linked_prompt_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("prompts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
