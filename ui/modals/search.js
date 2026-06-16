@@ -553,8 +553,29 @@
     if (e.key === 'Escape') { e.preventDefault(); closeModal(); }
   }
 
+  // C4 — la recherche suit le MONDE de l'interface principale : le
+  // commutateur marketplace (localStorage 'mp_mode') pilote la nature de la
+  // recherche. Visuel → recherche en mode Images (rôles visuels + styles) ;
+  // Musique → mode Sons. Re-synchronisé à CHAQUE ouverture (le mode a pu
+  // changer entre deux ouvertures). Le toggle interne reste utilisable pour
+  // basculer ponctuellement sans changer le monde de l'interface.
+  function _syncNatureFromMpMode() {
+    if (!modalRoot) return;
+    let mode = 'musique';
+    try { mode = localStorage.getItem('mp_mode') || 'musique'; } catch (_) {}
+    const nat = (mode === 'image') ? 'images' : 'sons';
+    dnaNature = nat;
+    modalRoot.querySelectorAll('.ss-nature-btn').forEach(b => {
+      const on = b.dataset.nature === nat;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    applyNatureChips(nat);
+  }
+
   function openModal() {
     buildModal();
+    _syncNatureFromMpMode();
     modalRoot.classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(() => inputEl && inputEl.focus(), 30);
