@@ -183,7 +183,8 @@ async def create_my_image(
     await db.commit()
     await db.refresh(image)
     # L'artiste créateur est propriétaire → lecture complète (recette dévoilée).
-    return ImageOwnerRead.model_validate(image)
+    # Une image fraichement creee n'a pas encore de partenaire (linkedSound=None).
+    return await _owner_read_with_link(db, image)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -227,7 +228,73 @@ def _image_public_dict(p: Prompt, sold_count: int | None) -> dict:
         "availableCount":   ((max_sup - (sold_count or 0)) if max_sup is not None else None),
         "isSoldOut":        (max_sup is not None and (sold_count or 0) >= max_sup),
         "createdAt":        p.created_at.isoformat() if p.created_at else None,
+        # C4 « Oeuvre complete » : flag + partenaire son. linkedSound est
+        # rempli a posteriori par _enrich_linked_sounds (requete Track groupee).
+        "isOeuvreComplete": p.linked_prompt_id is not None,
+        "linkedSound":      None,
     }
+
+
+async def _enrich_linked_sounds(
+    db: AsyncSession, prompts: list[Prompt], dicts: list[dict]
+) -> None:
+    """
+    Renseigne dicts[i]['linkedSound'] pour chaque image liee a un SON, en UNE
+    requete groupee (pas de N+1). N'expose QUE id/titre/cover/prix/productType
+    du son partenaire — jamais de recette/lyrics. La cover du son = cover_url
+    du Track qui pointe ce prompt (track.prompt_id == son.id).
+    """
+    from app.models.track import Track
+
+    # Map image_id -> linked_prompt_id (le son partenaire), pour les images liees.
+    son_ids = [p.linked_prompt_id for p in prompts if p.linked_prompt_id is not None]
+    if not son_ids:
+        return
+    # Charge les prompts-son lies (non supprimes, nature son), + leur cover Track.
+    son_rows = (await db.execute(
+        select(Prompt).where(
+            Prompt.id.in_(son_ids),
+            Prompt.is_deleted.is_(False),
+            Prompt.product_type.in_(("recipe", "beat")),
+        )
+    )).scalars().all()
+    son_by_id = {s.id: s for s in son_rows}
+    cover_rows = (await db.execute(
+        select(Track.prompt_id, Track.cover_url).where(
+            Track.prompt_id.in_(list(son_by_id.keys())),
+            Track.is_deleted.is_(False),
+        )
+    )).all() if son_by_id else []
+    cover_by_son = {pid: (cu or "") for pid, cu in cover_rows}
+
+    for p, d in zip(prompts, dicts):
+        son = son_by_id.get(p.linked_prompt_id) if p.linked_prompt_id else None
+        if son is None:
+            d["isOeuvreComplete"] = False
+            continue
+        d["isOeuvreComplete"] = True
+        d["linkedSound"] = {
+            "id":           str(son.id),
+            "title":        son.title,
+            "coverUrl":     cover_by_son.get(son.id, ""),
+            "priceCredits": son.price_credits,
+            "productType":  son.product_type,
+        }
+
+
+async def _owner_read_with_link(db: AsyncSession, image: Prompt) -> ImageOwnerRead:
+    """
+    ImageOwnerRead enrichi du partenaire son lie (linkedSound + flag). Owner
+    voit sa propre recette (heritee de ImageOwnerRead) MAIS le partenaire reste
+    limite a l'apercu public (id/titre/cover/prix) — la recette du SON n'est
+    JAMAIS exposee via le lien.
+    """
+    from app.services.links import linked_sound_payload
+
+    model = ImageOwnerRead.model_validate(image)
+    model.isOeuvreComplete = image.linked_prompt_id is not None
+    model.linkedSound = await linked_sound_payload(db, image)
+    return model
 
 
 async def _sold_counts_for(db: AsyncSession, image_ids: list[UUID]) -> dict:
@@ -345,6 +412,7 @@ async def list_public_images(
     prompts = [p for (p, _u) in rows]
     sold = await _sold_counts_for(db, [p.id for p in prompts])
     images = [_image_public_dict(p, sold.get(p.id)) for p in prompts]
+    await _enrich_linked_sounds(db, prompts, images)
     return {"query": q, "count": len(images), "images": images}
 
 
@@ -379,6 +447,7 @@ async def list_public_images_by_slug(
     )).scalars().all()
     sold = await _sold_counts_for(db, [p.id for p in rows])
     images = [_image_public_dict(p, sold.get(p.id)) for p in rows]
+    await _enrich_linked_sounds(db, list(rows), images)
     return {"slug": slug, "count": len(images), "images": images}
 
 
@@ -406,7 +475,7 @@ async def list_my_images(
         )
         .order_by(desc(Prompt.created_at))
     )).scalars().all()
-    return [ImageOwnerRead.model_validate(p) for p in rows]
+    return [await _owner_read_with_link(db, p) for p in rows]
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -497,7 +566,7 @@ async def update_my_image(
         image.is_published = data["is_published"]
     await db.commit()
     await db.refresh(image)
-    return ImageOwnerRead.model_validate(image)
+    return await _owner_read_with_link(db, image)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -797,6 +866,7 @@ async def list_my_liked_prompts(
         images_only = [p for p in prompts if p.product_type == "image"]
         sold = await _sold_counts_for(db, [p.id for p in images_only])
         images = [_image_public_dict(p, sold.get(p.id)) for p in images_only]
+        await _enrich_linked_sounds(db, images_only, images)
         return {"ids": ids, "count": len(images), "images": images}
 
     return {"ids": ids, "count": len(ids)}

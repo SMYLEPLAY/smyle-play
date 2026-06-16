@@ -114,6 +114,12 @@ class ImagePublicRead(BaseModel):
     max_supply: int | None = None
     is_published: bool
     created_at: datetime
+    # C4 « Oeuvre complete » — partenaire SON lie (apercu public uniquement :
+    # id/titre/cover/prix/productType). None si l'image n'est pas liee.
+    # isOeuvreComplete est un raccourci front (= linkedSound is not None).
+    # Peuple a posteriori par le router (requete Track), pas par model_validate.
+    linkedSound: dict | None = None
+    isOeuvreComplete: bool = False
 
 
 class ImageOwnerRead(ImagePublicRead):
