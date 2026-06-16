@@ -30,6 +30,11 @@ function toggleMixPanel() {
     document.getElementById('overlay').classList.add('show');
     // Rafraîchir contenu (dont la section "Mes playlists sauvegardées")
     renderMixPanel();
+    // Monde IMAGE (curation) — géré par ui/albums.js. Réapplique le mode
+    // persisté (mymix_mode) + rafraîchit likées/albums si on est en image.
+    if (window.SmyleAlbums && typeof window.SmyleAlbums.applyMixMode === 'function') {
+      window.SmyleAlbums.applyMixMode(window.SmyleAlbums.getMixMode());
+    }
   }
 }
 

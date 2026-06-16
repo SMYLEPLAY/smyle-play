@@ -400,30 +400,64 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════ MIX PANEL (gauche) -->
-<div class="mix-panel" id="mixPanel">
+<div class="mix-panel mymix-mode-musique" id="mixPanel">
   <div class="mix-panel-header">
     <div class="mix-panel-title">MY MIX</div>
     <div class="mix-panel-sub" id="mix-sub">0 titre</div>
-  </div>
-  <div class="mix-actions">
-    <button class="mix-action-btn primary" onclick="playMixFromIdx(0)">▶ Lancer le mix</button>
-    <button class="mix-action-btn"         onclick="openSaveMix()">Sauvegarder la playlist</button>
-    <button class="mix-action-btn"         onclick="clearMix()">Vider le mix</button>
-  </div>
-  <div class="mix-track-list" id="mix-list">
-    <div class="mix-empty">Ajoute des morceaux<br>depuis n'importe quelle playlist</div>
+    <!-- Commutateur Musique ⇄ Image (persisté localStorage mymix_mode) -->
+    <div class="mymix-switch" role="tablist" aria-label="Monde My Mix">
+      <button type="button" class="mymix-switch-btn" data-mymix-mode="musique" role="tab" aria-selected="true">🎵 Musique</button>
+      <button type="button" class="mymix-switch-btn" data-mymix-mode="image" role="tab" aria-selected="false">🖼 Image</button>
+    </div>
   </div>
 
-  <!-- Mes playlists sauvegardées -->
-  <div class="mix-saved-wrap" id="mix-saved-wrap">
-    <div class="mix-saved-head">
-      <span class="mix-saved-title">Mes playlists sauvegardées</span>
-      <span class="mix-saved-count" id="mix-saved-count">0</span>
+  <!-- ═══ MONDE MUSIQUE (inchangé) ═══ -->
+  <div class="mymix-world mymix-world-musique">
+    <div class="mix-actions">
+      <button class="mix-action-btn primary" onclick="playMixFromIdx(0)">▶ Lancer le mix</button>
+      <button class="mix-action-btn"         onclick="openSaveMix()">Sauvegarder la playlist</button>
+      <button class="mix-action-btn"         onclick="clearMix()">Vider le mix</button>
     </div>
-    <div class="mix-saved-list" id="mix-saved-list">
-      <div class="mix-saved-empty">Aucune playlist sauvegardée pour le moment.</div>
+    <div class="mix-track-list" id="mix-list">
+      <div class="mix-empty">Ajoute des morceaux<br>depuis n'importe quelle playlist</div>
     </div>
-  </div>
+
+    <!-- Mes playlists sauvegardées -->
+    <div class="mix-saved-wrap" id="mix-saved-wrap">
+      <div class="mix-saved-head">
+        <span class="mix-saved-title">Mes playlists sauvegardées</span>
+        <span class="mix-saved-count" id="mix-saved-count">0</span>
+      </div>
+      <div class="mix-saved-list" id="mix-saved-list">
+        <div class="mix-saved-empty">Aucune playlist sauvegardée pour le moment.</div>
+      </div>
+    </div>
+  </div><!-- /.mymix-world-musique -->
+
+  <!-- ═══ MONDE IMAGE (curation : likes + albums) ═══ -->
+  <div class="mymix-world mymix-world-image">
+    <!-- ♥ Images likées -->
+    <div class="mymix-img-section">
+      <div class="mymix-img-head">
+        <span class="mymix-img-title">♥ Images likées</span>
+        <span class="mymix-img-count" id="mymix-liked-count">0</span>
+      </div>
+      <div class="mymix-liked-grid" id="mymix-liked-list">
+        <div class="mymix-img-empty">Chargement…</div>
+      </div>
+    </div>
+
+    <!-- 🖼 Mes albums -->
+    <div class="mymix-img-section">
+      <div class="mymix-img-head">
+        <span class="mymix-img-title">🖼 Mes albums</span>
+        <button type="button" class="mymix-album-new-btn" id="mymix-album-new">+ Nouvel album</button>
+      </div>
+      <div class="mymix-album-list" id="mymix-album-list">
+        <div class="mymix-img-empty">Chargement…</div>
+      </div>
+    </div>
+  </div><!-- /.mymix-world-image -->
 </div>
 
 <!-- ═══════════════════════════════════════════ WATT PANEL (WATTBOARD only)
@@ -679,6 +713,7 @@
      classements (top sons / top artistes) et des grilles (tous sons / tous
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
 <script src="/ui/playlists.js?v=20260615c4l5" defer></script>
+<script src="/ui/albums.js?v=20260616c4mymix" defer></script>
 <script src="ui/hub/marketplace.js?v=20260616c4oc"></script>
 <script src="ui/app.js"></script>
 <script src="ui/player/mini-bar.js?v=20260613a" defer></script>

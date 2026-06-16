@@ -96,8 +96,10 @@ async function loadAll() {
     _renderError('lib-prompts-list', promptsRes.reason);
   }
 
-  // C4 « Mes images » — likées (non bloquant : si vide / pas connecté, OK).
-  renderLikedImages().finally(() => _libUpdateImagesCount());
+  // C4 « Mes images » — biblio = pur possédé. Les images LIKÉES vivent
+  // désormais dans My Mix (curation), plus dans la biblio. On ne compte que
+  // les achetées.
+  _libUpdateImagesCount();
 
   if (adnsRes.status === 'fulfilled') {
     _libData.adns = adnsRes.value.items || [];
@@ -415,175 +417,18 @@ function renderOwnedImages(items) {
 }
 
 
-/* ── Colonne « Mes images » — Likées (C4) ────────────────────────────────────
-   GET /me/likes/prompts?product_type=image → { ids, count, images:[...] } où
-   chaque image est l'aperçu PUBLIC (_image_public_dict) :
-     { id, artistId, title, description, productType, imagePlatform,
-       imageModelVersion, previewKey, ratio, priceCredits, maxSupply,
-       rarityTier, soldCount, availableCount, isSoldOut, createdAt }
-   (clé previewKey, PAS preview_r2_key — c'est le shape camelCase public).
-   Pas de recette ici : likée = aperçu seul (non possédée a priori).
-   ❤️ → data-img-like-btn (câblé par ui/playlists.js → toggleImgLike).
-   Clic carte → window.PurchaseDrawer.open({type:'image'}) (fiche d'achat),
-   fallback lien /images si le drawer n'est pas dispo.                         */
+/* ── Colonne « Mes images » — compteur (C4) ──────────────────────────────────
+   La biblio = pur POSSÉDÉ. Les images LIKÉES ont migré dans My Mix (monde
+   curation). On ne compte donc QUE les images achetées.                      */
 
-let _libLikedImages = [];
-
-async function renderLikedImages() {
-  const el = getEl('lib-images-liked-list');
-  if (!el) return;
-
-  let data;
-  try {
-    data = await apiFetch('/me/likes/prompts?product_type=image');
-  } catch (err) {
-    if (err && err.status === 401) { el.innerHTML = ''; return; }
-    el.innerHTML = `<div class="lib-empty">Impossible de charger tes images likées — réessaie plus tard.</div>`;
-    return;
-  }
-
-  const imgs = (data && Array.isArray(data.images)) ? data.images : [];
-  _libLikedImages = imgs;
-
-  if (!imgs.length) {
-    el.innerHTML = `<div class="lib-empty">Aucune image likée — explore le monde Visuel.<br>
-      <a href="/images" class="lib-empty-cta">Explorer /images →</a></div>`;
-    return;
-  }
-
-  const B = (typeof window !== 'undefined') ? window.SpBadges : null;
-
-  el.innerHTML = imgs.map((im) => {
-    const previewUrl = libImgPreviewUrl(im.previewKey || im.preview_r2_key || '');
-    const cover = previewUrl
-      ? `<img src="${esc(previewUrl)}" alt="${esc(im.title || 'Image')}" loading="lazy"
-            style="width:100%;height:100%;object-fit:cover;display:block">`
-      : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem">🖼</div>`;
-
-    // Provenance + rareté via le design system C0 (SpBadges) si dispo.
-    const prov = B ? B.provenance(im.imagePlatform, im.imageModelVersion) : '';
-    let rar = '';
-    if (B && im.maxSupply != null) {
-      const sold = im.soldCount || 0;
-      rar = im.isSoldOut
-        ? B.rarete(im.maxSupply, im.maxSupply)
-        : B.rarete(sold + 1, im.maxSupply, im.maxSupply === 1 ? 'legendaire' : '');
-    }
-
-    const price = (im.priceCredits != null)
-      ? `<span style="color:#cbb3ff;font-weight:700;font-size:.84rem">${esc(im.priceCredits)} <span style="font-size:.7rem;color:#8b7bd8;font-weight:600">Smyles</span></span>`
-      : '';
-
-    // C4 Œuvre complète — badge + mention si l'image fait partie d'une paire.
-    const oeuvre = (im.isOeuvreComplete && B && B.oeuvre) ? B.oeuvre() : '';
-    const oeuvreNote = (im.isOeuvreComplete)
-      ? `<div style="font-size:.72rem;color:#6da4ff;margin-top:2px">🎵 Fait partie d'une œuvre complète</div>`
-      : '';
-    const linkedSoundAttr = im.linkedSound ? esc(JSON.stringify(im.linkedSound)) : '';
-
-    // ❤️ rempli/vide géré par ui/playlists.js (classe .liked + hydratation).
-    const likeBtn = `<button type="button" class="like-btn lib-img-like" data-img-like-btn="${esc(im.id)}" title="Retirer des likes" aria-label="Retirer des likes" onclick="event.stopPropagation()"></button>`;
-
-    return `
-      <article class="lib-liked-img-card" role="button" tabindex="0"
-        data-image-id="${esc(im.id)}"
-        data-price="${esc(im.priceCredits != null ? im.priceCredits : '')}"
-        data-title="${esc(im.title || '')}"
-        data-platform="${esc(im.imagePlatform || '')}"
-        data-linked-sound="${linkedSoundAttr}"
-        title="Voir la fiche d'achat">
-        <div class="lib-liked-img-thumb">${cover}</div>
-        <div class="lib-liked-img-body">
-          <div class="lib-liked-img-title">${esc(im.title || 'Image IA')}</div>
-          <div class="lib-liked-img-badges">${prov}${rar}${oeuvre}</div>
-          ${oeuvreNote}
-          <div class="lib-liked-img-foot">${price}${likeBtn}</div>
-        </div>
-      </article>`;
-  }).join('');
-
-  // Hydrate l'état ❤️ (cœur plein) + câble les clics via le système partagé.
-  if (window.SmylePlaylists && typeof window.SmylePlaylists.hydrateImgLikes === 'function') {
-    window.SmylePlaylists.hydrateImgLikes();
-  }
-
-  // Clic carte → drawer d'achat unifié (recette gatée tant que non possédée).
-  // Si plus tard la card est unlikée, on la retire (voir _libWireLikedImages).
-  el.querySelectorAll('.lib-liked-img-card').forEach(card => {
-    const openFiche = (ev) => {
-      // Ne pas ouvrir si on a cliqué le ❤️ (géré par playlists.js).
-      if (ev.target && ev.target.closest('[data-img-like-btn]')) return;
-      const id = card.dataset.imageId;
-      if (!id) return;
-      if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {
-        let linkedSound = null;
-        try {
-          if (card.dataset.linkedSound) linkedSound = JSON.parse(card.dataset.linkedSound);
-        } catch (_) {}
-        window.PurchaseDrawer.open({
-          type: 'image',
-          id: id,
-          price: parseInt(card.dataset.price, 10) || null,
-          title: card.dataset.title || 'Image IA',
-          platform: card.dataset.platform || '',
-          linkedSound: linkedSound,
-        });
-      } else {
-        // Fallback minimal : le monde Visuel.
-        window.location.href = '/images';
-      }
-    };
-    card.addEventListener('click', openFiche);
-    card.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openFiche(ev); }
-    });
-  });
-
-  _libWireLikedImages();
-}
-
-// Au unlike (clic ❤️ déjà liké), retire la card de la sous-section. On écoute
-// la délégation globale de playlists.js : après son toggle, le bouton perd la
-// classe .liked → on retire alors la card parente. Posé une seule fois.
-function _libWireLikedImages() {
-  if (window.__lib_liked_img_wired) return;
-  window.__lib_liked_img_wired = true;
-  const container = getEl('lib-images-liked-list');
-  if (!container) return;
-  container.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-img-like-btn]');
-    if (!btn) return;
-    const card = btn.closest('.lib-liked-img-card');
-    if (!card) return;
-    // playlists.js (capture phase) a déjà togglé l'état de façon optimiste.
-    // S'il n'est PLUS liked après le clic → on retire la card.
-    setTimeout(() => {
-      if (!btn.classList.contains('liked')) {
-        card.remove();
-        _libUpdateImagesCount();
-        if (!container.querySelector('.lib-liked-img-card')) {
-          container.innerHTML = `<div class="lib-empty">Aucune image likée — explore le monde Visuel.<br>
-            <a href="/images" class="lib-empty-cta">Explorer /images →</a></div>`;
-        }
-      }
-    }, 60);
-  });
-}
-
-// Compteur colonne « Mes images » : achetées · ❤️ likées (lisible).
+// Compteur colonne « Mes images » : nombre d'images achetées uniquement.
 function _libUpdateImagesCount() {
   const owned = (_libData.prompts || []).filter(p => p.product_type === 'image').length;
-  const likedCards = document.querySelectorAll('#lib-images-liked-list .lib-liked-img-card').length;
-  const liked = likedCards || _libLikedImages.length;
-  const parts = [];
-  if (owned) parts.push(String(owned));
-  if (liked) parts.push('❤️' + liked);
-  setEl('lib-count-images', parts.length ? parts.join(' · ') : '—');
+  setEl('lib-count-images', owned ? String(owned) : '—');
 }
 
 if (typeof window !== 'undefined') {
   window.renderOwnedImages = renderOwnedImages;
-  window.renderLikedImages = renderLikedImages;
 }
 
 

@@ -49,6 +49,10 @@ from app.routers.resale import router as resale_router
 from app.routers.beats import router as beats_router
 from app.routers.images import router as images_router
 from app.routers.links import router as links_router
+from app.routers.albums import (
+    public_router as albums_public_router,
+    router as albums_router,
+)
 
 
 def create_app() -> FastAPI:
@@ -128,6 +132,8 @@ def create_app() -> FastAPI:
     app.include_router(beats_router)
     app.include_router(images_router)
     app.include_router(links_router)
+    app.include_router(albums_router)
+    app.include_router(albums_public_router)
 
     return app
 

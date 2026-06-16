@@ -1,5 +1,6 @@
 from .achievement import Achievement, AchievementAxis, UserAchievement
 from .adn import Adn
+from .album import Album, AlbumImage
 from .base import Base
 from .dna import DNA
 from .owned_adn import OwnedAdn
@@ -21,6 +22,8 @@ __all__ = [
     "Achievement",
     "AchievementAxis",
     "Adn",
+    "Album",
+    "AlbumImage",
     "Base",
     "DNA",
     "OwnedAdn",
