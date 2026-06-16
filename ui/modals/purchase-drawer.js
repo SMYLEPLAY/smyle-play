@@ -60,6 +60,37 @@
     if (window.showToast) return window.showToast(msg);
   }
 
+  /* C4 Œuvre complète — bloc « produit lié » (achat séparé). Sur un drawer
+     IMAGE : montre le SON lié (opts.linkedSound). Sur un drawer SON : montre
+     l'IMAGE liée (opts.linkedImage). Ne révèle QUE titre/aperçu/prix : aucune
+     recette. Le bouton réouvre le drawer du partenaire (achat indépendant). */
+  function _linkedBlockHtml(type, opts) {
+    var ls = opts.linkedSound, li = opts.linkedImage;
+    if (type === 'image' && ls && ls.id) {
+      var cover = ls.coverUrl
+        ? '<img class="pd-linked-thumb" src="' + _esc(ls.coverUrl) + '" alt="" />'
+        : '<span class="pd-linked-thumb pd-linked-thumb--ph">🎵</span>';
+      return '<div class="pd-linked" data-link-kind="son" data-link-id="' + _esc(ls.id) + '">' +
+        cover +
+        '<div class="pd-linked-meta"><span class="pd-linked-kicker">🎵 Son lié · œuvre complète</span>' +
+        '<span class="pd-linked-title">' + _esc(ls.title || 'Son lié') + '</span>' +
+        (ls.priceCredits != null ? '<span class="pd-linked-price">' + _esc(ls.priceCredits) + ' Smyles</span>' : '') +
+        '</div><button type="button" class="pd-linked-go">Écouter / voir</button></div>';
+    }
+    if (type === 'son' && li && li.id) {
+      var prev = li.previewKey
+        ? '<img class="pd-linked-thumb" src="/watt/images/' + _esc(li.previewKey) + '" alt="" />'
+        : '<span class="pd-linked-thumb pd-linked-thumb--ph">🖼</span>';
+      return '<div class="pd-linked" data-link-kind="image" data-link-id="' + _esc(li.id) + '">' +
+        prev +
+        '<div class="pd-linked-meta"><span class="pd-linked-kicker">🖼 Visuel lié · œuvre complète</span>' +
+        '<span class="pd-linked-title">Image liée</span>' +
+        (li.priceCredits != null ? '<span class="pd-linked-price">' + _esc(li.priceCredits) + ' Smyles</span>' : '') +
+        '</div><button type="button" class="pd-linked-go">Voir l\'image</button></div>';
+    }
+    return '';
+  }
+
   function _injectCss() {
     if (document.getElementById('pd-styles')) return;
     var s = document.createElement('style');
@@ -85,7 +116,16 @@
       '.pd-cancel{flex:0 0 auto;padding:11px 16px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:none;color:#cfc9e0;font-weight:600;cursor:pointer}' +
       '.pd-confirm{flex:1;padding:11px 16px;border-radius:11px;border:none;background:linear-gradient(135deg,#7c5cff,#9d4dff);color:#fff;font-weight:700;cursor:pointer;font-size:.95rem}' +
       '.pd-confirm:disabled{opacity:.55;cursor:default}' +
-      '.pd-note{margin:10px 0 0;font-size:.72rem;color:#7d7794;text-align:center}';
+      '.pd-note{margin:10px 0 0;font-size:.72rem;color:#7d7794;text-align:center}' +
+      /* C4 Œuvre complète — bloc produit lié (bleu électrique WATT). */
+      '.pd-linked{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 10px;border:1px solid rgba(0,85,255,.4);border-radius:12px;background:rgba(0,85,255,.08);cursor:pointer}' +
+      '.pd-linked:hover{background:rgba(0,85,255,.14)}' +
+      '.pd-linked-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);font-size:18px}' +
+      '.pd-linked-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}' +
+      '.pd-linked-kicker{font-size:.66rem;font-weight:700;letter-spacing:.04em;color:#6da4ff;text-transform:uppercase}' +
+      '.pd-linked-title{font-size:.84rem;color:#f3f0ff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.pd-linked-price{font-size:.72rem;color:#a09cb8}' +
+      '.pd-linked-go{flex:0 0 auto;padding:6px 10px;border-radius:9px;border:1px solid rgba(0,85,255,.5);background:none;color:#9dc0ff;font-size:.74rem;font-weight:600;cursor:pointer}';
     document.head.appendChild(s);
   }
 
@@ -139,6 +179,7 @@
         (opts.artistName ? '<p class="pd-artist">par ' + _esc(opts.artistName) + '</p>' : '<p class="pd-artist"></p>') +
         '<ul class="pd-reperes">' + reperes + '</ul>' +
         '<div class="pd-market" id="pd-market"></div>' +
+        _linkedBlockHtml(type, opts) +
         '<div class="pd-price-row"><span class="pd-price">' + (price != null ? price : '—') + '</span><span class="pd-price-unit">Smyles</span></div>' +
         '<div class="pd-actions">' +
           '<button class="pd-cancel" type="button">Annuler</button>' +
@@ -152,6 +193,26 @@
     ov.querySelector('.pd-close').addEventListener('click', close);
     ov.querySelector('.pd-cancel').addEventListener('click', close);
     document.addEventListener('keydown', _onEsc);
+
+    // C4 — clic sur le produit lié : ferme ce drawer et ouvre celui du
+    // partenaire (achat séparé). Le partenaire est un autre prompt.
+    var linkedEl = ov.querySelector('.pd-linked');
+    if (linkedEl) {
+      linkedEl.addEventListener('click', function () {
+        var kind = linkedEl.getAttribute('data-link-kind');
+        var lid  = linkedEl.getAttribute('data-link-id');
+        if (!lid) return;
+        close();
+        var partner = (kind === 'son')
+          ? (opts.linkedSound || {}) : (opts.linkedImage || {});
+        open({
+          type:  (kind === 'son') ? 'son' : 'image',
+          id:    lid,
+          title: partner.title || (kind === 'son' ? 'Son lié' : 'Image liée'),
+          price: partner.priceCredits,
+        });
+      });
+    }
 
     // Marché primaire/secondaire — modèle fiche canonique. Sons ET images
     // (toutes deux des lignes `prompts`, donc /resale/prompt/{id}/market gère

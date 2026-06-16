@@ -926,6 +926,22 @@ function openBoutiqueDrawer(type, dataStr) {
         <button class="add-to-pl-btn bd-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">+</button>
       </div>`;
     }
+    // C4 Œuvre complète — bloc « Visuel lié » (achat séparé de l'image).
+    if (data.linkedImage && data.linkedImage.id) {
+      const li = data.linkedImage;
+      const prevU = li.previewKey ? `/watt/images/${(li.previewKey + '').replace(/"/g,'&quot;')}` : '';
+      const priceTxt = (li.priceCredits != null) ? `${li.priceCredits} Smyles` : '';
+      html += `<div class="bd-linked-image" data-linked-image-id="${(li.id + '').replace(/"/g,'&quot;')}"
+                    data-linked-image-price="${li.priceCredits != null ? li.priceCredits : ''}"
+                    style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 10px;border:1px solid rgba(0,85,255,.4);border-radius:12px;background:rgba(0,85,255,.08);cursor:pointer">
+        ${prevU ? `<img src="${prevU}" alt="" loading="lazy" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex:0 0 auto" />` : '<span style="font-size:18px">🖼</span>'}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.66rem;font-weight:700;letter-spacing:.04em;color:#6da4ff;text-transform:uppercase">🖼 Visuel lié · œuvre complète</div>
+          <div style="font-size:.78rem;color:#a09cb8">${priceTxt}</div>
+        </div>
+        <span style="font-size:.74rem;color:#9dc0ff;font-weight:600">Voir l'image →</span>
+      </div>`;
+    }
 
   } else if (type === 'voix') {
     const lic = LICENSE_LBL[data.license] || data.license || '';
@@ -971,6 +987,22 @@ function openBoutiqueDrawer(type, dataStr) {
   }
 
   body.innerHTML = html;
+  // C4 Œuvre complète — clic sur le visuel lié → drawer image (achat séparé).
+  const liEl = body.querySelector('.bd-linked-image');
+  if (liEl) {
+    liEl.addEventListener('click', () => {
+      const iid = liEl.dataset.linkedImageId;
+      if (iid && window.PurchaseDrawer) {
+        closeBoutiqueDrawer();
+        window.PurchaseDrawer.open({
+          type:  'image',
+          id:    iid,
+          price: parseInt(liEl.dataset.linkedImagePrice, 10) || null,
+          title: 'Visuel lié',
+        });
+      }
+    });
+  }
   overlay.classList.add('is-open');
   drawer.classList.add('is-open');
   drawer.setAttribute('aria-hidden', 'false');
@@ -1825,6 +1857,17 @@ function renderTracks(artist) {
     }
     // Provenance ⚡ plateforme (token C0, remplace l'ancien badge maison).
     const provenance = window.SpBadges ? SpBadges.provenance(t.platform) : '';
+    // C4 Œuvre complète — badge + chip « visuel lié » si une image est liée.
+    const linkedImage = (t.linkedImage && t.linkedImage.id) ? t.linkedImage : null;
+    const oeuvreBadge = (linkedImage && window.SpBadges && SpBadges.oeuvre) ? SpBadges.oeuvre() : '';
+    let linkedImgChip = '';
+    if (linkedImage) {
+      const _prevU = linkedImage.previewKey ? `/watt/images/${String(linkedImage.previewKey).replace(/"/g, '&quot;')}` : '';
+      linkedImgChip = `<button type="button" class="ap-track-linked-img"
+                data-linked-image-id="${linkedImage.id}"
+                data-linked-image-price="${linkedImage.priceCredits != null ? linkedImage.priceCredits : ''}"
+                title="Visuel lié — voir l'image (achat séparé)">🖼${_prevU ? ` <img src="${_prevU}" alt="" loading="lazy" />` : ''}</button>`;
+    }
 
     // Prix recette — badge 🧬 si un prompt vendable est lié.
     let unlockBlock = '';
@@ -1858,6 +1901,8 @@ function renderTracks(artist) {
       audioUrl:     t.streamUrl || t.audioUrl || '',
       coverUrl:     t.coverUrl || t.cover_url || '',
       hasPrompt:    !!linkedPrompt,
+      // C4 Œuvre complète — image liée (aperçu only) pour le drawer son.
+      linkedImage:  linkedImage || null,
     };
 
     row.innerHTML = `
@@ -1867,11 +1912,12 @@ function renderTracks(artist) {
       <div class="ap-track-row-main">
         <div class="ap-track-row-title">${safeName}</div>
         <div class="ap-track-row-badges">
-          ${natureBadge}${palierBadge}${rareteBadge}${provenance}
+          ${natureBadge}${palierBadge}${rareteBadge}${provenance}${oeuvreBadge}
           <span class="ap-track-row-plays">▶ ${plays}</span>
         </div>
       </div>
       <div class="ap-track-row-actions">
+        ${linkedImgChip}
         ${unlockBlock}
         <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
         <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
@@ -1958,6 +2004,22 @@ function renderTracks(artist) {
     if (unlockBtn) {
       const id = unlockBtn.dataset.promptId;
       if (id) unlockPromptFromProfile(id, unlockBtn);
+      return;
+    }
+    // Cas 2bis : chip « visuel lié » (œuvre complète) → drawer image (achat séparé)
+    const linkedImgBtn = ev.target.closest('.ap-track-linked-img');
+    if (linkedImgBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const iid = linkedImgBtn.dataset.linkedImageId;
+      if (iid && window.PurchaseDrawer) {
+        window.PurchaseDrawer.open({
+          type:  'image',
+          id:    iid,
+          price: parseInt(linkedImgBtn.dataset.linkedImagePrice, 10) || null,
+          title: 'Visuel lié',
+        });
+      }
       return;
     }
     // Cas 3 : bouton play rond → audio partagé (re-clic même row = pause)
@@ -2279,6 +2341,8 @@ function renderArtistImages(images) {
       : '<div style="font-size:2.2rem;opacity:.5;display:flex;align-items:center;justify-content:center;width:100%;height:100%">🖼️</div>';
     const nature = B ? B.nature('image') : '';
     const prov   = B ? B.provenance(im.imagePlatform, im.imageModelVersion) : '';
+    // C4 Œuvre complète — badge si l'image est liée à un son.
+    const oeuvre = (im.isOeuvreComplete && B && B.oeuvre) ? B.oeuvre() : '';
     let rar = '';
     if (B && im.maxSupply != null) {
       const sold = im.soldCount || 0;
@@ -2307,13 +2371,14 @@ function renderArtistImages(images) {
         'data-price="' + _apImgEsc(im.priceCredits != null ? im.priceCredits : '') + '" ' +
         'data-title="' + _apImgEsc(im.title || '') + '" ' +
         'data-platform="' + _apImgEsc(im.imagePlatform || '') + '" ' +
+        'data-linked-sound="' + (im.linkedSound ? _apImgEsc(JSON.stringify(im.linkedSound)) : '') + '" ' +
         'data-owned="' + (owned || mine ? '1' : '0') + '" ' +
         'tabindex="0" role="button" title="' + ((mine || owned) ? 'Image possédée' : 'Voir la fiche') + '" ' +
         'style="border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.025);' + clickable + 'display:flex;flex-direction:column">' +
         '<div style="position:relative;aspect-ratio:1/1;background:rgba(124,58,237,.10);overflow:hidden">' + cover + '</div>' +
         '<div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px">' +
           '<div style="font-weight:700;color:#f3f0ff;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _apImgEsc(im.title || 'Sans titre') + '</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">' + nature + rar + prov + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">' + nature + rar + prov + oeuvre + '</div>' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' + priceOrState + likeBtn + '</div>' +
         '</div>' +
       '</article>';
@@ -2336,12 +2401,18 @@ function renderArtistImages(images) {
       if (card.dataset.owned === '1') return; // possédé / auteur → état neutre
       const id = card.dataset.imageId;
       if (id && window.PurchaseDrawer) {
+        // C4 Œuvre complète — son lié (depuis data-linked-sound).
+        let linkedSound = null;
+        try {
+          if (card.dataset.linkedSound) linkedSound = JSON.parse(card.dataset.linkedSound);
+        } catch (_) {}
         window.PurchaseDrawer.open({
           type: 'image',
           id: id,
           price: parseInt(card.dataset.price, 10) || null,
           title: card.dataset.title || 'Image IA',
           platform: card.dataset.platform || '',
+          linkedSound: linkedSound,
         });
       }
     });
