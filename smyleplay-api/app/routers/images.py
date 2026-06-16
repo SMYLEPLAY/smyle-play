@@ -17,6 +17,7 @@ restent INTACTES. La vérification de possession est identique (UnlockedPrompt
 current_owner_id OU artiste propriétaire).
 """
 import json
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -424,6 +425,279 @@ async def list_public_images(
     images = [_image_public_dict(p, sold.get(p.id)) for p in prompts]
     await _enrich_linked_sounds(db, prompts, images)
     return {"query": q, "count": len(images), "images": images}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Helpers de score (C4 étape 2 — Mode Image à parité)
+#
+# Une image n'a pas d'« écoutes » : le classement combine donc VENTES + LIKES,
+# départagés par la récence. Formule SCORE = ventes*5 + likes*2 (la vente, acte
+# d'engagement le plus fort, pèse plus que le like). Comptage groupé (pas de
+# N+1), miroir de _sold_counts_for.
+# ──────────────────────────────────────────────────────────────────────────
+
+_SCORE_SOLD_WEIGHT = 5
+_SCORE_LIKE_WEIGHT = 2
+
+
+async def _like_counts_for(db: AsyncSession, image_ids: list[UUID]) -> dict:
+    """
+    Compte les likes (prompt_likes) pour un lot d'images en UNE requête groupée
+    (pas de N+1). Retourne {prompt_id: likes_count}.
+    """
+    if not image_ids:
+        return {}
+    rows = (await db.execute(
+        select(
+            PromptLike.prompt_id,
+            func.count(PromptLike.user_id),
+        )
+        .where(PromptLike.prompt_id.in_(image_ids))
+        .group_by(PromptLike.prompt_id)
+    )).all()
+    return {pid: int(cnt) for pid, cnt in rows}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /images/top — Top Images (miroir public de « Top Sons »)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/images/top")
+async def list_top_images(
+    limit: int = Query(default=10, ge=1, le=_MAX_IMAGE_RESULTS),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Classement public des images IA (Mode Image, à parité avec Top Sons).
+
+    SCORE = ventes*5 + likes*2, départagé par created_at DESC (récence). Mêmes
+    filtres que /images (image publiée, artiste public, non supprimée,
+    bundle_exclusive=False → les images « nées ensemble » ne figurent qu'en
+    section Œuvre complète). Comptages groupés (pas de N+1). Réutilise
+    _image_public_dict — JAMAIS de champ gaté.
+    """
+    base = (
+        select(Prompt)
+        .join(User, Prompt.artist_id == User.id)
+        .where(
+            Prompt.product_type == "image",
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            User.profile_public.is_(True),
+            Prompt.bundle_exclusive.is_(False),
+        )
+    )
+    # On charge un pool large (cap dur) puis on classe par score en Python :
+    # le score dépend de deux agrégats (ventes + likes) qu'on compte en deux
+    # requêtes groupées — plus simple et lisible qu'un double LEFT JOIN/COALESCE
+    # en SQL, et le volume reste borné par _MAX_IMAGE_RESULTS.
+    prompts = (await db.execute(
+        base.order_by(desc(Prompt.created_at)).limit(_MAX_IMAGE_RESULTS)
+    )).scalars().all()
+
+    ids = [p.id for p in prompts]
+    sold = await _sold_counts_for(db, ids)
+    likes = await _like_counts_for(db, ids)
+
+    def _score(p: Prompt) -> int:
+        return (
+            sold.get(p.id, 0) * _SCORE_SOLD_WEIGHT
+            + likes.get(p.id, 0) * _SCORE_LIKE_WEIGHT
+        )
+
+    _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+    def _created(p: Prompt) -> datetime:
+        # tie-break récence (created_at DESC) ; sentinel si NULL pour ne jamais
+        # comparer datetime et int dans le tuple de tri.
+        c = p.created_at
+        if c is None:
+            return _EPOCH
+        if c.tzinfo is None:
+            return c.replace(tzinfo=timezone.utc)
+        return c
+
+    ranked = sorted(
+        prompts,
+        key=lambda p: (_score(p), _created(p)),
+        reverse=True,
+    )[:limit]
+
+    images = [_image_public_dict(p, sold.get(p.id)) for p in ranked]
+    # Enrichit le badge likeCount sur la carte (utile pour un futur compteur),
+    # sans jamais exposer de champ gaté.
+    for p, d in zip(ranked, images):
+        d["likesCount"] = likes.get(p.id, 0)
+        d["score"] = _score(p)
+    await _enrich_linked_sounds(db, ranked, images)
+    return {"count": len(images), "images": images}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /artists/images-top — Top Artistes Image (miroir de « Top Artistes »)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/artists/images-top")
+async def list_top_image_artists(
+    limit: int = Query(default=10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Classement public des artistes du Monde Image (miroir de /watt/artists pour
+    le Mode Image). Un artiste est classé par la somme (ventes + likes) de ses
+    images PUBLIQUES (mêmes filtres que /images, bundle_exclusive exclus comme
+    pour le catalogue individuel). Seuls les artistes ayant ≥1 image publique
+    apparaissent. Renvoie la même forme d'objet artiste que /watt/artists
+    (slug, artistName, avatar, stats) enrichie de imagesSold/imagesLikes/
+    imageScore. Comptages groupés (pas de N+1).
+    """
+    from app.routers.watt_compat import _derive_artist_slug
+
+    # Images publiques éligibles (mêmes filtres que /images).
+    img_rows = (await db.execute(
+        select(Prompt.id, Prompt.artist_id)
+        .join(User, Prompt.artist_id == User.id)
+        .where(
+            Prompt.product_type == "image",
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            User.profile_public.is_(True),
+            Prompt.bundle_exclusive.is_(False),
+        )
+    )).all()
+    if not img_rows:
+        return {"count": 0, "artists": []}
+
+    image_ids = [iid for (iid, _aid) in img_rows]
+    artist_by_image = {iid: aid for (iid, aid) in img_rows}
+
+    sold = await _sold_counts_for(db, image_ids)
+    likes = await _like_counts_for(db, image_ids)
+
+    # Agrège ventes + likes par artiste.
+    agg: dict[UUID, dict] = {}
+    for iid in image_ids:
+        aid = artist_by_image[iid]
+        slot = agg.setdefault(aid, {"sold": 0, "likes": 0})
+        slot["sold"] += sold.get(iid, 0)
+        slot["likes"] += likes.get(iid, 0)
+
+    # Charge les profils artistes correspondants (publics, déjà garantis par le
+    # JOIN ci-dessus mais on revérifie profile_public par sûreté).
+    artist_ids = list(agg.keys())
+    users = (await db.execute(
+        select(User).where(
+            User.id.in_(artist_ids),
+            User.profile_public.is_(True),
+        )
+    )).scalars().all()
+
+    out = []
+    for u in users:
+        slot = agg.get(u.id, {"sold": 0, "likes": 0})
+        score = (
+            slot["sold"] * _SCORE_SOLD_WEIGHT
+            + slot["likes"] * _SCORE_LIKE_WEIGHT
+        )
+        out.append({
+            "id":            str(u.id),
+            "userId":        str(u.id),
+            "slug":          _derive_artist_slug(u),
+            "artistName":    u.artist_name or "",
+            "genre":         u.genre or "",
+            "city":          u.city or "",
+            "avatarColor":   u.brand_color or "",
+            "brandColor":    u.brand_color or "",
+            "avatarUrl":     u.avatar_url or "",
+            "isOfficial":    bool(u.is_official),
+            "profilePublic": True,
+            "imagesSold":    slot["sold"],
+            "imagesLikes":   slot["likes"],
+            "imageScore":    score,
+        })
+
+    # Tri : score image décroissant, départage récence de compte.
+    out.sort(
+        key=lambda a: (a["imageScore"], a["imagesSold"]),
+        reverse=True,
+    )
+    out = out[:limit]
+    return {"count": len(out), "artists": out}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /oeuvres — listing PUBLIC des « Œuvres complètes » (paires son+image)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/oeuvres")
+async def list_oeuvres(
+    limit: int = Query(default=24, ge=1, le=_MAX_IMAGE_RESULTS),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Listing public des Œuvres complètes (un SON + une IMAGE liés). Affiché dans
+    les DEUX modes (Musique et Image). Une paire = UNE entrée (dé-dupliquée :
+    on itère côté SON et on résout l'image partenaire, jamais les deux côtés).
+
+    Aperçu PUBLIC strict — réutilise les helpers anti-fuite de services/links.py
+    (linked_image_payload). N'expose JAMAIS recette / prompt_text / lyrics /
+    image_r2_key / image_settings / negative_prompt. Filtre : produits publics,
+    non soft-deleted (les deux côtés). bundle_exclusive autorisé ici (c'est
+    précisément la surface où les œuvres « nées ensemble » s'affichent).
+    """
+    from app.models.track import Track
+    from app.services.links import linked_image_payload
+
+    # Côté SON (recipe/beat) lié à un partenaire, publié, public, non supprimé.
+    son_rows = (await db.execute(
+        select(Prompt)
+        .join(User, Prompt.artist_id == User.id)
+        .where(
+            Prompt.product_type.in_(("recipe", "beat")),
+            Prompt.linked_prompt_id.isnot(None),
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            User.profile_public.is_(True),
+        )
+        .order_by(desc(Prompt.created_at))
+        .limit(_MAX_IMAGE_RESULTS)
+    )).scalars().all()
+    if not son_rows:
+        return {"count": 0, "oeuvres": []}
+
+    # Cover du son = cover_url du Track qui pointe ce prompt (requête groupée).
+    son_ids = [s.id for s in son_rows]
+    cover_rows = (await db.execute(
+        select(Track.prompt_id, Track.cover_url).where(
+            Track.prompt_id.in_(son_ids),
+            Track.is_deleted.is_(False),
+        )
+    )).all()
+    cover_by_son = {pid: (cu or "") for pid, cu in cover_rows}
+
+    oeuvres = []
+    for son in son_rows:
+        # Image partenaire via le helper anti-fuite (id/previewKey/prix only).
+        img_payload = await linked_image_payload(db, son)
+        if img_payload is None:
+            continue  # partenaire manquant / supprimé / pas une image → on saute
+        oeuvres.append({
+            "sound": {
+                "id":           str(son.id),
+                "title":        son.title,
+                "coverUrl":     cover_by_son.get(son.id, ""),
+                "priceCredits": son.price_credits,
+                "productType":  son.product_type,
+            },
+            "image": img_payload,  # {id, previewKey, priceCredits}
+        })
+        if len(oeuvres) >= limit:
+            break
+
+    return {"count": len(oeuvres), "oeuvres": oeuvres}
 
 
 # ──────────────────────────────────────────────────────────────────────────

@@ -55,6 +55,24 @@
   })();
   const HOME_CAP = 3;
 
+  // ── Mode Musique ⇄ Image (C4 étape 2) ─────────────────────────────────────
+  // Deux « mondes » à parité sur la home. Le mode choisi est persisté dans
+  // localStorage (mp_mode) et restauré au chargement. Défaut = musique.
+  const _MP_MODE_KEY = 'mp_mode';
+  function _readMode() {
+    try {
+      const v = localStorage.getItem(_MP_MODE_KEY);
+      return v === 'image' ? 'image' : 'musique';
+    } catch (_) { return 'musique'; }
+  }
+  function _writeMode(mode) {
+    try { localStorage.setItem(_MP_MODE_KEY, mode); } catch (_) { /* best effort */ }
+  }
+  // Flag : les sections Image de la home ont-elles déjà été hydratées ? On
+  // diffère le fetch du Monde Image au premier passage en mode image (lazy)
+  // pour ne pas charger inutilement si l'user reste en musique.
+  let _imageWorldLoaded = false;
+
   // Moods sélectionnés sur la page /sons (chips DNA inline). Filtre les sons
   // uniquement — la colonne artistes n'est pas touchée.
   const _pageMoodSet = new Set();
@@ -96,6 +114,39 @@
       '.mp-only-voix .smyle-vitrine,.mp-only-voix .mp-section-top-sons,.mp-only-voix .mp-section-top-artists,.mp-only-voix .mp-section-sons,.mp-only-voix .mp-section-artists{display:none!important}' +
       // C4 ③ — la page /images masque tout et injecte sa section vitrine images.
       '.mp-only-images .smyle-vitrine,.mp-only-images .mp-section-top-sons,.mp-only-images .mp-section-top-artists,.mp-only-images .mp-section-sons,.mp-only-images .mp-section-artists{display:none!important}' +
+      // C4 étape 2 — commutateur Musique ⇄ Image sur la HOME. Deux mondes à
+      // parité : les classes body mp-mode-musique / mp-mode-image montrent/
+      // masquent les bonnes sections (même esprit que mp-only-*). Les sections
+      // image existent dans le DOM mais sont masquées en mode musique, et
+      // inversement. La vitrine Smyle est partagée (jamais masquée par le mode).
+      // Sections Monde Image masquées par défaut (avant que le mode soit posé).
+      '.mp-section-top-images,.mp-section-top-artists-image,.mp-section-images-home{display:none}' +
+      // Mode Musique : on masque les sections Image (top-images, top-artistes-image, catalogue images).
+      '.mp-mode-musique .mp-section-top-images,.mp-mode-musique .mp-section-top-artists-image,.mp-mode-musique .mp-section-images-home{display:none!important}' +
+      // Mode Image : on masque les sections Musique (top-sons, top-artistes, catalogue sons, grille artistes) ; on RÉVÈLE les sections Image.
+      '.mp-mode-image .mp-section-top-sons,.mp-mode-image .mp-section-top-artists,.mp-mode-image .mp-section-sons,.mp-mode-image .mp-section-artists{display:none!important}' +
+      '.mp-mode-image .mp-section-top-images,.mp-mode-image .mp-section-top-artists-image,.mp-mode-image .mp-section-images-home{display:block!important}' +
+      // Commutateur : pilule à deux onglets, centrée au-dessus de la vitrine.
+      '.mp-mode-switch{display:flex;gap:6px;justify-content:center;margin:0 auto 18px;padding:5px;width:max-content;border-radius:999px;border:1px solid rgba(124,58,237,.35);background:rgba(255,255,255,.03)}' +
+      '.mp-mode-btn{cursor:pointer;border:0;background:transparent;color:rgba(255,255,255,.6);font-family:inherit;font-size:.92rem;font-weight:700;padding:9px 22px;border-radius:999px;transition:all .15s}' +
+      '.mp-mode-btn:hover{color:#fff}' +
+      '.mp-mode-btn.is-active{background:linear-gradient(90deg,#7C3AED,#a855f7);color:#fff;box-shadow:0 4px 16px rgba(124,58,237,.35)}' +
+      // Le commutateur n'a de sens que sur la home : on le masque ailleurs.
+      'body:not(.mp-view-home) .mp-mode-switch{display:none}' +
+      // Section Œuvre complète (les deux modes) — grille de cartes œuvre.
+      '.mp-oeuvres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}' +
+      '.mp-oeuvre-card{cursor:pointer;border:1px solid rgba(255,255,255,.09);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.025);transition:border-color .15s,transform .15s}' +
+      '.mp-oeuvre-card:hover{border-color:rgba(124,58,237,.6);transform:translateY(-2px)}' +
+      '.mp-oeuvre-card-covers{position:relative;display:flex;aspect-ratio:2/1}' +
+      '.mp-oeuvre-card-cover{flex:1;position:relative;overflow:hidden;background:rgba(124,58,237,.10);display:flex;align-items:center;justify-content:center}' +
+      '.mp-oeuvre-card-cover img{width:100%;height:100%;object-fit:cover;display:block}' +
+      '.mp-oeuvre-card-cover-fallback{font-size:2rem;opacity:.5}' +
+      '.mp-oeuvre-card-body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:6px}' +
+      '.mp-oeuvre-card-title{font-weight:700;color:#f3f0ff;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.mp-oeuvre-card-prices{display:flex;gap:10px;font-size:.78rem;color:#cbb3ff;font-weight:600}' +
+      // Top Images / Top Artistes Image — réutilisent .mp-ranking ; on ajoute
+      // juste une vignette d'aperçu sur les rangs.
+      '.mp-ranking-thumb{width:42px;height:42px;border-radius:9px;object-fit:cover;flex:none;background:rgba(124,58,237,.12)}' +
       // MODE RÉSULTATS (2026-06-11) — dès qu'une recherche ou un filtre est
       // actif sur la home, la vitrine et les podiums s'effacent : les
       // grilles résultats prennent toute la place (sans plafond de 3).
@@ -1347,6 +1398,293 @@
     await _reload();
   }
 
+  // ── Monde Image sur la HOME (C4 étape 2) ─────────────────────────────────
+  // Sections miroir de la musique : Top Images, Top Artistes Image, catalogue
+  // images. Réutilise _imgCardHtml / _imgPreviewUrl / _openImageDetailDrawer.
+  // Hydraté une seule fois (lazy) au premier passage en mode image.
+
+  async function _fetchTopImages(limit) {
+    try {
+      const data = await window.apiFetch('/images/top?limit=' + (limit || 10), { auth: false });
+      return (data && Array.isArray(data.images)) ? data.images : [];
+    } catch (_) { return []; }
+  }
+
+  async function _fetchTopImageArtists(limit) {
+    try {
+      const data = await window.apiFetch('/artists/images-top?limit=' + (limit || 10), { auth: false });
+      return (data && Array.isArray(data.artists)) ? data.artists : [];
+    } catch (_) { return []; }
+  }
+
+  async function _fetchHomeImages() {
+    try {
+      // Catalogue home : on prend les plus récentes (cap home côté affichage).
+      const data = await window.apiFetch('/images?limit=12', { auth: false });
+      return (data && Array.isArray(data.images)) ? data.images : [];
+    } catch (_) { return []; }
+  }
+
+  async function _fetchOeuvres(limit) {
+    try {
+      const data = await window.apiFetch('/oeuvres?limit=' + (limit || 12), { auth: false });
+      return (data && Array.isArray(data.oeuvres)) ? data.oeuvres : [];
+    } catch (_) { return []; }
+  }
+
+  // Top Images — liste classée (rang + vignette + titre + score ventes/likes).
+  function _renderTopImages(imgs) {
+    const el = document.getElementById('mp-top-images');
+    if (!el) return;
+    if (!imgs.length) {
+      el.innerHTML = '<li class="mp-ranking-empty">Aucune image pour le moment.</li>';
+      return;
+    }
+    el.innerHTML = imgs.map((im, i) => {
+      const url   = _imgPreviewUrl(im.previewKey);
+      const thumb = url
+        ? '<img class="mp-ranking-thumb" src="' + _esc(url) + '" alt="" loading="lazy">'
+        : '<div class="mp-ranking-thumb" style="display:flex;align-items:center;justify-content:center">🖼️</div>';
+      const sold  = im.soldCount || 0;
+      const likes = im.likesCount || 0;
+      const sub   = [im.imagePlatform ? _esc(im.imagePlatform) : '', likes ? (likes + ' ❤️') : '']
+        .filter(Boolean).join(' · ') || '&nbsp;';
+      return (
+        '<li class="mp-ranking-row mp-img-ranking-row" data-image-id="' + _esc(im.id) + '" style="cursor:pointer">' +
+          '<div class="mp-ranking-rank">' + (i + 1) + '</div>' +
+          thumb +
+          '<div class="mp-ranking-main">' +
+            '<div class="mp-ranking-title">' + _esc(im.title || 'Sans titre') + '</div>' +
+            '<div class="mp-ranking-sub">' + sub + '</div>' +
+          '</div>' +
+          '<div class="mp-ranking-meta">' + _esc(im.priceCredits) + ' Smyles</div>' +
+        '</li>'
+      );
+    }).join('') +
+      '<li style="list-style:none"><a class="mp-voir-tout" href="/images">Voir toutes les images →</a></li>';
+
+    // Cache pour le clic → drawer.
+    el._imgCache = {};
+    imgs.forEach(im => { el._imgCache[im.id] = im; });
+    if (!el._bound) {
+      el._bound = true;
+      el.addEventListener('click', (e) => {
+        const row = e.target.closest('.mp-img-ranking-row');
+        if (!row) return;
+        const im = el._imgCache && el._imgCache[row.dataset.imageId];
+        if (im) _openImageDetailDrawer(im);
+      });
+    }
+  }
+
+  // Top Artistes Image — podium réutilisant le style du Top Artistes musique,
+  // classé par imageScore (ventes + likes de leurs images).
+  function _renderTopImageArtists(arts) {
+    const el = document.getElementById('mp-top-artists-image');
+    if (!el) return;
+    const community = arts.filter(a => !a.isOfficial);
+    if (community.length === 0) {
+      el.innerHTML =
+        '<li style="list-style:none">' +
+          '<div style="text-align:center;padding:30px 18px;border:1px dashed rgba(255,255,255,.13);border-radius:16px;background:rgba(255,255,255,.02)">' +
+            '<div style="font-size:1.8rem;margin-bottom:6px">🖼️</div>' +
+            '<div style="font-weight:800;color:#fff;font-size:1.02rem;margin-bottom:4px">Pas encore de créateur visuel classé</div>' +
+            '<div style="font-size:.84rem;color:#a09cb8;max-width:340px;margin:0 auto 14px">Publie des images IA depuis ton WATT BOARD — le classement se construit aux ventes et aux likes.</div>' +
+            '<a href="/dashboard" style="display:inline-block;padding:10px 20px;border-radius:999px;background:linear-gradient(90deg,#7C3AED,#a855f7);color:#fff;font-weight:700;font-size:.86rem;text-decoration:none">Deviens créateur visuel →</a>' +
+          '</div>' +
+        '</li>';
+      return;
+    }
+    const top3 = community.slice(0, 3);
+    const rest = community.slice(3, 10);
+    const MEDAL = ['🥇', '🥈', '🥉'];
+    const _spot = (a, rankIdx) => {
+      const big = rankIdx === 0;
+      const sz = big ? 80 : 60;
+      const href = a.slug ? '/@' + a.slug : '#';
+      const name = a.artistName || 'Sans nom';
+      const color = a.brandColor || '#7C3AED';
+      const avatar = a.avatarUrl
+        ? `<img src="${_esc(a.avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover">`
+        : `<span style="font-weight:800;color:#fff;font-size:${big ? 1.6 : 1.2}rem">${_esc(_initial(name))}</span>`;
+      return (
+        `<a href="${_esc(href)}" style="flex:1;max-width:130px;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;${big ? 'transform:translateY(-10px)' : ''}">` +
+          `<div style="font-size:${big ? 1.5 : 1.2}rem">${MEDAL[rankIdx]}</div>` +
+          `<div style="width:${sz}px;height:${sz}px;border-radius:50%;overflow:hidden;background:${_esc(color)};display:flex;align-items:center;justify-content:center;border:2px solid ${big ? '#FFD700' : 'rgba(255,255,255,.2)'};box-shadow:0 4px 18px ${big ? 'rgba(255,215,0,.25)' : 'rgba(0,0,0,.3)'}">${avatar}</div>` +
+          `<div style="font-weight:700;color:#fff;font-size:${big ? '.95rem' : '.85rem'};text-align:center;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(name)}</div>` +
+          `<div style="font-size:.72rem;color:#a09cb8">${_fmt(a.imagesSold || 0)} ventes</div>` +
+        `</a>`
+      );
+    };
+    const spots = [];
+    if (top3[1]) spots.push(_spot(top3[1], 1));
+    if (top3[0]) spots.push(_spot(top3[0], 0));
+    if (top3[2]) spots.push(_spot(top3[2], 2));
+    const podium =
+      '<li style="list-style:none;margin-bottom:14px">' +
+        '<div style="display:flex;align-items:flex-end;justify-content:center;gap:14px;padding:18px 8px 8px">' + spots.join('') + '</div>' +
+      '</li>';
+    const list = rest.map((a, i) => {
+      const href = a.slug ? '/@' + a.slug : '#';
+      const name = a.artistName || 'Sans nom';
+      const parts = [a.city, a.genre].filter(Boolean).map(_esc).join(' · ');
+      return (
+        `<li class="mp-ranking-row" onclick="window.location.href='${_esc(href)}'">` +
+          `<div class="mp-ranking-rank">${i + 4}</div>` +
+          `<div class="mp-ranking-main">` +
+            `<div class="mp-ranking-title">${_esc(name)}</div>` +
+            `<div class="mp-ranking-sub">${parts || '&nbsp;'}</div>` +
+          `</div>` +
+          `<div class="mp-ranking-meta">${_fmt(a.imagesSold || 0)} ventes</div>` +
+        `</li>`
+      );
+    }).join('');
+    el.innerHTML = podium + list;
+  }
+
+  // Catalogue images sur la home (cap home) — réutilise _imgCardHtml.
+  function _renderHomeImagesGrid(imgs) {
+    const el = document.getElementById('mp-grid-images-home');
+    if (!el) return;
+    if (!imgs.length) {
+      el.innerHTML = '<div class="mp-grid-empty">Aucune image en vente pour le moment. Les artistes les publient depuis leur WATT BOARD (monde Visuel).</div>';
+      return;
+    }
+    _injectImagesStyles();
+    const capped = imgs.slice(0, HOME_CAP);
+    el.innerHTML = capped.map(_imgCardHtml).join('') +
+      (imgs.length > HOME_CAP
+        ? '<a class="mp-voir-tout" href="/images" style="grid-column:1/-1;margin-top:14px">Voir toutes les images →</a>'
+        : '');
+    el._cache = {};
+    capped.forEach(im => { el._cache[im.id] = im; });
+    if (!el._bound) {
+      el._bound = true;
+      el.addEventListener('click', (e) => {
+        const card = e.target.closest('.mp-img-card');
+        if (!card) return;
+        if (card.dataset.owned === '1') return;
+        const im = el._cache && el._cache[card.dataset.imageId];
+        if (im) _openImageDetailDrawer(im);
+      });
+    }
+    if (window.SmylePlaylists && typeof window.SmylePlaylists.hydrateImgLikes === 'function') {
+      window.SmylePlaylists.hydrateImgLikes();
+    }
+  }
+
+  // Section Œuvre complète — affichée dans LES DEUX modes. Carte = cover son +
+  // vignette image + badge oeuvre. Clic → ouvre la fiche son (drawer existant).
+  function _renderOeuvres(oeuvres) {
+    const section = document.getElementById('mp-section-oeuvres');
+    const el = document.getElementById('mp-grid-oeuvres');
+    if (!section || !el) return;
+    if (!oeuvres.length) {
+      // Pas d'œuvre → on masque entièrement la section (pas d'état vide bruyant).
+      section.hidden = true;
+      return;
+    }
+    section.hidden = false;
+    const oeuvreBadge = (window.SpBadges && SpBadges.oeuvre) ? SpBadges.oeuvre() : '';
+    el.innerHTML = oeuvres.map(o => {
+      const son = o.sound || {};
+      const img = o.image || {};
+      const sonCover = son.coverUrl
+        ? '<img src="' + _esc(son.coverUrl) + '" alt="" loading="lazy">'
+        : '<div class="mp-oeuvre-card-cover-fallback" aria-hidden="true">🎵</div>';
+      const imgUrl = _imgPreviewUrl(img.previewKey);
+      const imgCover = imgUrl
+        ? '<img src="' + _esc(imgUrl) + '" alt="" loading="lazy">'
+        : '<div class="mp-oeuvre-card-cover-fallback" aria-hidden="true">🖼️</div>';
+      return (
+        '<article class="mp-oeuvre-card" data-son-id="' + _esc(son.id || '') + '" tabindex="0" role="button" title="Voir l\'œuvre">' +
+          '<div class="mp-oeuvre-card-covers">' +
+            '<div class="mp-oeuvre-card-cover">' + sonCover + '</div>' +
+            '<div class="mp-oeuvre-card-cover">' + imgCover + '</div>' +
+          '</div>' +
+          '<div class="mp-oeuvre-card-body">' +
+            '<div class="mp-oeuvre-card-title">' + _esc(son.title || 'Œuvre complète') + '</div>' +
+            '<div class="mp-img-card-badges">' + oeuvreBadge + '</div>' +
+            '<div class="mp-oeuvre-card-prices">' +
+              '<span>🎵 ' + _esc(son.priceCredits) + ' Smyles</span>' +
+              '<span>🖼️ ' + _esc(img.priceCredits) + ' Smyles</span>' +
+            '</div>' +
+          '</div>' +
+        '</article>'
+      );
+    }).join('');
+    el._cache = {};
+    oeuvres.forEach(o => { if (o.sound && o.sound.id) el._cache[o.sound.id] = o; });
+    if (!el._bound) {
+      el._bound = true;
+      el.addEventListener('click', (e) => {
+        const card = e.target.closest('.mp-oeuvre-card');
+        if (!card) return;
+        const sonId = card.dataset.sonId;
+        // Clic → fiche du SON (drawer track existant). On retrouve le track
+        // par son promptId (chaque track-recent porte promptId du son lié).
+        const track = _state.tracks.find(t => String(t.promptId) === String(sonId));
+        if (track) { _openTrackDetailDrawer(track); return; }
+        // Fallback : si pas de track chargé (mode image sans tracks), ouvre la
+        // fiche image partenaire (achat séparé conservé côté image).
+        const o = el._cache && el._cache[sonId];
+        if (o && o.image) {
+          _openImageDetailDrawer({
+            id: o.image.id,
+            priceCredits: o.image.priceCredits,
+            previewKey: o.image.previewKey,
+            title: o.sound ? o.sound.title : 'Image',
+            linkedSound: o.sound || null,
+          });
+        }
+      });
+    }
+  }
+
+  // Hydrate le Monde Image (Top Images + Top Artistes Image + catalogue) au
+  // premier passage en mode image. Idempotent (flag _imageWorldLoaded).
+  async function _loadImageWorld() {
+    if (_imageWorldLoaded) return;
+    _imageWorldLoaded = true;
+    const [topImgs, topArts, homeImgs] = await Promise.all([
+      _fetchTopImages(10),
+      _fetchTopImageArtists(10),
+      _fetchHomeImages(),
+    ]);
+    _renderTopImages(topImgs);
+    _renderTopImageArtists(topArts);
+    _renderHomeImagesGrid(homeImgs);
+  }
+
+  // Applique un mode (musique|image) : pose la classe body, met à jour les
+  // onglets, persiste, et hydrate paresseusement le Monde Image si besoin.
+  function _applyMode(mode, opts) {
+    const m = (mode === 'image') ? 'image' : 'musique';
+    document.body.classList.toggle('mp-mode-musique', m === 'musique');
+    document.body.classList.toggle('mp-mode-image', m === 'image');
+    document.querySelectorAll('.mp-mode-btn').forEach(btn => {
+      const active = btn.dataset.mode === m;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    if (!opts || opts.persist !== false) _writeMode(m);
+    if (m === 'image') _loadImageWorld();
+  }
+
+  // Branche le commutateur (clic onglet) + restaure le mode persisté. Appelé
+  // UNIQUEMENT sur la home (guard dans _boot).
+  function _bindModeSwitch() {
+    const sw = document.getElementById('mp-mode-switch');
+    if (!sw) return;
+    sw.addEventListener('click', (e) => {
+      const btn = e.target.closest('.mp-mode-btn');
+      if (!btn) return;
+      _applyMode(btn.dataset.mode);
+    });
+    // Restaure le mode persisté au chargement (défaut musique).
+    _applyMode(_readMode(), { persist: false });
+  }
+
   // Fiche/drawer image : aperçu + provenance + prix + rareté, recette MASQUÉE.
   // Achat via PurchaseDrawer (type 'image' → /unlocks/prompts/{id}).
   function _openImageDetailDrawer(im) {
@@ -1538,6 +1876,20 @@
     // Trois fetches en parallèle — indépendants, pas de cascade.
     await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);
     _renderAll();
+
+    // C4 étape 2 — commutateur Musique ⇄ Image + section Œuvre complète,
+    // UNIQUEMENT sur la home (les pages dédiées /sons, /images… gardent leur
+    // comportement plein écran via mp-only-*). Le mode est restauré depuis
+    // localStorage ; le Monde Image est hydraté paresseusement.
+    if (_VIEW === 'home') {
+      document.body.classList.add('mp-view-home');
+      // Possession d'images chargée AVANT le rendu des cartes images (évite le
+      // flash « Acheter » sur une image possédée). Dégrade en public si non co.
+      await _loadOwnedImages();
+      _bindModeSwitch();
+      // Œuvre complète — affichée dans les deux modes (fetch indépendant).
+      _fetchOeuvres(12).then(_renderOeuvres);
+    }
     // 2026-06-11 — la barre de recherche vit aussi sur la HOME (dépliant
     // combiné moods DNA + rôles CONNECT), même process que /sons et
     // /artistes. Elle remplace le message « Utilise la loupe… ».
