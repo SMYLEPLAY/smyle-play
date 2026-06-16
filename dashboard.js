@@ -3215,7 +3215,14 @@ const _DASH_ID_IMG_MAX = 5 * 1024 * 1024;
 // rejettera avec "Rôle inconnu". Chips individuels (pas de chip hybride) : si un
 // user est à la fois producteur et interprète, il coche les deux. Persisté en DB
 // via `roles` array (cf. dashIdentitySave) + miroir localStorage.
-const DASH_ID_ROLES = [
+// C4 (2026-06-16) — Casquettes désormais réparties en DEUX groupes :
+//   • Audio (les 12 historiques, migration 0018)
+//   • Visuel / Monde Image (12 nouveaux codes, ROLE_CODES C4)
+// Les `key` ci-dessous matchent EXACTEMENT ROLE_CODES backend
+// (app/schemas/user.py). Tout écart fait rejeter le PATCH /users/me
+// ("Rôle inconnu"). La persistance (roles array) est inchangée : on ajoute
+// uniquement des codes cochables dans la même grille.
+const DASH_ID_ROLES_AUDIO = [
   { key: 'artiste',       label: 'Artiste / Interprète' },
   { key: 'producteur',    label: 'Producteur' },
   { key: 'beatmaker',     label: 'Beatmaker' },
@@ -3229,18 +3236,43 @@ const DASH_ID_ROLES = [
   { key: 'ingenieur_son', label: 'Ingénieur son' },
   { key: 'auditeur',      label: 'Auditeur' },
 ];
+const DASH_ID_ROLES_VISUEL = [
+  { key: 'illustrateur',        label: 'Illustrateur' },
+  { key: 'graphiste',           label: 'Graphiste' },
+  { key: 'directeur_artistique',label: 'Directeur artistique' },
+  { key: 'photographe',         label: 'Photographe' },
+  { key: 'concept_artist',      label: 'Concept artist' },
+  { key: 'character_designer',  label: 'Character designer' },
+  { key: 'retoucheur',          label: 'Retoucheur' },
+  { key: 'coloriste',           label: 'Coloriste' },
+  { key: 'artiste_3d',          label: 'Artiste 3D' },
+  { key: 'prompteur',           label: 'Prompteur' },
+  { key: 'designer',            label: 'Designer' },
+  { key: 'collectionneur',      label: 'Collectionneur' },
+];
+// Conservé pour rétro-compat (validation / itérations éventuelles) : la liste
+// plate de TOUS les codes rôle reconnus côté front.
+const DASH_ID_ROLES = [...DASH_ID_ROLES_AUDIO, ...DASH_ID_ROLES_VISUEL];
 
 function renderIdentityRolesGrid() {
   const grid = document.getElementById('dashIdRolesGrid');
   if (!grid) return;
   const p = getWattProfile() || {};
   const selected = Array.isArray(p.roles) ? p.roles : [];
-  grid.innerHTML = DASH_ID_ROLES.map(r => {
+  const renderChip = (r) => {
     const isOn = selected.includes(r.key);
     return `<button type="button" class="dash-role-chip${isOn ? ' is-on' : ''}"
       data-role-key="${r.key}" onclick="dashIdentityToggleRole('${r.key}')"
       aria-pressed="${isOn}">${r.label}</button>`;
-  }).join('');
+  };
+  const group = (title, roles) =>
+    `<div class="dash-roles-group">
+       <div class="dash-roles-group-title">${title}</div>
+       <div class="dash-roles-group-chips">${roles.map(renderChip).join('')}</div>
+     </div>`;
+  grid.innerHTML =
+    group('🎵 Audio', DASH_ID_ROLES_AUDIO) +
+    group('🖼 Visuel', DASH_ID_ROLES_VISUEL);
 }
 
 function dashIdentityToggleRole(key) {

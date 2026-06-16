@@ -337,6 +337,14 @@
         border-color: rgba(136,0,255,.55);
         color: #fff;
       }
+      /* C4 — Groupes Audio / Visuel dans la grille des casquettes */
+      #sec-identity .dash-roles-grid { flex-direction: column; gap: 14px; }
+      #sec-identity .dash-roles-group { display: flex; flex-direction: column; gap: 8px; }
+      #sec-identity .dash-roles-group-title {
+        font-size: 11px; font-weight: 700; letter-spacing: .08em;
+        text-transform: uppercase; color: rgba(255,255,255,.55);
+      }
+      #sec-identity .dash-roles-group-chips { display: flex; flex-wrap: wrap; gap: 8px; }
     </style>
     <details id="dashIdentityDetails">
       <summary class="dash-section-hdr">
@@ -1723,6 +1731,45 @@
       <label class="dash-label">Ratio / format <span style="font-weight:400;">(optionnel)</span></label>
       <input type="text" class="dash-input" id="imgcRatio" maxlength="20"
              placeholder="ex : 1:1, 16:9, 3:2..." />
+
+      <!-- ── C4 · Taxonomie visuelle : style + tags d'usage (optionnels) ─── -->
+      <label class="dash-label">Style <span style="font-weight:400;">(recommandé)</span></label>
+      <select class="dash-input" id="imgcStyle">
+        <option value="">— Aucun style —</option>
+        <option value="realiste">Réaliste</option>
+        <option value="cartoon">Cartoon</option>
+        <option value="anime">Anime</option>
+        <option value="3d">3D / Render</option>
+        <option value="peinture">Peinture</option>
+        <option value="aquarelle">Aquarelle</option>
+        <option value="croquis">Croquis</option>
+        <option value="pixel_art">Pixel art</option>
+        <option value="cyberpunk">Cyberpunk</option>
+        <option value="fantasy">Fantasy</option>
+        <option value="minimaliste">Minimaliste</option>
+        <option value="retro">Rétro</option>
+        <option value="abstrait">Abstrait</option>
+        <option value="surrealiste">Surréaliste</option>
+        <option value="comics">Comics</option>
+        <option value="photo">Photo</option>
+      </select>
+      <div class="dash-help">Le rendu visuel dominant — aide les acheteurs à filtrer le catalogue.</div>
+
+      <label class="dash-label">Tags d'usage <span style="font-weight:400;">(optionnel)</span></label>
+      <div class="imgc-tags" id="imgcTags" role="group" aria-label="Tags d'usage de l'image">
+        <button type="button" class="imgc-tag-chip" data-img-tag="cover">Cover</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="portrait">Portrait</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="paysage">Paysage</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="logo">Logo</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="banniere">Bannière</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="avatar">Avatar</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="wallpaper">Wallpaper</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="mockup">Mockup</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="illustration">Illustration</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="texture">Texture</button>
+        <button type="button" class="imgc-tag-chip" data-img-tag="fx">FX</button>
+      </div>
+      <div class="dash-help">À quoi sert l'image — clique pour (dé)sélectionner.</div>
 
       <label class="dash-label">Description <span style="font-weight:400;">(optionnel)</span></label>
       <textarea class="dash-input imgc-textarea" id="imgcDescription" rows="2" maxlength="2000"

@@ -27,6 +27,7 @@ from pydantic import (
 # les arrays historiques qui référencent un code retiré.
 # ──────────────────────────────────────────────────────────────────────────
 ROLE_CODES: tuple[str, ...] = (
+    # ── Casquettes AUDIO (migration 0018) ──────────────────────────────────
     "artiste",
     "producteur",
     "beatmaker",
@@ -39,6 +40,25 @@ ROLE_CODES: tuple[str, ...] = (
     "dj",
     "ingenieur_son",
     "auditeur",
+    # ── Casquettes VISUELLES / Monde Image (C4, 2026-06-16) ─────────────────
+    # CONNECT image : ces codes sont validés EXACTEMENT comme les rôles audio
+    # (validation purement Pydantic ; la colonne DB `users.roles` est un JSON
+    # array sans enum SQL — AUCUNE migration nécessaire pour les étendre).
+    # La recherche d'artistes par rôle (GET /watt/search/artists?role=<code>)
+    # n'a PAS de whitelist interne : elle filtre par LIKE JSON sur users.roles,
+    # donc tout nouveau code matche dès qu'il est accepté en écriture ici.
+    "illustrateur",
+    "graphiste",
+    "directeur_artistique",
+    "photographe",
+    "concept_artist",
+    "character_designer",
+    "retoucheur",
+    "coloriste",
+    "artiste_3d",
+    "prompteur",
+    "designer",
+    "collectionneur",
 )
 
 

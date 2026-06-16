@@ -33,7 +33,7 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
-from sqlalchemy import desc, func, or_, select
+from sqlalchemy import desc, false as sa_false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
@@ -63,6 +63,92 @@ _MAX_IMAGE_RESULTS = 60
 # Plateformes reconnues pour le filtre provenance (miroir de ImagePlatform).
 _VALID_PLATFORMS = {"midjourney", "dalle", "stable_diffusion", "flux", "autre"}
 
+# ──────────────────────────────────────────────────────────────────────────
+# Taxonomie visuelle (C4 DNA image, migration 0061) — listes autorisées.
+#
+# Validation LÉGÈRE et SOUPLE (décision : valeur hors-liste = IGNORÉE, pas de
+# 400) : le style/les tags sont des aides à la découverte, pas un contrat
+# strict — on ne veut pas faire échouer une création d'image parce qu'un front
+# a envoyé une valeur exotique. Une valeur inconnue est simplement droppée
+# (style → None, tag → retiré de la CSV). Le style et les tags restent
+# OPTIONNELS : ne renseigner ni l'un ni l'autre ne casse RIEN.
+# ──────────────────────────────────────────────────────────────────────────
+STYLES: tuple[str, ...] = (
+    "realiste",
+    "cartoon",
+    "anime",
+    "3d",
+    "peinture",
+    "aquarelle",
+    "croquis",
+    "pixel_art",
+    "cyberpunk",
+    "fantasy",
+    "minimaliste",
+    "retro",
+    "abstrait",
+    "surrealiste",
+    "comics",
+    "photo",
+)
+USAGE_TAGS: tuple[str, ...] = (
+    "cover",
+    "portrait",
+    "paysage",
+    "logo",
+    "banniere",
+    "avatar",
+    "wallpaper",
+    "mockup",
+    "illustration",
+    "texture",
+    "fx",
+)
+# Nombre max de tags retenus sur une image (garde-fou anti-payload).
+_MAX_IMAGE_TAGS = len(USAGE_TAGS)
+
+
+def _clean_image_style(raw: str | None) -> str | None:
+    """
+    Normalise + valide un style d'image. Renvoie None si absent ou hors-liste
+    (validation souple : on n'échoue pas, on ignore). Casse insensible.
+    """
+    if raw is None:
+        return None
+    s = raw.strip().lower()
+    if not s:
+        return None
+    return s if s in STYLES else None
+
+
+def _clean_image_tags(raw: str | None) -> str | None:
+    """
+    Normalise une CSV de tags d'usage : split sur virgule, lowercase, ne garde
+    que les tags connus (USAGE_TAGS), déduplique en conservant l'ordre, plafonne
+    à _MAX_IMAGE_TAGS. Renvoie une CSV propre ("cover,fx") ou None si vide.
+    Validation souple : les tags inconnus sont silencieusement retirés.
+    """
+    if raw is None:
+        return None
+    seen: set[str] = set()
+    out: list[str] = []
+    for part in raw.split(","):
+        tag = part.strip().lower()
+        if not tag or tag not in USAGE_TAGS or tag in seen:
+            continue
+        seen.add(tag)
+        out.append(tag)
+        if len(out) >= _MAX_IMAGE_TAGS:
+            break
+    return ",".join(out) if out else None
+
+
+def _tags_to_list(csv: str | None) -> list[str]:
+    """CSV stockée → liste de tags pour le payload public ([] si vide)."""
+    if not csv:
+        return []
+    return [t for t in (x.strip() for x in csv.split(",")) if t]
+
 
 @router.post(
     "/artist/me/images",
@@ -79,6 +165,12 @@ async def create_my_image(
     negative_prompt: str | None = Form(default=None),
     description: str | None = Form(default=None),
     ratio: str | None = Form(default=None),
+    # ── Taxonomie visuelle (C4 DNA image) — OPTIONNELS ─────────────────────
+    # style : un seul code parmi STYLES (recommandé, pas obligatoire).
+    # tags  : CSV de codes parmi USAGE_TAGS (incl. 'fx'). Validation souple :
+    # valeurs hors-liste ignorées (cf. _clean_image_style / _clean_image_tags).
+    image_style: str | None = Form(default=None),
+    image_tags: str | None = Form(default=None),
     price_credits: int = Form(...),
     max_supply: int | None = Form(default=None),
     is_published: bool = Form(default=False),
@@ -180,6 +272,9 @@ async def create_my_image(
         image_r2_key=image_r2_key,
         preview_r2_key=preview_r2_key,
         is_published=payload.is_published,
+        # Taxonomie visuelle : nettoyée/validée souplement avant stockage.
+        image_style=_clean_image_style(image_style),
+        image_tags=_clean_image_tags(image_tags),
     )
     await db.commit()
     await db.refresh(image)
@@ -230,6 +325,10 @@ def _image_public_dict(
         # construit l'URL proxy via /watt/images/<previewKey>.
         "previewKey":       p.preview_r2_key or "",
         "ratio":            ratio,
+        # Taxonomie visuelle (DNA image) — champs PUBLICS (aide à la
+        # découverte, aucune fuite). style = code ou None ; tags = liste.
+        "style":            p.image_style,
+        "tags":             _tags_to_list(p.image_tags),
         "priceCredits":     p.price_credits,
         "maxSupply":        max_sup,
         "rarityTier":       compute_rarity_tier(max_sup),
@@ -330,6 +429,10 @@ async def _owner_read_with_link(db: AsyncSession, image: Prompt) -> ImageOwnerRe
     model = ImageOwnerRead.model_validate(image)
     model.isOeuvreComplete = image.linked_prompt_id is not None
     model.linkedSound = await linked_sound_payload(db, image)
+    # Taxonomie visuelle : la CSV stockée (image_tags) → liste pour le front.
+    # model_validate a déjà renseigné `style` via l'alias image_style ; `tags`
+    # ne peut pas se déduire automatiquement d'une CSV, on le peuple ici.
+    model.tags = _tags_to_list(image.image_tags)
     return model
 
 
@@ -360,11 +463,20 @@ def _apply_image_filters(
     price_min: int | None,
     price_max: int | None,
     ratio: str | None,
+    style: str | None = None,
+    tag: str | None = None,
 ):
     """
     Filtres serveur partagés (miroir du style /watt/search/tracks). La facette
     nature ('image') est appliquée par l'appelant ; ici on raffine provenance,
     prix, rareté et texte. Le ratio est filtré en JSONB (image_settings->>ratio).
+
+    Taxonomie visuelle (DNA image) :
+      - style : égalité stricte sur image_style (valeur hors STYLES → 0 résultat
+                volontairement, on n'invente pas de match).
+      - tag   : présence du tag dans la CSV image_tags. On encadre par des
+                virgules (",cover," LIKE) pour éviter qu'un tag soit un préfixe
+                d'un autre (ex 'paysage' ne doit pas matcher un faux 'paysages').
     """
     if q:
         pattern = f"%{q}%"
@@ -378,6 +490,22 @@ def _apply_image_filters(
     if ratio:
         # image_settings->>'ratio' (JSONB). Si la clé manque → exclu.
         stmt = stmt.where(Prompt.image_settings["ratio"].astext == ratio)
+    if style:
+        s = style.strip().lower()
+        if s in STYLES:
+            stmt = stmt.where(Prompt.image_style == s)
+        else:
+            # Style inconnu demandé : aucun résultat (filtre non satisfiable).
+            stmt = stmt.where(sa_false())
+    if tag:
+        t = tag.strip().lower()
+        if t in USAGE_TAGS:
+            # Présence dans la CSV, encadrée de virgules pour un match exact de
+            # token (couvre tête / milieu / fin via concat ',' + value + ',').
+            wrapped = func.concat(",", Prompt.image_tags, ",")
+            stmt = stmt.where(wrapped.ilike(f"%,{t},%"))
+        else:
+            stmt = stmt.where(sa_false())
     if rarity:
         # Filtre par tier dérivé du max_supply (pas une colonne stockée).
         if rarity == "unlimited":
@@ -406,6 +534,8 @@ async def list_public_images(
     price_min: Optional[int] = Query(default=None, ge=0),
     price_max: Optional[int] = Query(default=None, ge=0),
     ratio: Optional[str] = Query(default=None, max_length=20),
+    style: Optional[str] = Query(default=None, max_length=40),
+    tag: Optional[str] = Query(default=None, max_length=40),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=_MAX_IMAGE_RESULTS, ge=1, le=_MAX_IMAGE_RESULTS),
     db: AsyncSession = Depends(get_db),
@@ -446,6 +576,8 @@ async def list_public_images(
         price_min=price_min,
         price_max=price_max,
         ratio=ratio,
+        style=style,
+        tag=tag,
     )
     base = base.order_by(desc(Prompt.created_at)).offset(offset).limit(limit)
 
@@ -876,9 +1008,11 @@ async def update_my_image(
 ):
     """
     Édite les métadonnées de VENTE d'une image possédée (title, description,
-    price_credits 3..500, is_published). Ne touche NI au fichier NI à la
-    recette (re-uploader = créer une nouvelle image). PATCH partiel : seuls les
-    champs fournis sont appliqués. Les bornes sont validées par ImageUpdate.
+    price_credits 3..500, is_published) + taxonomie visuelle (image_style,
+    image_tags). Ne touche NI au fichier NI à la recette (re-uploader = créer
+    une nouvelle image). PATCH partiel : seuls les champs fournis sont
+    appliqués. Les bornes sont validées par ImageUpdate ; style/tags sont
+    nettoyés souplement (valeurs hors-liste ignorées, "" efface).
     """
     image = await _get_owned_image_or_404(
         db, image_id=image_id, owner_id=current_user.id
@@ -892,6 +1026,12 @@ async def update_my_image(
         image.price_credits = data["price_credits"]
     if "is_published" in data and data["is_published"] is not None:
         image.is_published = data["is_published"]
+    # Taxonomie visuelle : validation souple. Fournir "" (ou que des valeurs
+    # hors-liste) efface le champ (→ None). Non fourni = inchangé.
+    if "image_style" in data:
+        image.image_style = _clean_image_style(data["image_style"])
+    if "image_tags" in data:
+        image.image_tags = _clean_image_tags(data["image_tags"])
     await db.commit()
     await db.refresh(image)
     return await _owner_read_with_link(db, image)

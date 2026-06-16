@@ -89,6 +89,12 @@ class ImageUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=PROMPT_DESCRIPTION_MAX)
     price_credits: int | None = Field(default=None, ge=PROMPT_PRICE_MIN, le=PROMPT_PRICE_MAX)
     is_published: bool | None = None
+    # ── Taxonomie visuelle (C4 DNA image, migration 0061) — éditables ──────
+    # style : code unique parmi STYLES (router). tags : CSV de codes parmi
+    # USAGE_TAGS (incl. 'fx'). Validation souple côté router (valeurs hors-liste
+    # ignorées). Le champ reçu est brut (str) ; "" autorisé pour effacer.
+    image_style: str | None = Field(default=None, max_length=40)
+    image_tags: str | None = Field(default=None, max_length=255)
 
 
 class ImagePublicRead(BaseModel):
@@ -114,6 +120,14 @@ class ImagePublicRead(BaseModel):
     max_supply: int | None = None
     is_published: bool
     created_at: datetime
+    # C4 Taxonomie visuelle (DNA image, migration 0061) — champs PUBLICS.
+    # style : code de rendu (image_style) ou None. tags : liste de codes
+    # d'usage dérivée de la CSV image_tags (incl. 'fx'). Le router renseigne
+    # `tags` (liste) dans _image_public_dict pour les listings ; ici on garde
+    # le mapping ORM pour les payloads validés directement (create/update PATCH
+    # qui renvoient ImageOwnerRead.model_validate). Alias camelCase pour le front.
+    style: str | None = Field(default=None, validation_alias="image_style")
+    tags: list[str] = Field(default_factory=list)
     # C4 « Oeuvre complete » — partenaire SON lie (apercu public uniquement :
     # id/titre/cover/prix/productType). None si l'image n'est pas liee.
     # isOeuvreComplete est un raccourci front (= linkedSound is not None).
@@ -138,7 +152,10 @@ class ImageOwnerRead(ImagePublicRead):
     /images/{id}/download qui vérifie la possession à chaque appel).
     """
 
-    model_config = ConfigDict(from_attributes=True)
+    # populate_by_name conservé (hérité de ImagePublicRead) pour que les alias
+    # de validation (bundle_exclusive, image_style) marchent + qu'on puisse
+    # réassigner par nom Python (model.tags = ...) après model_validate.
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     prompt_text: str | None = None
     image_settings: dict[str, Any] | None = None

@@ -161,6 +161,8 @@ async def create_image(
     image_r2_key: str,
     preview_r2_key: str,
     is_published: bool = False,
+    image_style: str | None = None,
+    image_tags: str | None = None,
 ) -> Prompt:
     """
     Crée une image vendable (product_type='image').
@@ -185,6 +187,8 @@ async def create_image(
         negative_prompt=negative_prompt,
         image_r2_key=image_r2_key,
         preview_r2_key=preview_r2_key,
+        image_style=image_style,
+        image_tags=image_tags,
     )
     db.add(image)
     await db.flush()

@@ -73,6 +73,44 @@
     { label: 'acapella',     val: 'acapella'     },
   ];
 
+  // ── C4 taxonomie visuelle ───────────────────────────────────────────────
+  // Jeux de chips du MODE IMAGE. Les `val` matchent EXACTEMENT les codes
+  // backend (ROLE_CODES visuels schemas/user.py · STYLES routers/images.py).
+  // CONNECT image : rôles de créateurs visuels — /watt/search/artists?role=
+  const CONNECT_CHIPS_IMG = [
+    { label: 'Illustrateur',          val: 'illustrateur'         },
+    { label: 'Graphiste',             val: 'graphiste'            },
+    { label: 'Directeur artistique',  val: 'directeur_artistique' },
+    { label: 'Photographe',           val: 'photographe'          },
+    { label: 'Concept artist',        val: 'concept_artist'       },
+    { label: 'Character designer',    val: 'character_designer'   },
+    { label: 'Retoucheur',            val: 'retoucheur'           },
+    { label: 'Coloriste',             val: 'coloriste'            },
+    { label: 'Artiste 3D',            val: 'artiste_3d'           },
+    { label: 'Prompteur',             val: 'prompteur'            },
+    { label: 'Designer',              val: 'designer'             },
+    { label: 'Collectionneur',        val: 'collectionneur'       },
+  ];
+  // DNA image : styles visuels — filtre /images?style=<code>
+  const DNA_CHIPS_IMG = [
+    { label: 'Réaliste',     val: 'realiste'     },
+    { label: 'Cartoon',      val: 'cartoon'      },
+    { label: 'Anime',        val: 'anime'        },
+    { label: '3D / Render',  val: '3d'           },
+    { label: 'Peinture',     val: 'peinture'     },
+    { label: 'Aquarelle',    val: 'aquarelle'    },
+    { label: 'Croquis',      val: 'croquis'      },
+    { label: 'Pixel art',    val: 'pixel_art'    },
+    { label: 'Cyberpunk',    val: 'cyberpunk'    },
+    { label: 'Fantasy',      val: 'fantasy'      },
+    { label: 'Minimaliste',  val: 'minimaliste'  },
+    { label: 'Rétro',        val: 'retro'        },
+    { label: 'Abstrait',     val: 'abstrait'     },
+    { label: 'Surréaliste',  val: 'surrealiste'  },
+    { label: 'Comics',       val: 'comics'       },
+    { label: 'Photo',        val: 'photo'        },
+  ];
+
   // ── Styles ────────────────────────────────────────────────────────────
   function injectStyles() {
     if (document.getElementById('smyle-search-styles')) return;
@@ -392,7 +430,7 @@
           <!-- Colonne CONNECT -->
           <div class="smyle-search-col" id="ss-col-connect">
             <div class="smyle-search-col-hdr connect">
-              ${ICO_USER} CONNECT — Artistes
+              ${ICO_USER} <span id="ss-connect-hdr-lbl">CONNECT — Artistes</span>
             </div>
             <div class="smyle-search-chips" id="ss-connect-chips">${connectChipsHtml}</div>
             <div class="smyle-search-results" id="ss-results-connect" aria-live="polite"></div>
@@ -470,17 +508,21 @@
     inputEl.addEventListener('input', onInput);
     inputEl.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); closeModal(); } });
 
-    // Chips CONNECT
-    modalRoot.querySelectorAll('#ss-connect-chips .smyle-search-chip').forEach(chip => {
-      chip.addEventListener('click', () => onChipClick(chip, 'connect'));
+    // Chips CONNECT + DNA — délégation (les conteneurs sont re-rendus au
+    // changement de nature, donc on écoute le parent une seule fois).
+    const connectChipsBox = modalRoot.querySelector('#ss-connect-chips');
+    if (connectChipsBox) connectChipsBox.addEventListener('click', e => {
+      const chip = e.target.closest('.smyle-search-chip');
+      if (chip && connectChipsBox.contains(chip)) onChipClick(chip, 'connect');
+    });
+    const dnaChipsBox = modalRoot.querySelector('#ss-dna-chips');
+    if (dnaChipsBox) dnaChipsBox.addEventListener('click', e => {
+      const chip = e.target.closest('.smyle-search-chip');
+      if (chip && dnaChipsBox.contains(chip)) onChipClick(chip, 'dna');
     });
 
-    // Chips DNA
-    modalRoot.querySelectorAll('#ss-dna-chips .smyle-search-chip').forEach(chip => {
-      chip.addEventListener('click', () => onChipClick(chip, 'dna'));
-    });
-
-    // Facette nature Sons / Images (C4 ③) — bascule la colonne droite.
+    // Facette nature Sons / Images (C4 ③) — bascule la colonne droite ET les
+    // deux jeux de chips (CONNECT rôles + DNA styles/moods).
     modalRoot.querySelectorAll('.ss-nature-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const nat = btn.dataset.nature || 'sons';
@@ -491,11 +533,7 @@
           b.classList.toggle('is-active', on);
           b.setAttribute('aria-selected', on ? 'true' : 'false');
         });
-        // Les chips moods ne s'appliquent qu'aux sons : on les masque en mode image.
-        const chips = modalRoot.querySelector('#ss-dna-chips');
-        if (chips) chips.style.display = (nat === 'images') ? 'none' : '';
-        const lbl = modalRoot.querySelector('#ss-dna-hdr-lbl');
-        if (lbl) lbl.textContent = (nat === 'images') ? 'Images IA' : 'DNA — Sons';
+        applyNatureChips(nat);
         _trigger();
       });
     });
@@ -541,6 +579,37 @@
     debounce = setTimeout(_trigger, DEBOUNCE_MS);
   }
 
+  // C4 — re-rend les chips CONNECT + DNA selon la nature et met à jour les
+  // titres de colonnes. On RESET les sélections actives au passage : un code
+  // audio (ex. mood 'chill') ne doit jamais fuiter dans une requête image
+  // (et inversement), sinon le backend renvoie 0 résultat silencieusement.
+  function chipHtml(c, cls) {
+    return `<button type="button" class="smyle-search-chip ${cls}" data-val="${c.val}">${c.label}</button>`;
+  }
+  function applyNatureChips(nat) {
+    const isImg = nat === 'images';
+    activeConnectChips.clear();
+    activeDnaChips.clear();
+
+    const connectBox = modalRoot.querySelector('#ss-connect-chips');
+    if (connectBox) {
+      const src = isImg ? CONNECT_CHIPS_IMG : CONNECT_CHIPS;
+      connectBox.innerHTML = src.map(c => chipHtml(c, 'connect-chip')).join('');
+    }
+    const dnaBox = modalRoot.querySelector('#ss-dna-chips');
+    if (dnaBox) {
+      const src = isImg ? DNA_CHIPS_IMG : DNA_CHIPS;
+      dnaBox.innerHTML = src.map(c => chipHtml(c, 'dna-chip')).join('');
+      // Mode image : les chips de style FILTRENT le catalogue (≠ moods qui ne
+      // s'appliquaient qu'aux sons) → on les laisse visibles.
+      dnaBox.style.display = '';
+    }
+    const connectLbl = modalRoot.querySelector('#ss-connect-hdr-lbl');
+    if (connectLbl) connectLbl.textContent = isImg ? 'CONNECT — Créateurs visuels' : 'CONNECT — Artistes';
+    const dnaLbl = modalRoot.querySelector('#ss-dna-hdr-lbl');
+    if (dnaLbl) dnaLbl.textContent = isImg ? 'DNA — Styles' : 'DNA — Sons';
+  }
+
   function onChipClick(chip, side) {
     const val = chip.dataset.val;
     const set  = side === 'connect' ? activeConnectChips : activeDnaChips;
@@ -569,20 +638,30 @@
     // Mode Images (C4 ③) : la colonne droite cherche des images. Les chips
     // moods ne s'appliquent pas (facette image ≠ mood) → seul le texte filtre.
     const imageMode = dnaNature === 'images';
-    const doRight   = imageMode ? hasQ : (hasQ || (dnaChips && dnaChips.size > 0));
+    // Mode Images (C4) : la colonne droite cherche des images, filtrées par
+    // TEXTE et/ou STYLE (les chips DNA portent désormais des codes de style).
+    const doRight   = imageMode
+      ? (hasQ || (dnaChips && dnaChips.size > 0))
+      : (hasQ || (dnaChips && dnaChips.size > 0));
     if (doArtists) setLoading(connectEl); else renderArtists([], q);
     if (doRight)   setLoading(dnaEl);     else (imageMode ? renderImages([], q) : renderTracks([], q));
     const [artists, right] = await Promise.all([
       doArtists ? fetchArtists(q, connectChips) : Promise.resolve([]),
-      doRight   ? (imageMode ? fetchImages(q) : fetchTracks(q, dnaChips)) : Promise.resolve([]),
+      doRight   ? (imageMode ? fetchImages(q, dnaChips) : fetchTracks(q, dnaChips)) : Promise.resolve([]),
     ]);
     if (doArtists && connectEl) renderArtists(artists, q);
     if (doRight && dnaEl) { if (imageMode) renderImages(right, q); else renderTracks(right, q); }
   }
 
-  async function fetchImages(q) {
+  async function fetchImages(q, stylesSet) {
     try {
       const params = new URLSearchParams({ q: q || '', limit: '12' });
+      // C4 — filtre par STYLE (égalité stricte côté backend ?style=<code>).
+      // Les chips DNA sont multi-sélection mais /images n'accepte qu'un style :
+      // on envoie le 1er sélectionné (le style est la facette prioritaire).
+      if (stylesSet && stylesSet.size > 0) {
+        params.append('style', stylesSet.values().next().value);
+      }
       const res = await fetch(`${API_BASE}/images?${params}`, { credentials: 'omit' });
       if (!res.ok) return [];
       const data = await res.json();
