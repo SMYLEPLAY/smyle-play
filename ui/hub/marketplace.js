@@ -1236,13 +1236,15 @@
     }
     // C4 ④ #4 — bouton ❤️ wishlist (UUID du prompt image). Pas d'ajout playlist.
     var likeBtn = '<button type="button" class="like-btn mp-img-card-like" data-img-like-btn="' + _esc(img.id) + '" title="Wishlist" aria-label="Ajouter à ma Wishlist" onclick="event.stopPropagation()"></button>';
+    // C4 My Mix — bouton « Ajouter à un album » (calque add-to-playlist).
+    var albumBtn = '<button type="button" class="add-to-pl-btn mp-img-card-album" data-add-to-album="' + _esc(img.id) + '" title="Ajouter à un album" aria-label="Ajouter à un album" onclick="event.stopPropagation()">+</button>';
     return '' +
       '<article class="mp-img-card" data-image-id="' + _esc(img.id) + '" data-owned="' + ((owned || mine) ? '1' : '0') + '" tabindex="0" role="button" title="' + ((owned || mine) ? 'Image possédée' : 'Voir la fiche') + '">' +
         '<div class="mp-img-card-cover">' + cover + ratioChip + '</div>' +
         '<div class="mp-img-card-body">' +
           '<div class="mp-img-card-title">' + _esc(img.title || 'Sans titre') + '</div>' +
           '<div class="mp-img-card-badges">' + nature + palier + rar + prov + oeuvre + '</div>' +
-          '<div class="mp-img-card-foot">' + priceOrState + likeBtn + '</div>' +
+          '<div class="mp-img-card-foot">' + priceOrState + albumBtn + likeBtn + '</div>' +
         '</div>' +
       '</article>';
   }
@@ -1754,6 +1756,8 @@
       <div class="mp-id-social-row">
         <button class="like-btn mp-id-like-btn" type="button" data-img-like-btn="${_esc(im.id)}"
                 title="Ajouter à ma Wishlist" aria-label="Ajouter à ma Wishlist"></button>
+        <button class="add-to-pl-btn mp-id-album-btn" type="button" data-add-to-album="${_esc(im.id)}"
+                title="Ajouter à un album" aria-label="Ajouter à un album">+ Album</button>
       </div>`;
 
     // CTA achat / état possession. On GARDE PurchaseDrawer pour la confirmation

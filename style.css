@@ -671,6 +671,106 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
 }
 .mix-saved-del:hover { color: #ff4444; }
 
+/* ═══ MY MIX double interface Musique ⇄ Image ═══ */
+.mymix-switch {
+  display: flex; gap: 6px; margin-top: 14px;
+  background: rgba(136,0,255,.06);
+  border: 1px solid rgba(136,0,255,.14);
+  border-radius: 10px; padding: 4px;
+}
+.mymix-switch-btn {
+  flex: 1; padding: 7px 10px;
+  background: none; border: none; border-radius: 7px;
+  color: rgba(200,170,255,.55);
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  cursor: pointer; transition: background .18s, color .18s;
+}
+.mymix-switch-btn:hover { color: rgba(220,200,255,.85); }
+.mixPanel .mymix-switch-btn[aria-selected="true"],
+.mix-panel .mymix-switch-btn[aria-selected="true"] {
+  background: rgba(136,0,255,.22);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(136,0,255,.25);
+}
+/* Bascule des mondes via classe sur le panneau */
+.mymix-world { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+.mix-panel.mymix-mode-musique .mymix-world-musique { display: flex; }
+.mix-panel.mymix-mode-image   .mymix-world-image   { display: flex; }
+
+.mymix-world-image { overflow-y: auto; padding: 14px 20px 16px; gap: 18px; }
+.mymix-world-image::-webkit-scrollbar { width: 3px; }
+.mymix-world-image::-webkit-scrollbar-thumb { background: rgba(136,0,255,.2); }
+.mymix-img-section { display: flex; flex-direction: column; gap: 10px; }
+.mymix-img-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.mymix-img-title {
+  font-size: 9px; font-weight: 700; letter-spacing: .25em;
+  text-transform: uppercase; color: rgba(136,0,255,.6);
+}
+.mymix-img-count {
+  font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  background: rgba(136,0,255,.1); color: rgba(200,170,255,.75);
+  font-variant-numeric: tabular-nums;
+}
+.mymix-album-new-btn {
+  background: rgba(136,0,255,.12); border: 1px solid rgba(136,0,255,.3);
+  border-radius: 7px; color: #cbb3ff; font-size: 11px; font-weight: 700;
+  padding: 5px 10px; cursor: pointer; transition: background .18s;
+}
+.mymix-album-new-btn:hover { background: rgba(136,0,255,.22); }
+.mymix-img-empty {
+  padding: 16px 0; text-align: center; font-size: 11px;
+  color: rgba(136,0,255,.4); letter-spacing: .05em;
+}
+/* Grille images likées */
+.mymix-liked-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+}
+.mymix-liked-card {
+  position: relative; border-radius: 9px; overflow: hidden;
+  background: rgba(136,0,255,.05); border: 1px solid rgba(136,0,255,.12);
+  cursor: pointer; aspect-ratio: 1 / 1; transition: border-color .18s, transform .12s;
+}
+.mymix-liked-card:hover { border-color: rgba(136,0,255,.35); transform: translateY(-2px); }
+.mymix-liked-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mymix-liked-card .mymix-liked-fallback {
+  display: flex; align-items: center; justify-content: center; height: 100%; font-size: 2rem;
+}
+.mymix-liked-card .like-btn {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+}
+.mymix-liked-card .mymix-liked-cap {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 14px 8px 5px; font-size: 10px; font-weight: 600; color: #fff;
+  background: linear-gradient(transparent, rgba(0,0,0,.75));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Liste albums */
+.mymix-album-list { display: flex; flex-direction: column; gap: 6px; }
+.mymix-album-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  background: rgba(136,0,255,.05); border: 1px solid rgba(136,0,255,.12);
+  border-radius: 9px; cursor: pointer; transition: background .18s, border-color .18s;
+}
+.mymix-album-item:hover { background: rgba(136,0,255,.1); border-color: rgba(136,0,255,.3); }
+.mymix-album-cover {
+  width: 42px; height: 42px; border-radius: 7px; flex-shrink: 0;
+  object-fit: cover; background: rgba(136,0,255,.1);
+  display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+}
+.mymix-album-info { flex: 1; min-width: 0; }
+.mymix-album-name {
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,.92);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mymix-album-meta { font-size: 10px; color: rgba(136,0,255,.55); margin-top: 2px; }
+.mymix-album-del {
+  background: none; border: none; color: rgba(136,0,255,.35);
+  font-size: 13px; cursor: pointer; padding: 4px 6px; flex-shrink: 0; transition: color .15s;
+}
+.mymix-album-del:hover { color: #ff4444; }
+
 /* ── MIX — couleurs par playlist source ─────────────────────── */
 .mix-track-item[data-theme="sunset-lover"]  .mix-track-name { color:rgba(255,130,50,.9); }
 .mix-track-item[data-theme="sunset-lover"]  .mix-track-pl   { color:rgba(255,90,0,.55); }

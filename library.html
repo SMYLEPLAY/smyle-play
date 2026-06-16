@@ -136,10 +136,10 @@
   </div><!-- /.lib-world-musique -->
 
   <!-- ═══════════════════════════════════════════════ MONDE IMAGE (espace dédié)
-       Espace visuel pleine largeur : vignettes plus grandes, sous-sections
-       « Achetées » et « Likées » claires. Masqué en mode musique.
-       IDs conservés (#lib-images-owned-list / #lib-images-liked-list) : les
-       fonctions renderOwnedImages / renderLikedImages écrivent dedans. -->
+       Espace visuel pleine largeur : vignettes plus grandes. La biblio = pur
+       POSSÉDÉ : on n'affiche QUE « Mes images achetées ». Les images likées
+       sont désormais dans My Mix (curation). Masqué en mode musique.
+       ID conservé (#lib-images-owned-list) : renderOwnedImages écrit dedans. -->
   <div class="lib-world lib-world-image">
     <section class="lib-images-space" id="lib-col-images">
 
@@ -149,18 +149,10 @@
         <span class="lib-images-space-count" id="lib-count-images">—</span>
       </header>
 
-      <!-- Sous-section : Achetées -->
+      <!-- Sous-section : Achetées (possédé) -->
       <div class="lib-img-section">
-        <div class="lib-img-subhdr">Achetées</div>
+        <div class="lib-img-subhdr">Mes images achetées</div>
         <div id="lib-images-owned-list" class="lib-images-grid">
-          <div class="lib-loading">Chargement…</div>
-        </div>
-      </div>
-
-      <!-- Sous-section : Likées -->
-      <div class="lib-img-section">
-        <div class="lib-img-subhdr">Likées</div>
-        <div id="lib-images-liked-list">
           <div class="lib-loading">Chargement…</div>
         </div>
       </div>
