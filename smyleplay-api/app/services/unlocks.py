@@ -603,3 +603,132 @@ async def unlock_playlist_adn_atomic(
         transaction=tx,
         paid=paid,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# unlock_album_adn_atomic  (ADN Album — analogue VISUEL de l'ADN Playlist)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class _UnlockAlbumAdnResult:
+    __slots__ = ("owned_album_adn", "transaction", "paid")
+
+    def __init__(self, owned_album_adn, transaction, paid: int):
+        self.owned_album_adn = owned_album_adn
+        self.transaction = transaction
+        self.paid = paid
+
+
+async def unlock_album_adn_atomic(
+    db,
+    *,
+    buyer_id,
+    album_id,
+) -> _UnlockAlbumAdnResult:
+    """
+    Achète l'ADN d'un album d'images public (génome de style) avec des Smyles.
+    Calque STRICT de unlock_playlist_adn_atomic.
+
+    Conditions de vente (miroir playlist-adn) : album public ET adn_for_sale
+    ET adn_price IS NOT NULL. Idempotent : double achat → AlreadyOwned (409).
+    """
+    from sqlalchemy import select, text, func
+    from sqlalchemy.exc import IntegrityError
+    from app.models.album import Album
+    from app.models.owned_album_adn import OwnedAlbumAdn
+    from app.models.transaction import Transaction, TransactionType, TransactionStatus
+    from app.services.credits import compute_split, _acquire_user_locks
+
+    album = (await db.execute(
+        select(Album).where(Album.id == album_id)
+    )).scalar_one_or_none()
+
+    if album is None or not album.adn_for_sale or not album.adn_price:
+        raise AdnNotPurchasable("ADN album introuvable ou non disponible à la vente")
+
+    if album.visibility != "public":
+        raise AdnNotPurchasable("ADN album non disponible")
+
+    owner_id = album.owner_id
+    paid = int(album.adn_price)
+
+    if buyer_id == owner_id:
+        raise SelfPurchaseForbidden("Tu ne peux pas acheter ton propre ADN d'album")
+
+    # Vérification possession déjà existante (avant savepoint)
+    existing = (await db.execute(
+        select(OwnedAlbumAdn).where(
+            OwnedAlbumAdn.user_id == buyer_id,
+            OwnedAlbumAdn.album_id == album_id,
+        )
+    )).scalar_one_or_none()
+    if existing is not None:
+        raise AlreadyOwned("Tu possèdes déjà l'ADN de cet album")
+
+    # Pyramide en CASCADE (cohérent ADN Playlist) : -30% si le buyer possède
+    # l'ADN PROFIL de l'artiste propriétaire de l'album.
+    from app.services.marketplace import user_owns_artist_adn as _owns_artist_adn
+    from app.services.credits import compute_effective_price as _eff_price
+    profil_perk = await _owns_artist_adn(db, user_id=buyer_id, artist_id=owner_id)
+    paid = _eff_price(paid, profil_perk)
+
+    async with db.begin_nested():
+        await _acquire_user_locks(db, [buyer_id, owner_id])
+
+        artist_revenue, platform_fee = compute_split(paid)
+        assert artist_revenue + platform_fee == paid
+
+        buyer_row = (await db.execute(
+            text("SELECT credits_balance FROM users WHERE id = :uid"),
+            {"uid": buyer_id},
+        )).first()
+        if buyer_row is None:
+            raise AdnNotPurchasable("Acheteur introuvable")
+        if int(buyer_row.credits_balance) < paid:
+            raise InsufficientCredits(required=paid, available=int(buyer_row.credits_balance))
+
+        tx = Transaction(
+            type=TransactionType.UNLOCK,
+            status=TransactionStatus.PENDING,
+            buyer_id=buyer_id,
+            seller_id=owner_id,
+            credits_amount=paid,
+            artist_revenue=artist_revenue,
+            platform_fee=platform_fee,
+            metadata_json={
+                "album_id": str(album_id),
+                "owner_id": str(owner_id),
+            },
+        )
+        db.add(tx)
+        await db.flush()
+
+        await db.execute(
+            text("UPDATE users SET credits_balance = credits_balance - :paid WHERE id = :uid"),
+            {"paid": paid, "uid": buyer_id},
+        )
+        await db.execute(
+            text(
+                "UPDATE users "
+                "SET credits_balance = credits_balance + :rev, "
+                "    credits_earned_total = credits_earned_total + :rev "
+                "WHERE id = :uid"
+            ),
+            {"rev": artist_revenue, "uid": owner_id},
+        )
+
+        owned = OwnedAlbumAdn(user_id=buyer_id, album_id=album_id)
+        db.add(owned)
+        try:
+            await db.flush()
+        except IntegrityError as e:
+            raise AlreadyOwned("Tu possèdes déjà l'ADN de cet album") from e
+
+        tx.status = TransactionStatus.COMPLETED
+        tx.completed_at = func.now()
+        await db.flush()
+
+    return _UnlockAlbumAdnResult(
+        owned_album_adn=owned,
+        transaction=tx,
+        paid=paid,
+    )

@@ -51,6 +51,18 @@ class AlbumUpdate(BaseModel):
     # de l'album OU supprimer l'image (ON DELETE SET NULL) remet à NULL.
     cover_prompt_id: UUID | None = None
 
+    # ─── ADN Album — mise en vente / édition du génome (owner only) ────────
+    # Calque STRICT du PATCH ADN Playlist. Tous optionnels (PATCH partiel) ;
+    # un champ absent = inchangé. RAPPEL : l'ADN ne se vend QUE si l'album est
+    # public ET adn_for_sale=True ET adn_price IS NOT NULL (le front doit
+    # exposer ces réglages explicitement).
+    seed_prompt: str | None = Field(default=None, max_length=10000)
+    dna_description: str | None = Field(default=None, max_length=2000)
+    adn_style: str | None = Field(default=None, max_length=40)
+    adn_palette: str | None = Field(default=None, max_length=255)
+    adn_for_sale: bool | None = None
+    adn_price: int | None = Field(default=None, ge=1)
+
 
 class AlbumRead(BaseModel):
     """Projection "liste" : métadonnées + nb d'images, sans charger les images.
@@ -81,9 +93,30 @@ class AlbumWithImages(AlbumRead):
     `images` est une liste de dicts d'aperçu public (id / previewKey / title /
     priceCredits / productType), construite par le router via le helper
     anti-fuite. AUCUN champ gaté n'est exposé.
+
+    ADN Album (calque ADN Playlist) :
+      - adnForSale / adnPrice / adnStyle / dnaDescription : TOUJOURS exposés
+        (teaser — ils décrivent l'offre sans révéler le génome).
+      - seedPrompt / adnPalette : GATÉS — le génome. Le router les renvoie
+        NULL si l'album est en vente (adn_for_sale) ET que le viewer n'est ni
+        l'owner ni détenteur de l'ADN. Révélés à l'owner / acheteur uniquement.
     """
 
     images: list[dict] = Field(default_factory=list)
+
+    adn_for_sale: bool = Field(default=False, serialization_alias="adnForSale")
+    adn_price: int | None = Field(default=None, serialization_alias="adnPrice")
+    adn_style: str | None = Field(default=None, serialization_alias="adnStyle")
+    dna_description: str | None = Field(
+        default=None, serialization_alias="dnaDescription"
+    )
+    # Génome — gaté par le router (NULL si en vente et viewer non autorisé).
+    adn_palette: str | None = Field(
+        default=None, serialization_alias="adnPalette"
+    )
+    seed_prompt: str | None = Field(
+        default=None, serialization_alias="seedPrompt"
+    )
 
 
 class AddImageRequest(BaseModel):

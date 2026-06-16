@@ -373,6 +373,21 @@
   </div>
 </section>
 
+<!-- C4 ADN Album — catalogue des génomes de style visuel en vente.
+     Miroir du catalogue ADN Playlist. GET /catalog/albums-adn (génome GATÉ :
+     style + description + prix + owner seulement, jamais seedPrompt/palette).
+     Rempli par marketplace.js (_renderAlbumAdnCatalog). Affiché en mode Image. -->
+<section class="mp-section mp-section-albums-adn">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">ADN Album</span>
+    <h2 class="mp-section-title">🎨 Génomes de style à débloquer</h2>
+    <span class="mp-section-sub">Un ADN donne des résultats dans le même esprit, jamais identiques — la recette de style, pas une copie</span>
+  </div>
+  <div class="mp-img-grid" id="mp-grid-albums-adn">
+    <div class="mp-grid-empty">Chargement des ADN Album…</div>
+  </div>
+</section>
+
 <!-- ═══════════════════════════════════════════════════════════ ŒUVRE COMPLÈTE -->
 <!-- C4 étape 2 — paires son+image liées, affichées dans LES DEUX modes.
      GET /oeuvres. Clic → ouvre la fiche existante. Achat séparé conservé. -->
@@ -713,8 +728,8 @@
      classements (top sons / top artistes) et des grilles (tous sons / tous
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
 <script src="/ui/playlists.js?v=20260615c4l5" defer></script>
-<script src="/ui/albums.js?v=20260616c4mymix" defer></script>
-<script src="ui/hub/marketplace.js?v=20260616c4oc"></script>
+<script src="/ui/albums.js?v=20260616c4adnalbum" defer></script>
+<script src="ui/hub/marketplace.js?v=20260616c4adnalbum"></script>
 <script src="ui/app.js"></script>
 <script src="ui/player/mini-bar.js?v=20260613a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>

@@ -23,7 +23,9 @@ from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.adn import Adn
+from app.models.album import Album
 from app.models.owned_adn import OwnedAdn
+from app.models.owned_album_adn import OwnedAlbumAdn
 from app.models.owned_playlist_adn import OwnedPlaylistAdn
 from app.models.playlist import Playlist
 from app.models.prompt import Prompt
@@ -553,6 +555,52 @@ async def list_user_library_playlist_adns(
     return items, int(total)
 
 
+async def list_user_library_album_adns(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[dict], int]:
+    """
+    Liste les ADN Album achetés par user_id, tri owned_at DESC.
+    Calque STRICT de list_user_library_playlist_adns : le génome COMPLET
+    (seed_prompt + adn_palette) est EXPOSÉ ici car l'utilisateur a payé.
+    """
+    base_filter = OwnedAlbumAdn.user_id == user_id
+
+    total = (await db.execute(
+        select(func.count(OwnedAlbumAdn.album_id)).where(base_filter)
+    )).scalar() or 0
+
+    offset = (page - 1) * per_page
+    items_q = (
+        select(OwnedAlbumAdn, Album, User)
+        .join(Album, Album.id == OwnedAlbumAdn.album_id)
+        .join(User, User.id == Album.owner_id)
+        .where(base_filter)
+        .order_by(OwnedAlbumAdn.owned_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    rows = (await db.execute(items_q)).all()
+    items = [
+        {
+            "album_id": str(al.id),
+            "owned_at": oaa.owned_at,
+            "title": al.title,
+            "dna_description": al.dna_description,
+            "adn_style": al.adn_style,
+            "adn_palette": al.adn_palette,   # ← génome, OK car possédé
+            "seed_prompt": al.seed_prompt,   # ← génome, OK car possédé
+            "adn_price": al.adn_price,
+            "owner": _artist_card(u),
+        }
+        for oaa, al, u in rows
+    ]
+    return items, int(total)
+
+
 # -----------------------------------------------------------------------------
 # Catalog public — Voix (is_published=True, is_deleted=False)
 # -----------------------------------------------------------------------------
@@ -651,5 +699,61 @@ async def list_public_playlists_adn(
             "owner": _artist_card(u),
         }
         for pl, u in rows
+    ]
+    return items, int(total)
+
+
+# -----------------------------------------------------------------------------
+# Catalog public — Albums ADN en vente (adn_for_sale=True, public)
+# -----------------------------------------------------------------------------
+
+async def list_public_albums_adn(
+    db: AsyncSession,
+    *,
+    artist_id: UUID | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[dict], int]:
+    """
+    Liste les albums publics dont l'ADN (génome de style) est en vente.
+    Calque STRICT de list_public_playlists_adn.
+    Filtres : visibility='public' ET adn_for_sale=True ET adn_price IS NOT NULL.
+
+    GATING : seed_prompt et adn_palette (le génome) ne sont JAMAIS exposés ici
+    — seuls le teaser (dna_description, adn_style) et le prix le sont. Le génome
+    complet est révélé après achat via /me/library/album-adns.
+    """
+    base_filter = [
+        Album.visibility == "public",
+        Album.adn_for_sale.is_(True),
+        Album.adn_price.is_not(None),
+    ]
+    if artist_id is not None:
+        base_filter.append(Album.owner_id == artist_id)
+
+    total = (await db.execute(
+        select(func.count(Album.id)).where(*base_filter)
+    )).scalar() or 0
+
+    offset = (page - 1) * per_page
+    items_q = (
+        select(Album, User)
+        .join(User, User.id == Album.owner_id)
+        .where(*base_filter)
+        .order_by(Album.created_at.desc(), Album.id.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    rows = (await db.execute(items_q)).all()
+    items = [
+        {
+            "id": al.id,
+            "title": al.title,
+            "dna_description": al.dna_description,
+            "adn_style": al.adn_style,
+            "adn_price": al.adn_price,
+            "owner": _artist_card(u),
+        }
+        for al, u in rows
     ]
     return items, int(total)

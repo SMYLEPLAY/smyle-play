@@ -4,6 +4,7 @@ from .album import Album, AlbumImage
 from .base import Base
 from .dna import DNA
 from .owned_adn import OwnedAdn
+from .owned_album_adn import OwnedAlbumAdn
 from .owned_playlist_adn import OwnedPlaylistAdn
 from .password_reset_token import PasswordResetToken
 from .play_event import PlayEvent
@@ -27,6 +28,7 @@ __all__ = [
     "Base",
     "DNA",
     "OwnedAdn",
+    "OwnedAlbumAdn",
     "OwnedPlaylistAdn",
     "OwnedVoice",
     "Playlist",
