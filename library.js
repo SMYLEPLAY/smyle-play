@@ -67,6 +67,9 @@ function _showMain() {
   const main   = getEl('lib-main');
   if (locked) locked.style.display = 'none';
   if (main)   main.style.display   = '';
+  // Commutateur Musique ⇄ Image : restaure le mode + câble les onglets une
+  // fois la vue principale visible (le switch vit dans #lib-main).
+  _libBindModeSwitch();
 }
 
 
@@ -157,6 +160,55 @@ function libToggleAudio(btn, audioId) {
     audio.pause();
     btn.textContent = '▶';
   }
+}
+
+
+/* ── Commutateur Musique ⇄ Image (C4 biblio) ─────────────────────────────────
+   Deux mondes : Musique (ADN audio) / Image (espace visuel dédié). Le mode est
+   persisté dans localStorage (`lib_mode`) et restauré au chargement. Défaut =
+   musique. Le show/hide se fait via les classes body lib-mode-musique /
+   lib-mode-image (cf. library.css). Indépendant de marketplace.js.            */
+
+const _LIB_MODE_KEY = 'lib_mode';
+
+const _LIB_HERO_SUB = {
+  musique: 'Tes recettes IA et ADN débloqués. Copie, réutilise, re-génère.',
+  image:   'Tes images IA — achetées et likées. Ton espace visuel à toi.',
+};
+
+function _libReadMode() {
+  let m = null;
+  try { m = localStorage.getItem(_LIB_MODE_KEY); } catch (_) {}
+  return (m === 'image') ? 'image' : 'musique';
+}
+
+function _libApplyMode(mode, opts) {
+  const m = (mode === 'image') ? 'image' : 'musique';
+  document.body.classList.toggle('lib-mode-musique', m === 'musique');
+  document.body.classList.toggle('lib-mode-image',   m === 'image');
+  document.querySelectorAll('.lib-mode-btn').forEach(btn => {
+    const active = btn.dataset.mode === m;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+  const sub = getEl('lib-hero-sub');
+  if (sub && _LIB_HERO_SUB[m]) sub.textContent = _LIB_HERO_SUB[m];
+  if (!opts || opts.persist !== false) {
+    try { localStorage.setItem(_LIB_MODE_KEY, m); } catch (_) {}
+  }
+}
+
+function _libBindModeSwitch() {
+  const sw = getEl('lib-mode-switch');
+  if (sw) {
+    sw.addEventListener('click', (e) => {
+      const btn = e.target.closest('.lib-mode-btn');
+      if (!btn) return;
+      _libApplyMode(btn.dataset.mode);
+    });
+  }
+  // Restaure le mode persisté (sans réécrire la clé : persist=false).
+  _libApplyMode(_libReadMode(), { persist: false });
 }
 
 

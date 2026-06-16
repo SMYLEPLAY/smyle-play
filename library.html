@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex, nofollow" />
 
   <title>Ma bibliothèque · WATT</title>
-  <link rel="stylesheet" href="library.css?v=20260615c4mi" />
+  <link rel="stylesheet" href="library.css?v=20260616c4biblio" />
   <!-- Phase 4 refonte architecture : topbar partagée (ui/topbar/topbar.js).
        Remplace l'ex-header .lib-topbar spécifique à cette page. -->
   <link rel="stylesheet" href="topbar.css" />
@@ -50,10 +50,26 @@
       Ma collection
     </div>
     <h1 class="lib-hero-title">Ma bibliothèque</h1>
-    <p class="lib-hero-sub">Tes recettes IA et ADN débloqués. Copie, réutilise, re-génère.</p>
+    <p class="lib-hero-sub" id="lib-hero-sub">Tes recettes IA et ADN débloqués. Copie, réutilise, re-génère.</p>
   </section>
 
-  <!-- Grille ADN — 3 colonnes dépliables -->
+  <!-- ═══════════════════════════════════════════ COMMUTATEUR Musique ⇄ Image
+       Même esprit que le commutateur marketplace (#mp-mode-switch) : pilule à
+       2 onglets. Persistance localStorage `lib_mode`, restauré au chargement
+       (défaut = musique). Le show/hide est piloté par les classes body
+       lib-mode-musique / lib-mode-image (voir library.css + library.js). -->
+  <div class="lib-mode-switch" id="lib-mode-switch" role="tablist" aria-label="Choisir le monde">
+    <button type="button" class="lib-mode-btn" data-mode="musique" role="tab" aria-selected="true">
+      🎵 Musique
+    </button>
+    <button type="button" class="lib-mode-btn" data-mode="image" role="tab" aria-selected="false">
+      🖼️ Image
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ MONDE MUSIQUE (audio/ADN)
+       Grille ADN : Track, Voice, Artist, Playlist. Masqué en mode image. -->
+  <div class="lib-world lib-world-musique">
   <div class="lib-adn-grid">
 
     <!-- Colonne 1 : ADN Track -->
@@ -71,29 +87,7 @@
       </div>
     </div>
 
-    <!-- Colonne 2 : Mes images (C4 — monde Visuel)
-         Regroupe les images ACHETÉES (avant mélangées aux recettes audio)
-         + les images LIKÉES (aperçus publics). Deux sous-sections claires. -->
-    <div class="lib-adn-col" id="lib-col-images">
-      <button class="lib-adn-col-hdr" onclick="toggleAdnCol('images')" aria-expanded="true" aria-controls="lib-col-images-body">
-        <span class="lib-adn-col-icon">🖼</span>
-        <span class="lib-adn-col-title">Mes images</span>
-        <span class="lib-adn-col-count" id="lib-count-images">—</span>
-        <span class="lib-adn-col-arrow" id="lib-arrow-images">▲</span>
-      </button>
-      <div class="lib-adn-col-body is-open" id="lib-col-images-body">
-        <div class="lib-img-subhdr">Achetées</div>
-        <div id="lib-images-owned-list">
-          <div class="lib-loading">Chargement…</div>
-        </div>
-        <div class="lib-img-subhdr">Likées</div>
-        <div id="lib-images-liked-list">
-          <div class="lib-loading">Chargement…</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Colonne 3 : ADN Voice -->
+    <!-- Colonne 2 : ADN Voice -->
     <div class="lib-adn-col" id="lib-col-voice">
       <button class="lib-adn-col-hdr" onclick="toggleAdnCol('voice')" aria-expanded="true" aria-controls="lib-col-voice-body">
         <span class="lib-adn-col-icon">🎙️</span>
@@ -139,6 +133,40 @@
     </div>
 
   </div>
+  </div><!-- /.lib-world-musique -->
+
+  <!-- ═══════════════════════════════════════════════ MONDE IMAGE (espace dédié)
+       Espace visuel pleine largeur : vignettes plus grandes, sous-sections
+       « Achetées » et « Likées » claires. Masqué en mode musique.
+       IDs conservés (#lib-images-owned-list / #lib-images-liked-list) : les
+       fonctions renderOwnedImages / renderLikedImages écrivent dedans. -->
+  <div class="lib-world lib-world-image">
+    <section class="lib-images-space" id="lib-col-images">
+
+      <header class="lib-images-space-hdr">
+        <span class="lib-images-space-icon">🖼</span>
+        <h2 class="lib-images-space-title">Mes images</h2>
+        <span class="lib-images-space-count" id="lib-count-images">—</span>
+      </header>
+
+      <!-- Sous-section : Achetées -->
+      <div class="lib-img-section">
+        <div class="lib-img-subhdr">Achetées</div>
+        <div id="lib-images-owned-list" class="lib-images-grid">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+      </div>
+
+      <!-- Sous-section : Likées -->
+      <div class="lib-img-section">
+        <div class="lib-img-subhdr">Likées</div>
+        <div id="lib-images-liked-list">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+      </div>
+
+    </section>
+  </div><!-- /.lib-world-image -->
 
 </main>
 
@@ -157,7 +185,7 @@
      d'achat). playlists.js câble les ❤️ data-img-like-btn + hydrate l'état. -->
 <script src="/ui/modals/purchase-drawer.js?v=20260616c4oc"></script>
 <script src="/ui/playlists.js?v=20260615c4mi" defer></script>
-<script src="library.js?v=20260616c4oc"></script>
+<script src="library.js?v=20260616c4biblio"></script>
 <script src="/ui/player/mini-bar.js?v=20260613a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
