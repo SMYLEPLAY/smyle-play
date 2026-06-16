@@ -203,13 +203,29 @@
   </p>
 </section>
 
+<!-- ═══════════════════════════════════════════════════════════ COMMUTATEUR MODE -->
+<!-- C4 étape 2 — bascule Musique ⇄ Image : deux « mondes » à parité sur la home
+     marketplace. Le mode choisi est persisté dans localStorage (clé mp_mode) et
+     restauré au chargement. Affiché UNIQUEMENT sur la home (guard #smyle-vitrine
+     dans marketplace.js). Le rendu show/hide est piloté par les classes body
+     mp-mode-musique / mp-mode-image (même esprit que les mp-only-*). -->
+<div class="mp-mode-switch" id="mp-mode-switch" role="tablist" aria-label="Choisir le monde">
+  <button type="button" class="mp-mode-btn" data-mode="musique" role="tab" aria-selected="true">
+    🎵 Musique
+  </button>
+  <button type="button" class="mp-mode-btn" data-mode="image" role="tab" aria-selected="false">
+    🖼️ Image
+  </button>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════ VITRINE SMYLE -->
 <!-- Le compte officiel "Smyle" (is_official=true) apparaît en tête de la
      marketplace avec son checkmark coloré, sa bio, et ses 4 packs modèles
      (Jungle Osmose, Night City, Hit Mix, Sunset Lover). Hydraté par
      ui/hub/marketplace.js via GET /watt/artists/smyle. Les compteurs et
      le lien "Voir le profil" sont live — tant que le fetch n'a pas répondu,
-     on affiche des placeholders neutres ("—"). -->
+     on affiche des placeholders neutres ("—"). Smyle = compte officiel des
+     DEUX mondes : la vitrine est réutilisée en mode Image. -->
 <section class="smyle-vitrine" id="smyle-vitrine" style="--smyle-brand:#7C3AED">
   <div class="smyle-vitrine-head">
     <div class="smyle-vitrine-avatar" id="smyle-vitrine-avatar">
@@ -312,6 +328,61 @@
   <div class="mp-grid mp-grid-artists" id="mp-grid-artists">
     <div class="mp-grid-empty">Chargement des profils…</div>
   </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ MODE IMAGE -->
+<!-- C4 étape 2 — sections du Monde Image (parité avec la musique). Masquées par
+     défaut (body.mp-mode-musique). En body.mp-mode-image : Top Images +
+     Top Artistes Image + catalogue images (injecté par marketplace.js). La
+     vitrine Smyle ci-dessus est partagée (compte officiel des deux mondes). -->
+
+<!-- Classement Top Images (miroir de Top Sons) — GET /images/top -->
+<section class="mp-section mp-section-top-images">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Classement</span>
+    <h2 class="mp-section-title">Top Images</h2>
+    <span class="mp-section-sub">Les plus vendues et likées du moment</span>
+  </div>
+  <ol class="mp-ranking" id="mp-top-images">
+    <li class="mp-ranking-empty">Chargement…</li>
+  </ol>
+</section>
+
+<!-- Classement Top Artistes Image (miroir de Top Artistes) — GET /artists/images-top -->
+<section class="mp-section mp-section-top-artists-image">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Classement</span>
+    <h2 class="mp-section-title">Top Artistes Image</h2>
+    <span class="mp-section-sub">Les créateurs visuels qui montent</span>
+  </div>
+  <ol class="mp-ranking" id="mp-top-artists-image">
+    <li class="mp-ranking-empty">Chargement…</li>
+  </ol>
+</section>
+
+<!-- Catalogue images sur la home — conteneur rempli par marketplace.js
+     (_renderHomeImagesGrid réutilise _imgCardHtml). -->
+<section class="mp-section mp-section-images-home">
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Catalogue</span>
+    <h2 class="mp-section-title"><a href="/images" style="color:inherit;text-decoration:none;">Toutes les images <span style="opacity:.45;font-size:.8em;">→</span></a></h2>
+    <span class="mp-section-sub">L'aperçu est public — l'achat débloque la recette + l'original</span>
+  </div>
+  <div class="mp-img-grid" id="mp-grid-images-home">
+    <div class="mp-grid-empty">Chargement des images…</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ ŒUVRE COMPLÈTE -->
+<!-- C4 étape 2 — paires son+image liées, affichées dans LES DEUX modes.
+     GET /oeuvres. Clic → ouvre la fiche existante. Achat séparé conservé. -->
+<section class="mp-section mp-section-oeuvres" id="mp-section-oeuvres" hidden>
+  <div class="mp-section-head">
+    <span class="mp-section-kicker">Œuvre complète</span>
+    <h2 class="mp-section-title">Sons & images liés</h2>
+    <span class="mp-section-sub">Un son et son image, deux faces d'une même œuvre — achat séparé</span>
+  </div>
+  <div class="mp-oeuvres-grid" id="mp-grid-oeuvres"></div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════ OVERLAY -->
