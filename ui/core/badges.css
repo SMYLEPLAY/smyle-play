@@ -55,6 +55,9 @@
 .sp-pill--rarete-epique     { --pill-c: var(--sp-rarete-epique); }
 .sp-pill--rarete-legendaire { --pill-c: var(--sp-rarete-legendaire); }
 
+/* ── Œuvre complète (C4) — son + image liés. Bleu électrique WATT. ──────── */
+.sp-pill--oeuvre { --pill-c: var(--sp-electric); }
+
 /* ── Provenance IA (texte discret, pas une pilule) ─────────────────────── */
 .sp-provenance {
   display: inline-flex;

@@ -629,6 +629,81 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 .lib-tabs { display: none; }
 .lib-tab-panel { display: block !important; }
 
+/* ── C4 « Mes images » — sous-sections + cards likées ────────────────────── */
+/* La colonne images peut contenir achetées + likées : on relâche le cap de
+   max-height de .lib-adn-col-body.is-open (2000px) pour éviter le clip. */
+#lib-col-images-body.is-open { max-height: 6000px; }
+
+.lib-img-subhdr {
+  padding: 10px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #8b7bd8;
+}
+.lib-img-subhdr:not(:first-child) {
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  padding-top: 12px;
+}
+
+/* Grille de cards-aperçu pour les images likées (compactes). */
+#lib-images-liked-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  padding: 8px 12px 14px;
+}
+#lib-images-liked-list .lib-empty { grid-column: 1 / -1; }
+
+.lib-liked-img-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .025);
+  cursor: pointer;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.lib-liked-img-card:hover {
+  border-color: rgba(124, 77, 255, .45);
+  transform: translateY(-1px);
+}
+.lib-liked-img-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: rgba(124, 58, 237, .10);
+  overflow: hidden;
+}
+.lib-liked-img-body {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.lib-liked-img-title {
+  font-weight: 700;
+  color: #f3f0ff;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-liked-img-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.lib-liked-img-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
 
 /* ── Tablet (≤ 900px) : 2 colonnes ──────────────────────────────────────── */

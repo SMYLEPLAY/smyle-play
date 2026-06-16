@@ -14,8 +14,8 @@
   <link rel="stylesheet" href="/topbar.css" />
   <!-- C0 design system (blueprint VF 2026-06-10) : tokens + pilules 3 repères -->
   <link rel="stylesheet" href="/ui/core/tokens.css" />
-  <link rel="stylesheet" href="/ui/core/badges.css" />
-  <script src="/ui/core/badges.js" defer></script>
+  <link rel="stylesheet" href="/ui/core/badges.css?v=20260616c4oc" />
+  <script src="/ui/core/badges.js?v=20260616c4oc" defer></script>
   <!-- C1 — WattBoard v3 (bandeau + 2 mondes + tuiles + création Audio) -->
   <link rel="stylesheet" href="wattboard-v3.css?v=20260610f" />
 
@@ -996,6 +996,44 @@
                 </div>
               </div>
               <input type="file" id="dashCoverInput" accept="image/*" style="display:none" onchange="handleCoverSelect(event)" />
+
+              <!-- ── C4 Œuvre complète — vendre aussi la pochette comme image ── -->
+              <label class="dash-check" style="margin-top:12px;display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+                <input type="checkbox" id="dashSellCover" onchange="dashToggleSellCover()" />
+                <span><strong>🖼 Vendre aussi la pochette comme image (œuvre complète)</strong>
+                  <em style="display:block;font-weight:400;opacity:.7">Crée une image vendable à partir de ta pochette, liée à ce son. Provenance obligatoire.</em></span>
+              </label>
+              <div id="dashSellCoverWrap" hidden style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+                <div>
+                  <label class="dash-label" for="dashCoverImgPlatform">Plateforme de l'image <span class="dash-req">*</span></label>
+                  <select class="dash-input" id="dashCoverImgPlatform">
+                    <option value="">— Choisis —</option>
+                    <option value="midjourney">Midjourney</option>
+                    <option value="dalle">DALL-E</option>
+                    <option value="stable_diffusion">Stable Diffusion</option>
+                    <option value="flux">Flux</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="dash-label" for="dashCoverImgVersion">Version / modèle <span class="dash-req">*</span></label>
+                  <input class="dash-input" id="dashCoverImgVersion" type="text" maxlength="100" placeholder="ex : V6.1, SDXL 1.0…" />
+                </div>
+                <div>
+                  <label class="dash-label" for="dashCoverImgPrompt">Prompt de l'image <span style="font-weight:400">(optionnel)</span></label>
+                  <input class="dash-input" id="dashCoverImgPrompt" type="text" maxlength="2000" placeholder="Recette de l'image (gardée derrière l'achat)" />
+                </div>
+                <div>
+                  <label class="dash-label" for="dashCoverImgPrice">Prix de l'image <span class="dash-req">*</span></label>
+                  <input class="dash-input" id="dashCoverImgPrice" type="number" min="3" max="500" value="50" />
+                  <div class="dash-help">Entre 3 et 500 SMYLES. Produit indépendant du son.</div>
+                </div>
+                <div>
+                  <label class="dash-label" for="dashCoverImgSupply">Nombre d'exemplaires <span style="font-weight:400">(optionnel)</span></label>
+                  <input class="dash-input" id="dashCoverImgSupply" type="number" min="1" placeholder="Laisse vide = illimité" />
+                  <div class="dash-help">1 = pièce unique #1/1 · N = édition limitée #X/N · vide = illimité.</div>
+                </div>
+              </div>
             </div>
 
             <!-- ═══ Étape 2 — Couleur par morceau ═══════════════════════════
@@ -1886,6 +1924,20 @@
         </label>
       </div>
 
+      <!-- ── C4 Œuvre complète — lier à un de mes sons ─────────────────── -->
+      <label class="dash-check" style="margin-top:14px;display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+        <input type="checkbox" id="imgcLinkSound" />
+        <span><strong>🎵 Lier à un de mes sons (œuvre complète)</strong>
+          <em style="display:block;font-weight:400;opacity:.7">Relie cette image à un son que tu vends déjà. Deux produits indépendants, reliés pour l'affichage.</em></span>
+      </label>
+      <div id="imgcLinkSoundWrap" hidden style="margin-top:8px">
+        <label class="dash-label" for="imgcLinkSoundSelect">Son à lier</label>
+        <select class="dash-input" id="imgcLinkSoundSelect">
+          <option value="">— Choisis un son non encore lié —</option>
+        </select>
+        <div class="dash-help" id="imgcLinkSoundHelp">Seuls tes sons pas encore liés sont proposés.</div>
+      </div>
+
       <div class="dash-adn-editor-actions" style="margin-top:14px">
         <button type="button" class="dash-btn-ghost" id="imgcResetBtn">Réinitialiser</button>
         <button type="button" class="dash-btn-primary" id="imgcSaveBtn">
@@ -2157,13 +2209,13 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
-<script src="/ui/modals/purchase-drawer.js?v=20260615a"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20260616c4oc"></script>
 <script src="/ui/playlists.js?v=20260615c4l5" defer></script>
-<script src="dashboard.js?v=20260613b"></script>
+<script src="dashboard.js?v=20260616c4oc"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260615a" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
-<script src="images-create.js?v=20260614a" defer></script>
+<script src="images-create.js?v=20260616c4oc" defer></script>
 <script src="images-list.js?v=20260615c4l4" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>

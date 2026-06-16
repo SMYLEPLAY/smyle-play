@@ -7,14 +7,14 @@
   <meta name="robots" content="noindex, nofollow" />
 
   <title>Ma bibliothèque · WATT</title>
-  <link rel="stylesheet" href="library.css" />
+  <link rel="stylesheet" href="library.css?v=20260615c4mi" />
   <!-- Phase 4 refonte architecture : topbar partagée (ui/topbar/topbar.js).
        Remplace l'ex-header .lib-topbar spécifique à cette page. -->
   <link rel="stylesheet" href="topbar.css" />
   <!-- C0 design system (blueprint VF 2026-06-10) : tokens + pilules 3 repères -->
   <link rel="stylesheet" href="/ui/core/tokens.css" />
-  <link rel="stylesheet" href="/ui/core/badges.css" />
-  <script src="/ui/core/badges.js" defer></script>
+  <link rel="stylesheet" href="/ui/core/badges.css?v=20260616c4oc" />
+  <script src="/ui/core/badges.js?v=20260616c4oc" defer></script>
 </head>
 <body class="lib-page">
 
@@ -71,7 +71,29 @@
       </div>
     </div>
 
-    <!-- Colonne 2 : ADN Voice -->
+    <!-- Colonne 2 : Mes images (C4 — monde Visuel)
+         Regroupe les images ACHETÉES (avant mélangées aux recettes audio)
+         + les images LIKÉES (aperçus publics). Deux sous-sections claires. -->
+    <div class="lib-adn-col" id="lib-col-images">
+      <button class="lib-adn-col-hdr" onclick="toggleAdnCol('images')" aria-expanded="true" aria-controls="lib-col-images-body">
+        <span class="lib-adn-col-icon">🖼</span>
+        <span class="lib-adn-col-title">Mes images</span>
+        <span class="lib-adn-col-count" id="lib-count-images">—</span>
+        <span class="lib-adn-col-arrow" id="lib-arrow-images">▲</span>
+      </button>
+      <div class="lib-adn-col-body is-open" id="lib-col-images-body">
+        <div class="lib-img-subhdr">Achetées</div>
+        <div id="lib-images-owned-list">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+        <div class="lib-img-subhdr">Likées</div>
+        <div id="lib-images-liked-list">
+          <div class="lib-loading">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne 3 : ADN Voice -->
     <div class="lib-adn-col" id="lib-col-voice">
       <button class="lib-adn-col-hdr" onclick="toggleAdnCol('voice')" aria-expanded="true" aria-controls="lib-col-voice-body">
         <span class="lib-adn-col-icon">🎙️</span>
@@ -130,7 +152,12 @@
      bus SmyleEvents soit dispo quand le composant s'abonne aux events. -->
 <script src="ui/core/trade-view.js" defer></script>
 <script src="ui/topbar/topbar.js?v=20260613a" defer></script>
-<script src="library.js?v=20260615c4l4"></script>
+<!-- C4 « Mes images » : drawer d'achat unifié + likes images partagés.
+     purchase-drawer expose window.PurchaseDrawer (clic carte likée → fiche
+     d'achat). playlists.js câble les ❤️ data-img-like-btn + hydrate l'état. -->
+<script src="/ui/modals/purchase-drawer.js?v=20260616c4oc"></script>
+<script src="/ui/playlists.js?v=20260615c4mi" defer></script>
+<script src="library.js?v=20260616c4oc"></script>
 <script src="/ui/player/mini-bar.js?v=20260613a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>

@@ -682,6 +682,41 @@ async def build_artist_detail_payload(
     )
     prompts_rows = (await db.execute(prompts_stmt)).scalars().all()
     from app.services.marketplace import compute_rarity_tier
+    # C4 « Oeuvre complete » — image liee a chaque son (apercu public only :
+    # id/previewKey/prix). Batch : on charge les images partenaires en UNE
+    # requete (pas de N+1). Aucune recette/original n'est exposee.
+    _linked_img_ids = [
+        p.linked_prompt_id for p in prompts_rows if p.linked_prompt_id is not None
+    ]
+    _linked_imgs_by_id: dict = {}
+    if _linked_img_ids:
+        _img_rows = (await db.execute(
+            select(Prompt).where(
+                Prompt.id.in_(_linked_img_ids),
+                Prompt.is_deleted.is_(False),
+                Prompt.product_type == "image",
+            )
+        )).scalars().all()
+        _linked_imgs_by_id = {img.id: img for img in _img_rows}
+
+    def _linked_image_for(p: Prompt) -> dict | None:
+        img = _linked_imgs_by_id.get(p.linked_prompt_id) if p.linked_prompt_id else None
+        if img is None:
+            return None
+        return {
+            "id":           str(img.id),
+            "previewKey":   img.preview_r2_key or "",
+            "priceCredits": img.price_credits,
+        }
+
+    # Map son_prompt_id -> linkedImage, pour injecter aussi dans les cards
+    # tracks (qui matchent par promptId). Reste apercu-only (anti-fuite).
+    _linked_image_by_son_id = {
+        p.id: _linked_image_for(p)
+        for p in prompts_rows
+        if p.linked_prompt_id is not None
+    }
+
     prompts_payload = [
         {
             "id":           str(p.id),
@@ -701,6 +736,15 @@ async def build_artist_detail_payload(
             "promptPlatform":      p.prompt_platform,
             "promptModelVersion":  p.prompt_model_version,
             "promptVocalGender":   p.prompt_vocal_gender,
+            # C4 « Oeuvre complete » — image liee (apercu only) + flag.
+            "linkedImage":         _linked_image_for(p),
+            "isOeuvreComplete":    p.linked_prompt_id is not None
+                                    and _linked_image_for(p) is not None,
+            # Nature du lien : True = « ne ensemble » (le son ne s'affiche pas
+            # en carte individuelle ; il n'existe que via l'oeuvre / la track
+            # card). Le front s'en sert pour ne PAS rendre de carte recette
+            # autonome dupliquee. L'achat separe (track card 🧬) reste ouvert.
+            "bundleExclusive":     bool(p.bundle_exclusive),
             #
             # GATED (cœur de la recette — révélés seulement après unlock
             # via /library qui consomme PromptRead complet) :
@@ -761,7 +805,14 @@ async def build_artist_detail_payload(
         "isOfficial":     bool(target.is_official),
         "created_at":     target.created_at.isoformat() if target.created_at else None,
         "tracks":         [
-            {**_track_to_flask_dict(t), **(playlist_by_track.get(t.id) or {})}
+            {
+                **_track_to_flask_dict(t),
+                **(playlist_by_track.get(t.id) or {}),
+                # C4 « Oeuvre complete » — image liee injectee aussi sur la
+                # card track (le front matche par promptId). Apercu only.
+                "linkedImage":      _linked_image_by_son_id.get(t.prompt_id),
+                "isOeuvreComplete": _linked_image_by_son_id.get(t.prompt_id) is not None,
+            }
             for t in tracks
         ],
         # Chantier "DNA unlock sur profil" — présents si l'artiste vend,
@@ -1295,6 +1346,9 @@ async def get_adn(slug: str, db: AsyncSession = Depends(get_db)) -> dict:
             (Prompt.artist_id == target.id)
             & (Prompt.is_published == True)  # noqa: E712
             & (Prompt.product_type != "image")
+            # C4 « Oeuvre complete » — surface publique : pas de carte
+            # individuelle pour un son « ne ensemble » (bundle_exclusive).
+            & (Prompt.bundle_exclusive == False)  # noqa: E712
         )
         .order_by(Prompt.title)
     )
@@ -1362,6 +1416,9 @@ async def list_prompts(
         # C4 (séparation son/image) — catalogue public des recettes audio :
         # jamais d'images (elles ont leur propre surface /images).
         .where(Prompt.product_type != "image")
+        # C4 « Oeuvre complete » — pas de carte individuelle pour un son
+        # « ne ensemble » (bundle_exclusive) : il n'apparait que via l'oeuvre.
+        .where(Prompt.bundle_exclusive.is_(False))
     )
 
     if universe:
@@ -1430,6 +1487,16 @@ async def get_prompt(prompt_id: str, db: AsyncSession = Depends(get_db)) -> dict
     # image a sa propre fiche via /images : on renvoie 404 pour un id image.
     if prompt.product_type == "image":
         raise HTTPException(status_code=404, detail="Prompt introuvable")
+    # C4 « Oeuvre complete » — une fiche individuelle publique d'un produit
+    # « ne ensemble » (bundle_exclusive) n'est pas servie : il n'existe
+    # publiquement que via l'oeuvre. L'achat separe passe par /unlocks (non
+    # filtre) et reste possible.
+    if prompt.bundle_exclusive:
+        raise HTTPException(status_code=404, detail="Prompt introuvable")
+
+    # C4 « Oeuvre complete » — image liee (apercu public only : id/previewKey/prix).
+    from app.services.links import linked_image_payload
+    linked_image = await linked_image_payload(db, prompt)
 
     return {
         "prompt": {
@@ -1442,6 +1509,9 @@ async def get_prompt(prompt_id: str, db: AsyncSession = Depends(get_db)) -> dict
             "artistName":   artist.artist_name or "",
             "brandColor":   artist.brand_color or "",
             "hasLyrics":    bool(prompt.lyrics),
+            # C4 « Oeuvre complete » — image liee + flag.
+            "linkedImage":      linked_image,
+            "isOeuvreComplete": linked_image is not None,
         }
     }
 

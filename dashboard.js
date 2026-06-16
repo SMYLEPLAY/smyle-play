@@ -1745,6 +1745,15 @@ function cancelUpload() {
   updatePromptCharCount();
   updateCreditGrid();
   resetCoverPreview();
+  // C4 Œuvre complète — réinitialise le bloc « vendre la pochette ».
+  const _sc = document.getElementById('dashSellCover');
+  if (_sc) _sc.checked = false;
+  const _scWrap = document.getElementById('dashSellCoverWrap');
+  if (_scWrap) _scWrap.hidden = true;
+  ['dashCoverImgPlatform', 'dashCoverImgVersion', 'dashCoverImgPrompt', 'dashCoverImgSupply']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const _scPrice = document.getElementById('dashCoverImgPrice');
+  if (_scPrice) _scPrice.value = '50';
   // Étape 2 — remet le picker couleur en mode "hériter du profil" pour
   // que le prochain upload reparte propre (évite la fuite d'état d'un son
   // à l'autre si l'artiste en poste plusieurs d'affilée).
@@ -1797,6 +1806,15 @@ function dashToggleBeatFlag() {
   const wrap = document.getElementById('dashBpmWrap');
   if (wrap) wrap.hidden = !on;
 }
+
+// C4 Œuvre complète — révèle/cache les champs provenance image quand
+// l'artiste coche « vendre aussi la pochette comme image ».
+function dashToggleSellCover() {
+  const on   = !!document.getElementById('dashSellCover')?.checked;
+  const wrap = document.getElementById('dashSellCoverWrap');
+  if (wrap) wrap.hidden = !on;
+}
+if (typeof window !== 'undefined') window.dashToggleSellCover = dashToggleSellCover;
 
 // Toggle beat dans l'édition catalogue (flag rétroactif, 2026-06-13)
 function dte2ToggleBeatFlag() {
@@ -1995,6 +2013,45 @@ async function uploadTrack() {
       }
       _beatBpm = n;
     }
+  }
+
+  // ── C4 Œuvre complète — validation précoce « vendre la pochette » ───────
+  // Si l'artiste veut vendre la pochette comme image : il FAUT une pochette
+  // sélectionnée + provenance (plateforme + version), sinon on bloque le
+  // submit (provenance image obligatoire, règle stricte). Le prix image est
+  // validé ici aussi (3..500). Le prompt image est optionnel (fallback titre).
+  const _sellCover = !!document.getElementById('dashSellCover')?.checked;
+  let _coverImg = null;
+  if (_sellCover) {
+    const cErrs = [];
+    if (!_pendingCoverFile) cErrs.push('une pochette (fichier image)');
+    const cPlatform = (document.getElementById('dashCoverImgPlatform')?.value || '').trim();
+    const cVersion  = (document.getElementById('dashCoverImgVersion')?.value || '').trim();
+    if (!cPlatform) cErrs.push('la plateforme de l\'image');
+    if (!cVersion)  cErrs.push('la version / modèle de l\'image');
+    const cPriceRaw = parseInt(document.getElementById('dashCoverImgPrice')?.value, 10);
+    const cPrice = Number.isFinite(cPriceRaw) ? cPriceRaw : NaN;
+    if (!Number.isInteger(cPrice) || cPrice < 3 || cPrice > 500) {
+      cErrs.push('un prix image entre 3 et 500');
+    }
+    let cSupply = null;
+    const cSupplyRaw = (document.getElementById('dashCoverImgSupply')?.value || '').trim();
+    if (cSupplyRaw !== '') {
+      const ns = parseInt(cSupplyRaw, 10);
+      if (Number.isInteger(ns) && ns >= 1) cSupply = ns;
+      else cErrs.push('un nombre d\'exemplaires image valide (>= 1 ou vide)');
+    }
+    if (cErrs.length) {
+      dashToast('⚠ Œuvre complète : il manque ' + cErrs.join(', ') + '.');
+      return;
+    }
+    _coverImg = {
+      platform: cPlatform,
+      version:  cVersion,
+      prompt:   (document.getElementById('dashCoverImgPrompt')?.value || '').trim(),
+      price:    cPrice,
+      supply:   cSupply,
+    };
   }
 
   // ── Vérification limite freemium (comptes officiels exemptés) ───────────
@@ -2264,6 +2321,45 @@ async function uploadTrack() {
             });
           } catch (e) {
             console.warn('[dashboard] PATCH track prompt_id failed:', e && e.message);
+          }
+        }
+
+        // ── C4 Œuvre complète — vendre aussi la pochette comme image ──────
+        // Le son (promptResp.id) est créé. On crée l'image en réutilisant le
+        // MÊME fichier cover (_pendingCoverFile), puis on lie les deux. Échec
+        // partiel géré proprement : si l'image rate, le son reste publié ; si
+        // seule la liaison rate, son + image existent quand même (toast clair).
+        if (_sellCover && _coverImg && _pendingCoverFile && promptResp && promptResp.id) {
+          try {
+            const imgFd = new FormData();
+            imgFd.append('file', _pendingCoverFile);
+            imgFd.append('title', name);                       // même titre que le son
+            imgFd.append('image_platform', _coverImg.platform);
+            imgFd.append('image_model_version', _coverImg.version);
+            // prompt_text NOT NULL côté API : fallback titre si laissé vide.
+            imgFd.append('prompt_text', _coverImg.prompt || name);
+            imgFd.append('price_credits', String(_coverImg.price));
+            imgFd.append('is_published', 'true');
+            if (_coverImg.supply !== null) imgFd.append('max_supply', String(_coverImg.supply));
+            const imgResp = await apiFetch('/artist/me/images', { method: 'POST', body: imgFd });
+            if (imgResp && imgResp.id) {
+              try {
+                await apiFetch(`/artist/me/prompts/${encodeURIComponent(imgResp.id)}/link`, {
+                  method: 'POST',
+                  // Flux A « né ensemble » : son + pochette créés dans la MÊME
+                  // action → bundle_exclusive=true. Les deux produits ne
+                  // s'affichent plus en carte individuelle sur les surfaces
+                  // publiques (seulement via l'œuvre) ; l'achat séparé reste
+                  // possible. Cf. flux B (images-create.js) qui omet ce flag.
+                  json: { other_prompt_id: promptResp.id, bundle_exclusive: true },
+                });
+                dashToast(`🎨 Œuvre complète : pochette "${name}" en vente comme image, liée au son.`);
+              } catch (le) {
+                dashToast(`Image créée mais liaison au son échouée : ${_humanizeApiError(le)}. Son et image existent — réessaie la liaison plus tard.`);
+              }
+            }
+          } catch (ie) {
+            dashToast(`⚠ Son publié, mais image (pochette) refusée : ${_humanizeApiError(ie)}`);
           }
         }
       } catch (e) {

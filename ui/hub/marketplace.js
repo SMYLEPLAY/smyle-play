@@ -1167,6 +1167,8 @@
     var palier = window.SpBadges ? SpBadges.palier('standard') : '';
     var rar    = _imgRareteBadge(img);
     var prov   = window.SpBadges ? SpBadges.provenance(img.imagePlatform, img.imageModelVersion) : '';
+    // C4 Œuvre complète — badge si l'image est liée à un son.
+    var oeuvre = (img.isOeuvreComplete && window.SpBadges && SpBadges.oeuvre) ? SpBadges.oeuvre() : '';
     var ratioChip = img.ratio
       ? '<span class="mp-img-card-ratio">' + _esc(img.ratio) + '</span>'
       : '';
@@ -1189,7 +1191,7 @@
         '<div class="mp-img-card-cover">' + cover + ratioChip + '</div>' +
         '<div class="mp-img-card-body">' +
           '<div class="mp-img-card-title">' + _esc(img.title || 'Sans titre') + '</div>' +
-          '<div class="mp-img-card-badges">' + nature + palier + rar + prov + '</div>' +
+          '<div class="mp-img-card-badges">' + nature + palier + rar + prov + oeuvre + '</div>' +
           '<div class="mp-img-card-foot">' + priceOrState + likeBtn + '</div>' +
         '</div>' +
       '</article>';
@@ -1359,6 +1361,8 @@
       price: (im.priceCredits != null ? im.priceCredits : null),
       title: im.title || 'Image IA',
       platform: im.imagePlatform || '',
+      // C4 Œuvre complète — son lié (aperçu only, achat séparé).
+      linkedSound: im.linkedSound || null,
     });
   }
 

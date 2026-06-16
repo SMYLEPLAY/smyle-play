@@ -33,6 +33,9 @@
   /* État local : le fichier choisi (pas encore envoyé). */
   var pendingFile = null;
 
+  /* C4 Œuvre complète — flag "sons chargés" pour le dropdown de liaison. */
+  var soundsLoaded = false;
+
   /* ── Affichage dynamique des blocs selon la plateforme ────────────────── */
   function applyPlatform() {
     var sec = $('sec-image-create');
@@ -173,8 +176,67 @@
     var draft = document.querySelector('input[name="imgcVisibility"][value="draft"]');
     if (draft) draft.checked = true;
     var fileEl = $('imgcFile'); if (fileEl) fileEl.value = '';
+    /* C4 — remet le bloc liaison son à l'état initial. */
+    var linkChk = $('imgcLinkSound'); if (linkChk) linkChk.checked = false;
+    var linkWrap = $('imgcLinkSoundWrap'); if (linkWrap) linkWrap.hidden = true;
+    var linkSel = $('imgcLinkSoundSelect'); if (linkSel) linkSel.value = '';
     clearPreview();
     applyPlatform();
+  }
+
+  /* ── C4 Œuvre complète — liaison à un son ─────────────────────────────── */
+  function linkSoundEnabled() {
+    var c = $('imgcLinkSound');
+    return !!(c && c.checked);
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* Peuple le dropdown avec MES sons NON ENCORE liés (recipe/beat,
+     linked_prompt_id == null). Source : /artist/me/prompts (PromptRead). */
+  function loadSounds() {
+    var sel = $('imgcLinkSoundSelect');
+    var help = $('imgcLinkSoundHelp');
+    if (!sel || typeof window.apiFetch !== 'function') return;
+    sel.disabled = true;
+    window.apiFetch('/artist/me/prompts?per_page=100')
+      .then(function (resp) {
+        var items = (resp && resp.items) || [];
+        var sounds = items.filter(function (p) {
+          var t = p.product_type || 'recipe';
+          return (t === 'recipe' || t === 'beat') && !p.linked_prompt_id;
+        });
+        /* garde la 1re option placeholder, repeuple le reste */
+        sel.innerHTML = '<option value="">— Choisis un son non encore lié —</option>';
+        sounds.forEach(function (p) {
+          var o = document.createElement('option');
+          o.value = p.id;
+          o.textContent = p.title || '(sans titre)';
+          sel.appendChild(o);
+        });
+        sel.disabled = false;
+        soundsLoaded = true;
+        if (help) {
+          help.textContent = sounds.length
+            ? 'Seuls tes sons pas encore liés sont proposés.'
+            : "Aucun son liable (tu n'as pas de son, ou ils sont déjà tous liés).";
+        }
+      })
+      .catch(function () {
+        sel.disabled = false;
+        if (help) help.textContent = 'Impossible de charger tes sons — réessaie.';
+      });
+  }
+
+  function toggleLinkSound() {
+    var wrap = $('imgcLinkSoundWrap');
+    var on = linkSoundEnabled();
+    if (wrap) wrap.hidden = !on;
+    if (on && !soundsLoaded) loadSounds();
   }
 
   function submit() {
@@ -209,6 +271,13 @@
       else errs.push("Nombre d'exemplaires (entier >= 1, ou vide)");
     }
 
+    /* C4 — si "lier à un son" est coché, un son doit être sélectionné. */
+    var linkSoundId = null;
+    if (linkSoundEnabled()) {
+      linkSoundId = val('imgcLinkSoundSelect');
+      if (!linkSoundId) errs.push('Son à lier (œuvre complète)');
+    }
+
     if (errs.length) {
       alert('Champs manquants ou invalides :\n- ' + errs.join('\n- '));
       return;
@@ -240,11 +309,34 @@
     /* apiFetch ajoute le Bearer JWT ; body FormData => pas de Content-Type
        forcé (le navigateur pose le boundary multipart lui-même). */
     window.apiFetch('/artist/me/images', { method: 'POST', body: fd })
-      .then(function () {
+      .then(function (created) {
+        /* C4 Œuvre complète — si demandé, lier l'image au son choisi. L'image
+           est déjà créée : si la liaison échoue, on informe sans laisser
+           d'état incohérent (l'image existe, juste non liée). */
+        if (linkSoundId && created && created.id) {
+          // Flux B « lié après coup » : on lie une NOUVELLE image à un son
+          // qui PRÉEXISTAIT. On omet bundle_exclusive (défaut false) → les
+          // deux produits restent visibles individuellement ET forment une
+          // œuvre. (Le flux A « né ensemble » de dashboard.js passe
+          // bundle_exclusive:true pour masquer les cartes individuelles.)
+          return window.apiFetch(
+            '/artist/me/prompts/' + encodeURIComponent(created.id) + '/link',
+            { method: 'POST', json: { other_prompt_id: linkSoundId } }
+          ).then(function () {
+            toast('🎨 Œuvre complète créée — image liée à ton son.');
+          }).catch(function (le) {
+            var lm = (typeof window._humanizeApiError === 'function')
+              ? window._humanizeApiError(le) : (le && le.message) || '';
+            toast('Image créée, mais liaison au son échouée' + (lm ? ' : ' + lm : '') + '. Tu peux réessayer la liaison plus tard.');
+          });
+        }
         toast(visibility()
           ? 'Image publiée et en vente.'
           : 'Image enregistrée en brouillon — publie-la quand tu veux.');
+      })
+      .then(function () {
         reset();
+        soundsLoaded = false;
         try {
           if (window.WattBoardV3 && typeof window.WattBoardV3.bumpImages === 'function') {
             window.WattBoardV3.bumpImages();
@@ -279,6 +371,9 @@
         handleFile(f);
       });
     }
+    var linkChk = $('imgcLinkSound');
+    if (linkChk) linkChk.addEventListener('change', toggleLinkSound);
+
     var saveBtn = $('imgcSaveBtn');
     if (saveBtn) saveBtn.addEventListener('click', submit);
     var resetBtn = $('imgcResetBtn');

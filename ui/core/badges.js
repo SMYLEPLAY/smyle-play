@@ -92,6 +92,12 @@
              txt + '</span>';
     },
 
+    /** Œuvre complète (C4) — son + image liés. Pilule discrète tokenisée. */
+    oeuvre: function () {
+      return '<span class="sp-pill sp-pill--oeuvre" title="Œuvre complète : un son et une image liés">' +
+             '🎨 Œuvre complète</span>';
+    },
+
     /** Provenance IA discrète : provenance('suno', 'V5.5') → ⚡ Suno · V5.5 */
     provenance: function (platform, version) {
       var key = String(platform || '').trim().toLowerCase();

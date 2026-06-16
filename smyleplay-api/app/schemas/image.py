@@ -99,7 +99,7 @@ class ImagePublicRead(BaseModel):
     negative_prompt. Seulement l'aperçu + provenance + métadonnées de vente.
     """
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     artist_id: UUID
@@ -114,6 +114,19 @@ class ImagePublicRead(BaseModel):
     max_supply: int | None = None
     is_published: bool
     created_at: datetime
+    # C4 « Oeuvre complete » — partenaire SON lie (apercu public uniquement :
+    # id/titre/cover/prix/productType). None si l'image n'est pas liee.
+    # isOeuvreComplete est un raccourci front (= linkedSound is not None).
+    # Peuple a posteriori par le router (requete Track), pas par model_validate.
+    linkedSound: dict | None = None
+    isOeuvreComplete: bool = False
+    # Nature du lien (migration 0059). True = « ne ensemble » : cette image
+    # ne s'affiche PAS en carte individuelle sur les surfaces publiques (les
+    # listings publics la filtrent en amont) ; elle n'apparait que via
+    # l'oeuvre. La vue OWNER l'affiche quand meme — le front s'en sert pour
+    # ne pas dupliquer l'affichage. Peuple depuis l'attribut ORM
+    # bundle_exclusive via model_validate (alias camelCase pour le front).
+    bundleExclusive: bool = Field(default=False, validation_alias="bundle_exclusive")
 
 
 class ImageOwnerRead(ImagePublicRead):
