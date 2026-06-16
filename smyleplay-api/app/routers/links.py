@@ -27,6 +27,14 @@ router = APIRouter(tags=["links"])
 
 class LinkBody(BaseModel):
     other_prompt_id: UUID
+    # Nature du lien (C4). True = « ne ensemble » : les deux produits sont
+    # crees dans la MEME action (flux A « vendre aussi la pochette comme
+    # image », pose par dashboard.js) → masques en carte individuelle sur les
+    # surfaces publiques, visibles seulement via l'oeuvre. False (defaut) =
+    # « lie apres coup » (flux B images-create.js / lien manuel) → les deux
+    # restent visibles individuellement. L'achat separe reste possible des
+    # deux cotes dans tous les cas.
+    bundle_exclusive: bool = False
 
 
 @router.post(
@@ -51,6 +59,7 @@ async def link_prompt(
             owner_id=current_user.id,
             prompt_a_id=prompt_id,
             prompt_b_id=body.other_prompt_id,
+            bundle_exclusive=body.bundle_exclusive,
         )
     except LinkError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)

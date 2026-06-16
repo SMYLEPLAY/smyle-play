@@ -232,6 +232,11 @@ def _image_public_dict(p: Prompt, sold_count: int | None) -> dict:
         # rempli a posteriori par _enrich_linked_sounds (requete Track groupee).
         "isOeuvreComplete": p.linked_prompt_id is not None,
         "linkedSound":      None,
+        # Nature du lien : True = « ne ensemble » (cette image ne s'affiche
+        # PAS en carte individuelle sur les surfaces publiques ; les listings
+        # publics la filtrent deja en amont). Expose pour la vue owner qui,
+        # elle, l'affiche quand meme — le front s'en sert pour ne pas dupliquer.
+        "bundleExclusive":  bool(p.bundle_exclusive),
     }
 
 
@@ -395,6 +400,11 @@ async def list_public_images(
             Prompt.is_published.is_(True),
             Prompt.is_deleted.is_(False),
             User.profile_public.is_(True),
+            # C4 « Oeuvre complete » — une image « nee ensemble »
+            # (bundle_exclusive=True) ne s'affiche PAS en carte individuelle
+            # sur le catalogue public ; elle n'apparait que via la carte
+            # oeuvre (cote son). L'achat separe reste possible depuis l'oeuvre.
+            Prompt.bundle_exclusive.is_(False),
         )
     )
     base = _apply_image_filters(
@@ -441,6 +451,10 @@ async def list_public_images_by_slug(
             Prompt.product_type == "image",
             Prompt.is_published.is_(True),
             Prompt.is_deleted.is_(False),
+            # C4 — vitrine PUBLIQUE d'un tiers : pas de carte image
+            # individuelle pour une image « nee ensemble » (elle figure cote
+            # son via l'oeuvre). La vue OWNER passe par /artist/me/images.
+            Prompt.bundle_exclusive.is_(False),
         )
         .order_by(desc(Prompt.created_at))
         .limit(_MAX_IMAGE_RESULTS)
@@ -593,6 +607,11 @@ async def delete_my_image(
     image = await _get_owned_image_or_404(
         db, image_id=image_id, owner_id=current_user.id
     )
+    # C4 « Oeuvre complete » — si l'image est moitie d'une oeuvre, on coupe le
+    # lien et on remet le SON survivant visible+vendable individuellement
+    # (bundle_exclusive=False) : jamais de produit fantome invisible.
+    from app.services.links import detach_partner_on_removal
+    await detach_partner_on_removal(db, prompt=image)
     image.is_deleted = True
     image.is_published = False
     await db.commit()

@@ -416,6 +416,12 @@ async def delete_prompt(
     if prompt is None or prompt.is_deleted:
         raise PromptNotFound("Prompt not found")
 
+    # C4 « Oeuvre complete » — si ce produit est moitie d'une oeuvre, on coupe
+    # le lien et on remet le survivant visible+vendable individuellement
+    # (bundle_exclusive=False) pour ne jamais creer un produit fantome.
+    from app.services.links import detach_partner_on_removal
+    await detach_partner_on_removal(db, prompt=prompt)
+
     prompt.is_deleted = True
     prompt.is_published = False
     await db.flush()

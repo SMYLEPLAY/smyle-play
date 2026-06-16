@@ -188,10 +188,16 @@ async def list_public_prompts(
     # C4 (séparation son/image) — ce catalogue public alimente les surfaces de
     # recettes audio ; les images (product_type='image') ont leur propre
     # surface (/images) et ne doivent jamais y figurer.
+    # C4 « Oeuvre complete » — un produit « ne ensemble » (bundle_exclusive)
+    # ne s'affiche PAS en carte individuelle sur ce catalogue public ; il
+    # n'apparait que via la carte oeuvre (cote son, sur le profil). L'achat
+    # separe reste possible depuis l'oeuvre. (Exception owner non concernee :
+    # ce service ne sert que des surfaces PUBLIQUES.)
     base_filter = [
         Prompt.is_published.is_(True),
         Prompt.is_deleted.is_(False),
         Prompt.product_type != "image",
+        Prompt.bundle_exclusive.is_(False),
     ]
     if artist_id is not None:
         base_filter.append(Prompt.artist_id == artist_id)
@@ -239,6 +245,11 @@ async def get_public_prompt(
             # Un id d'image ne doit pas y résoudre (les images ont leur propre
             # fiche via /images). On renvoie donc None (=> 404) pour un id image.
             Prompt.product_type != "image",
+            # C4 « Oeuvre complete » — une fiche individuelle publique d'un
+            # produit « ne ensemble » (bundle_exclusive) n'est pas servie : il
+            # n'existe publiquement que via l'oeuvre. L'achat separe passe par
+            # /unlocks/prompts/{id} (non filtre) — il reste possible.
+            Prompt.bundle_exclusive.is_(False),
         )
     )
     row = (await db.execute(q)).first()

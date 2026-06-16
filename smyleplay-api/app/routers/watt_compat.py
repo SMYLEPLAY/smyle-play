@@ -740,6 +740,11 @@ async def build_artist_detail_payload(
             "linkedImage":         _linked_image_for(p),
             "isOeuvreComplete":    p.linked_prompt_id is not None
                                     and _linked_image_for(p) is not None,
+            # Nature du lien : True = « ne ensemble » (le son ne s'affiche pas
+            # en carte individuelle ; il n'existe que via l'oeuvre / la track
+            # card). Le front s'en sert pour ne PAS rendre de carte recette
+            # autonome dupliquee. L'achat separe (track card 🧬) reste ouvert.
+            "bundleExclusive":     bool(p.bundle_exclusive),
             #
             # GATED (cœur de la recette — révélés seulement après unlock
             # via /library qui consomme PromptRead complet) :
@@ -1341,6 +1346,9 @@ async def get_adn(slug: str, db: AsyncSession = Depends(get_db)) -> dict:
             (Prompt.artist_id == target.id)
             & (Prompt.is_published == True)  # noqa: E712
             & (Prompt.product_type != "image")
+            # C4 « Oeuvre complete » — surface publique : pas de carte
+            # individuelle pour un son « ne ensemble » (bundle_exclusive).
+            & (Prompt.bundle_exclusive == False)  # noqa: E712
         )
         .order_by(Prompt.title)
     )
@@ -1408,6 +1416,9 @@ async def list_prompts(
         # C4 (séparation son/image) — catalogue public des recettes audio :
         # jamais d'images (elles ont leur propre surface /images).
         .where(Prompt.product_type != "image")
+        # C4 « Oeuvre complete » — pas de carte individuelle pour un son
+        # « ne ensemble » (bundle_exclusive) : il n'apparait que via l'oeuvre.
+        .where(Prompt.bundle_exclusive.is_(False))
     )
 
     if universe:
@@ -1475,6 +1486,12 @@ async def get_prompt(prompt_id: str, db: AsyncSession = Depends(get_db)) -> dict
     # C4 (séparation son/image) — cette fiche dessert une recette audio. Une
     # image a sa propre fiche via /images : on renvoie 404 pour un id image.
     if prompt.product_type == "image":
+        raise HTTPException(status_code=404, detail="Prompt introuvable")
+    # C4 « Oeuvre complete » — une fiche individuelle publique d'un produit
+    # « ne ensemble » (bundle_exclusive) n'est pas servie : il n'existe
+    # publiquement que via l'oeuvre. L'achat separe passe par /unlocks (non
+    # filtre) et reste possible.
+    if prompt.bundle_exclusive:
         raise HTTPException(status_code=404, detail="Prompt introuvable")
 
     # C4 « Oeuvre complete » — image liee (apercu public only : id/previewKey/prix).

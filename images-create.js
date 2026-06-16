@@ -314,6 +314,11 @@
            est déjà créée : si la liaison échoue, on informe sans laisser
            d'état incohérent (l'image existe, juste non liée). */
         if (linkSoundId && created && created.id) {
+          // Flux B « lié après coup » : on lie une NOUVELLE image à un son
+          // qui PRÉEXISTAIT. On omet bundle_exclusive (défaut false) → les
+          // deux produits restent visibles individuellement ET forment une
+          // œuvre. (Le flux A « né ensemble » de dashboard.js passe
+          // bundle_exclusive:true pour masquer les cartes individuelles.)
           return window.apiFetch(
             '/artist/me/prompts/' + encodeURIComponent(created.id) + '/link',
             { method: 'POST', json: { other_prompt_id: linkSoundId } }

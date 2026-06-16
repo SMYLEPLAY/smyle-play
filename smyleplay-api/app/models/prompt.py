@@ -184,6 +184,20 @@ class Prompt(Base):
         nullable=True,
         index=True,
     )
+    # Nature du lien (migration 0059). TRUE = « ne ensemble » : les DEUX
+    # produits ont ete crees dans la MEME action (flux A « vendre aussi la
+    # pochette comme image »). Effet : ils ne s'affichent PAS en carte
+    # individuelle sur les surfaces publiques (catalogues, top, vitrine
+    # profil) — uniquement via la carte « Oeuvre complete ». FALSE = « lie
+    # apres coup » (flux B, lien manuel) : les deux restent visibles
+    # individuellement. Achat separe conserve dans TOUS les cas (pur effet
+    # d'affichage). Repasse a FALSE a la deliaison / suppression d'une moitie.
+    bundle_exclusive: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

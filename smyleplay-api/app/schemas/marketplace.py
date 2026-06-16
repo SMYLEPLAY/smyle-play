@@ -292,6 +292,10 @@ class PromptRead(BaseModel):
     # only : un simple pointeur, jamais une recette. Sert au front a filtrer
     # les sons « non encore lies » dans le flux de creation d'image.
     linked_prompt_id: UUID | None = None
+    # C4 — nature du lien. True = « ne ensemble » (le son ne s'affiche pas en
+    # carte individuelle publique ; visible seulement via l'oeuvre). Vue owner :
+    # le front s'en sert pour distinguer les deux natures dans la gestion.
+    bundle_exclusive: bool = False
     # Paroles complètes — exposées dans cette vue (owner ou acheteur après
     # unlock). JAMAIS dans les vues publiques. Bug fix 2026-05-04 :
     # le frontend envoyait `lyrics` au create mais Pydantic rejetait

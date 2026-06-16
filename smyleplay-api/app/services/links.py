@@ -70,6 +70,7 @@ async def link_products(
     owner_id: _uuid.UUID,
     prompt_a_id: _uuid.UUID,
     prompt_b_id: _uuid.UUID,
+    bundle_exclusive: bool = False,
 ) -> tuple[Prompt, Prompt]:
     """
     Lie deux produits de l'artiste owner en une « oeuvre complete ».
@@ -78,6 +79,15 @@ async def link_products(
     une IMAGE et l'autre un SON (409 si natures incompatibles), aucun des deux
     n'est deja lie (409, 1:1 strict). Pose linked_prompt_id sur LES DEUX cotes
     et flush (commit a la charge de l'appelant).
+
+    bundle_exclusive : nature du lien (pose sur LES DEUX produits).
+      - True  = « ne ensemble » (flux A, les deux crees dans la meme action).
+                Les produits disparaissent des CARTES INDIVIDUELLES sur les
+                surfaces publiques (ils n'apparaissent que via la carte
+                « Oeuvre complete »). L'achat separe reste possible.
+      - False = « lie apres coup » (flux B / lien manuel). Les deux restent
+                visibles individuellement ET forment une oeuvre.
+    Defaut False : tout appel non explicite est un lien apres coup.
 
     Retourne (prompt_a, prompt_b) rafraichis.
     """
@@ -104,6 +114,9 @@ async def link_products(
 
     a.linked_prompt_id = b.id
     b.linked_prompt_id = a.id
+    # Nature du lien posee symetriquement sur les deux cotes.
+    a.bundle_exclusive = bundle_exclusive
+    b.bundle_exclusive = bundle_exclusive
     await db.flush()
     return a, b
 
@@ -123,14 +136,48 @@ async def unlink_products(
     p = await _load_owned_prompt_or_404(db, prompt_id=prompt_id, owner_id=owner_id)
     partner_id = p.linked_prompt_id
     p.linked_prompt_id = None
+    # Le produit delie redevient un produit individuel ordinaire : il ne peut
+    # plus etre « ne ensemble » (plus de partenaire). On le remet visible.
+    p.bundle_exclusive = False
     if partner_id is not None:
         partner = (await db.execute(
             select(Prompt).where(Prompt.id == partner_id)
         )).scalar_one_or_none()
         if partner is not None and partner.linked_prompt_id == p.id:
             partner.linked_prompt_id = None
+            # Jamais de produit fantome invisible : le survivant redevient
+            # visible individuellement (bundle_exclusive=False).
+            partner.bundle_exclusive = False
     await db.flush()
     return p
+
+
+async def detach_partner_on_removal(
+    db: AsyncSession, *, prompt: Prompt
+) -> None:
+    """
+    A appeler lors du soft-delete d'un produit (image OU son) qui peut etre
+    moitie d'une oeuvre complete. Coupe le lien des DEUX cotes et remet le
+    SURVIVANT en bundle_exclusive=False (visible + vendable individuellement),
+    afin de ne JAMAIS laisser un produit fantome invisible et invendable.
+
+    Le produit supprime lui-meme voit son linked_prompt_id efface (coherence) ;
+    il sortira de toute facon des listings via is_deleted. Idempotent si le
+    produit n'etait pas lie. Ne commit pas (flush seulement) — l'appelant gere
+    la transaction du delete.
+    """
+    partner_id = prompt.linked_prompt_id
+    if partner_id is None:
+        return
+    prompt.linked_prompt_id = None
+    prompt.bundle_exclusive = False
+    partner = (await db.execute(
+        select(Prompt).where(Prompt.id == partner_id)
+    )).scalar_one_or_none()
+    if partner is not None and partner.linked_prompt_id == prompt.id:
+        partner.linked_prompt_id = None
+        partner.bundle_exclusive = False
+    await db.flush()
 
 
 # ──────────────────────────────────────────────────────────────────────────

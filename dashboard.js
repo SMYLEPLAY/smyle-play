@@ -2346,7 +2346,12 @@ async function uploadTrack() {
               try {
                 await apiFetch(`/artist/me/prompts/${encodeURIComponent(imgResp.id)}/link`, {
                   method: 'POST',
-                  json: { other_prompt_id: promptResp.id },
+                  // Flux A « né ensemble » : son + pochette créés dans la MÊME
+                  // action → bundle_exclusive=true. Les deux produits ne
+                  // s'affichent plus en carte individuelle sur les surfaces
+                  // publiques (seulement via l'œuvre) ; l'achat séparé reste
+                  // possible. Cf. flux B (images-create.js) qui omet ce flag.
+                  json: { other_prompt_id: promptResp.id, bundle_exclusive: true },
                 });
                 dashToast(`🎨 Œuvre complète : pochette "${name}" en vente comme image, liée au son.`);
               } catch (le) {
