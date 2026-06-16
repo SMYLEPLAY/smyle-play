@@ -20,7 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.services.links import LinkError, link_products, unlink_products
+from app.services.links import (
+    LinkError,
+    link_products,
+    linkable_candidates,
+    unlink_products,
+)
 
 router = APIRouter(tags=["links"])
 
@@ -64,6 +69,29 @@ async def link_prompt(
     except LinkError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
     await db.commit()
+
+
+@router.get("/artist/me/prompts/{prompt_id}/linkable")
+async def list_linkable_prompts(
+    prompt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """
+    Liste des produits de l'artiste eligibles a etre lies a prompt_id (C4 lien
+    retroactif). Nature OPPOSEE (image → sons, son → images), owner, non
+    supprime, non deja lie, hors prompt_id. Apercu LEGER uniquement (id, title,
+    productType, priceCredits, coverUrl|previewKey) — aucun champ gate.
+      - 404 si prompt_id absent / pas owner / supprime.
+      - Si prompt_id est deja lie, renvoie quand meme la liste des candidats
+        libres (le front gere l'etat « deja lie »).
+    """
+    try:
+        return await linkable_candidates(
+            db, owner_id=current_user.id, prompt_id=prompt_id
+        )
+    except LinkError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.delete(

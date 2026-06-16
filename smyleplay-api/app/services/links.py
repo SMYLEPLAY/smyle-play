@@ -121,6 +121,94 @@ async def link_products(
     return a, b
 
 
+async def linkable_candidates(
+    db: AsyncSession,
+    *,
+    owner_id: _uuid.UUID,
+    prompt_id: _uuid.UUID,
+) -> list[dict]:
+    """
+    Liste les produits de owner eligibles a etre lies a prompt_id (C4 lien
+    retroactif). Renvoie un APERCU LEGER par candidat — JAMAIS de champ gate
+    (prompt_text / lyrics / image_r2_key / image_settings / negative_prompt).
+
+    Criteres d'eligibilite :
+      - nature OPPOSEE a prompt_id (si prompt_id est une image → on renvoie ses
+        SONS recipe/beat ; si c'est un son → ses IMAGES),
+      - owner = owner_id, is_deleted=False, linked_prompt_id IS NULL (libre),
+      - exclut prompt_id lui-meme.
+
+    Si prompt_id est deja lie, on renvoie quand meme la liste des candidats
+    libres (le front masque le bloc de selection dans ce cas) — pas d'erreur.
+
+    404 (LinkError) si prompt_id n'existe pas / pas owner / supprime.
+
+    Forme par candidat : {id, title, productType, priceCredits, coverUrl?,
+    previewKey?} — coverUrl pour un son (cover_url du Track lie), previewKey
+    pour une image (preview_r2_key).
+    """
+    pivot = await _load_owned_prompt_or_404(
+        db, prompt_id=prompt_id, owner_id=owner_id
+    )
+
+    # Nature opposee : image → on cherche des sons ; son → on cherche des images.
+    if _is_image(pivot):
+        wanted_types = list(_SOUND_TYPES)
+        wanted_is_image = False
+    elif _is_sound(pivot):
+        wanted_types = [_IMAGE_TYPE]
+        wanted_is_image = True
+    else:
+        # Type inconnu : aucun candidat liable.
+        return []
+
+    rows = (await db.execute(
+        select(Prompt).where(
+            Prompt.artist_id == owner_id,
+            Prompt.is_deleted.is_(False),
+            Prompt.linked_prompt_id.is_(None),
+            Prompt.product_type.in_(wanted_types),
+            Prompt.id != prompt_id,
+        ).order_by(Prompt.created_at.desc())
+    )).scalars().all()
+
+    out: list[dict] = []
+    if wanted_is_image:
+        # Candidats IMAGE : apercu = preview_r2_key (jamais l'original).
+        for p in rows:
+            out.append({
+                "id":           str(p.id),
+                "title":        p.title,
+                "productType":  p.product_type,
+                "priceCredits": p.price_credits,
+                "previewKey":   p.preview_r2_key or "",
+            })
+    else:
+        # Candidats SON : cover = cover_url du Track lie (track.prompt_id == p.id).
+        from app.models.track import Track
+
+        cover_by_prompt: dict[_uuid.UUID, str] = {}
+        if rows:
+            cover_rows = (await db.execute(
+                select(Track.prompt_id, Track.cover_url).where(
+                    Track.prompt_id.in_([p.id for p in rows]),
+                    Track.is_deleted.is_(False),
+                )
+            )).all()
+            for pid, cover in cover_rows:
+                if pid is not None and pid not in cover_by_prompt:
+                    cover_by_prompt[pid] = cover or ""
+        for p in rows:
+            out.append({
+                "id":           str(p.id),
+                "title":        p.title,
+                "productType":  p.product_type,
+                "priceCredits": p.price_credits,
+                "coverUrl":     cover_by_prompt.get(p.id, ""),
+            })
+    return out
+
+
 async def unlink_products(
     db: AsyncSession,
     *,

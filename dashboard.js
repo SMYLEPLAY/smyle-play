@@ -1463,6 +1463,12 @@ async function openTrackEdit(localId) {
           <span class="dte-hint">Lier une recette rend ce son achetable sur la marketplace.</span>
         </div>
 
+        <!-- C4 — Œuvre complète (lier ce son à une image, rétroactif) -->
+        <div class="dte-field" id="dteOeuvreField">
+          <label class="dte-label">Œuvre complète</label>
+          <div id="dteOeuvreBox"></div>
+        </div>
+
       </div>
       <div class="dte-footer">
         <button class="dash-btn-ghost" onclick="closeTrackEdit()">Annuler</button>
@@ -1471,6 +1477,144 @@ async function openTrackEdit(localId) {
     </div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('is-visible'));
+
+  // C4 « Œuvre complète » — hydrate le bloc lien/délien pour le SON.
+  // Pivot = le prompt-recette lié à ce son (t.promptId). Sans recette liée,
+  // le son n'est pas un produit vendable → rien à lier.
+  renderOeuvreCompleteSon(t);
+}
+
+// ── C4 « Œuvre complète » (lien rétroactif son <-> image) ──────────────────
+// Rend, dans le drawer d'édition d'un SON, soit l'état « lié » (+ délier),
+// soit un bouton « Lier à une image » qui ouvre le sélecteur de candidats.
+// Le pivot côté son est le prompt-recette (t.promptId) : c'est lui qui porte
+// linked_prompt_id. Sans recette liée, on invite l'artiste à en lier une.
+async function renderOeuvreCompleteSon(t) {
+  const box = document.getElementById('dteOeuvreBox');
+  if (!box) return;
+  const promptId = t && t.promptId;
+  if (!promptId) {
+    box.innerHTML =
+      `<span class="dte-hint">Lie d'abord une recette (ADN) à ce son pour pouvoir le réunir avec une image en « Œuvre complète ».</span>`;
+    return;
+  }
+  box.innerHTML = `<span class="dte-hint">Chargement…</span>`;
+  // On lit l'état de lien du prompt via /artist/me/prompts (linked_prompt_id).
+  let linkedPartner = null;
+  try {
+    const resp = await apiFetch('/artist/me/prompts');
+    const items = (resp && Array.isArray(resp.items)) ? resp.items
+                : (Array.isArray(resp) ? resp : []);
+    const mine = items.find(p => p && p.id === promptId);
+    if (mine && (mine.linked_prompt_id || mine.linkedPromptId)) {
+      linkedPartner = mine.linked_prompt_id || mine.linkedPromptId;
+    }
+  } catch (_) {}
+  if (linkedPartner) {
+    renderOeuvreLinkedState(box, promptId, () => renderOeuvreCompleteSon(t));
+  } else {
+    renderOeuvreUnlinkedState(box, promptId, 'image', () => renderOeuvreCompleteSon(t));
+  }
+}
+
+// État « lié » : affiche le partenaire + bouton Délier. On récupère un aperçu
+// du partenaire via /linkable n'est pas adapté (il liste les libres), donc on
+// affiche un libellé générique + le bouton Délier (DELETE idempotent).
+function renderOeuvreLinkedState(box, promptId, onRefresh) {
+  box.innerHTML =
+    `<div class="dte-oeuvre-linked">` +
+      `<span class="dte-oeuvre-linked-label">🔗 Réuni en œuvre complète</span>` +
+      `<button type="button" class="dash-btn-ghost dte-oeuvre-unlink-btn">Délier</button>` +
+    `</div>` +
+    `<span class="dte-hint">Les deux produits restent vendables séparément.</span>`;
+  const btn = box.querySelector('.dte-oeuvre-unlink-btn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await apiFetch(`/artist/me/prompts/${encodeURIComponent(promptId)}/link`,
+          { method: 'DELETE', raw: true });
+        dashToast('Œuvre déliée ✓');
+        if (typeof onRefresh === 'function') onRefresh();
+      } catch (err) {
+        btn.disabled = false;
+        dashToast('Erreur : ' + (err && err.message || 'déliaison impossible'));
+      }
+    });
+  }
+}
+
+// État « non lié » : bouton « Lier à une <image|son> » → charge les candidats
+// (/linkable) et propose un sélecteur. Au choix → POST link bundle_exclusive=false.
+function renderOeuvreUnlinkedState(box, promptId, kindLabel, onRefresh) {
+  const label = kindLabel === 'image' ? 'une image' : 'un son';
+  box.innerHTML =
+    `<button type="button" class="dash-btn-ghost dte-oeuvre-link-btn">🔗 Lier à ${label}</button>` +
+    `<span class="dte-hint">Réunis ce produit avec ${label} en « Œuvre complète » (les deux restent vendables séparément).</span>` +
+    `<div class="dte-oeuvre-candidates" style="display:none"></div>`;
+  const btn = box.querySelector('.dte-oeuvre-link-btn');
+  const list = box.querySelector('.dte-oeuvre-candidates');
+  if (!btn || !list) return;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    list.style.display = 'block';
+    list.innerHTML = `<span class="dte-hint">Chargement des candidats…</span>`;
+    let candidates = [];
+    try {
+      candidates = await apiFetch(
+        `/artist/me/prompts/${encodeURIComponent(promptId)}/linkable`);
+      candidates = Array.isArray(candidates) ? candidates : [];
+    } catch (err) {
+      list.innerHTML = `<span class="dte-hint">Erreur de chargement : ${htmlEscape(err && err.message || '')}</span>`;
+      btn.disabled = false;
+      return;
+    }
+    if (candidates.length === 0) {
+      const empty = kindLabel === 'image'
+        ? `Aucune image disponible à lier — crée-en une d'abord.`
+        : `Aucun son disponible à lier — crée-en un d'abord.`;
+      list.innerHTML = `<span class="dte-hint">${empty}</span>`;
+      btn.disabled = false;
+      return;
+    }
+    list.innerHTML = candidates.map(c => {
+      const thumb = c.coverUrl
+        ? `<img src="${htmlEscape(c.coverUrl)}" alt="" class="dte-oeuvre-thumb">`
+        : (c.previewKey
+            ? `<img src="/watt/images/${String(c.previewKey).split('/').map(encodeURIComponent).join('/')}" alt="" class="dte-oeuvre-thumb">`
+            : `<span class="dte-oeuvre-thumb dte-oeuvre-thumb-ph">${kindLabel === 'image' ? '🖼️' : '🎵'}</span>`);
+      return `<button type="button" class="dte-oeuvre-cand" data-cand-id="${htmlEscape(c.id)}">` +
+        thumb +
+        `<span class="dte-oeuvre-cand-title">${htmlEscape(c.title || 'Sans titre')}</span>` +
+        `<span class="dte-oeuvre-cand-price">${htmlEscape(String(c.priceCredits))} Smyles</span>` +
+      `</button>`;
+    }).join('');
+    list.querySelectorAll('.dte-oeuvre-cand').forEach(cb => {
+      cb.addEventListener('click', async () => {
+        const otherId = cb.getAttribute('data-cand-id');
+        list.querySelectorAll('.dte-oeuvre-cand').forEach(x => x.disabled = true);
+        try {
+          // bundle_exclusive=false EN DUR : lien rétroactif → les deux produits
+          // restent visibles individuellement (ils avaient une vie publique).
+          await apiFetch(`/artist/me/prompts/${encodeURIComponent(promptId)}/link`, {
+            method: 'POST',
+            json: { other_prompt_id: otherId, bundle_exclusive: false },
+            raw: true,
+          });
+          dashToast('Œuvre complète créée ✓');
+          if (typeof onRefresh === 'function') onRefresh();
+        } catch (err) {
+          const st = err && err.status;
+          const msg = st === 409
+            ? 'Lien impossible (déjà lié ou natures incompatibles).'
+            : ('Erreur : ' + (err && err.message || 'lien impossible'));
+          dashToast(msg);
+          list.querySelectorAll('.dte-oeuvre-cand').forEach(x => x.disabled = false);
+        }
+      });
+    });
+    btn.disabled = false;
+  });
 }
 
 function closeTrackEdit() {
