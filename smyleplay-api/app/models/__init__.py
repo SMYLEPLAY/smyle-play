@@ -17,6 +17,8 @@ from .transaction import Transaction, TransactionStatus, TransactionType
 from .unlocked_prompt import UnlockedPrompt
 from .user import User
 from .user_follow import UserFollow
+from .visual_adn import VisualAdn
+from .owned_visual_adn import OwnedVisualAdn
 from .voice import VOICE_LICENSES, OwnedVoice, Voice
 
 __all__ = [
@@ -45,6 +47,8 @@ __all__ = [
     "User",
     "UserAchievement",
     "UserFollow",
+    "VisualAdn",
+    "OwnedVisualAdn",
     "VOICE_LICENSES",
     "Voice",
 ]

@@ -484,6 +484,25 @@ async def list_artists(db: AsyncSession = Depends(get_db)) -> dict:
             a["artistAdnId"]    = adn_info["adnId"]    if adn_info else None
             a["artistAdnPrice"] = adn_info["adnPrice"] if adn_info else None
 
+        # Enrichissement ADN VISUEL (badge marketplace, mirror ADN musical).
+        from app.models.visual_adn import VisualAdn as _VisualAdn
+        v_rows = (await db.execute(
+            select(_VisualAdn.artist_id, _VisualAdn.id, _VisualAdn.price_credits)
+            .where(
+                _VisualAdn.artist_id.in_(artist_ids),
+                _VisualAdn.is_published.is_(True),
+                _VisualAdn.is_deleted.is_(False),
+            )
+        )).all()
+        visual_adn_by_artist = {
+            str(r.artist_id): {"id": str(r.id), "price": r.price_credits}
+            for r in v_rows
+        }
+        for a in artists:
+            v_info = visual_adn_by_artist.get(a["userId"])
+            a["artistVisualAdnId"]    = v_info["id"]    if v_info else None
+            a["artistVisualAdnPrice"] = v_info["price"] if v_info else None
+
     return {"artists": artists}
 
 
@@ -663,6 +682,51 @@ async def build_artist_detail_payload(
             "rarityTier":       rarity_tier,
         }
 
+    # ADN VISUEL publié (sommet de la pyramide visuelle). Gaté EXACTEMENT
+    # comme l'ADN musical : on n'expose JAMAIS description / palette /
+    # example_outputs (génome) — uniquement characterCount + style + prix +
+    # meta booléens + rareté. Révélé après achat via /me/library/visual-adns.
+    from app.models.visual_adn import VisualAdn as _VisualAdn
+    visual_adn_stmt = select(_VisualAdn).where(
+        (_VisualAdn.artist_id == target.id)
+        & (_VisualAdn.is_published == True)  # noqa: E712
+        & (_VisualAdn.is_deleted == False)  # noqa: E712
+    )
+    published_visual_adn = (
+        await db.execute(visual_adn_stmt)
+    ).scalar_one_or_none()
+    visual_adn_payload: dict | None = None
+    if published_visual_adn is not None:
+        from app.services.marketplace import compute_rarity_tier
+        v_rarity_tier = compute_rarity_tier(published_visual_adn.max_supply)
+        v_sold_count = 0
+        if published_visual_adn.max_supply is not None:
+            from app.models.owned_visual_adn import OwnedVisualAdn  # noqa: WPS433
+            v_sold_count = int((await db.execute(
+                select(func.count(OwnedVisualAdn.visual_adn_id)).where(
+                    OwnedVisualAdn.visual_adn_id == published_visual_adn.id
+                )
+            )).scalar_one() or 0)
+        v_max_sup = published_visual_adn.max_supply
+        visual_adn_payload = {
+            "id":               str(published_visual_adn.id),
+            "characterCount":   len(published_visual_adn.description or ""),
+            "priceCredits":     published_visual_adn.price_credits,
+            # style PUBLIC (badge) ; palette GATÉE (jamais exposée ici).
+            "style":            published_visual_adn.style,
+            "hasUsageGuide":    bool(published_visual_adn.usage_guide),
+            "hasExampleOutputs": bool(published_visual_adn.example_outputs),
+            "createdAt":        published_visual_adn.created_at.isoformat() if published_visual_adn.created_at else None,
+            "aiReference":      published_visual_adn.ai_reference,
+            "maxSupply":        v_max_sup,
+            "soldCount":        v_sold_count if v_max_sup is not None else None,
+            "availableCount":   (v_max_sup - v_sold_count) if v_max_sup is not None else None,
+            "isExclusive":      v_max_sup == 1,
+            "isLimited":        v_max_sup is not None and v_max_sup > 1,
+            "isSoldOut":        v_max_sup is not None and v_sold_count >= v_max_sup,
+            "rarityTier":       v_rarity_tier,
+        }
+
     # Prompts publiés de l'artiste (meta seulement — prompt_text/lyrics gated).
     # On ramène jusqu'à 50 items, suffisant pour tous les cas raisonnables
     # (au-delà, l'UI fera un "voir plus" via un endpoint paginé dédié).
@@ -820,6 +884,8 @@ async def build_artist_detail_payload(
         # si vide. On ne renvoie JAMAIS prompt_text / lyrics en clair :
         # ces champs restent gated jusqu'à /unlocks/prompts/{id}.
         "adn":            adn_payload,
+        # ADN VISUEL artiste (gaté) — sommet de la pyramide visuelle.
+        "visualAdn":      visual_adn_payload,
         "promptsForSale": prompts_for_sale,
         "prompts":        prompts_payload,
         # Boutique : voix publiées + playlists avec ADN en vente

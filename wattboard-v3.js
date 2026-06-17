@@ -40,6 +40,12 @@
     // C4 ③ — écran « Mes images » (grille de cards-aperçu owner). Section
     // injectée par images-list.js si absente du HTML.
     'images-list': { ids: ['sec-image-list'],        label: 'Mes images' },
+    // C4 ADN Album — écran dédié « Créer un ADN visuel » (génome de style d'UN
+    // album, parallèle de l'ADN Playlist). Logique : module window.AdnVisuel.
+    'adn-album':   { ids: ['sec-adn-visuel'],        label: 'ADN Album' },
+    // C4 ADN Visuel artiste — signature visuelle vendable (1/artiste), mirror
+    // EXACT de l'ADN musical #sec-dna. Logique : loadMyVisualAdn (dashboard.js).
+    'visual-adn':  { ids: ['sec-visual-adn'],        label: 'ADN Visuel' },
   };
 
   /* Compteurs (cache local au module, rafraîchi au retour board) */
@@ -75,6 +81,16 @@
     document.body.classList.add('wb3-screen-open');
     var lbl = $('wb3-back-label');
     if (lbl) lbl.textContent = sc.label;
+    // C4 ADN Album — l'écran « Créer un ADN visuel » (re)peuple son sélecteur
+    // d'albums à chaque ouverture (reflète les albums/ADN créés depuis).
+    if (key === 'adn-album') {
+      try { if (window.AdnVisuel && typeof window.AdnVisuel.init === 'function') window.AdnVisuel.init(); } catch (_) {}
+    }
+    // C4 ADN Visuel artiste — l'écran « Mon ADN Visuel » (re)charge l'ADN
+    // existant pour pré-remplir (empty/summary/editor), mirror de l'ADN musical.
+    if (key === 'visual-adn') {
+      try { if (typeof window.loadMyVisualAdn === 'function') window.loadMyVisualAdn(); } catch (_) {}
+    }
     window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
   }
 
@@ -108,6 +124,11 @@
       return;
     }
     if (kind === 'adn')  { openScreen('adn');  return; }
+    // C4 — « ADN visuel » du monde Visuel = la SIGNATURE VISUELLE artiste
+    // (mirror de l'ADN musical), écran #sec-visual-adn.
+    if (kind === 'adn-visuel') { openScreen('visual-adn'); return; }
+    // C4 — ADN Album (génome de style d'un album) garde son écran dédié.
+    if (kind === 'adn-album')  { openScreen('adn-album'); return; }
     if (kind === 'voix') { openScreen('voix'); return; }
     openScreen('sons');
     try { if (typeof setUploadMode === 'function') setUploadMode(CREATE_MAP[kind] || 'with_prompt'); } catch (_) {}
@@ -247,12 +268,14 @@
       // C4 taxonomie visuelle (2026-06-16) : « FX » n'est PLUS une catégorie /
       // tuile — c'est devenu un TAG d'usage d'image (cf. images-create). La
       // tuile FX verrouillée est donc supprimée.
-      // C4 ADN Album (2026-06-16) : la tuile « ADN visuel » est DÉBLOQUÉE —
-      // elle ouvre My Mix en mode Image, où chaque album expose son éditeur
-      // d'ADN (vente du génome de style). Pas de "+ Créer" dédié : l'ADN se
-      // configure sur un album existant via openAlbumViewModal.
+      // C4 ADN Visuel artiste (2026-06-17) : la tuile « ADN Visuel » ouvre
+      // désormais l'écran SIGNATURE VISUELLE artiste (#sec-visual-adn via
+      // openScreen('visual-adn')) — mirror EXACT de l'ADN musical. L'ADN ALBUM
+      // (génome de style d'un album) garde sa propre tuile « ADN Album » →
+      // écran #sec-adn-visuel. Le bouton « + Créer » expose les deux.
       return tileHtml('images',     '🖼️', 'Images IA',  'images', { createKind: 'image', viewKey: 'images-list', countLabel: 'publiées' })
-           + tileHtml('adn-visuel', '🎨', 'ADN visuel', null, { viewKey: 'adn-visuel', viewOnly: true, countLabel: 'génome de style', countText: 'Gérer' });
+           + tileHtml('adn-visuel', '🎨', 'ADN Visuel', null, { viewKey: 'visual-adn', viewOnly: true, countLabel: 'ta signature visuelle vendable', countText: 'Gérer' })
+           + tileHtml('adn-album',  '🎨', 'ADN Album',  null, { viewKey: 'adn-album', viewOnly: true, countLabel: 'génome de style d\'un album', countText: 'Gérer' });
     }
     // DÉCISION 100 % IA (Tom, 2026-06-10) : aucun produit non-IA vendu sur
     // la plateforme. La tuile « Musique perso » (humaine, gated palier) est
@@ -273,8 +296,13 @@
   function createMenuHtml(monde) {
     if (monde === 'visuel') {
       // C4 livraison ② : monde Visuel ouvert à la création d'image.
+      // C4 ADN Visuel artiste : « ADN visuel » = signature visuelle artiste
+      // (écran #sec-visual-adn). « ADN Album » = génome de style d'un album
+      // (écran #sec-adn-visuel) — les deux restent accessibles.
       return '' +
-        '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette (prompt + réglages) + le fichier original</em></span></button>';
+        '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette (prompt + réglages) + le fichier original</em></span></button>' +
+        '<button type="button" class="wb3-create-item" data-wb3-create="adn-visuel">🎨 <span>ADN visuel<em>Ta signature visuelle vendable — l\'achat débloque le génome de style</em></span></button>' +
+        '<button type="button" class="wb3-create-item" data-wb3-create="adn-album">🎨 <span>ADN Album<em>Le génome de style d\'un album — l\'achat débloque la recette de style</em></span></button>';
     }
     return '' +
       '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
@@ -417,11 +445,10 @@
       if (t.hasAttribute('data-wb3-create')) { createAction(t.getAttribute('data-wb3-create')); return; }
       if (t.hasAttribute('data-wb3-view')) {
         var key = t.getAttribute('data-wb3-view');
-        // C4 — monde Visuel : « Albums » ET « ADN visuel » ouvrent My Mix forcé
-        // en mode image. Albums = curation ; ADN visuel = même surface, où
-        // chaque album expose son éditeur d'ADN (vente du génome de style via
-        // openAlbumViewModal). Pas de vue dédiée : on réutilise My Mix.
-        if (key === 'albums' || key === 'adn-visuel') {
+        // C4 — monde Visuel : « Albums » ouvre My Mix forcé en mode image
+        // (curation des albums). « ADN visuel » a désormais son ÉCRAN DÉDIÉ
+        // (#sec-adn-visuel) : il passe par la branche normale openScreen(key).
+        if (key === 'albums') {
           try { localStorage.setItem('mymix_mode', 'image'); } catch (_) {}
           // My Mix vit sur la home (index.html). Si la page courante l'expose
           // (toggleMixPanel), on l'ouvre ; sinon (cas dashboard) on redirige
@@ -429,9 +456,6 @@
           if (typeof toggleMixPanel === 'function') {
             toggleMixPanel();
             try { if (window.SmyleAlbums && SmyleAlbums.applyMixMode) SmyleAlbums.applyMixMode('image'); } catch (_) {}
-            if (key === 'adn-visuel') {
-              try { if (typeof showToast === 'function') showToast('Ouvre un album puis active « 🎨 Vendre l\'ADN » pour mettre son génome de style en vente.'); } catch (_) {}
-            }
           } else {
             try { localStorage.setItem('mymix_open', '1'); } catch (_) {}
             window.location.href = '/';

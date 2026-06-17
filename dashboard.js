@@ -4643,6 +4643,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // pré-remplir la section #sec-dna (empty / summary / editor).
   loadMyAdn();
 
+  // ADN Visuel (signature visuelle artiste) — charge l'ADN visuel existant
+  // pour pré-remplir la section #sec-visual-adn (empty / summary / editor).
+  if (typeof loadMyVisualAdn === 'function') loadMyVisualAdn();
+
   // Si la page artiste a redirigé avec ?edit=1, scroller vers la section
   // Identité et l'ouvrir (c'est un <details> accordéon).
   if (new URLSearchParams(window.location.search).get('edit') === '1') {
@@ -5060,6 +5064,327 @@ function _dashToast(msg) {
   console.log('[dashboard]', msg);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADN VISUEL (signature visuelle artiste) — section #sec-visual-adn
+   ═══════════════════════════════════════════════════════════════════════════
+   Mirror EXACT de l'ADN musical ci-dessus. Endpoints (marketplace.py) :
+     GET   /artist/me/visual-adn   → 200 VisualAdnRead | 404 si pas d'ADN
+     POST  /artist/me/visual-adn   → 201 (création, 1 max → 409)
+     PATCH /artist/me/visual-adn   → 200 (édition ; description figée après vente)
+     DELETE /artist/me/visual-adn  → 204 (acheteurs gardent leur accès)
+   Spécifique visuel : champs `style` (16 codes) + `palette` (génome, gaté).
+   Bornes : description 200..5000, price_credits 30..500.                       */
+
+const _visualAdnState = {
+  adn: null,
+  saving: false,
+};
+
+async function loadMyVisualAdn() {
+  if (typeof apiFetch !== 'function') return;
+  try {
+    const adn = await apiFetch('/artist/me/visual-adn');
+    _visualAdnState.adn = adn || null;
+  } catch (err) {
+    if (!err || err.status !== 404) {
+      console.warn('[dashboard] loadMyVisualAdn error', err);
+    }
+    _visualAdnState.adn = null;
+  }
+  renderVisualAdnSection();
+}
+
+function renderVisualAdnSection() {
+  const empty   = document.getElementById('dashVisualAdnEmpty');
+  const summary = document.getElementById('dashVisualAdnSummary');
+  if (!empty || !summary) return;
+
+  if (!_visualAdnState.adn) {
+    empty.style.display   = '';
+    summary.style.display = 'none';
+    return;
+  }
+
+  const adn = _visualAdnState.adn;
+  empty.style.display   = 'none';
+  summary.style.display = '';
+
+  const status = document.getElementById('dashVisualAdnStatus');
+  if (status) {
+    status.textContent = adn.is_published ? 'Publié' : 'Brouillon';
+    status.setAttribute('data-status', adn.is_published ? 'published' : 'draft');
+  }
+
+  const priceVal = document.getElementById('dashVisualAdnPriceVal');
+  if (priceVal) priceVal.textContent = String(adn.price_credits || 0);
+
+  const descPreview = document.getElementById('dashVisualAdnDescPreview');
+  if (descPreview) {
+    const full = adn.description || '';
+    descPreview.textContent = full.length > 180
+      ? full.slice(0, 180).trimEnd() + '…'
+      : full;
+  }
+
+  const meta = document.getElementById('dashVisualAdnSummaryMeta');
+  if (meta) {
+    meta.innerHTML = '';
+    if (adn.style) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="dash-adn-summary-badge">🎨 ' + _visualAdnStyleLabel(adn.style) + '</span>');
+    }
+    if (adn.palette) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="dash-adn-summary-badge">🎨 Palette</span>');
+    }
+    if (adn.usage_guide) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="dash-adn-summary-badge">📘 Guide d\'usage</span>');
+    }
+    if (adn.example_outputs) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="dash-adn-summary-badge">🖼️ Exemples</span>');
+    }
+  }
+
+  const togBtn = document.getElementById('dashVisualAdnTogglePublishBtn');
+  if (togBtn) {
+    togBtn.textContent = adn.is_published ? 'Dépublier' : 'Publier';
+    togBtn.classList.toggle('dash-btn-secondary', !!adn.is_published);
+    togBtn.classList.toggle('dash-btn-primary',   !adn.is_published);
+  }
+}
+
+// Libellés FR des 16 codes de style (mirror de la liste backend).
+const _VISUAL_ADN_STYLE_LABELS = {
+  realiste: 'Réaliste', cartoon: 'Cartoon', anime: 'Anime', '3d': '3D / Render',
+  peinture: 'Peinture', aquarelle: 'Aquarelle', croquis: 'Croquis',
+  pixel_art: 'Pixel art', cyberpunk: 'Cyberpunk', fantasy: 'Fantasy',
+  minimaliste: 'Minimaliste', retro: 'Rétro', abstrait: 'Abstrait',
+  surrealiste: 'Surréaliste', comics: 'Comics', photo: 'Photo',
+};
+function _visualAdnStyleLabel(code) {
+  return _VISUAL_ADN_STYLE_LABELS[code] || code;
+}
+
+function openVisualAdnEditor() {
+  const editor = document.getElementById('dashVisualAdnEditor');
+  if (!editor) return;
+
+  const adn = _visualAdnState.adn;
+  const title = document.getElementById('dashVisualAdnEditorTitle');
+  if (title) title.textContent = adn ? 'Modifier mon ADN visuel' : 'Créer mon ADN visuel';
+
+  document.getElementById('dashVisualAdnDescription').value    = adn ? (adn.description || '') : '';
+  document.getElementById('dashVisualAdnUsageGuide').value     = adn ? (adn.usage_guide || '') : '';
+  document.getElementById('dashVisualAdnExampleOutputs').value = adn ? (adn.example_outputs || '') : '';
+  document.getElementById('dashVisualAdnPrice').value          = adn ? String(adn.price_credits) : '80';
+  const styleSel = document.getElementById('dashVisualAdnStyle');
+  if (styleSel) styleSel.value = (adn && adn.style) ? adn.style : '';
+  const paletteInp = document.getElementById('dashVisualAdnPalette');
+  if (paletteInp) paletteInp.value = (adn && adn.palette) ? adn.palette : '';
+  const aiSel = document.getElementById('dashVisualAdnAiReference');
+  if (aiSel) aiSel.value = (adn && adn.ai_reference) ? adn.ai_reference : '';
+  const supInp = document.getElementById('dashVisualAdnMaxSupply');
+  if (supInp) supInp.value = (adn && adn.max_supply) ? String(adn.max_supply) : '';
+
+  // Lock description après vente : on ne le connaît qu'après une 409 au save.
+  // Par défaut on déverrouille (le 409 réactivera le verrou + la note).
+  const descEl = document.getElementById('dashVisualAdnDescription');
+  if (descEl) descEl.disabled = false;
+
+  if (typeof dashVisualAdnUpdateRarityPreview === 'function') dashVisualAdnUpdateRarityPreview();
+  if (typeof dashUpdateEurPreview === 'function') dashUpdateEurPreview('dashVisualAdnPrice', 'dashVisualAdnPriceEur');
+
+  editor.style.display = '';
+  editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (descEl) setTimeout(() => descEl.focus(), 100);
+}
+
+function closeVisualAdnEditor() {
+  const editor = document.getElementById('dashVisualAdnEditor');
+  if (editor) editor.style.display = 'none';
+}
+
+function dashVisualAdnUpdateRarityPreview() {
+  const inp = document.getElementById('dashVisualAdnMaxSupply');
+  const out = document.getElementById('dashVisualAdnRarityPreview');
+  if (!inp || !out) return;
+  const raw = (inp.value || '').trim();
+  if (raw === '') {
+    out.innerHTML = '<span style="color:#a09cb8;">Édition illimitée (pas de rareté affichée)</span>';
+    return;
+  }
+  const n = parseInt(raw, 10);
+  if (!Number.isInteger(n) || n < 1) {
+    out.innerHTML = '<span style="color:#f87171;">Nombre invalide</span>';
+    return;
+  }
+  let tier, emoji, label, color;
+  if (n === 1)         { tier='Mythic';    emoji='👑'; label='Pièce unique (1/1)';                  color='#FFD700'; }
+  else if (n <= 10)    { tier='Legendary'; emoji='⭐'; label=`Drop VIP (${n} exemplaires)`;          color='#FBBF24'; }
+  else if (n <= 10000) { tier='Limited';   emoji='💎'; label=`Édition limitée (${n} exemplaires)`;   color='#A78BFA'; }
+  else                 { tier='Open';      emoji='🟢'; label=`Édition ouverte (${n} exemplaires)`;   color='#4ADE80'; }
+  out.innerHTML = `<span style="color:${color};">${emoji} <strong>${tier}</strong> — ${label}</span>`;
+}
+
+async function saveVisualAdn() {
+  if (_visualAdnState.saving) return;
+  if (typeof apiFetch !== 'function') return;
+
+  const description    = (document.getElementById('dashVisualAdnDescription').value || '').trim();
+  const usageGuide     = (document.getElementById('dashVisualAdnUsageGuide').value || '').trim();
+  const exampleOutputs = (document.getElementById('dashVisualAdnExampleOutputs').value || '').trim();
+  const palette        = (document.getElementById('dashVisualAdnPalette').value || '').trim();
+  const style          = (document.getElementById('dashVisualAdnStyle')||{}).value || '';
+  const priceRaw       = document.getElementById('dashVisualAdnPrice').value;
+  const priceCredits   = parseInt(priceRaw, 10);
+
+  if (description.length < 200) {
+    _dashToast(`Description trop courte (${description.length}/200 chars min).`);
+    return;
+  }
+  if (description.length > 5000) {
+    _dashToast('Description trop longue (5000 chars max).');
+    return;
+  }
+  if (!Number.isInteger(priceCredits) || priceCredits < 30 || priceCredits > 500) {
+    _dashToast('Prix invalide — entre 30 et 500 crédits.');
+    return;
+  }
+
+  const aiRef  = (document.getElementById('dashVisualAdnAiReference')||{}).value || '';
+  const supRaw = (document.getElementById('dashVisualAdnMaxSupply')||{}).value || '';
+  let maxSupplyVal = null;
+  if (supRaw.trim() !== '') {
+    const n = parseInt(supRaw, 10);
+    if (!Number.isInteger(n) || n < 1) {
+      _dashToast('Éditions : nombre invalide. Tape un entier positif ou laisse vide pour illimité.');
+      return;
+    }
+    maxSupplyVal = n;
+  }
+
+  const payload = {
+    description,
+    price_credits: priceCredits,
+  };
+  if (usageGuide)     payload.usage_guide     = usageGuide;
+  if (exampleOutputs) payload.example_outputs = exampleOutputs;
+  if (palette)        payload.palette         = palette;
+  if (style)          payload.style           = style;
+  if (aiRef)          payload.ai_reference    = aiRef;
+  if (maxSupplyVal !== null) payload.max_supply = maxSupplyVal;
+
+  const isCreate = !_visualAdnState.adn;
+  const method   = isCreate ? 'POST' : 'PATCH';
+
+  _visualAdnState.saving = true;
+  try {
+    const adn = await apiFetch('/artist/me/visual-adn', {
+      method,
+      json: payload,
+    });
+    _visualAdnState.adn = adn;
+    renderVisualAdnSection();
+    closeVisualAdnEditor();
+    _dashToast(isCreate ? 'ADN visuel créé · prêt à publier' : 'ADN visuel mis à jour');
+  } catch (err) {
+    console.error('[dashboard] saveVisualAdn error', err);
+    _handleVisualAdnError(err);
+  } finally {
+    _visualAdnState.saving = false;
+  }
+}
+
+async function toggleVisualAdnPublish() {
+  if (_visualAdnState.saving) return;
+  if (typeof apiFetch !== 'function') return;
+
+  if (!_visualAdnState.adn) {
+    _dashToast('⚠ Aucun ADN visuel en base. Crée-le d\'abord avec le formulaire ci-dessous.');
+    try { await loadMyVisualAdn(); } catch (_) {}
+    if (!_visualAdnState.adn) return;
+  }
+
+  const nextState = !_visualAdnState.adn.is_published;
+  _visualAdnState.saving = true;
+  try {
+    const adn = await apiFetch('/artist/me/visual-adn', {
+      method: 'PATCH',
+      json:   { is_published: nextState },
+    });
+    _visualAdnState.adn = adn;
+    renderVisualAdnSection();
+    _dashToast(nextState
+      ? 'ADN visuel publié — visible sur ton profil 🎉'
+      : 'ADN visuel dépublié — invisible pour les fans');
+  } catch (err) {
+    console.error('[dashboard] toggleVisualAdnPublish error', err);
+    const msg = (typeof _humanizeApiError === 'function') ? _humanizeApiError(err) : 'réessaie';
+    _dashToast(`⚠ Bascule publication impossible : ${msg}`);
+  } finally {
+    _visualAdnState.saving = false;
+  }
+}
+
+async function deleteVisualAdnConfirm() {
+  if (!confirm('Supprimer votre ADN visuel du marketplace ? Les acheteurs qui l\'ont déjà acquis gardent leur accès en library.')) return;
+  if (typeof apiFetch !== 'function') return;
+  try {
+    await apiFetch('/artist/me/visual-adn', { method: 'DELETE' });
+    _dashToast('ADN visuel supprimé');
+    _visualAdnState.adn = null;
+    if (typeof loadMyVisualAdn === 'function') {
+      await loadMyVisualAdn();
+    } else {
+      renderVisualAdnSection();
+    }
+  } catch (e) {
+    const msg = (typeof _humanizeApiError === 'function')
+      ? _humanizeApiError(e)
+      : (e && e.message) || 'Erreur inconnue';
+    alert('Échec suppression ADN visuel : ' + msg);
+  }
+}
+
+function _handleVisualAdnError(err) {
+  if (!err) {
+    _dashToast('Erreur inconnue — réessaie.');
+    return;
+  }
+  const detail = err.body && err.body.detail;
+  if (err.status === 409) {
+    if (typeof detail === 'string' && detail.toLowerCase().includes('lock')) {
+      _dashToast('Description verrouillée — un acheteur l\'a déjà acquise.');
+      // Verrouille le champ + montre la note (mirror du lock backend).
+      const descEl = document.getElementById('dashVisualAdnDescription');
+      if (descEl) descEl.disabled = true;
+      const note = document.getElementById('dashVisualAdnLockNote');
+      if (note) note.style.display = '';
+    } else if (typeof detail === 'string' && detail.toLowerCase().includes('already')) {
+      _dashToast('Tu as déjà un ADN visuel — modifie-le plutôt que d\'en créer un nouveau.');
+      loadMyVisualAdn();
+    } else {
+      _dashToast(typeof detail === 'string' ? detail : 'Conflit — réessaie.');
+    }
+    return;
+  }
+  if (err.status === 422) {
+    if (Array.isArray(detail) && detail.length && detail[0].msg) {
+      _dashToast(`Validation : ${detail[0].msg}`);
+    } else {
+      _dashToast('Données invalides — vérifie les champs.');
+    }
+    return;
+  }
+  if (err.status === 401) {
+    _dashToast('Session expirée — reconnecte-toi.');
+    return;
+  }
+  _dashToast('Enregistrement impossible — réessaie.');
+}
+
 // Expose pour les onclick HTML
 if (typeof window !== 'undefined') {
   window.openAdnEditor        = openAdnEditor;
@@ -5068,6 +5393,14 @@ if (typeof window !== 'undefined') {
   window.dashAdnUpdateRarityPreview = dashAdnUpdateRarityPreview;
   window.dashUpdateEurPreview       = dashUpdateEurPreview;
   window.toggleAdnPublish     = toggleAdnPublish;
+  // ADN Visuel (signature visuelle artiste) — section #sec-visual-adn
+  window.loadMyVisualAdn          = loadMyVisualAdn;
+  window.openVisualAdnEditor      = openVisualAdnEditor;
+  window.closeVisualAdnEditor     = closeVisualAdnEditor;
+  window.saveVisualAdn            = saveVisualAdn;
+  window.toggleVisualAdnPublish   = toggleVisualAdnPublish;
+  window.deleteVisualAdnConfirm   = deleteVisualAdnConfirm;
+  window.dashVisualAdnUpdateRarityPreview = dashVisualAdnUpdateRarityPreview;
   // Ma Musique — mode switcher + widgets live
   window.setUploadMode        = setUploadMode;
   window.dashToggleBeatFlag   = dashToggleBeatFlag;

@@ -40,6 +40,11 @@ from app.schemas.marketplace import (
     PromptUpdate,
 )
 from app.schemas.user import UserRead
+from app.schemas.visual_adn import (
+    VisualAdnCreate,
+    VisualAdnRead,
+    VisualAdnUpdate,
+)
 from app.services.marketplace import (
     AdnAlreadyExists,
     AdnNotFound,
@@ -54,6 +59,15 @@ from app.services.marketplace import (
     list_prompts_for_artist,
     update_adn,
     update_prompt,
+)
+from app.services.visual_adn import (
+    VisualAdnAlreadyExists,
+    VisualAdnContentLocked,
+    VisualAdnNotFound,
+    create_visual_adn,
+    delete_visual_adn,
+    get_visual_adn_by_artist,
+    update_visual_adn,
 )
 
 router = APIRouter(prefix="/artist/me", tags=["artist-catalog"])
@@ -70,6 +84,13 @@ def _raise_marketplace_error(exc: ValueError) -> None:
     if isinstance(exc, AdnNotFound) or isinstance(exc, PromptNotFound):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
     if isinstance(exc, ContentLockedAfterSale):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
+    # ADN visuel (mirror des sous-types ADN musical).
+    if isinstance(exc, VisualAdnAlreadyExists):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
+    if isinstance(exc, VisualAdnNotFound):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc))
+    if isinstance(exc, VisualAdnContentLocked):
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
     raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
@@ -185,6 +206,119 @@ async def delete_my_adn(
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete ADN",
+        )
+
+
+# -----------------------------------------------------------------------------
+# ADN VISUEL (signature visuelle — sommet de la pyramide visuelle).
+# Mirror EXACT des endpoints /artist/me/adn ci-dessus.
+# -----------------------------------------------------------------------------
+
+@router.get("/visual-adn", response_model=VisualAdnRead)
+async def read_my_visual_adn(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    visual_adn = await get_visual_adn_by_artist(db, current_user.id)
+    if visual_adn is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail="No visual ADN yet for this artist",
+        )
+    return visual_adn
+
+
+@router.post(
+    "/visual-adn",
+    response_model=VisualAdnRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_my_visual_adn(
+    payload: VisualAdnCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        visual_adn = await create_visual_adn(
+            db=db,
+            artist_id=current_user.id,
+            description=payload.description,
+            usage_guide=payload.usage_guide,
+            example_outputs=payload.example_outputs,
+            price_credits=payload.price_credits,
+            ai_reference=payload.ai_reference,
+            max_supply=payload.max_supply,
+            style=payload.style,
+            palette=payload.palette,
+        )
+        await db.commit()
+        await db.refresh(visual_adn)
+        return visual_adn
+    except ValueError as e:
+        await db.rollback()
+        _raise_marketplace_error(e)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Artist already has a visual ADN",
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create visual ADN",
+        )
+
+
+@router.patch("/visual-adn", response_model=VisualAdnRead)
+async def update_my_visual_adn(
+    payload: VisualAdnUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    data = payload.model_dump(exclude_unset=True)
+    try:
+        visual_adn = await update_visual_adn(
+            db=db, artist_id=current_user.id, payload=data
+        )
+        await db.commit()
+        await db.refresh(visual_adn)
+        return visual_adn
+    except ValueError as e:
+        await db.rollback()
+        _raise_marketplace_error(e)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update visual ADN",
+        )
+
+
+@router.delete(
+    "/visual-adn",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_my_visual_adn(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Soft-delete de l'ADN visuel de l'artiste connecté.
+    Les acheteurs (OwnedVisualAdn) conservent leur accès en library.
+    """
+    try:
+        await delete_visual_adn(db=db, artist_id=current_user.id)
+        await db.commit()
+    except ValueError as e:
+        await db.rollback()
+        _raise_marketplace_error(e)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete visual ADN",
         )
 
 
