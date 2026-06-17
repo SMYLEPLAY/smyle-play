@@ -1189,6 +1189,41 @@
     { val: 'open',      label: '🟢 Ouverte'    },
     { val: 'unlimited', label: '♾️ Illimitée'  },
   ];
+  // Styles d'image (16) — CODES alignés au backend (filtre /images?style=,
+  // égalité stricte). Libellés FR pour l'affichage uniquement.
+  var _IMG_STYLES = [
+    { val: 'realiste',    label: 'Réaliste'      },
+    { val: 'cartoon',     label: 'Cartoon'       },
+    { val: 'anime',       label: 'Anime'         },
+    { val: '3d',          label: '3D / Render'   },
+    { val: 'peinture',    label: 'Peinture'      },
+    { val: 'aquarelle',   label: 'Aquarelle'     },
+    { val: 'croquis',     label: 'Croquis'       },
+    { val: 'pixel_art',   label: 'Pixel art'     },
+    { val: 'cyberpunk',   label: 'Cyberpunk'     },
+    { val: 'fantasy',     label: 'Fantasy'       },
+    { val: 'minimaliste', label: 'Minimaliste'   },
+    { val: 'retro',       label: 'Rétro'         },
+    { val: 'abstrait',    label: 'Abstrait'      },
+    { val: 'surrealiste', label: 'Surréaliste'   },
+    { val: 'comics',      label: 'Comics'        },
+    { val: 'photo',       label: 'Photo'         },
+  ];
+  // Tags d'usage (11, dont fx) — CODES alignés au backend (filtre /images?tag=,
+  // présence). Libellés FR pour l'affichage uniquement.
+  var _IMG_USAGE = [
+    { val: 'cover',        label: 'Cover'        },
+    { val: 'portrait',     label: 'Portrait'     },
+    { val: 'paysage',      label: 'Paysage'      },
+    { val: 'logo',         label: 'Logo'         },
+    { val: 'banniere',     label: 'Bannière'     },
+    { val: 'avatar',       label: 'Avatar'       },
+    { val: 'wallpaper',    label: 'Wallpaper'    },
+    { val: 'mockup',       label: 'Mockup'       },
+    { val: 'illustration', label: 'Illustration' },
+    { val: 'texture',      label: 'Texture'      },
+    { val: 'fx',           label: 'FX'           },
+  ];
 
   // URL same-origin de l'aperçu (proxy backend, sert UNIQUEMENT images/previews/).
   function _imgPreviewUrl(key) {
@@ -1301,7 +1336,7 @@
   }
 
   // État des facettes images (page /images).
-  var _imgFacets = { q: '', platform: '', rarity: '', ratio: '', priceMin: '', priceMax: '' };
+  var _imgFacets = { q: '', platform: '', rarity: '', ratio: '', style: '', tag: '', priceMin: '', priceMax: '' };
 
   async function _fetchImages() {
     var p = new URLSearchParams();
@@ -1309,6 +1344,8 @@
     if (_imgFacets.platform) p.set('platform', _imgFacets.platform);
     if (_imgFacets.rarity) p.set('rarity', _imgFacets.rarity);
     if (_imgFacets.ratio) p.set('ratio', _imgFacets.ratio);
+    if (_imgFacets.style) p.set('style', _imgFacets.style);
+    if (_imgFacets.tag) p.set('tag', _imgFacets.tag);
     if (_imgFacets.priceMin !== '') p.set('price_min', _imgFacets.priceMin);
     if (_imgFacets.priceMax !== '') p.set('price_max', _imgFacets.priceMax);
     try {
@@ -1328,6 +1365,10 @@
       _IMG_PLATFORMS.map(function (o) { return '<option value="' + o.val + '">' + _esc(o.label) + '</option>'; }).join('');
     var rarityOpts = '<option value="">Toute rareté</option>' +
       _IMG_RARITIES.map(function (o) { return '<option value="' + o.val + '">' + _esc(o.label) + '</option>'; }).join('');
+    var styleOpts = '<option value="">Tous styles</option>' +
+      _IMG_STYLES.map(function (o) { return '<option value="' + o.val + '">' + _esc(o.label) + '</option>'; }).join('');
+    var usageOpts = '<option value="">Tous usages</option>' +
+      _IMG_USAGE.map(function (o) { return '<option value="' + o.val + '">' + _esc(o.label) + '</option>'; }).join('');
     section.innerHTML =
       '<div class="mp-section-head">' +
         '<span class="mp-section-kicker">Catalogue</span>' +
@@ -1338,6 +1379,8 @@
         '<input type="search" class="mp-img-q" placeholder="Titre, artiste…" autocomplete="off">' +
         '<select class="mp-img-platform" aria-label="Provenance">' + platformOpts + '</select>' +
         '<select class="mp-img-rarity" aria-label="Rareté">' + rarityOpts + '</select>' +
+        '<select class="mp-img-style" aria-label="Style">' + styleOpts + '</select>' +
+        '<select class="mp-img-tag" aria-label="Usage">' + usageOpts + '</select>' +
         '<input type="text" class="mp-img-ratio" placeholder="Ratio (ex 1:1)" style="width:120px">' +
         '<input type="number" min="0" class="mp-img-price mp-img-pmin" placeholder="Prix min">' +
         '<input type="number" min="0" class="mp-img-price mp-img-pmax" placeholder="Prix max">' +
@@ -1350,7 +1393,7 @@
     async function _reload() {
       var imgs = await _fetchImages();
       if (!imgs.length) {
-        var anyFilter = _imgFacets.q || _imgFacets.platform || _imgFacets.rarity || _imgFacets.ratio || _imgFacets.priceMin !== '' || _imgFacets.priceMax !== '';
+        var anyFilter = _imgFacets.q || _imgFacets.platform || _imgFacets.rarity || _imgFacets.ratio || _imgFacets.style || _imgFacets.tag || _imgFacets.priceMin !== '' || _imgFacets.priceMax !== '';
         grid.innerHTML = '<div class="mp-grid-empty">' +
           (anyFilter
             ? 'Aucune image ne correspond à ta sélection.'
@@ -1371,6 +1414,8 @@
     var qEl = section.querySelector('.mp-img-q');
     var platEl = section.querySelector('.mp-img-platform');
     var rarEl = section.querySelector('.mp-img-rarity');
+    var styleEl = section.querySelector('.mp-img-style');
+    var tagEl = section.querySelector('.mp-img-tag');
     var ratioEl = section.querySelector('.mp-img-ratio');
     var pminEl = section.querySelector('.mp-img-pmin');
     var pmaxEl = section.querySelector('.mp-img-pmax');
@@ -1382,6 +1427,8 @@
     pmaxEl.addEventListener('input', function () { _imgFacets.priceMax = pmaxEl.value; _deb(); });
     platEl.addEventListener('change', function () { _imgFacets.platform = platEl.value; _reload(); });
     rarEl.addEventListener('change', function () { _imgFacets.rarity = rarEl.value; _reload(); });
+    styleEl.addEventListener('change', function () { _imgFacets.style = styleEl.value; _reload(); });
+    tagEl.addEventListener('change', function () { _imgFacets.tag = tagEl.value; _reload(); });
 
     // Clic carte → fiche/drawer d'achat (recette masquée avant achat). On NE
     // rouvre PAS le drawer pour une image déjà possédée / dont on est l'auteur.

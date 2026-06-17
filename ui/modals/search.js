@@ -110,6 +110,21 @@
     { label: 'Comics',       val: 'comics'       },
     { label: 'Photo',        val: 'photo'        },
   ];
+  // Tags d'usage image (11, dont fx) — filtre /images?tag=<code> (présence).
+  // `val` = codes backend (routers/images.py), libellés FR pour l'affichage.
+  const USAGE_CHIPS_IMG = [
+    { label: 'Cover',        val: 'cover'        },
+    { label: 'Portrait',     val: 'portrait'     },
+    { label: 'Paysage',      val: 'paysage'      },
+    { label: 'Logo',         val: 'logo'         },
+    { label: 'Bannière',     val: 'banniere'     },
+    { label: 'Avatar',       val: 'avatar'       },
+    { label: 'Wallpaper',    val: 'wallpaper'    },
+    { label: 'Mockup',       val: 'mockup'       },
+    { label: 'Illustration', val: 'illustration' },
+    { label: 'Texture',      val: 'texture'      },
+    { label: 'FX',           val: 'fx'           },
+  ];
 
   // ── Styles ────────────────────────────────────────────────────────────
   function injectStyles() {
@@ -226,6 +241,12 @@
 }
 .ss-nature-btn:hover { border-color: rgba(204,136,255,.5); color:#cc88ff; }
 .ss-nature-btn.is-active { border-color: rgba(204,136,255,.85); background: rgba(204,136,255,.2); color:#fff; }
+
+/* Sous-titre « Usage » au-dessus des chips de tags d'usage (mode Images) */
+.ss-usage-sub {
+  padding: 2px 16px 4px; font-size: 9px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: rgba(204,136,255,.5);
+}
 
 /* Cards images dans la recherche */
 .ss-img-card { display:flex; align-items:center; gap:11px; padding:8px 14px; cursor:pointer; transition:background .1s ease; }
@@ -391,6 +412,8 @@
   // Multi-select : Sets de valeurs actives par colonne
   let activeConnectChips = new Set();
   let activeDnaChips     = new Set();
+  // Tags d'usage actifs (mode Images uniquement) — filtre /images?tag=
+  let activeUsageChips   = new Set();
   // Facette nature de la colonne droite : 'sons' (défaut) | 'images' (C4 ③)
   let dnaNature          = 'sons';
 
@@ -446,6 +469,9 @@
               </span>
             </div>
             <div class="smyle-search-chips" id="ss-dna-chips">${dnaChipsHtml}</div>
+            <!-- Tags d'usage (mode Images uniquement) — filtre complémentaire /images?tag= -->
+            <div class="ss-usage-sub" id="ss-usage-sub" style="display:none">Usage</div>
+            <div class="smyle-search-chips" id="ss-usage-chips" style="display:none"></div>
             <div class="smyle-search-results" id="ss-results-dna" aria-live="polite"></div>
           </div>
 
@@ -520,6 +546,11 @@
       const chip = e.target.closest('.smyle-search-chip');
       if (chip && dnaChipsBox.contains(chip)) onChipClick(chip, 'dna');
     });
+    const usageChipsBox = modalRoot.querySelector('#ss-usage-chips');
+    if (usageChipsBox) usageChipsBox.addEventListener('click', e => {
+      const chip = e.target.closest('.smyle-search-chip');
+      if (chip && usageChipsBox.contains(chip)) onChipClick(chip, 'usage');
+    });
 
     // Facette nature Sons / Images (C4 ③) — bascule la colonne droite ET les
     // deux jeux de chips (CONNECT rôles + DNA styles/moods).
@@ -590,6 +621,7 @@
     // Reset chips à la fermeture
     activeConnectChips.clear();
     activeDnaChips.clear();
+    activeUsageChips.clear();
     if (inputEl) inputEl.value = '';
     lastQuery = '';
   }
@@ -611,6 +643,7 @@
     const isImg = nat === 'images';
     activeConnectChips.clear();
     activeDnaChips.clear();
+    activeUsageChips.clear();
 
     const connectBox = modalRoot.querySelector('#ss-connect-chips');
     if (connectBox) {
@@ -625,6 +658,14 @@
       // s'appliquaient qu'aux sons) → on les laisse visibles.
       dnaBox.style.display = '';
     }
+    // Tags d'usage : visibles UNIQUEMENT en mode Images (filtre /images?tag=).
+    const usageSub = modalRoot.querySelector('#ss-usage-sub');
+    const usageBox = modalRoot.querySelector('#ss-usage-chips');
+    if (usageBox) {
+      usageBox.innerHTML = isImg ? USAGE_CHIPS_IMG.map(c => chipHtml(c, 'dna-chip')).join('') : '';
+      usageBox.style.display = isImg ? '' : 'none';
+    }
+    if (usageSub) usageSub.style.display = isImg ? '' : 'none';
     const connectLbl = modalRoot.querySelector('#ss-connect-hdr-lbl');
     if (connectLbl) connectLbl.textContent = isImg ? 'CONNECT — Créateurs visuels' : 'CONNECT — Artistes';
     const dnaLbl = modalRoot.querySelector('#ss-dna-hdr-lbl');
@@ -633,7 +674,9 @@
 
   function onChipClick(chip, side) {
     const val = chip.dataset.val;
-    const set  = side === 'connect' ? activeConnectChips : activeDnaChips;
+    const set  = side === 'connect' ? activeConnectChips
+               : side === 'usage'   ? activeUsageChips
+               : activeDnaChips;
     if (set.has(val)) {
       set.delete(val);
       chip.classList.remove('is-active');
@@ -662,19 +705,19 @@
     // Mode Images (C4) : la colonne droite cherche des images, filtrées par
     // TEXTE et/ou STYLE (les chips DNA portent désormais des codes de style).
     const doRight   = imageMode
-      ? (hasQ || (dnaChips && dnaChips.size > 0))
+      ? (hasQ || (dnaChips && dnaChips.size > 0) || activeUsageChips.size > 0)
       : (hasQ || (dnaChips && dnaChips.size > 0));
     if (doArtists) setLoading(connectEl); else renderArtists([], q);
     if (doRight)   setLoading(dnaEl);     else (imageMode ? renderImages([], q) : renderTracks([], q));
     const [artists, right] = await Promise.all([
       doArtists ? fetchArtists(q, connectChips) : Promise.resolve([]),
-      doRight   ? (imageMode ? fetchImages(q, dnaChips) : fetchTracks(q, dnaChips)) : Promise.resolve([]),
+      doRight   ? (imageMode ? fetchImages(q, dnaChips, activeUsageChips) : fetchTracks(q, dnaChips)) : Promise.resolve([]),
     ]);
     if (doArtists && connectEl) renderArtists(artists, q);
     if (doRight && dnaEl) { if (imageMode) renderImages(right, q); else renderTracks(right, q); }
   }
 
-  async function fetchImages(q, stylesSet) {
+  async function fetchImages(q, stylesSet, usageSet) {
     try {
       const params = new URLSearchParams({ q: q || '', limit: '12' });
       // C4 — filtre par STYLE (égalité stricte côté backend ?style=<code>).
@@ -682,6 +725,11 @@
       // on envoie le 1er sélectionné (le style est la facette prioritaire).
       if (stylesSet && stylesSet.size > 0) {
         params.append('style', stylesSet.values().next().value);
+      }
+      // Tag d'usage (présence côté backend ?tag=<code>). Multi-sélection côté
+      // UI mais on reste simple : on envoie le 1er tag sélectionné.
+      if (usageSet && usageSet.size > 0) {
+        params.append('tag', usageSet.values().next().value);
       }
       const res = await fetch(`${API_BASE}/images?${params}`, { credentials: 'omit' });
       if (!res.ok) return [];
