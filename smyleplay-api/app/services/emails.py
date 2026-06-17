@@ -187,6 +187,9 @@ async def send_purchase_emails(
             if item_kind == "adn":
                 artist = (seller.artist_name if seller else None) or "l'artiste"
                 title = f"ADN musical de {artist}"
+            elif item_kind == "visual_adn":
+                artist = (seller.artist_name if seller else None) or "l'artiste"
+                title = f"ADN visuel de {artist}"
             else:
                 title = "ta création" if item_kind == "prompt" else "une voix"
 

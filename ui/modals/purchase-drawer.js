@@ -30,6 +30,8 @@
     // juste le type pour adapter les repères/toasts.
     'image':      '/unlocks/prompts/',
     'adn-artist': '/unlocks/adns/',
+    // C4 — ADN Visuel artiste (signature visuelle, mirror de l'ADN musical).
+    'visual-adn': '/unlocks/visual-adns/',
     'voix':       '/unlocks/voices/',
     'playlist':   '/unlocks/playlist-adn/',
   };
@@ -37,6 +39,7 @@
     'son':        '🧬 Recette + fichier',
     'image':      '🖼️ Recette + image originale',
     'adn-artist': '🧬 ADN d’artiste',
+    'visual-adn': '🎨 ADN visuel d’artiste',
     'voix':       '🎙 Voix',
     'playlist':   '🎚 ADN de playlist',
   };
@@ -44,6 +47,7 @@
     'son':        'Exemplaire débloqué 🔓 — fichier + recette dans ta bibliothèque',
     'image':      'Image débloquée 🔓 — recette + original dans ta bibliothèque',
     'adn-artist': 'ADN débloqué 🧬 — retrouve-le dans ta bibliothèque',
+    'visual-adn': 'ADN visuel débloqué 🎨 — retrouve-le dans ta bibliothèque',
     'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
     'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
   };

@@ -9,7 +9,7 @@
   <!-- Chemins ABSOLUS obligatoires : l'URL /artiste/<slug> ajoute un
        segment dans le path, donc un href relatif "artiste.css" serait
        résolu en "/artiste/artiste.css" (404). -->
-  <link rel="stylesheet" href="/artiste.css?v=20260613c" />
+  <link rel="stylesheet" href="/artiste.css?v=20260617c4vadn" />
   <!-- Phase 4 refonte architecture : topbar partagée (ui/topbar/topbar.js).
        Remplace l'ex-header .ap-topbar spécifique à cette page. -->
   <link rel="stylesheet" href="/topbar.css" />
@@ -308,8 +308,13 @@
          • ADN possédé          → .ap-relic--owned (bord doré, pas de bouton)
        Règle absolue : le contenu ADN n'est JAMAIS visible sans achat
        (le backend n'expose que characterCount — pas de teaser textuel). -->
-  <section class="ap-relic" id="ap-dna-card" style="display:none"
-           aria-label="ADN de l'artiste">
+  <!-- C4 ADN Visuel artiste (2026-06-17) — les deux reliques (Musique +
+       Visuel) sont désormais côte à côte dans une grille compacte 2 colonnes,
+       empilées sur mobile. Rendues par renderDna(artist) (#ap-dna-*) et
+       renderVisualDna(artist) (#ap-vdna-*). Le génome reste TOUJOURS gaté. -->
+  <div class="ap-relics-grid" id="ap-relics-grid">
+  <section class="ap-relic ap-relic--compact" id="ap-dna-card" style="display:none"
+           aria-label="ADN musical de l'artiste">
     <div class="ap-relic-frame">
       <div class="ap-relic-body">
 
@@ -361,6 +366,64 @@
       </div>
     </div>
   </section>
+
+  <!-- ═══ C4 — RELIQUE ADN VISUEL (jumelle de l'ADN musical) ═════════════
+       Rendue par renderVisualDna(artist) — lit artist.visualAdn (GATÉ :
+       characterCount / style / priceCredits / rareté ; JAMAIS description
+       ni palette). États identiques à l'ADN musical. Achat via
+       unlockVisualDnaFromProfile() → POST /unlocks/visual-adns/{id}. -->
+  <section class="ap-relic ap-relic--compact ap-relic--visual" id="ap-vdna-card" style="display:none"
+           aria-label="ADN visuel de l'artiste">
+    <div class="ap-relic-frame">
+      <div class="ap-relic-body">
+
+        <div class="ap-relic-head">
+          <div class="ap-relic-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.6"/>
+              <path d="M21 15l-5-5L5 21"/>
+            </svg>
+          </div>
+          <div class="ap-relic-titles">
+            <div class="ap-relic-eyebrow">Signature visuelle</div>
+            <h3 class="ap-relic-title">ADN visuel <span id="ap-vdna-artist"></span></h3>
+          </div>
+          <div class="ap-relic-edition" id="ap-vdna-edition" style="display:none"></div>
+        </div>
+
+        <p class="ap-relic-teaser" id="ap-vdna-teaser"></p>
+        <div class="ap-relic-meta" id="ap-vdna-meta"></div>
+
+        <div class="ap-relic-owned" id="ap-vdna-owned" style="display:none">
+          🎨 Tu détiens cet ADN visuel
+        </div>
+
+        <div class="ap-relic-actions" id="ap-vdna-actions">
+          <div class="ap-relic-price">
+            <span id="ap-vdna-price">—</span>
+            <span class="ap-relic-price-unit">Smyles</span>
+          </div>
+          <button type="button" class="ap-relic-unlock-btn"
+                  id="ap-vdna-unlock-btn" onclick="unlockVisualDnaFromProfile()">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+            </svg>
+            <span id="ap-vdna-unlock-label">Débloquer</span>
+          </button>
+          <span class="ap-relic-perk">−30&nbsp;% sur les images de l'artiste</span>
+        </div>
+
+        <div class="ap-relic-empty" id="ap-vdna-empty" style="display:none">
+          <p class="ap-relic-empty-msg">Crée ton ADN visuel — les fans paient pour ta signature graphique.</p>
+          <a href="/dashboard" class="ap-relic-empty-cta">⚡ Créer mon ADN visuel sur le WATT BOARD</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+  </div><!-- /.ap-relics-grid -->
 
   <!-- ═══ Playlists ADN — accordéon juste sous la card ADN ═════════════════
        Chaque playlist avec adn_for_sale=True est affichée ici comme item
@@ -649,9 +712,9 @@
 <script src="/ui/core/trade-view.js" defer></script>
 <script src="/ui/topbar/topbar.js?v=20260613a" defer></script>
 <!-- C2 — drawer d'achat unifié -->
-<script src="/ui/modals/purchase-drawer.js?v=20260616c4oc"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20260617c4vadn"></script>
 <script src="/ui/playlists.js?v=20260615c4l5" defer></script>
-<script src="/artiste.js?v=20260616c4oc"></script>
+<script src="/artiste.js?v=20260617c4vadn"></script>
 <script src="/ui/player/mini-bar.js?v=20260613a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>

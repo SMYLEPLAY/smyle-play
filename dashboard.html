@@ -1395,6 +1395,298 @@
   </section>
 
   <!-- ──────────────────────────────────────────────────────────────────────────
+       ÉCRAN — MON ADN VISUEL (signature visuelle artiste · C4)
+       ──────────────────────────────────────────────────────────────────────────
+       Mirror EXACT de l'ADN musical (#sec-dna). 1 ADN visuel par artiste — sa
+       signature visuelle vendable (≠ ADN Album qui est le génome d'UN album).
+       Endpoints (routers/marketplace.py) :
+         GET   /artist/me/visual-adn  → 200 | 404 si pas créé
+         POST  /artist/me/visual-adn  → 201 (1 max → 409)
+         PATCH /artist/me/visual-adn  → 200 (description figée après 1ère vente)
+         DELETE /artist/me/visual-adn → 204 (acheteurs gardent leur accès)
+       Logique JS : loadMyVisualAdn / openVisualAdnEditor / saveVisualAdn /
+       toggleVisualAdnPublish / deleteVisualAdnConfirm (dashboard.js).
+       ────────────────────────────────────────────────────────────────────────── -->
+  <section class="dash-section dash-section-sub" id="sec-visual-adn">
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">🎨</span>
+      <span class="dash-subhdr-title">Mon ADN Visuel</span>
+      <span class="dash-subhdr-sub">ta signature visuelle — vendable une fois publiée</span>
+    </div>
+
+    <!-- Bannière d'honnêteté -->
+    <p class="dash-help" style="padding:10px 14px;border-radius:10px;background:rgba(136,0,255,.08);border:1px solid rgba(136,0,255,.30);color:rgba(255,255,255,.85);font-size:12px;line-height:1.5;margin-bottom:14px;">
+      Un ADN visuel donne des résultats dans le même esprit, jamais identiques.
+      Tu vends ta signature de style, pas une copie de tes images.
+    </p>
+
+    <!-- État : pas encore d'ADN visuel (placeholder + CTA "créer") -->
+    <div class="dash-adn-empty" id="dashVisualAdnEmpty">
+      <div class="dash-adn-empty-icon">
+        <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:.35">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.6"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+      </div>
+      <div class="dash-adn-empty-title">Pas encore d'ADN visuel défini</div>
+      <div class="dash-adn-empty-sub">
+        Ton ADN visuel est la recette de ta signature graphique : style
+        dominant, palette, ambiances, références, esthétique. Les fans peuvent
+        l'acheter pour générer des images dans ton esprit ; le posséder leur
+        déclenche un bonus −30 % sur toutes tes images mises en vente.
+      </div>
+      <button type="button" class="dash-btn-primary" onclick="openVisualAdnEditor()">
+        <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Créer mon ADN visuel
+      </button>
+    </div>
+
+    <!-- État : ADN visuel existant (résumé + actions) -->
+    <div class="dash-adn-summary" id="dashVisualAdnSummary" style="display:none">
+      <div class="dash-adn-summary-hdr">
+        <div class="dash-adn-summary-titles">
+          <div class="dash-adn-summary-eyebrow">Signature visuelle · ADN</div>
+          <div class="dash-adn-summary-status" id="dashVisualAdnStatus">Brouillon</div>
+        </div>
+        <div class="dash-adn-summary-price">
+          <span id="dashVisualAdnPriceVal">—</span>
+          <span class="dash-adn-summary-price-unit">crédits</span>
+        </div>
+      </div>
+      <p class="dash-adn-summary-desc" id="dashVisualAdnDescPreview"></p>
+      <div class="dash-adn-summary-meta" id="dashVisualAdnSummaryMeta"></div>
+      <div class="dash-adn-summary-actions">
+        <button type="button" class="dash-btn-secondary" onclick="openVisualAdnEditor()">
+          Modifier
+        </button>
+        <button type="button" class="dash-btn-primary"
+                id="dashVisualAdnTogglePublishBtn" onclick="toggleVisualAdnPublish()">
+          Publier
+        </button>
+        <button type="button" class="dash-btn-ghost" style="color:var(--color-danger,#e53e3e);border-color:var(--color-danger,#e53e3e)"
+                id="dashVisualAdnDeleteBtn" onclick="deleteVisualAdnConfirm()">
+          Supprimer
+        </button>
+      </div>
+      <div class="dash-adn-lock-note" id="dashVisualAdnLockNote" style="display:none">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="10" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+        </svg>
+        La description est verrouillée — un acheteur l'a déjà acquise. Tu peux
+        encore modifier le guide d'usage, les exemples, le style, la palette
+        et le prix.
+      </div>
+    </div>
+
+    <!-- Éditeur inline (toggle via openVisualAdnEditor / closeVisualAdnEditor) -->
+    <div class="dash-adn-editor" id="dashVisualAdnEditor" style="display:none">
+      <div class="dash-adn-editor-inner">
+        <div class="dash-adn-editor-hdr">
+          <h3 class="dash-adn-editor-title" id="dashVisualAdnEditorTitle">Créer mon ADN visuel</h3>
+          <button type="button" class="dash-adn-editor-close" onclick="closeVisualAdnEditor()" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="dash-field-col">
+          <label class="dash-label">
+            Description complète <span class="dash-req">*</span>
+          </label>
+          <textarea class="dash-textarea" id="dashVisualAdnDescription" rows="8"
+            placeholder="Décris ta signature visuelle en détail : style dominant, ambiances, palette, textures, références (artistes, films, courants), ce qui rend tes images reconnaissables… Min. 200 caractères."></textarea>
+          <div class="dash-help" id="dashVisualAdnDescHelp">
+            Min. 200 chars — c'est le génome que l'acheteur reçoit après
+            déblocage. Plus c'est précis, plus ton ADN visuel a de valeur.
+          </div>
+
+          <label class="dash-label">
+            Style dominant <span class="dash-req">*</span>
+          </label>
+          <select class="dash-input" id="dashVisualAdnStyle">
+            <option value="">— Choisir un style —</option>
+            <option value="realiste">Réaliste</option>
+            <option value="cartoon">Cartoon</option>
+            <option value="anime">Anime</option>
+            <option value="3d">3D / Render</option>
+            <option value="peinture">Peinture</option>
+            <option value="aquarelle">Aquarelle</option>
+            <option value="croquis">Croquis</option>
+            <option value="pixel_art">Pixel art</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="fantasy">Fantasy</option>
+            <option value="minimaliste">Minimaliste</option>
+            <option value="retro">Rétro</option>
+            <option value="abstrait">Abstrait</option>
+            <option value="surrealiste">Surréaliste</option>
+            <option value="comics">Comics</option>
+            <option value="photo">Photo</option>
+          </select>
+          <div class="dash-help">Badge public affiché sur ta carte ADN visuel.</div>
+
+          <label class="dash-label">Palette / mots-clés (optionnel)</label>
+          <input type="text" class="dash-input" id="dashVisualAdnPalette" maxlength="255"
+                 placeholder="ex : néon mauve, chrome, brouillard nocturne" />
+          <div class="dash-help">🔒 La palette fait partie du génome — masquée publiquement, révélée à l'acheteur.</div>
+
+          <label class="dash-label">Guide d'usage (optionnel)</label>
+          <textarea class="dash-textarea" id="dashVisualAdnUsageGuide" rows="4"
+            placeholder="Comment utiliser ton ADN visuel : quels prompts fonctionnent, ce qu'il faut éviter, les combinaisons qui marchent…"></textarea>
+
+          <label class="dash-label">Exemples de rendus (optionnel)</label>
+          <textarea class="dash-textarea" id="dashVisualAdnExampleOutputs" rows="4"
+            placeholder="Liens / titres / références d'images qui incarnent bien ton ADN visuel."></textarea>
+
+          <label class="dash-label">
+            Prix en crédits <span class="dash-req">*</span>
+          </label>
+          <input type="number" class="dash-input" id="dashVisualAdnPrice"
+                 min="30" max="500" value="80"
+                 oninput="dashUpdateEurPreview('dashVisualAdnPrice','dashVisualAdnPriceEur')" />
+          <div class="dash-help" id="dashVisualAdnPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
+          <div class="dash-help">Entre 30 et 500 crédits. Plus le prix est élevé, plus la rareté doit le justifier.</div>
+
+          <label class="dash-label">IA utilisée (optionnel)</label>
+          <select class="dash-input" id="dashVisualAdnAiReference">
+            <option value="">— Aucune / non précisé —</option>
+            <option value="chatgpt">ChatGPT</option>
+            <option value="claude">Claude</option>
+            <option value="grok">Grok</option>
+            <option value="gemini">Gemini</option>
+            <option value="mistral">Mistral</option>
+            <option value="perplexity">Perplexity</option>
+            <option value="autre">Autre</option>
+          </select>
+          <div class="dash-help">Affiché publiquement comme badge sur ta carte ADN visuel.</div>
+
+          <label class="dash-label">Combien d'éditions à vendre ?</label>
+          <input type="number" class="dash-input" id="dashVisualAdnMaxSupply"
+                 min="1"
+                 placeholder="Laisser vide = illimité"
+                 oninput="dashVisualAdnUpdateRarityPreview()" />
+          <div class="dash-help" id="dashVisualAdnRarityPreview" style="margin-top:8px;font-weight:500;">
+            Tape un nombre pour voir le tier de rareté.
+          </div>
+          <div class="dash-help" style="margin-top:8px;line-height:1.6;font-size:11px;opacity:0.75;">
+            <strong>Grille rareté :</strong><br>
+            👑 <strong>1</strong> = Mythic (pièce unique 1/1)<br>
+            ⭐ <strong>2 à 10</strong> = Legendary (drop VIP)<br>
+            💎 <strong>11 à 10 000</strong> = Limited (édition limitée)<br>
+            🟢 <strong>10 001 et plus</strong> = Open (édition ouverte)<br>
+            <em>Vide</em> = illimité (pas de badge rareté)
+          </div>
+        </div>
+
+        <div class="dash-adn-editor-actions">
+          <button type="button" class="dash-btn-ghost" onclick="closeVisualAdnEditor()">Annuler</button>
+          <button type="button" class="dash-btn-primary" onclick="saveVisualAdn()">
+            <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────────────────────────────────────
+       ÉCRAN — CRÉER UN ADN VISUEL (C4 ADN Album)
+       ──────────────────────────────────────────────────────────────────────────
+       Parallèle de l'ADN musical (#sec-dna) pour le monde Visuel. L'ADN visuel
+       est le génome de style d'un ALBUM (backend déjà en prod). On sélectionne
+       (ou crée) un album, puis on remplit / met en vente son génome de style.
+       Endpoints réutilisés (aucun nouveau) :
+         GET /albums/me · POST /albums · GET /albums/{id} · PATCH /albums/{id}.
+       Règle backend : l'ADN ne se vend que si l'album est PUBLIC + for_sale + prix.
+       Owner-only : le génome (seed_prompt) est ici légitimement visible (c'est
+       le sien). Wording honnête obligatoire. Logique : module #advScript ci-dessous.
+       ────────────────────────────────────────────────────────────────────────── -->
+  <section class="dash-section dash-section-sub" id="sec-adn-visuel">
+    <div class="dash-subhdr">
+      <span class="dash-subhdr-num">🎨</span>
+      <span class="dash-subhdr-title">Créer un ADN visuel</span>
+      <span class="dash-subhdr-sub">le génome de style d'un album — vendable une fois l'album public</span>
+    </div>
+
+    <!-- Bannière d'honnêteté -->
+    <p class="dash-help" style="padding:10px 14px;border-radius:10px;background:rgba(136,0,255,.08);border:1px solid rgba(136,0,255,.30);color:rgba(255,255,255,.85);font-size:12px;line-height:1.5;margin-bottom:14px;">
+      Un ADN visuel donne des résultats dans le même esprit, jamais identiques.
+      Tu vends la recette de style, pas une copie.
+    </p>
+
+    <!-- Sélecteur d'album -->
+    <div class="dash-field-col">
+      <label class="dash-label" for="advAlbumSelect">Album</label>
+      <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+        <select class="dash-input" id="advAlbumSelect" style="flex:1;min-width:200px;">
+          <option value="">— Chargement… —</option>
+        </select>
+        <button type="button" class="dash-btn-secondary" id="advNewAlbumBtn">+ Nouvel album</button>
+      </div>
+      <div class="dash-help" id="advAlbumHint">Choisis l'album dont tu veux vendre le génome de style.</div>
+    </div>
+
+    <!-- Avertissement visibilité (album privé) -->
+    <div class="dash-adn-lock-note" id="advPrivateNotice" style="display:none;margin-top:8px;">
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+      </svg>
+      Passe l'album en public pour vendre son ADN. Tu peux quand même remplir et
+      enregistrer le génome en brouillon ici.
+    </div>
+
+    <!-- Formulaire génome (caché tant qu'aucun album sélectionné) -->
+    <div class="dash-field-col" id="advForm" style="display:none;margin-top:14px;">
+      <label class="dash-adn-toggle-label" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <input type="checkbox" id="advForSale" /> <span>🎨 Mettre l'ADN de cet album en vente</span>
+      </label>
+
+      <label class="dash-label" for="advPrice">Prix en Smyles (1 – 100 000)</label>
+      <input type="number" class="dash-input" id="advPrice" min="1" max="100000" placeholder="ex : 50" />
+
+      <label class="dash-label" for="advStyle">Style dominant</label>
+      <select class="dash-input" id="advStyle">
+        <option value="">— Aucun style —</option>
+        <option value="realiste">Réaliste</option>
+        <option value="cartoon">Cartoon</option>
+        <option value="anime">Anime</option>
+        <option value="3d">3D / Render</option>
+        <option value="peinture">Peinture</option>
+        <option value="aquarelle">Aquarelle</option>
+        <option value="croquis">Croquis</option>
+        <option value="pixel_art">Pixel art</option>
+        <option value="cyberpunk">Cyberpunk</option>
+        <option value="fantasy">Fantasy</option>
+        <option value="minimaliste">Minimaliste</option>
+        <option value="retro">Rétro</option>
+        <option value="abstrait">Abstrait</option>
+        <option value="surrealiste">Surréaliste</option>
+        <option value="comics">Comics</option>
+        <option value="photo">Photo</option>
+      </select>
+
+      <label class="dash-label" for="advPalette">Palette / mots-clés <span style="opacity:.6;font-weight:400;">(teaser visible)</span></label>
+      <input type="text" class="dash-input" id="advPalette" maxlength="255" placeholder="ex : néon mauve, chrome, brouillard nocturne" />
+
+      <label class="dash-label" for="advDesc">Description publique <span style="opacity:.6;font-weight:400;">(teaser court — visible avant achat)</span></label>
+      <textarea class="dash-textarea" id="advDesc" rows="2" maxlength="2000" placeholder="Décris l'esprit de cet ADN sans révéler la recette…"></textarea>
+
+      <label class="dash-label" for="advSeed">Génome — la recette de style vendue <span style="opacity:.6;font-weight:400;">(verrouillé publiquement)</span></label>
+      <textarea class="dash-textarea" id="advSeed" rows="4" maxlength="10000" placeholder="Le prompt / la recette de style que l'acheteur reçoit…"></textarea>
+      <div class="dash-help">🔒 Le génome (recette + palette détaillée) reste masqué tant que la vente est active — révélé seulement à l'acheteur.</div>
+
+      <div class="dash-adn-editor-actions" style="margin-top:12px;">
+        <button type="button" class="dash-btn-primary" id="advSaveBtn">
+          <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Enregistrer l'ADN
+        </button>
+      </div>
+      <div class="dash-help" id="advErr" style="display:none;color:var(--color-danger,#e53e3e);margin-top:6px;"></div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────────────────────────────────────────
        BLOC 1c — VENDRE UNE VOIX (sous-section de Création)
        ──────────────────────────────────────────────────────────────────────────
        Permet à un·e artiste de proposer à la vente un sample vocal (recette B :
@@ -2256,11 +2548,11 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
-<script src="/ui/modals/purchase-drawer.js?v=20260616c4oc"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20260617c4vadn"></script>
 <script src="/ui/playlists.js?v=20260615c4l5" defer></script>
-<script src="dashboard.js?v=20260616c4oc"></script>
+<script src="dashboard.js?v=20260617c4vadn"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
-<script src="wattboard-v3.js?v=20260616c4adnalbum" defer></script>
+<script src="wattboard-v3.js?v=20260617c4vadn" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
 <script src="images-create.js?v=20260616c4oc" defer></script>
 <script src="images-list.js?v=20260615c4l4" defer></script>
@@ -2483,6 +2775,211 @@
       });
     });
   });
+</script>
+
+<!-- ──────────────────────────────────────────────────────────────────────────
+     ÉCRAN « Créer un ADN visuel » — logique (#sec-adn-visuel)
+     ──────────────────────────────────────────────────────────────────────────
+     Module autonome (ui/albums.js n'est pas chargé sur /dashboard). Réutilise
+     apiFetch (auth + JSON) et showToast (déjà chargés). Aucun nouvel endpoint :
+       GET /albums/me · POST /albums · GET /albums/{id} · PATCH /albums/{id}.
+     Exposé : window.AdnVisuel.init() — appelé par wattboard-v3 à l'ouverture de
+     l'écran 'adn-visuel'. Owner-only (génome = celui de l'utilisateur courant).
+     ────────────────────────────────────────────────────────────────────────── -->
+<script>
+(function initAdnVisuel() {
+  'use strict';
+  if (typeof window === 'undefined') return;
+
+  function $(id) { return document.getElementById(id); }
+  function toast(m) {
+    try { if (typeof showToast === 'function') return showToast(m); if (window.showToast) return window.showToast(m); } catch (_) {}
+  }
+
+  var albums = [];          // cache /albums/me
+  var currentAlbum = null;  // détail /albums/{id} sélectionné
+  var loaded = false;       // select peuplé au moins une fois
+
+  function isPublic(a) { return a && a.visibility === 'public'; }
+
+  // ── Peuplement du <select> via GET /albums/me ──────────────────────────────
+  function populateSelect(keepId) {
+    var sel = $('advAlbumSelect');
+    if (!sel || typeof apiFetch !== 'function') return Promise.resolve();
+    sel.innerHTML = '<option value="">— Chargement… —</option>';
+    return apiFetch('/albums/me')
+      .then(function (data) {
+        albums = Array.isArray(data) ? data : (data && (data.items || data.albums)) || [];
+        if (!albums.length) {
+          sel.innerHTML = '<option value="">— Aucun album · crée-en un —</option>';
+          var hint = $('advAlbumHint');
+          if (hint) hint.textContent = 'Aucun album pour l\'instant. Crée-en un pour lui donner un ADN visuel.';
+          showForm(false);
+          return;
+        }
+        sel.innerHTML = '<option value="">— Choisis un album —</option>' + albums.map(function (a) {
+          var tag = isPublic(a) ? '🌐 public' : '🔒 privé';
+          var label = (a.title || 'Album') + ' · ' + tag;
+          return '<option value="' + a.id + '">' + escHtml(label) + '</option>';
+        }).join('');
+        // Re-sélectionne l'album demandé (ex. après création) si présent.
+        if (keepId && albums.some(function (a) { return String(a.id) === String(keepId); })) {
+          sel.value = String(keepId);
+          onSelect();
+        }
+      })
+      .catch(function () {
+        sel.innerHTML = '<option value="">— Erreur de chargement —</option>';
+      });
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function showForm(on) { var f = $('advForm'); if (f) f.style.display = on ? '' : 'none'; }
+
+  // ── Chargement du détail + pré-remplissage (GET /albums/{id}) ──────────────
+  function onSelect() {
+    var sel = $('advAlbumSelect');
+    var id = sel && sel.value;
+    var notice = $('advPrivateNotice');
+    if (!id) { currentAlbum = null; showForm(false); if (notice) notice.style.display = 'none'; return; }
+    if (typeof apiFetch !== 'function') return;
+    apiFetch('/albums/' + encodeURIComponent(id))
+      .then(function (a) {
+        currentAlbum = a || null;
+        fillForm(a);
+        showForm(true);
+        applyVisibility(a);
+      })
+      .catch(function () { toast('Impossible de charger cet album.'); });
+  }
+
+  function fillForm(a) {
+    a = a || {};
+    var sale = !!a.adnForSale;
+    if ($('advForSale')) $('advForSale').checked = sale;
+    if ($('advPrice'))   $('advPrice').value   = a.adnPrice || '';
+    if ($('advStyle'))   $('advStyle').value   = a.adnStyle || '';
+    if ($('advPalette')) $('advPalette').value = a.adnPalette || '';
+    if ($('advDesc'))    $('advDesc').value    = a.dnaDescription || '';
+    // seedPrompt n'est exposé qu'à l'owner → ici légitime (c'est son album).
+    if ($('advSeed'))    $('advSeed').value    = a.seedPrompt || '';
+    var err = $('advErr'); if (err) err.style.display = 'none';
+  }
+
+  // Règle public-requis : album privé → on désactive la mise en vente.
+  function applyVisibility(a) {
+    var pub = isPublic(a);
+    var notice = $('advPrivateNotice');
+    var chk = $('advForSale');
+    if (notice) notice.style.display = pub ? 'none' : '';
+    if (chk) {
+      chk.disabled = !pub;
+      if (!pub) chk.checked = false;   // pas de vente sur un album privé
+    }
+  }
+
+  // ── Sauvegarde / mise en vente (PATCH /albums/{id}) ────────────────────────
+  function save() {
+    if (!currentAlbum) return;
+    var pub = isPublic(currentAlbum);
+    var btn = $('advSaveBtn');
+    var err = $('advErr');
+    var sale = !!($('advForSale') && $('advForSale').checked && pub);
+    var price = sale ? (parseInt($('advPrice').value, 10) || null) : (parseInt($('advPrice').value, 10) || null);
+    var style = ($('advStyle') && $('advStyle').value) || '';
+    var palette = ($('advPalette') && $('advPalette').value || '').trim();
+    var desc = ($('advDesc') && $('advDesc').value || '').trim();
+    var seed = ($('advSeed') && $('advSeed').value || '').trim();
+
+    function fail(msg) { if (err) { err.textContent = msg; err.style.display = 'block'; } }
+
+    if (sale && !price) { fail('Fixe un prix en Smyles pour activer la vente de l\'ADN.'); return; }
+    if (sale && !seed)  { fail('Écris le génome — on ne vend pas une recette vide.'); return; }
+
+    var patch = { adn_for_sale: sale };
+    patch.adn_price       = sale ? price : (price || null);
+    patch.adn_style       = style || null;
+    patch.adn_palette     = palette || null;
+    patch.dna_description = desc || null;
+    if (seed) patch.seed_prompt = seed;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Sauvegarde…'; }
+    if (err) err.style.display = 'none';
+    apiFetch('/albums/' + encodeURIComponent(currentAlbum.id), { method: 'PATCH', json: patch })
+      .then(function (a) {
+        currentAlbum = a || currentAlbum;
+        toast(sale ? 'ADN en vente ✓' : 'ADN enregistré ✓');
+        if (btn) { btn.disabled = false; resetSaveLabel(); }
+        return populateSelect(currentAlbum.id);
+      })
+      .catch(function (e) {
+        if (btn) { btn.disabled = false; resetSaveLabel(); }
+        fail((e && e.status === 404) ? 'Action non autorisée.' : 'Échec de l\'enregistrement.');
+      });
+  }
+
+  function resetSaveLabel() {
+    var btn = $('advSaveBtn');
+    if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Enregistrer l\'ADN';
+  }
+
+  // ── Création d'album à la volée (POST /albums) → puis sélection ────────────
+  function createAlbum() {
+    var title = window.prompt('Titre du nouvel album :');
+    if (title == null) return;
+    var t = title.trim();
+    if (!t) { toast('Titre requis.'); return; }
+    var pub = window.confirm('Album PUBLIC ? (OK = public · Annuler = privé)\n\nUn ADN ne se vend que si l\'album est public.');
+    if (typeof apiFetch !== 'function') return;
+    apiFetch('/albums', { method: 'POST', json: { title: t, visibility: pub ? 'public' : 'private' } })
+      .then(function (a) {
+        toast('Album « ' + t + ' » créé ✓');
+        return populateSelect(a && a.id);
+      })
+      .catch(function (e) { toast('Création impossible (' + ((e && e.status) || 'erreur') + ').'); });
+  }
+
+  // ── Câblage (idempotent) ───────────────────────────────────────────────────
+  function wire() {
+    var sel = $('advAlbumSelect');
+    if (sel && !sel.dataset.advWired) { sel.dataset.advWired = '1'; sel.addEventListener('change', onSelect); }
+    var nb = $('advNewAlbumBtn');
+    if (nb && !nb.dataset.advWired) { nb.dataset.advWired = '1'; nb.addEventListener('click', createAlbum); }
+    var sb = $('advSaveBtn');
+    if (sb && !sb.dataset.advWired) { sb.dataset.advWired = '1'; sb.addEventListener('click', save); }
+    var chk = $('advForSale');
+    if (chk && !chk.dataset.advWired) {
+      chk.dataset.advWired = '1';
+      chk.addEventListener('change', function () {
+        // Garde-fou UX : un album privé ne peut pas activer la vente.
+        if (chk.checked && currentAlbum && !isPublic(currentAlbum)) {
+          chk.checked = false;
+          toast('Passe l\'album en public pour vendre son ADN.');
+        }
+      });
+    }
+  }
+
+  // Init appelé à l'ouverture de l'écran (par wattboard-v3) ou au chargement.
+  function init() {
+    if (!$('sec-adn-visuel')) return;
+    wire();
+    populateSelect();   // (re)peuple à chaque ouverture pour refléter les créations
+    loaded = true;
+  }
+
+  window.AdnVisuel = { init: init, refresh: function () { populateSelect(currentAlbum && currentAlbum.id); } };
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    wire();
+  } else {
+    document.addEventListener('DOMContentLoaded', wire);
+  }
+})();
 </script>
 
 <!-- Messagerie 1:1 (Phase C) -->

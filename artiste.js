@@ -286,6 +286,7 @@ function renderProfile() {
   // voit un fan "pur". Cf. discussion vision / organisation.
   renderPlaylistsAdn(artist);
   renderDna(artist);
+  renderVisualDna(artist);    // C4 — relique ADN visuel (jumelle de l'ADN musical)
   renderAdnChip(artist);      // U8 — chip ADN inline hero
   // C3 ① — renderBioPreview supprimée (la bio vit dans le bloc identité)
   renderPlayAllBtn(artist);   // U8 — bouton écouter tout
@@ -1374,6 +1375,166 @@ async function _applyAdnOwnedState(card, adnId) {
   hide('ap-relic-actions');
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADN VISUEL artiste — relique #ap-vdna-card (jumelle de renderDna)
+   ─────────────────────────────────────────────────────────────────────────
+   Lit artist.visualAdn (payload PUBLIC GATÉ : id, characterCount, priceCredits,
+   style, hasUsageGuide/hasExampleOutputs, rareté). Le génome (description /
+   palette / usage_guide / example_outputs) n'est JAMAIS exposé ici — le backend
+   ne l'envoie pas. États identiques à l'ADN musical.                          */
+function renderVisualDna(artist) {
+  const card = $('ap-vdna-card');
+  if (!card) return;
+  const adn = artist && artist.visualAdn;
+  const isSelf = !!(artist && artist.isSelf);
+
+  card.classList.remove('ap-relic--owned', 'ap-relic--empty');
+  hide('ap-vdna-owned');
+  hide('ap-vdna-empty');
+  show('ap-vdna-actions');
+
+  if (!adn) {
+    if (!isSelf) {
+      // Visiteur : pas d'ADN visuel en vente → carte masquée.
+      card.style.display = 'none';
+      return;
+    }
+    // Owner : relique grisée incitative → CTA WATT BOARD.
+    card.style.display = '';
+    card.classList.add('ap-relic--empty');
+    setText('ap-vdna-artist', artist.artistName || '');
+    hide('ap-vdna-actions');
+    hide('ap-vdna-edition');
+    setText('ap-vdna-teaser', '');
+    const metaEmpty = $('ap-vdna-meta');
+    if (metaEmpty) metaEmpty.innerHTML = '';
+    show('ap-vdna-empty');
+    return;
+  }
+
+  card.style.display = '';
+  setText('ap-vdna-artist', artist.artistName || '');
+  setText('ap-vdna-price', formatCount(adn.priceCredits));
+
+  const editionEl = $('ap-vdna-edition');
+  if (editionEl) {
+    if (adn.maxSupply != null) {
+      const sold = Number(adn.soldCount || 0);
+      editionEl.textContent = adn.isSoldOut
+        ? `#${adn.maxSupply}/${adn.maxSupply}`
+        : `#${sold + 1}/${adn.maxSupply}`;
+      editionEl.style.display = '';
+    } else {
+      editionEl.style.display = 'none';
+    }
+  }
+
+  // Pas de teaser textuel — longueur seulement (génome gaté).
+  var charCount = adn.characterCount || 0;
+  var teaserEl = $('ap-vdna-teaser');
+  if (teaserEl) {
+    teaserEl.textContent = charCount > 0
+      ? charCount.toLocaleString('fr-FR') + ' caractères · contenu verrouillé'
+      : 'Contenu verrouillé';
+  }
+
+  // Badges : style (public), Guide, Exemples, IA, rareté.
+  const meta = $('ap-vdna-meta');
+  if (meta) {
+    meta.innerHTML = '';
+    if (adn.style) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge">🎨 ' + _visualStyleLabel(adn.style) + '</span>');
+    }
+    if (adn.hasUsageGuide) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge">📘 Guide d\'usage</span>');
+    }
+    if (adn.hasExampleOutputs) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge">🖼️ Exemples</span>');
+    }
+    const AI_LBL = {
+      chatgpt: '🤖 ChatGPT', claude: '🤖 Claude', grok: '🤖 Grok',
+      gemini: '🤖 Gemini', mistral: '🤖 Mistral',
+      perplexity: '🤖 Perplexity', autre: '🤖 IA'
+    };
+    if (adn.aiReference && AI_LBL[adn.aiReference]) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge">' + AI_LBL[adn.aiReference] + '</span>');
+    }
+    if (adn.isSoldOut) {
+      meta.insertAdjacentHTML('beforeend',
+        '<span class="ap-dna-badge ap-dna-badge-soldout">Épuisé</span>');
+    } else if (window.SpBadges) {
+      const rToken = _rarityTierToToken(adn.rarityTier);
+      const rHtml = (adn.rarityTier === 'mythic' && adn.maxSupply != null)
+        ? SpBadges.rarete(1, adn.maxSupply, rToken)
+        : (rToken ? SpBadges.rarete(null, null, rToken) : '');
+      if (rHtml) meta.insertAdjacentHTML('beforeend', rHtml);
+    }
+  }
+
+  const btn = $('ap-vdna-unlock-btn');
+  if (btn) {
+    if (isSelf) {
+      btn.style.display = 'none';
+    } else if (adn.isSoldOut) {
+      btn.style.display = '';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+      setText('ap-vdna-unlock-label', 'Sold out');
+    } else {
+      btn.style.display = '';
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      setText('ap-vdna-unlock-label', 'Débloquer');
+    }
+  }
+
+  if (!isSelf) {
+    _applyVisualAdnOwnedState(card, adn.id).catch(() => { /* silencieux */ });
+  }
+}
+
+// Libellés FR des 16 codes de style (mirror backend / dashboard).
+const _VISUAL_STYLE_LABELS = {
+  realiste: 'Réaliste', cartoon: 'Cartoon', anime: 'Anime', '3d': '3D / Render',
+  peinture: 'Peinture', aquarelle: 'Aquarelle', croquis: 'Croquis',
+  pixel_art: 'Pixel art', cyberpunk: 'Cyberpunk', fantasy: 'Fantasy',
+  minimaliste: 'Minimaliste', retro: 'Rétro', abstrait: 'Abstrait',
+  surrealiste: 'Surréaliste', comics: 'Comics', photo: 'Photo',
+};
+function _visualStyleLabel(code) {
+  return _VISUAL_STYLE_LABELS[code] || code;
+}
+
+// Vérifie la possession de l'ADN visuel via /me/library/visual-adns.
+async function _applyVisualAdnOwnedState(card, visualAdnId) {
+  if (!visualAdnId) return;
+  if (typeof getAuthToken !== 'function' || !getAuthToken()) return;
+  if (typeof apiFetch !== 'function') return;
+
+  if (state.ownedVisualAdnIds === undefined) {
+    try {
+      const resp = await apiFetch('/me/library/visual-adns?per_page=100');
+      state.ownedVisualAdnIds = (resp && Array.isArray(resp.items))
+        ? resp.items.map(it => String(it.visual_adn_id || it.visualAdnId || ''))
+        : [];
+    } catch (_) {
+      state.ownedVisualAdnIds = undefined; // re-tentera au prochain render
+      return;
+    }
+  }
+  if (!state.ownedVisualAdnIds || !state.ownedVisualAdnIds.includes(String(visualAdnId))) return;
+
+  card.classList.add('ap-relic--owned');
+  show('ap-vdna-owned');
+  hide('ap-vdna-actions');
+}
+
 // P1-F4 (2026-05-04) — libellés humains des enums backend pour les
 // réglages de génération exposés sur les cards prompts publiques.
 // Aligned avec PromptPlatform / PromptVocalGender (smyleplay-api).
@@ -2077,6 +2238,48 @@ async function unlockDnaFromProfile() {
     toast('ADN débloqué · -30 % sur toutes les recettes 🎉');
     // On rafraîchit le profil pour que l'état du bouton reflète le owned
     state.ownedAdnIds = undefined;
+    setTimeout(() => loadArtist(), 400);
+  } catch (err) {
+    handleUnlockError(err);
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── Unlock ADN VISUEL depuis le profil (mirror de unlockDnaFromProfile) ──
+async function unlockVisualDnaFromProfile() {
+  const artist = state.artist;
+  if (!artist || !artist.visualAdn || artist.isSelf) return;
+  const adn = artist.visualAdn;
+
+  if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {
+    window.PurchaseDrawer.open({
+      type:       'visual-adn',
+      id:         adn.id,
+      price:      adn.priceCredits,
+      title:      'ADN visuel · ' + (artist.artistName || 'Artiste'),
+      artistName: artist.artistName || '',
+      onSuccess:  () => {
+        state.ownedVisualAdnIds = undefined; // invalide le cache possession
+        setTimeout(() => loadArtist(), 400);
+      },
+    });
+    return;
+  }
+
+  // ── Fallback historique (sans drawer) ────────────────────────────────────
+  if (typeof getAuthToken === 'function' && !getAuthToken()) {
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/?auth=login&return=${returnUrl}`;
+    return;
+  }
+  const btn = $('ap-vdna-unlock-btn');
+  if (btn) btn.disabled = true;
+  try {
+    await apiFetch(`/unlocks/visual-adns/${encodeURIComponent(adn.id)}`, {
+      method: 'POST',
+    });
+    toast('ADN visuel débloqué · -30 % sur les images 🎨');
+    state.ownedVisualAdnIds = undefined;
     setTimeout(() => loadArtist(), 400);
   } catch (err) {
     handleUnlockError(err);
@@ -3515,5 +3718,6 @@ if (typeof window !== 'undefined') {
   window.saveRolesPicker  = saveRolesPicker;
   // DNA / prompts unlock depuis le profil vendeur
   window.unlockDnaFromProfile    = unlockDnaFromProfile;
+  window.unlockVisualDnaFromProfile = unlockVisualDnaFromProfile;
   window.unlockPromptFromProfile = unlockPromptFromProfile;
 }

@@ -548,11 +548,39 @@ img { max-width: 100%; display: block; }
    ADN (#7c5cff) avec lueur lente et discrète. États : --owned (bord doré,
    pas de bouton) · --empty (owner sans ADN, relique grisée incitative). */
 
+/* C4 (2026-06-17) — Grille 2 colonnes : ADN Musique | ADN Visuel, côte à côte
+   et COMPACTES. Empilées sur mobile. Les reliques compactes (.ap-relic--compact)
+   remplissent leur colonne (largeur auto) au lieu d'être pleine largeur. */
+.ap-relics-grid {
+  max-width: 980px;
+  margin: 26px auto 0;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .ap-relics-grid { grid-template-columns: 1fr; }
+}
+
 .ap-relic {
   max-width: 980px;
   margin: 26px auto 0;
   padding: 0 32px;
 }
+/* Variante compacte (dans la grille) : pas de marge/padding/max-width propre,
+   la colonne gère la largeur ; on réduit légèrement les paddings internes. */
+.ap-relics-grid .ap-relic.ap-relic--compact {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.ap-relics-grid .ap-relic--compact .ap-relic-body { padding: 16px 18px; }
+.ap-relics-grid .ap-relic--compact .ap-relic-icon { width: 38px; height: 38px; }
+.ap-relics-grid .ap-relic--compact .ap-relic-title { font-size: 16px; }
+/* Bord doré spécifique au génome visuel possédé reste géré par --owned.
+   La relique visuelle réutilise tout le style relique (twin parfait). */
 .ap-relic-frame {
   position: relative;
   border-radius: 16px;

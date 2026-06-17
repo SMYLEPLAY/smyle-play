@@ -31,7 +31,9 @@ from app.models.playlist import Playlist
 from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.models.owned_visual_adn import OwnedVisualAdn
 from app.models.user import User
+from app.models.visual_adn import VisualAdn
 from app.models.voice import Voice
 
 
@@ -597,6 +599,52 @@ async def list_user_library_album_adns(
             "owner": _artist_card(u),
         }
         for oaa, al, u in rows
+    ]
+    return items, int(total)
+
+
+async def list_user_library_visual_adns(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    page: int = 1,
+    per_page: int = 20,
+) -> tuple[list[dict], int]:
+    """
+    Liste les ADN visuels possédés par user_id, tri owned_at DESC.
+    Calque STRICT de list_user_library_adns : le génome COMPLET
+    (description + palette + example_outputs) est EXPOSÉ ici car possédé.
+    """
+    base_filter = OwnedVisualAdn.user_id == user_id
+
+    total = (await db.execute(
+        select(func.count(OwnedVisualAdn.user_id)).where(base_filter)
+    )).scalar() or 0
+
+    offset = (page - 1) * per_page
+    items_q = (
+        select(OwnedVisualAdn, VisualAdn, User)
+        .join(VisualAdn, VisualAdn.id == OwnedVisualAdn.visual_adn_id)
+        .join(User, User.id == VisualAdn.artist_id)
+        .where(base_filter)
+        .order_by(OwnedVisualAdn.owned_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    rows = (await db.execute(items_q)).all()
+    items = [
+        {
+            "visual_adn_id": str(va.id),
+            "owned_at": ova.owned_at,
+            "description": va.description,
+            "usage_guide": va.usage_guide,
+            "example_outputs": va.example_outputs,  # ← gated, OK car possédé
+            "style": va.style,
+            "palette": va.palette,                   # ← génome, OK car possédé
+            "price_credits": va.price_credits,
+            "artist": _artist_card(u),
+        }
+        for ova, va, u in rows
     ]
     return items, int(total)
 

@@ -28,7 +28,7 @@ function fmtDate(iso) {
   } catch (_) { return '—'; }
 }
 
-let _libData = { prompts: [], adns: [], playlist_adns: [], album_adns: [], voices: [] };
+let _libData = { prompts: [], adns: [], playlist_adns: [], album_adns: [], visual_adns: [], voices: [] };
 
 
 /* ── Init + auth gate ────────────────────────────────────────────────────── */
@@ -81,11 +81,12 @@ async function loadAll() {
   // directement une liste (pas un { items: [...] }) — le backend voices
   // n'est pas paginé contrairement à /me/library/prompts. On accède donc
   // à voicesRes.value directement, pas .items.
-  const [promptsRes, adnsRes, playlistAdnsRes, albumAdnsRes, voicesRes] = await Promise.allSettled([
+  const [promptsRes, adnsRes, playlistAdnsRes, albumAdnsRes, visualAdnsRes, voicesRes] = await Promise.allSettled([
     apiFetch('/me/library/prompts?per_page=100'),
     apiFetch('/me/library/adns?per_page=100'),
     apiFetch('/me/library/playlist-adns?per_page=100'),
     apiFetch('/me/library/album-adns?per_page=100'),
+    apiFetch('/me/library/visual-adns?per_page=100'),
     apiFetch('/api/voices/me/unlocked'),
   ]);
 
@@ -124,6 +125,14 @@ async function loadAll() {
     _renderError('lib-album-adns-list', albumAdnsRes.reason);
   }
 
+  // C4 ADN Visuel artiste — monde Image. Génome COMPLET exposé car possédé.
+  if (visualAdnsRes.status === 'fulfilled') {
+    _libData.visual_adns = visualAdnsRes.value.items || [];
+    renderVisualAdns(_libData.visual_adns);
+  } else {
+    _renderError('lib-visual-adns-list', visualAdnsRes.reason);
+  }
+
   if (voicesRes.status === 'fulfilled') {
     _libData.voices = Array.isArray(voicesRes.value) ? voicesRes.value : [];
     renderVoices(_libData.voices);
@@ -138,6 +147,7 @@ async function loadAll() {
   setEl('lib-count-artist-adns',   _libData.adns.length          || '—');
   setEl('lib-count-playlist-adns', _libData.playlist_adns.length || '—');
   setEl('lib-count-album-adns',    _libData.album_adns.length    || '—');
+  setEl('lib-count-visual-adns',   _libData.visual_adns.length   || '—');
 }
 
 function _renderError(containerId, err) {
@@ -782,6 +792,92 @@ function renderAlbumAdns(items) {
           ${a.dna_description ? `<div class="lib-item-desc">${esc(a.dna_description)}</div>` : ''}
           ${paletteBlock}
           ${seedBlock}
+          ${slug ? `<a href="/@${esc(slug)}" class="lib-cell-goto-btn" style="border-color:#cc88ff;color:#cc88ff">→ Voir l'univers</a>` : ''}
+        </div>
+      </details>`;
+  }).join('');
+}
+
+
+/* ── Render ADN Visuel artiste (monde Image) ──────────────────────────────────
+   Calque renderAlbumAdns. Génome COMPLET exposé (description + palette +
+   example_outputs) car possédé (cf. /me/library/visual-adns).                 */
+
+function renderVisualAdns(items) {
+  const el = getEl('lib-visual-adns-list');
+  if (!el) return;
+
+  if (!items.length) {
+    el.innerHTML = `
+      <div class="lib-empty">
+        Aucun ADN Visuel débloqué.<br>
+        <a href="/images" class="lib-empty-cta">Explorer le monde Visuel →</a>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = items.map((a, i) => {
+    const artist = a.artist || {};
+    const slug   = artist.slug || '';
+    const artistName = artist.artist_name || artist.artistName || 'Artiste';
+    const artistLink = slug
+      ? `<a href="/@${esc(slug)}">${esc(artistName)}</a>`
+      : esc(artistName);
+    const styleChip = a.style
+      ? `<span class="lib-adn-style-chip">${esc(a.style)}</span>` : '';
+
+    const descBlock = a.description ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">🧬 Génome</span>
+          <button class="lib-copy-btn" onclick="copyContent('lib-vadn-desc-${i}', this)">Copier</button>
+        </div>
+        <div class="lib-content-body" id="lib-vadn-desc-${i}">${esc(a.description)}</div>
+      </div>` : '';
+
+    const paletteBlock = a.palette ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">🎨 Palette</span>
+          <button class="lib-copy-btn" onclick="copyContent('lib-vadn-pal-${i}', this)">Copier</button>
+        </div>
+        <div class="lib-content-body" id="lib-vadn-pal-${i}">${esc(a.palette)}</div>
+      </div>` : '';
+
+    const guideBlock = a.usage_guide ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">📘 Guide d'usage</span>
+          <button class="lib-copy-btn" onclick="copyContent('lib-vadn-guide-${i}', this)">Copier</button>
+        </div>
+        <div class="lib-content-body" id="lib-vadn-guide-${i}">${esc(a.usage_guide)}</div>
+      </div>` : '';
+
+    const examplesBlock = a.example_outputs ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header">
+          <span class="lib-content-label">🖼️ Exemples</span>
+          <button class="lib-copy-btn" onclick="copyContent('lib-vadn-ex-${i}', this)">Copier</button>
+        </div>
+        <div class="lib-content-body" id="lib-vadn-ex-${i}">${esc(a.example_outputs)}</div>
+      </div>` : '';
+
+    return `
+      <details class="lib-item-cell" style="border-left:3px solid #cc88ff">
+        <summary class="lib-item-cell-hdr">
+          <span class="lib-item-cell-icon" style="color:#cc88ff">🎨</span>
+          <span class="lib-item-cell-info">
+            <span class="lib-item-cell-title">ADN visuel · ${esc(artistName)} ${styleChip}</span>
+            <span class="lib-item-cell-meta">signature visuelle · ${fmtDate(a.owned_at)}</span>
+          </span>
+          <span class="lib-item-cell-chevron">▼</span>
+        </summary>
+        <div class="lib-item-cell-body">
+          <div class="lib-item-artist">signature de ${artistLink}</div>
+          ${paletteBlock}
+          ${descBlock}
+          ${guideBlock}
+          ${examplesBlock}
           ${slug ? `<a href="/@${esc(slug)}" class="lib-cell-goto-btn" style="border-color:#cc88ff;color:#cc88ff">→ Voir l'univers</a>` : ''}
         </div>
       </details>`;

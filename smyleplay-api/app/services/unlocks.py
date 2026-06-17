@@ -209,9 +209,22 @@ async def unlock_prompt_atomic(
         # 4. Perks PYRAMIDE en cascade (cumul multiplicatif) :
         #    - profil  : buyer possède l'ADN de l'artiste → -30%
         #    - playlist: buyer possède l'ADN d'une playlist contenant ce son → -20%
-        perk_applied = await user_owns_artist_adn(
-            db, user_id=buyer_id, artist_id=artist_id
-        )
+        #
+        # Le perk PROFIL -30% a deux sources selon le type de produit :
+        #    - product_type='image' → ADN VISUEL de l'artiste (OwnedVisualAdn)
+        #    - sinon (recette/beat)  → ADN MUSICAL de l'artiste (OwnedAdn)
+        # Un détenteur d'ADN musical ne réduit donc PAS les images, et
+        # réciproquement (chaque génome cible son médium).
+        is_image = getattr(prompt_row, "product_type", "recipe") == "image"
+        if is_image:
+            from app.services.visual_adn import user_owns_artist_visual_adn
+            perk_applied = await user_owns_artist_visual_adn(
+                db, user_id=buyer_id, artist_id=artist_id
+            )
+        else:
+            perk_applied = await user_owns_artist_adn(
+                db, user_id=buyer_id, artist_id=artist_id
+            )
         from app.services.marketplace import user_owns_playlist_adn_for_prompt
         playlist_perk = await user_owns_playlist_adn_for_prompt(
             db, user_id=buyer_id, prompt_id=prompt_id

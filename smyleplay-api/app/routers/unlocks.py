@@ -442,6 +442,101 @@ async def unlock_playlist_adn(
 
 
 # -----------------------------------------------------------------------------
+# POST /unlocks/visual-adns/{visual_adn_id}  (ADN Visuel artiste)
+# -----------------------------------------------------------------------------
+
+@router.post(
+    "/visual-adns/{visual_adn_id}",
+    status_code=status.HTTP_201_CREATED,
+    summary="Achète l'ADN visuel d'un artiste",
+)
+@limiter.limit(LIMIT_PURCHASE)
+async def unlock_visual_adn(
+    visual_adn_id: UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Achète un ADN visuel (signature visuelle d'un artiste). Calque STRICT
+    de /unlocks/adns. Une fois acheté, débloque le perk -30% sur toutes les
+    IMAGES de cet artiste, et révèle le génome (description / palette) en
+    bibliothèque via /me/library/visual-adns.
+    """
+    from app.services.visual_adn import unlock_visual_adn_atomic
+
+    try:
+        result = await unlock_visual_adn_atomic(
+            db=db,
+            buyer_id=current_user.id,
+            visual_adn_id=visual_adn_id,
+        )
+        await db.commit()
+        await db.refresh(result.transaction)
+
+        # Notif 💸 au vendeur ADN visuel + email best-effort (mirror ADN).
+        if result.transaction.seller_id:
+            await create_notification(
+                db,
+                user_id=result.transaction.seller_id,
+                type=NotificationType.PURCHASE,
+                actor_id=current_user.id,
+                target_type="visual_adn",
+                target_id=visual_adn_id,
+                metadata={
+                    "amount": result.paid,
+                    "buyer_name": current_user.artist_name or "Artiste",
+                    "item_type": "visual_adn",
+                },
+            )
+            await db.commit()
+
+            try:
+                await send_purchase_emails(
+                    db,
+                    buyer=current_user,
+                    seller_id=result.transaction.seller_id,
+                    amount=result.paid,
+                    item_kind="visual_adn",
+                )
+            except Exception:
+                pass
+
+        # Parrainage (mécanique 1) : 1er achat qualifiant. Idempotent.
+        try:
+            from app.services.referrals import maybe_reward_referral
+            if await maybe_reward_referral(db, current_user.id):
+                await db.commit()
+        except Exception:
+            await db.rollback()
+
+        return {
+            "ok": True,
+            "visual_adn_id": str(visual_adn_id),
+            "paid": result.paid,
+            "message": (
+                "ADN visuel débloqué — réduction -30% sur les images de "
+                "cet artiste, génome révélé dans ta bibliothèque"
+            ),
+        }
+    except ValueError as e:
+        await db.rollback()
+        _raise_unlock_error(e)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Tu possèdes déjà l'ADN visuel de cet artiste",
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Échec de l'achat",
+        )
+
+
+# -----------------------------------------------------------------------------
 # POST /unlocks/album-adn/{album_id}  (ADN Album — génome de style visuel)
 # -----------------------------------------------------------------------------
 
