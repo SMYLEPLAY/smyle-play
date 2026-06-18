@@ -218,6 +218,24 @@
   </button>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════ BARRE CATÉGORIES -->
+<!-- C4 — étagères (raccourcis catégories) remontées EN HAUT de la marketplace,
+     au-dessus de la vitrine Smyle / de la 1ʳᵉ section. Contextuelles au mode :
+     en mode Musique → Sons / Beats / Voix ; en mode Image → Images / Avatars.
+     Le show/hide est piloté en CSS par les classes body mp-mode-musique /
+     mp-mode-image (même esprit que les sections). Affichée UNIQUEMENT sur la
+     home (CSS : masquée hors body.mp-view-home). Un avatar = une image taguée
+     usage=avatar (backend /images?tag=avatar). -->
+<nav class="mp-cat-nav" id="mp-cat-nav" aria-label="Catégories">
+  <!-- Mode Musique -->
+  <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/sons">🎵 Sons</a>
+  <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/beats">🥁 Beats</a>
+  <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/voix">🎙 Voix</a>
+  <!-- Mode Image -->
+  <a class="mp-voir-tout mp-cat-link mp-cat-image" href="/images">🖼 Images</a>
+  <a class="mp-voir-tout mp-cat-link mp-cat-image" href="/images?tag=avatar">🧑‍🎤 Avatars</a>
+</nav>
+
 <!-- ═══════════════════════════════════════════════════════════ VITRINE SMYLE -->
 <!-- Le compte officiel "Smyle" (is_official=true) apparaît en tête de la
      marketplace avec son checkmark coloré, sa bio, et ses 4 packs modèles
@@ -729,7 +747,7 @@
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
 <script src="/ui/playlists.js?v=20260615c4l5" defer></script>
 <script src="/ui/albums.js?v=20260616c4adnalbum" defer></script>
-<script src="ui/hub/marketplace.js?v=20260616c4adnalbum"></script>
+<script src="ui/hub/marketplace.js?v=20260618c4catnav"></script>
 <script src="ui/app.js"></script>
 <script src="ui/player/mini-bar.js?v=20260613a" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
