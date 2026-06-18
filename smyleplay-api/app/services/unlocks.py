@@ -351,6 +351,12 @@ async def unlock_prompt_atomic(
     await check_and_grant_achievements(
         db, user_id=artist_id, axis=AchievementAxis.ARTIST
     )
+    # Parité Monde Visuel (C4) : une VENTE d'image alimente, EN PLUS de l'axe
+    # ARTIST (médium-agnostique), l'axe IMAGE_SELLER dédié aux trophées image.
+    if getattr(prompt_row, "product_type", "recipe") == "image":
+        await check_and_grant_achievements(
+            db, user_id=artist_id, axis=AchievementAxis.IMAGE_SELLER
+        )
 
     return _UnlockPromptResult(
         unlocked_prompt=unlocked,

@@ -276,6 +276,15 @@ async def create_my_image(
         image_style=_clean_image_style(image_style),
         image_tags=_clean_image_tags(image_tags),
     )
+    # Trophées IMAGE_CREATOR (parité avec l'audio) — l'axe compte les images
+    # PUBLIÉES ; on ne hooke donc que si l'image est créée déjà publiée. Le
+    # service utilise ses propres begin_nested ; le commit final est ci-dessous.
+    if image.is_published:
+        from app.models.achievement import AchievementAxis
+        from app.services.achievements import check_and_grant_achievements
+        await check_and_grant_achievements(
+            db, user_id=current_user.id, axis=AchievementAxis.IMAGE_CREATOR
+        )
     await db.commit()
     await db.refresh(image)
     # L'artiste créateur est propriétaire → lecture complète (recette dévoilée).
@@ -536,12 +545,17 @@ async def list_public_images(
     ratio: Optional[str] = Query(default=None, max_length=20),
     style: Optional[str] = Query(default=None, max_length=40),
     tag: Optional[str] = Query(default=None, max_length=40),
+    artist_id: Optional[UUID] = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=_MAX_IMAGE_RESULTS, ge=1, le=_MAX_IMAGE_RESULTS),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
     Catalogue public d'images IA publiées (artistes publiés uniquement).
+
+    `artist_id` (optionnel) : restreint aux images publiques d'un artiste donné.
+    Sert notamment au sélecteur d'échange (Part A parité visuel) pour proposer
+    les images d'un autre artiste comme produit demandé dans un trade.
 
     Emplacement choisi : sous le router /images (même router que la création
     et le download) plutôt que dans watt_compat. Raison : cohérence — toute la
@@ -568,6 +582,8 @@ async def list_public_images(
             Prompt.bundle_exclusive.is_(False),
         )
     )
+    if artist_id is not None:
+        base = base.where(Prompt.artist_id == artist_id)
     base = _apply_image_filters(
         base,
         q=q or None,
@@ -1032,6 +1048,16 @@ async def update_my_image(
         image.image_style = _clean_image_style(data["image_style"])
     if "image_tags" in data:
         image.image_tags = _clean_image_tags(data["image_tags"])
+    # Trophées IMAGE_CREATOR — l'axe compte les images publiées ; on hooke dès
+    # qu'on touche is_published (passage draft → publié inclus). Le service est
+    # idempotent : re-hooker sur une image déjà comptée ne re-grant rien.
+    if image.is_published:
+        await db.flush()  # le count voit l'état à jour
+        from app.models.achievement import AchievementAxis
+        from app.services.achievements import check_and_grant_achievements
+        await check_and_grant_achievements(
+            db, user_id=current_user.id, axis=AchievementAxis.IMAGE_CREATOR
+        )
     await db.commit()
     await db.refresh(image)
     return await _owner_read_with_link(db, image)

@@ -19,6 +19,11 @@
   const _esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
   const _audio = (p) => (p && p.audio_url)
     ? `<audio controls preload="none" src="${p.audio_url}" style="width:100%;margin-top:6px;height:30px"></audio>` : '';
+  // Aperçu image (parité visuel) : si le prompt est une image, on montre la
+  // miniature d'aperçu (jamais l'original gaté) pour "voir avant d'accepter".
+  const _preview = (p) => (p && p.preview_url)
+    ? `<img src="${p.preview_url}" alt="" loading="lazy" style="width:100%;margin-top:6px;border-radius:6px;max-height:160px;object-fit:cover" />` : '';
+  const _media = (p) => _preview(p) + _audio(p);
 
   async function open(offerId) {
     if (!offerId) return;
@@ -64,13 +69,13 @@
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu recevrais' : 'Tu offres'}</div>
           <strong>${_esc(off.title) || '—'}</strong> · ${off.price_credits || 0} crédits
-          ${_audio(off)}
+          ${_media(off)}
         </div>
         <div style="text-align:center;opacity:.5;margin:2px 0 8px">⇄</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu donnerais' : 'Tu demandes'}</div>
           <strong>${_esc(req.title) || '—'}</strong> · ${req.price_credits || 0} crédits
-          ${_audio(req)}
+          ${_media(req)}
         </div>
         ${o.credit_supplement > 0 ? `<div style="opacity:.8;margin-bottom:8px">+ ${o.credit_supplement} crédits ${isReceiver ? 'pour toi' : 'de ta part'}</div>` : ''}
         ${o.message ? `<div style="opacity:.7;font-style:italic;margin-bottom:10px">« ${_esc(o.message)} »</div>` : ''}
