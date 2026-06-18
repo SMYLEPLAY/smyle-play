@@ -123,6 +123,13 @@
       try { if (window.ImageCreate && typeof window.ImageCreate.focus === 'function') window.ImageCreate.focus(); } catch (_) {}
       return;
     }
+    // C4 — raccourci « Créer un avatar » : MÊME écran de création d'image, mais
+    // le tag d'usage « avatar » est pré-coché. L'utilisateur peut décocher.
+    if (kind === 'avatar') {
+      openScreen('images');
+      try { if (window.ImageCreate && typeof window.ImageCreate.focus === 'function') window.ImageCreate.focus({ tag: 'avatar' }); } catch (_) {}
+      return;
+    }
     if (kind === 'adn')  { openScreen('adn');  return; }
     // C4 — « ADN visuel » du monde Visuel = la SIGNATURE VISUELLE artiste
     // (mirror de l'ADN musical), écran #sec-visual-adn.
@@ -301,6 +308,7 @@
       // (écran #sec-adn-visuel) — les deux restent accessibles.
       return '' +
         '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette (prompt + réglages) + le fichier original</em></span></button>' +
+        '<button type="button" class="wb3-create-item" data-wb3-create="avatar">🧑‍🎤 <span>Avatar<em>Même écran que « Image » avec le tag « avatar » déjà coché</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="adn-visuel">🎨 <span>ADN visuel<em>Ta signature visuelle vendable — l\'achat débloque le génome de style</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="adn-album">🎨 <span>ADN Album<em>Le génome de style d\'un album — l\'achat débloque la recette de style</em></span></button>';
     }

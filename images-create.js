@@ -427,13 +427,29 @@
     document.addEventListener('DOMContentLoaded', init);
   }
 
-  /* API publique : le WattBoard appelle focus() à l'ouverture de l'écran. */
+  /* C4 — pré-coche un chip de tag d'usage (réutilise le mécanisme .is-on).
+     Le code passé doit correspondre à un data-img-tag existant (ex. 'avatar').
+     La soumission lit déjà selectedImageTags() → le tag sera envoyé. */
+  function preselectTag(code) {
+    if (!code) return;
+    var box = $('imgcTags');
+    if (!box) return;
+    var chip = box.querySelector('.imgc-tag-chip[data-img-tag="' + code + '"]');
+    if (!chip || chip.classList.contains('is-on')) return;
+    chip.classList.add('is-on');
+    chip.setAttribute('aria-pressed', 'true');
+  }
+
+  /* API publique : le WattBoard appelle focus() à l'ouverture de l'écran.
+     focus(opts) accepte opts.tag pour pré-cocher un tag d'usage (ex. avatar). */
   window.ImageCreate = {
-    focus: function () {
+    focus: function (opts) {
       wire();
+      if (opts && opts.tag) preselectTag(opts.tag);
       var t = $('imgcTitle');
       if (t) { try { t.focus(); } catch (_) {} }
     },
+    preselectTag: preselectTag,
     reset: reset,
   };
 })();
