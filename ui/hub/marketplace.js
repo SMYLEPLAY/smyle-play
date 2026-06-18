@@ -157,7 +157,18 @@
       '.mp-hide-sons .mp-section-sons{display:none!important}' +
       '.mp-hide-artists .mp-section-artists{display:none!important}' +
       '.mp-voir-tout{display:block;text-align:center;margin:12px auto 0;padding:9px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.4);color:#c4b5fd;font-size:.82rem;font-weight:600;text-decoration:none;width:max-content;cursor:pointer}' +
-      '.mp-voir-tout:hover{background:rgba(124,58,237,.12)}';
+      '.mp-voir-tout:hover{background:rgba(124,58,237,.12)}' +
+      // C4 — barre de catégories (étagères) en HAUT, sous le commutateur de mode.
+      // Réutilise le look pilule des .mp-voir-tout. Contextuelle au mode via les
+      // classes body mp-mode-musique / mp-mode-image, et home-only.
+      '.mp-cat-nav{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:0 auto 20px;width:max-content;max-width:96%}' +
+      '.mp-cat-nav .mp-cat-link{display:inline-block;margin:0}' +
+      // Cachée par défaut (avant pose du mode), et masquée hors home.
+      '.mp-cat-link{display:none}' +
+      'body:not(.mp-view-home) .mp-cat-nav{display:none}' +
+      // Mode Musique : Sons/Beats/Voix · Mode Image : Images/Avatars.
+      '.mp-mode-musique .mp-cat-musique{display:inline-block}' +
+      '.mp-mode-image .mp-cat-image{display:inline-block}';
     document.head.appendChild(s);
   }
 
@@ -555,10 +566,11 @@
     if (_VIEW === 'home' && !needle && !_pageMoodSet.size && items.length > HOME_CAP) {
       const totalSons = items.length;
       items = items.slice().sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, HOME_CAP);
+      // C4 — Beats/Voix déplacés dans la barre de catégories du haut (.mp-cat-nav,
+      // mode-aware). On ne garde ici que « Voir tous les sons (N) » pour éviter
+      // le doublon d'étagères en bas de grille.
       _capNote = '<div style="grid-column:1/-1;display:flex;gap:10px;justify-content:center;margin-top:14px">'
         + '<a class="mp-voir-tout" href="/sons" style="margin:0">Voir tous les sons (' + totalSons + ') →</a>'
-        + '<a class="mp-voir-tout" href="/beats" style="margin:0">🥁 Étagère beats →</a>'
-        + '<a class="mp-voir-tout" href="/voix" style="margin:0">🎙 Voix →</a>'
         + '</div>';
     }
 
@@ -1359,6 +1371,21 @@
     var anchor = document.querySelector('.mp-section-sons');
     if (!anchor || !anchor.parentNode) return;
 
+    // C4 — deep-link : /images?tag=avatar (et &style=…) ouvre la grille DÉJÀ
+    // filtrée. On lit les query params AVANT le 1er fetch et on pré-remplit les
+    // facettes correspondantes (valeurs validées contre les codes backend connus
+    // pour éviter d'injecter une valeur bidon dans un <select>).
+    var _qp = new URLSearchParams(location.search);
+    var _qpTag = (_qp.get('tag') || '').trim().toLowerCase();
+    var _qpStyle = (_qp.get('style') || '').trim().toLowerCase();
+    if (_qpTag && _IMG_USAGE.some(function (o) { return o.val === _qpTag; })) {
+      _imgFacets.tag = _qpTag;
+    }
+    if (_qpStyle && _IMG_STYLES.some(function (o) { return o.val === _qpStyle; })) {
+      _imgFacets.style = _qpStyle;
+    }
+    var _isAvatarView = _imgFacets.tag === 'avatar';
+
     var section = document.createElement('section');
     section.className = 'mp-section mp-section-images';
     var platformOpts = '<option value="">Toute provenance</option>' +
@@ -1372,7 +1399,7 @@
     section.innerHTML =
       '<div class="mp-section-head">' +
         '<span class="mp-section-kicker">Catalogue</span>' +
-        '<h2 class="mp-section-title">🖼️ Images IA</h2>' +
+        '<h2 class="mp-section-title">' + (_isAvatarView ? '🧑‍🎤 Avatars' : '🖼️ Images IA') + '</h2>' +
         '<span class="mp-section-sub">L\'aperçu est public — l\'achat débloque la recette (prompt + réglages) + l\'image originale</span>' +
       '</div>' +
       '<div class="mp-img-facets">' +
@@ -1419,6 +1446,10 @@
     var ratioEl = section.querySelector('.mp-img-ratio');
     var pminEl = section.querySelector('.mp-img-pmin');
     var pmaxEl = section.querySelector('.mp-img-pmax');
+    // C4 — reflète les facettes pré-remplies depuis l'URL dans les selects
+    // (l'option « Avatar » / le style ciblé apparaissent sélectionnés d'emblée).
+    if (_imgFacets.tag) tagEl.value = _imgFacets.tag;
+    if (_imgFacets.style) styleEl.value = _imgFacets.style;
     var _t = null;
     function _deb() { clearTimeout(_t); _t = setTimeout(_reload, 240); }
     qEl.addEventListener('input', function () { _imgFacets.q = qEl.value.trim(); _deb(); });
