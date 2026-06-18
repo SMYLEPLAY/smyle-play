@@ -86,12 +86,19 @@ async def _enrich_offer(offer: TradeOffer, db: AsyncSession) -> TradeOfferRead:
             audio_url = trow.audio_url or (
                 f"/watt/stream/{trow.r2_key}" if trow.r2_key else None
             )
+        # Aperçu image (parité visuel) : pour un prompt image, on expose l'URL
+        # proxy de l'APERÇU (jamais l'original gaté) → "voir avant d'accepter".
+        preview_url = None
+        if getattr(prompt, "product_type", None) == "image" and prompt.preview_r2_key:
+            preview_url = f"/watt/images/{prompt.preview_r2_key}"
         return PromptSnap(
             id=prompt.id,
             title=prompt.title,
             price_credits=prompt.price_credits,
             artist_name=artist_name,
             audio_url=audio_url,
+            preview_url=preview_url,
+            product_type=getattr(prompt, "product_type", None),
         )
 
     sender_name, sender_avatar = await _user_snap(offer.sender_id)

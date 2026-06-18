@@ -282,6 +282,15 @@ async def update_my_visual_adn(
         visual_adn = await update_visual_adn(
             db=db, artist_id=current_user.id, payload=data
         )
+        # Trophée VISUAL_DNA (parité audio) — débloqué quand l'ADN visuel passe
+        # publié. Idempotent (axe 0/1) ; le service ne re-grant pas si déjà acquis.
+        if getattr(visual_adn, "is_published", False):
+            from app.models.achievement import AchievementAxis
+            from app.services.achievements import check_and_grant_achievements
+            await db.flush()  # le count voit is_published à jour
+            await check_and_grant_achievements(
+                db, user_id=current_user.id, axis=AchievementAxis.VISUAL_DNA
+            )
         await db.commit()
         await db.refresh(visual_adn)
         return visual_adn

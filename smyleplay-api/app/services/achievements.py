@@ -126,6 +126,49 @@ async def get_user_progress(
         )
         return int(result.scalar() or 0)
 
+    if axis == AchievementAxis.IMAGE_CREATOR:
+        # Nb d'images PUBLIÉES par l'artiste (product_type='image', non
+        # supprimées). Import local : évite un cycle avec models.prompt.
+        from app.models.prompt import Prompt
+        result = await db.execute(
+            select(func.count(Prompt.id)).where(
+                Prompt.artist_id == user_id,
+                Prompt.product_type == "image",
+                Prompt.is_published.is_(True),
+                Prompt.is_deleted.is_(False),
+            )
+        )
+        return int(result.scalar() or 0)
+
+    if axis == AchievementAxis.IMAGE_SELLER:
+        # Nb d'exemplaires d'IMAGES vendus par l'artiste = nb d'UnlockedPrompt
+        # dont l'image (prompt lié) appartenait à l'artiste. On compte via JOIN
+        # sur Prompt pour filtrer product_type='image'. Le current_owner n'est
+        # PAS le vendeur ; on s'appuie sur original_artist_id (snapshot vendeur).
+        from app.models.prompt import Prompt
+        result = await db.execute(
+            select(func.count(UnlockedPrompt.id))
+            .join(Prompt, Prompt.id == UnlockedPrompt.prompt_id)
+            .where(
+                UnlockedPrompt.original_artist_id == user_id,
+                Prompt.product_type == "image",
+            )
+        )
+        return int(result.scalar() or 0)
+
+    if axis == AchievementAxis.VISUAL_DNA:
+        # Signature visuelle : l'artiste a-t-il publié son ADN visuel ?
+        # 0 ou 1 (UNIQUE artist_id). Threshold 1 = « ADN visuel publié ».
+        from app.models.visual_adn import VisualAdn
+        result = await db.execute(
+            select(func.count(VisualAdn.id)).where(
+                VisualAdn.artist_id == user_id,
+                VisualAdn.is_published.is_(True),
+                VisualAdn.is_deleted.is_(False),
+            )
+        )
+        return int(result.scalar() or 0)
+
     return 0  # axis inconnu — pas de crash
 
 
@@ -281,6 +324,15 @@ async def list_user_achievements_with_progress(
         ),
         "collector": await get_user_progress(
             db, user_id=user_id, axis=AchievementAxis.COLLECTOR
+        ),
+        "image_creator": await get_user_progress(
+            db, user_id=user_id, axis=AchievementAxis.IMAGE_CREATOR
+        ),
+        "image_seller": await get_user_progress(
+            db, user_id=user_id, axis=AchievementAxis.IMAGE_SELLER
+        ),
+        "visual_dna": await get_user_progress(
+            db, user_id=user_id, axis=AchievementAxis.VISUAL_DNA
         ),
     }
 

@@ -1723,16 +1723,24 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
   const prev = document.getElementById('smyle-trade-modal');
   if (prev) prev.remove();
 
-  // Charge les propres prompts de l'utilisateur pour l'offre
+  // Charge mes produits échangeables (sons ET images — parité visuel C4).
+  // Un produit = une ligne `prompts` ; les images publiées sont offrables au
+  // même titre que les recettes.
   let myPrompts = [];
   try {
     const data = await apiFetch('/artist/me/prompts?limit=50');
-    myPrompts = data.items || data || [];
+    myPrompts = (data.items || data || []).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'son' }));
+  } catch (_) {}
+  try {
+    const data = await apiFetch('/artist/me/images');
+    const imgs = Array.isArray(data) ? data : ((data && data.items) || []);
+    myPrompts = myPrompts.concat(imgs.filter(p => p.is_published).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'image' })));
   } catch (_) {}
 
+  const _tradeIc = (k) => k === 'image' ? '🖼 ' : '🎵 ';
   const promptOptions = myPrompts.length
-    ? myPrompts.map(p => `<option value="${p.id}">${p.title || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
-    : '<option value="" disabled>Aucun prompt à proposer</option>';
+    ? myPrompts.map(p => `<option value="${p.id}">${_tradeIc(p.kind)}${p.title || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+    : '<option value="" disabled>Aucun produit à proposer</option>';
 
   const el = document.createElement('div');
   el.id = 'smyle-trade-modal';
@@ -1826,9 +1834,22 @@ async function openTradeModalProfile() {
     return;
   }
 
-  const theirPrompts = Array.isArray(artist.prompts) ? artist.prompts : [];
+  // Parité visuel (C4) : un produit échangeable = une ligne `prompts` (son OU
+  // image). Côté artiste consulté, on agrège ses sons (déjà en state) et ses
+  // images publiques (/images?artist_id=...). Côté moi, sons + images publiées.
+  let theirPrompts = (Array.isArray(artist.prompts) ? artist.prompts : [])
+    .map(p => ({ id: p.id, title: p.title, price_credits: p.priceCredits, kind: 'son' }));
+  try {
+    const aid = artist.id || artist.userId || '';
+    if (aid) {
+      const d = await apiFetch(`/images?artist_id=${encodeURIComponent(aid)}&limit=50`);
+      const imgs = (d && d.images) || [];
+      theirPrompts = theirPrompts.concat(imgs.map(p => ({ id: p.id, title: p.title, price_credits: p.priceCredits, kind: 'image' })));
+    }
+  } catch (_) {}
+
   if (theirPrompts.length === 0) {
-    alert("Cet artiste n'a pas encore de prompt échangeable. Reviens quand il en aura publié un.");
+    alert("Cet artiste n'a pas encore de produit échangeable. Reviens quand il en aura publié un.");
     return;
   }
 
@@ -1838,16 +1859,22 @@ async function openTradeModalProfile() {
   let myPrompts = [];
   try {
     const data = await apiFetch('/artist/me/prompts?limit=50');
-    myPrompts = data.items || data || [];
+    myPrompts = (data.items || data || []).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'son' }));
+  } catch (_) {}
+  try {
+    const data = await apiFetch('/artist/me/images');
+    const imgs = Array.isArray(data) ? data : ((data && data.items) || []);
+    myPrompts = myPrompts.concat(imgs.filter(p => p.is_published).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'image' })));
   } catch (_) {}
 
   const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const _tradeIc = (k) => k === 'image' ? '🖼 ' : '🎵 ';
   const theirOptions = theirPrompts.map(p =>
-    `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.priceCredits || 0} crédits</option>`
+    `<option value="${p.id}">${_tradeIc(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`
   ).join('');
   const myOptions = myPrompts.length
-    ? myPrompts.map(p => `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
-    : '<option value="" disabled>Aucun prompt à proposer — publie d\'abord une recette</option>';
+    ? myPrompts.map(p => `<option value="${p.id}">${_tradeIc(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+    : '<option value="" disabled>Aucun produit à proposer — publie d\'abord un son ou une image</option>';
 
   const el = document.createElement('div');
   el.id = 'smyle-trade-modal';
@@ -1860,16 +1887,16 @@ async function openTradeModalProfile() {
       </div>
       <div class="trade-modal-body">
         <div class="trade-field">
-          <label class="trade-label">Tu demandes <span class="trade-hint">(son prompt)</span></label>
+          <label class="trade-label">Tu demandes <span class="trade-hint">(son son ou son image)</span></label>
           <select class="trade-select" id="trade-requested-id">
-            <option value="">-- Choisir un de ses prompts --</option>
+            <option value="">-- Choisir un de ses produits --</option>
             ${theirOptions}
           </select>
         </div>
         <div class="trade-field">
-          <label class="trade-label">Tu proposes <span class="trade-hint">(ton prompt)</span></label>
+          <label class="trade-label">Tu proposes <span class="trade-hint">(ton son ou ton image)</span></label>
           <select class="trade-select" id="trade-offered-id">
-            <option value="">-- Choisir un de tes prompts --</option>
+            <option value="">-- Choisir un de tes produits --</option>
             ${myOptions}
           </select>
         </div>

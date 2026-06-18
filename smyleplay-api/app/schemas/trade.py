@@ -25,6 +25,10 @@ class PromptSnap(BaseModel):
     artist_slug: str | None = None
     # Audio du track lié au prompt → "écouter avant d'accepter" l'échange.
     audio_url: str | None = None
+    # Aperçu image (preview proxy) si le prompt est une image → "voir avant
+    # d'accepter". None pour les recettes/beats. product_type expose la nature.
+    preview_url: str | None = None
+    product_type: str | None = None
 
 
 class TradeOfferRead(BaseModel):

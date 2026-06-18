@@ -5595,9 +5595,9 @@ async function cancelTrade(id, btn) {
 
 // ── TROPHÉES ──────────────────────────────────────────────────────────────────
 
-const AXIS_LABEL = { buyer: 'Collectionneur', fan: 'Fan', artist: 'Artiste', trader: 'Échanges', referrer: 'Parrainage', streak: 'Fidélité', collector: 'Packs' };
-const AXIS_ICON  = { buyer: '🛒', fan: '🎚', artist: '🎵', trader: '🔄', referrer: '🤝', streak: '🔥', collector: '🎁' };
-const TPH_AXES = ['buyer', 'fan', 'artist', 'trader', 'referrer', 'streak', 'collector'];
+const AXIS_LABEL = { buyer: 'Collectionneur', fan: 'Fan', artist: 'Artiste', trader: 'Échanges', referrer: 'Parrainage', streak: 'Fidélité', collector: 'Packs', image_creator: 'Créateur visuel', image_seller: 'Ventes image', visual_dna: 'Signature visuelle' };
+const AXIS_ICON  = { buyer: '🛒', fan: '🎚', artist: '🎵', trader: '🔄', referrer: '🤝', streak: '🔥', collector: '🎁', image_creator: '🖼', image_seller: '🏷', visual_dna: '🧬' };
+const TPH_AXES = ['buyer', 'fan', 'artist', 'trader', 'referrer', 'streak', 'collector', 'image_creator', 'image_seller', 'visual_dna'];
 
 async function loadTrophees() {
   const grid = document.getElementById('tphGrid');

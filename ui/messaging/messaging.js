@@ -409,23 +409,41 @@
     const receiverId = th.other_user_id;
     const receiverName = th.other_user_name || 'cet artiste';
 
+    // Parité visuel (C4) : un produit échangeable = une ligne `prompts` (son
+    // OU image). On agrège donc les recettes audio ET les images des deux
+    // côtés. Les images viennent de /images?artist_id=... (leur catalogue) et
+    // /artist/me/images ; chaque option est préfixée d'une icône de nature.
     let theirs = [], mine = [];
     try {
       const d = await apiFetch(`/catalog/prompts?artist_id=${encodeURIComponent(receiverId)}&per_page=50`);
-      theirs = (d && d.items) || d || [];
+      theirs = ((d && d.items) || d || []).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'son' }));
+    } catch (_) {}
+    try {
+      const d = await apiFetch(`/images?artist_id=${encodeURIComponent(receiverId)}&limit=50`);
+      const imgs = (d && d.images) || [];
+      theirs = theirs.concat(imgs.map(p => ({ id: p.id, title: p.title, price_credits: p.priceCredits, kind: 'image' })));
     } catch (_) {}
     try {
       const d = await apiFetch('/artist/me/prompts?limit=50');
-      mine = (d && d.items) || d || [];
+      mine = ((d && d.items) || d || []).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'son' }));
+    } catch (_) {}
+    try {
+      // /artist/me/images renvoie ImageOwnerRead (clés snake_case : price_credits,
+      // is_published). Seules les images PUBLIÉES sont échangeables (le backend
+      // exige offered.is_published à la création de l'offre).
+      const d = await apiFetch('/artist/me/images');
+      const imgs = Array.isArray(d) ? d : ((d && d.items) || []);
+      mine = mine.concat(imgs.filter(p => p.is_published).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'image' })));
     } catch (_) {}
 
-    if (!theirs.length) { alert(`${receiverName} n'a pas encore de prompt échangeable.`); return; }
+    if (!theirs.length) { alert(`${receiverName} n'a pas encore de produit échangeable.`); return; }
 
     const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-    const theirOpts = theirs.map(p => `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('');
+    const _ic = (k) => k === 'image' ? '🖼 ' : '🎵 ';
+    const theirOpts = theirs.map(p => `<option value="${p.id}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('');
     const myOpts = mine.length
-      ? mine.map(p => `<option value="${p.id}">${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
-      : '<option value="" disabled>Aucun prompt à proposer</option>';
+      ? mine.map(p => `<option value="${p.id}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+      : '<option value="" disabled>Aucun produit à proposer</option>';
 
     const prev = document.getElementById('msg-trade-modal');
     if (prev) prev.remove();
@@ -439,9 +457,9 @@
           <strong>🔄 Échange avec ${esc(receiverName)}</strong>
           <button onclick="document.getElementById('msg-trade-modal').remove()" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer">✕</button>
         </div>
-        <label style="display:block;margin:8px 0 4px;opacity:.8">Tu demandes (son prompt)</label>
+        <label style="display:block;margin:8px 0 4px;opacity:.8">Tu demandes (son son ou son image)</label>
         <select id="msg-trade-req" style="${sel}"><option value="">-- Choisir --</option>${theirOpts}</select>
-        <label style="display:block;margin:12px 0 4px;opacity:.8">Tu proposes (ton prompt)</label>
+        <label style="display:block;margin:12px 0 4px;opacity:.8">Tu proposes (ton son ou ton image)</label>
         <select id="msg-trade-off" style="${sel}"><option value="">-- Choisir --</option>${myOpts}</select>
         <label style="display:block;margin:12px 0 4px;opacity:.8">Complément en crédits (optionnel)</label>
         <input id="msg-trade-supp" type="number" min="0" value="0" style="${sel}" />
@@ -458,8 +476,8 @@
     const off  = (document.getElementById('msg-trade-off')  || {}).value || '';
     const supp = parseInt((document.getElementById('msg-trade-supp') || {}).value || '0', 10);
     const btn  = document.getElementById('msg-trade-send');
-    if (!req) { alert('Choisis le prompt que tu veux récupérer.'); return; }
-    if (!off) { alert('Choisis un de tes prompts à proposer.'); return; }
+    if (!req) { alert('Choisis le produit que tu veux récupérer.'); return; }
+    if (!off) { alert('Choisis un de tes produits à proposer.'); return; }
     if (btn) { btn.textContent = 'Envoi…'; btn.disabled = true; }
     try {
       // notify:false → pas de notification, la proposition apparaît comme

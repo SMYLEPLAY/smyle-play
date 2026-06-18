@@ -30,6 +30,10 @@ class AchievementAxis(str, enum.Enum):
     REFERRER = "referrer"   # Parrainage : nb de filleuls validés
     STREAK = "streak"       # Fidélité : jours de connexion consécutifs
     COLLECTOR = "collector" # Packs : nb de packs mystère ouverts
+    # Trophées du Monde Visuel (C4 parité image ↔ son) :
+    IMAGE_CREATOR = "image_creator"  # Création : nb d'images PUBLIÉES par l'artiste
+    IMAGE_SELLER = "image_seller"    # Ventes : nb d'exemplaires d'images vendus
+    VISUAL_DNA = "visual_dna"        # Signature : ADN visuel publié (créateur)
 
 
 class Achievement(Base):

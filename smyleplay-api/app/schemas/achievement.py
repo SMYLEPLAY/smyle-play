@@ -81,6 +81,10 @@ class AchievementProgressByAxis(BaseModel):
     referrer: int = 0   # filleuls validés
     streak: int = 0     # jours consécutifs en cours
     collector: int = 0  # packs mystère ouverts
+    # Trophées du Monde Visuel (C4 parité image ↔ son) :
+    image_creator: int = 0  # images publiées
+    image_seller: int = 0   # exemplaires d'images vendus
+    visual_dna: int = 0     # ADN visuel publié (0/1)
 
 
 class MyAchievementsResponse(BaseModel):
