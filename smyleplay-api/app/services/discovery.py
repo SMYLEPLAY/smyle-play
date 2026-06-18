@@ -29,6 +29,7 @@ from app.models.owned_album_adn import OwnedAlbumAdn
 from app.models.owned_playlist_adn import OwnedPlaylistAdn
 from app.models.playlist import Playlist
 from app.models.prompt import Prompt
+from app.models.prompt_gallery_image import PromptGalleryImage
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.owned_visual_adn import OwnedVisualAdn
@@ -415,6 +416,36 @@ async def list_user_library_prompts(
         .limit(per_page)
     )
     rows = (await db.execute(items_q)).all()
+
+    # C4 galerie avatar — pour les IMAGES possédées, expose la galerie complète
+    # avec downloadUrl gaté par item (route /images/{id}/gallery/{gid}/download,
+    # même gate que le download principal). L'acheteur télécharge ainsi TOUT le
+    # set à l'achat. Batch (pas de N+1) : on charge toutes les galeries des
+    # images de cette page en UNE requête, indexées par prompt_id.
+    _image_ids = [p.id for _up, p, _u, *_ in rows if p.product_type == "image"]
+    _gallery_by_prompt: dict[UUID, list[PromptGalleryImage]] = {}
+    if _image_ids:
+        _g_rows = (await db.execute(
+            select(PromptGalleryImage)
+            .where(PromptGalleryImage.prompt_id.in_(_image_ids))
+            .order_by(PromptGalleryImage.position, PromptGalleryImage.created_at)
+        )).scalars().all()
+        for _g in _g_rows:
+            _gallery_by_prompt.setdefault(_g.prompt_id, []).append(_g)
+
+    def _gallery_for(p: Prompt) -> list[dict]:
+        if p.product_type != "image":
+            return []
+        return [
+            {
+                "id":          str(g.id),
+                "previewKey":  g.preview_r2_key or "",
+                "position":    g.position,
+                "downloadUrl": f"/images/{p.id}/gallery/{g.id}/download",
+            }
+            for g in _gallery_by_prompt.get(p.id, [])
+        ]
+
     items = [
         {
             "unlocked_id": up.id,
@@ -436,6 +467,10 @@ async def list_user_library_prompts(
             "image_model_version": (p.image_model_version if p.product_type == "image" else None),
             "image_settings": (p.image_settings if p.product_type == "image" else None),
             "negative_prompt": (p.negative_prompt if p.product_type == "image" else None),
+            # C4 galerie avatar — galerie complète (apercu + downloadUrl gaté de
+            # l'original) pour les images possédées ; [] pour l'audio. Le front
+            # itère sur `gallery` pour télécharger tout le set à l'achat.
+            "gallery": _gallery_for(p),
             # Sprint 1 PR3 — réglages génération (P1-F4) exposés ici
             # car library = possession. Weirdness + style_influence sont
             # GATED ailleurs (retirés du payload public watt_compat).

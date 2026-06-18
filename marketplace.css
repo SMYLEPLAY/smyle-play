@@ -1531,6 +1531,26 @@
 }
 
 /* Bloc « Œuvre complète » — son lié (aperçu only, achat séparé). */
+/* C4 galerie avatar — bande d'aperçus publics dans la fiche image. */
+.mp-id-gallery {
+  margin-top: 6px; padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(124,58,237,.07);
+  border: 1px solid rgba(124,58,237,.2);
+}
+.mp-id-gallery-label { font-size: 12px; font-weight: 700; color: #cbb3ff; margin-bottom: 8px; }
+.mp-id-gallery-strip {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.mp-id-gallery-thumb {
+  width: 72px; height: 72px; flex-shrink: 0;
+  object-fit: cover; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.1);
+  -webkit-user-drag: none; user-select: none;
+}
+.mp-id-gallery-note { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,.5); }
+
 .mp-id-linked {
   margin-top: 6px; padding: 12px 14px;
   border-radius: 12px;

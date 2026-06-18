@@ -141,6 +141,12 @@ class ImagePublicRead(BaseModel):
     # ne pas dupliquer l'affichage. Peuple depuis l'attribut ORM
     # bundle_exclusive via model_validate (alias camelCase pour le front).
     bundleExclusive: bool = Field(default=False, validation_alias="bundle_exclusive")
+    # C4 galerie avatar — APERÇUS publics de la galerie (jamais les originaux).
+    # galleryCount = nb d'images supplementaires, galleryPreviews = previewKey
+    # publics. Peuples a posteriori par le router (_enrich_galleries pour les
+    # listings, _owner_read_with_link pour la vue owner). Defaut vide.
+    galleryCount: int = 0
+    galleryPreviews: list[str] = Field(default_factory=list)
 
 
 class ImageOwnerRead(ImagePublicRead):
@@ -160,3 +166,9 @@ class ImageOwnerRead(ImagePublicRead):
     prompt_text: str | None = None
     image_settings: dict[str, Any] | None = None
     negative_prompt: str | None = None
+    # C4 galerie avatar — galerie complète pour l'OWNER : pour chaque item,
+    # id + previewKey (apercu) + position + downloadUrl (route GATÉE de
+    # téléchargement de l'ORIGINAL). L'original lui-même n'est JAMAIS sérialisé ;
+    # seul le chemin de download gaté est exposé. Peuple par le router
+    # (_owner_read_with_link) — model_validate ne le déduit pas d'une relation.
+    gallery: list[dict] = Field(default_factory=list)

@@ -2239,6 +2239,25 @@
         </label>
       </div>
 
+      <!-- ── C4 Galerie avatar — visuels supplémentaires livrés à l'achat ──
+           VISIBLE uniquement quand le chip d'usage « avatar » est .is-on
+           (piloté par images-create.js). 10 visuels recommandés, NON bloquant. -->
+      <div id="imgcGalleryBlock" hidden style="margin-top:6px">
+        <label class="dash-label">Galerie de l'avatar <span style="font-weight:400;">(recommandé)</span></label>
+        <div class="dash-help" id="imgcGalleryHint">
+          10 visuels recommandés pour un avatar utilisable par l'acheteur (poses, expressions, plans).
+          Non bloquant — tu peux publier avec moins, ou en ajouter plus tard.
+        </div>
+        <label class="dash-btn-secondary" style="cursor:pointer;margin:6px 0 0;display:inline-block">
+          <input type="file" id="imgcGalleryFile" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                 multiple style="display:none" />
+          Ajouter des visuels
+        </label>
+        <div id="imgcGalleryCount" class="dash-help" style="margin-top:4px"></div>
+        <div id="imgcGalleryThumbs" class="imgc-gallery-thumbs"
+             style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+      </div>
+
       <!-- ── Exemplaires + prix + visibilité ───────────────────────────── -->
       <label class="dash-label">Nombre d'exemplaires <span style="font-weight:400;">(optionnel)</span></label>
       <input class="dash-input" id="imgcMaxSupply" type="number" min="1" placeholder="Laisse vide = illimité" />
@@ -2554,8 +2573,8 @@
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260618c4ava" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
-<script src="images-create.js?v=20260618c4ava" defer></script>
-<script src="images-list.js?v=20260615c4l4" defer></script>
+<script src="images-create.js?v=20260618c4gal" defer></script>
+<script src="images-list.js?v=20260618c4gal" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
 <script src="/ui/modals/boutique.js" defer></script>

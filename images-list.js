@@ -176,6 +176,12 @@
         '<div class="imgl-field"><label>Prix (Smyles · 3 à 500)</label>' +
           '<input type="number" id="imgl-e-price" min="3" max="500" value="' + esc(img.priceCredits != null ? img.priceCredits : '') + '"></div>' +
         '<label class="imgl-toggle"><input type="checkbox" id="imgl-e-pub"' + (img.isPublished ? ' checked' : '') + '> Publié (visible à la vente)</label>' +
+        '<div class="imgl-field"><label>Galerie de l\'avatar <span style="font-weight:400;opacity:.7">(visuels livrés à l\'achat — 10 recommandés)</span></label>' +
+          '<div id="imgl-e-gallery"></div>' +
+          '<label class="imgl-btn-sec" style="cursor:pointer;display:inline-block;margin-top:6px">' +
+            '<input type="file" id="imgl-e-gallery-file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple style="display:none">' +
+            'Ajouter des visuels' +
+          '</label></div>' +
         '<div class="imgl-field"><label>Œuvre complète</label><div id="imgl-e-oeuvre"></div></div>' +
         '<div class="imgl-modal-actions">' +
           '<button type="button" class="imgl-cancel">Annuler</button>' +
@@ -187,6 +193,11 @@
     // C4 « Œuvre complète » — rend le bloc lien/délien (pivot = img.id, le
     // prompt de l'image elle-même). Nature opposée → on lie à un SON.
     renderOeuvreComplete(ov.querySelector('#imgl-e-oeuvre'), img);
+
+    // C4 galerie avatar — gestion add/remove des visuels supplémentaires via les
+    // endpoints owner (GET pour lister, POST multipart pour ajouter, DELETE pour
+    // retirer). Réservé aux avatars en UX, mais l'endpoint est générique.
+    setupGalleryEditor(ov, img.id);
 
     function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
@@ -229,6 +240,63 @@
         refreshCount();
       })
       .catch(function () { toast('Échec de la suppression.', 'error'); });
+  }
+
+  // ── C4 galerie avatar — éditeur (lister / ajouter / retirer) ──────────────
+  function setupGalleryEditor(ov, imageId) {
+    var box = ov.querySelector('#imgl-e-gallery');
+    var fileInput = ov.querySelector('#imgl-e-gallery-file');
+    if (!box) return;
+
+    function paint(items) {
+      var n = items.length;
+      var hint = n
+        ? (n + ' visuel' + (n > 1 ? 's' : '') + (n < 10 ? ' · ' + (10 - n) + ' de plus recommandé' + (10 - n > 1 ? 's' : '') : ' · 👍'))
+        : 'Aucun visuel pour l\'instant.';
+      var thumbs = items.map(function (g) {
+        var u = g.previewKey ? previewUrl(g.previewKey) : '';
+        return '<div style="position:relative;width:60px;height:60px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#1a1730">' +
+          (u ? '<img src="' + esc(u) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block">' : '<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center">🖼</span>') +
+          '<button type="button" class="imgl-gal-rm" data-gid="' + esc(g.id) + '" title="Retirer" ' +
+          'style="position:absolute;top:2px;right:2px;width:18px;height:18px;line-height:16px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:11px;cursor:pointer">✕</button>' +
+          '</div>';
+      }).join('');
+      box.innerHTML = '<div class="imgl-help" style="font-size:11px;color:#a09cb8;margin-bottom:6px">' + esc(hint) + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px">' + thumbs + '</div>';
+    }
+
+    function load() {
+      box.innerHTML = '<div class="imgl-help" style="font-size:11px;color:#a09cb8">Chargement…</div>';
+      window.apiFetch('/artist/me/images/' + encodeURIComponent(imageId) + '/gallery')
+        .then(function (r) { paint((r && r.gallery) || []); })
+        .catch(function () { box.innerHTML = '<div class="imgl-help" style="font-size:11px;color:#a09cb8">Galerie indisponible.</div>'; });
+    }
+
+    box.addEventListener('click', function (e) {
+      var rm = e.target.closest && e.target.closest('.imgl-gal-rm');
+      if (!rm) return;
+      var gid = rm.getAttribute('data-gid');
+      rm.disabled = true;
+      window.apiFetch('/artist/me/images/' + encodeURIComponent(imageId) + '/gallery/' + encodeURIComponent(gid), { method: 'DELETE', raw: true })
+        .then(function () { load(); })
+        .catch(function () { rm.disabled = false; toast('Échec du retrait.', 'error'); });
+    });
+
+    if (fileInput) {
+      fileInput.addEventListener('change', function (ev) {
+        var files = ev.target.files;
+        if (!files || !files.length) return;
+        var fd = new FormData();
+        Array.prototype.forEach.call(files, function (f) { fd.append('files', f); });
+        ev.target.value = '';
+        box.innerHTML = '<div class="imgl-help" style="font-size:11px;color:#a09cb8">Envoi…</div>';
+        window.apiFetch('/artist/me/images/' + encodeURIComponent(imageId) + '/gallery', { method: 'POST', body: fd })
+          .then(function (r) { paint((r && r.gallery) || []); })
+          .catch(function () { toast('Échec de l\'ajout.', 'error'); load(); });
+      });
+    }
+
+    load();
   }
 
   // ── C4 « Œuvre complète » (lien rétroactif image <-> son) ────────────────

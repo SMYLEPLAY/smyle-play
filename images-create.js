@@ -41,8 +41,22 @@
     }).filter(Boolean);
   }
 
+  /* C4 — l'usage « avatar » est-il actuellement sélectionné ? Conditionne
+     l'affichage du bloc galerie et l'envoi de la galerie à la publication. */
+  function avatarTagOn() {
+    var box = $('imgcTags');
+    if (!box) return false;
+    var chip = box.querySelector('.imgc-tag-chip[data-img-tag="avatar"]');
+    return !!(chip && chip.classList.contains('is-on'));
+  }
+
   /* État local : le fichier choisi (pas encore envoyé). */
   var pendingFile = null;
+
+  /* C4 galerie avatar — fichiers de galerie choisis (pas encore envoyés).
+     Uploadés APRÈS la création de l'image, et UNIQUEMENT si le tag avatar
+     est actif (bloc masqué sinon). 10 visuels = reco non bloquante. */
+  var galleryFiles = [];
 
   /* C4 Œuvre complète — flag "sons chargés" pour le dropdown de liaison. */
   var soundsLoaded = false;
@@ -199,6 +213,8 @@
     var linkChk = $('imgcLinkSound'); if (linkChk) linkChk.checked = false;
     var linkWrap = $('imgcLinkSoundWrap'); if (linkWrap) linkWrap.hidden = true;
     var linkSel = $('imgcLinkSoundSelect'); if (linkSel) linkSel.value = '';
+    /* C4 — vide les fichiers de galerie et masque le bloc (chips déjà reset). */
+    resetGallery();
     clearPreview();
     applyPlatform();
   }
@@ -256,6 +272,81 @@
     var on = linkSoundEnabled();
     if (wrap) wrap.hidden = !on;
     if (on && !soundsLoaded) loadSounds();
+  }
+
+  /* ── C4 galerie avatar — choix multi-fichiers + aperçus retirables ────── */
+  /* Affiche/masque le bloc galerie selon l'état du chip « avatar ». */
+  function toggleGalleryBlock() {
+    var block = $('imgcGalleryBlock');
+    if (!block) return;
+    var on = avatarTagOn();
+    block.hidden = !on;
+    /* Si l'avatar est désélectionné, on oublie les fichiers déjà choisis :
+       une image non-avatar n'a pas de galerie. */
+    if (!on && galleryFiles.length) { galleryFiles = []; renderGalleryThumbs(); }
+  }
+
+  /* Ajoute les fichiers valides (type/taille) à galleryFiles, puis re-rend. */
+  function addGalleryFiles(fileList) {
+    if (!fileList || !fileList.length) return;
+    Array.prototype.forEach.call(fileList, function (f) {
+      var type = (f.type || '').toLowerCase();
+      var name = (f.name || '').toLowerCase();
+      var extOk = /\.(png|jpe?g|webp)$/.test(name);
+      if (ALLOWED_TYPES.indexOf(type) === -1 && !extOk) return;
+      if (f.size > IMAGE_MAX_BYTES) return;
+      galleryFiles.push(f);
+    });
+    renderGalleryThumbs();
+  }
+
+  function removeGalleryFile(idx) {
+    if (idx < 0 || idx >= galleryFiles.length) return;
+    galleryFiles.splice(idx, 1);
+    renderGalleryThumbs();
+  }
+
+  /* Rend les miniatures (FileReader) + bouton de retrait + compteur reco. */
+  function renderGalleryThumbs() {
+    var wrap = $('imgcGalleryThumbs');
+    var count = $('imgcGalleryCount');
+    if (count) {
+      var n = galleryFiles.length;
+      count.textContent = n
+        ? (n + ' visuel' + (n > 1 ? 's' : '') + ' ajouté' + (n > 1 ? 's' : '') +
+           (n < 10 ? ' · ' + (10 - n) + ' de plus recommandé' + (10 - n > 1 ? 's' : '') : ' · 👍'))
+        : '';
+    }
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    galleryFiles.forEach(function (f, idx) {
+      var cell = document.createElement('div');
+      cell.style.cssText = 'position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#1a1730';
+      var img = document.createElement('img');
+      img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+      try {
+        var r = new FileReader();
+        r.onload = function (e) { img.src = e.target.result; };
+        r.readAsDataURL(f);
+      } catch (_) {}
+      var rm = document.createElement('button');
+      rm.type = 'button';
+      rm.textContent = '✕';
+      rm.title = 'Retirer';
+      rm.style.cssText = 'position:absolute;top:2px;right:2px;width:18px;height:18px;line-height:16px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:11px;cursor:pointer';
+      rm.addEventListener('click', function () { removeGalleryFile(idx); });
+      cell.appendChild(img);
+      cell.appendChild(rm);
+      wrap.appendChild(cell);
+    });
+  }
+
+  function resetGallery() {
+    galleryFiles = [];
+    var fileEl = $('imgcGalleryFile'); if (fileEl) fileEl.value = '';
+    renderGalleryThumbs();
+    var block = $('imgcGalleryBlock'); if (block) block.hidden = true;
   }
 
   function submit() {
@@ -334,7 +425,37 @@
     setBusy(true);
     /* apiFetch ajoute le Bearer JWT ; body FormData => pas de Content-Type
        forcé (le navigateur pose le boundary multipart lui-même). */
+    /* C4 galerie avatar — n'uploade la galerie QUE si le tag avatar est actif
+       ET que des fichiers ont été choisis. Snapshot des fichiers au moment de
+       l'envoi (reset() les videra ensuite). */
+    var galleryToSend = (avatarTagOn() && galleryFiles.length)
+      ? galleryFiles.slice() : [];
+
     window.apiFetch('/artist/me/images', { method: 'POST', body: fd })
+      .then(function (created) {
+        /* C4 galerie avatar — après création, pousse tous les visuels d'un coup
+           (multipart, champ `files`). L'image existe déjà : si la galerie
+           échoue, on informe sans bloquer (l'image reste créée). */
+        var galleryStep = Promise.resolve();
+        if (galleryToSend.length && created && created.id) {
+          var gfd = new FormData();
+          galleryToSend.forEach(function (f) { gfd.append('files', f); });
+          galleryStep = window.apiFetch(
+            '/artist/me/images/' + encodeURIComponent(created.id) + '/gallery',
+            { method: 'POST', body: gfd }
+          ).then(function () {
+            toast('🖼 Galerie ajoutée — ' + galleryToSend.length + ' visuel' +
+              (galleryToSend.length > 1 ? 's' : '') + ' livré' +
+              (galleryToSend.length > 1 ? 's' : '') + ' à l\'achat.');
+          }).catch(function (ge) {
+            var gm = (typeof window._humanizeApiError === 'function')
+              ? window._humanizeApiError(ge) : (ge && ge.message) || '';
+            toast('Image créée, mais ajout de la galerie échoué' + (gm ? ' : ' + gm : '') + '. Tu pourras réessayer plus tard.');
+          });
+        }
+
+        return galleryStep.then(function () { return created; });
+      })
       .then(function (created) {
         /* C4 Œuvre complète — si demandé, lier l'image au son choisi. L'image
            est déjà créée : si la liaison échoue, on informe sans laisser
@@ -408,6 +529,17 @@
         if (!chip || !tagsBox.contains(chip)) return;
         var on = chip.classList.toggle('is-on');
         chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+        /* C4 — le bloc galerie suit l'état du chip « avatar ». */
+        if (chip.getAttribute('data-img-tag') === 'avatar') toggleGalleryBlock();
+      });
+    }
+
+    /* C4 galerie avatar — input multi-fichiers (additif, garde l'historique). */
+    var galFileEl = $('imgcGalleryFile');
+    if (galFileEl) {
+      galFileEl.addEventListener('change', function (ev) {
+        addGalleryFiles(ev.target.files);
+        ev.target.value = '';   /* permet de re-sélectionner les mêmes fichiers */
       });
     }
 
@@ -438,6 +570,8 @@
     if (!chip || chip.classList.contains('is-on')) return;
     chip.classList.add('is-on');
     chip.setAttribute('aria-pressed', 'true');
+    /* C4 — si on pré-coche « avatar », révèle le bloc galerie. */
+    if (code === 'avatar') toggleGalleryBlock();
   }
 
   /* API publique : le WattBoard appelle focus() à l'ouverture de l'écran.
