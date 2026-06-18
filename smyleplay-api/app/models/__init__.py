@@ -10,6 +10,7 @@ from .password_reset_token import PasswordResetToken
 from .play_event import PlayEvent
 from .playlist import Playlist, PlaylistTrack
 from .prompt import Prompt
+from .prompt_gallery_image import PromptGalleryImage
 from .prompt_like import PromptLike
 from .referral import Referral, ReferralStatus
 from .track import Track
@@ -36,6 +37,7 @@ __all__ = [
     "Playlist",
     "PlaylistTrack",
     "Prompt",
+    "PromptGalleryImage",
     "PromptLike",
     "Referral",
     "ReferralStatus",

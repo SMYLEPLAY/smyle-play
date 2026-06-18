@@ -40,6 +40,7 @@ from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.database import get_db
 from app.models.prompt import Prompt
+from app.models.prompt_gallery_image import PromptGalleryImage
 from app.models.prompt_like import PromptLike
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
@@ -354,6 +355,13 @@ def _image_public_dict(
         # publics la filtrent deja en amont). Expose pour la vue owner qui,
         # elle, l'affiche quand meme — le front s'en sert pour ne pas dupliquer.
         "bundleExclusive":  bool(p.bundle_exclusive),
+        # C4 galerie avatar — APERÇUS publics de la galerie (jamais les
+        # originaux). galleryCount = nb d'images supplementaires, galleryPreviews
+        # = liste de previewKey publics. Peuples a posteriori par
+        # _enrich_galleries (requete groupee, pas de N+1) ; defaut vide pour ne
+        # rien casser si l'enrichissement n'est pas appele.
+        "galleryCount":     0,
+        "galleryPreviews":  [],
     }
     # Artiste public (nom + slug) — parité fiche son. Omis si non résolu.
     if artist is not None:
@@ -442,6 +450,26 @@ async def _owner_read_with_link(db: AsyncSession, image: Prompt) -> ImageOwnerRe
     # model_validate a déjà renseigné `style` via l'alias image_style ; `tags`
     # ne peut pas se déduire automatiquement d'une CSV, on le peuple ici.
     model.tags = _tags_to_list(image.image_tags)
+    # C4 galerie avatar — galerie complète pour l'OWNER : apercu public +
+    # downloadUrl (route GATÉE de l'original). L'owner passe le gate du download,
+    # le front peut télécharger tout le set. galleryCount/galleryPreviews
+    # (publics) restent renseignés sur la carte publique via _enrich_galleries.
+    gallery_items = (await db.execute(
+        select(PromptGalleryImage)
+        .where(PromptGalleryImage.prompt_id == image.id)
+        .order_by(PromptGalleryImage.position, PromptGalleryImage.created_at)
+    )).scalars().all()
+    model.gallery = [
+        {
+            "id":          str(g.id),
+            "previewKey":  g.preview_r2_key or "",
+            "position":    g.position,
+            "downloadUrl": f"/images/{image.id}/gallery/{g.id}/download",
+        }
+        for g in gallery_items
+    ]
+    model.galleryCount = len(gallery_items)
+    model.galleryPreviews = [g.preview_r2_key for g in gallery_items if g.preview_r2_key]
     return model
 
 
@@ -461,6 +489,42 @@ async def _sold_counts_for(db: AsyncSession, image_ids: list[UUID]) -> dict:
         .group_by(UnlockedPrompt.prompt_id)
     )).all()
     return {pid: int(cnt) for pid, cnt in rows}
+
+
+async def _galleries_for(
+    db: AsyncSession, image_ids: list[UUID]
+) -> dict[UUID, list[PromptGalleryImage]]:
+    """
+    Charge en UNE requête groupée (pas de N+1) toutes les images de galerie
+    d'un lot d'images-produits, indexées par prompt_id et triées par position.
+    Sert à enrichir les payloads publics (apercus) ET owner/biblio (download).
+    """
+    if not image_ids:
+        return {}
+    rows = (await db.execute(
+        select(PromptGalleryImage)
+        .where(PromptGalleryImage.prompt_id.in_(image_ids))
+        .order_by(PromptGalleryImage.position, PromptGalleryImage.created_at)
+    )).scalars().all()
+    out: dict[UUID, list[PromptGalleryImage]] = {}
+    for g in rows:
+        out.setdefault(g.prompt_id, []).append(g)
+    return out
+
+
+async def _enrich_galleries(
+    db: AsyncSession, prompts: list[Prompt], dicts: list[dict]
+) -> None:
+    """
+    Renseigne galleryCount + galleryPreviews (APERÇUS publics SEULEMENT) pour un
+    lot de cartes-image, en UNE requête groupée. N'expose JAMAIS d'original
+    (image_r2_key de galerie) — uniquement les previewKey publics.
+    """
+    galleries = await _galleries_for(db, [p.id for p in prompts])
+    for p, d in zip(prompts, dicts):
+        items = galleries.get(p.id, [])
+        d["galleryCount"] = len(items)
+        d["galleryPreviews"] = [g.preview_r2_key for g in items if g.preview_r2_key]
 
 
 def _apply_image_filters(
@@ -607,6 +671,7 @@ async def list_public_images(
         for p in prompts
     ]
     await _enrich_linked_sounds(db, prompts, images)
+    await _enrich_galleries(db, prompts, images)
     return {"query": q, "count": len(images), "images": images}
 
 
@@ -718,6 +783,7 @@ async def list_top_images(
         d["likesCount"] = likes.get(p.id, 0)
         d["score"] = _score(p)
     await _enrich_linked_sounds(db, ranked, images)
+    await _enrich_galleries(db, ranked, images)
     return {"count": len(images), "images": images}
 
 
@@ -924,6 +990,7 @@ async def list_public_images_by_slug(
     # Toutes les images appartiennent à `target` → pas de requête par image.
     images = [_image_public_dict(p, sold.get(p.id), target) for p in rows]
     await _enrich_linked_sounds(db, list(rows), images)
+    await _enrich_galleries(db, list(rows), images)
     return {"slug": slug, "count": len(images), "images": images}
 
 
@@ -1254,6 +1321,282 @@ async def download_image(
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# Galerie d'images d'un produit IMAGE (C4 galerie avatar)
+#
+# Un produit IMAGE (ligne prompts, product_type='image') peut porter une
+# GALERIE de plusieurs images (cas d'usage : un avatar = un personnage avec
+# 10+ visuels). À l'achat, l'acheteur récupère TOUTES les images originales de
+# la galerie + la recette. Schéma générique sur les images ; la restriction
+# « avatars » est une convention UX côté front (PAS de règle « min 10 » ici).
+#
+# Gating (IDENTIQUE au download principal) :
+#   - preview_r2_key de galerie → APERÇU public (proxy /watt/images/).
+#   - image_r2_key de galerie  → ORIGINAL gaté, sert UNIQUEMENT via
+#     /images/{id}/gallery/{gid}/download (acheteur possédant l'image OU owner).
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _gallery_item_dict(g: PromptGalleryImage) -> dict:
+    """Item de galerie pour la vue OWNER (apercu + position, JAMAIS l'original)."""
+    return {
+        "id":         str(g.id),
+        "previewKey": g.preview_r2_key or "",
+        "position":   g.position,
+    }
+
+
+@router.get("/artist/me/images/{image_id}/gallery")
+async def list_my_image_gallery(
+    image_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Liste la galerie d'une image possédée (owner). 404 si pas la sienne.
+    Renvoie les APERÇUS (previewKey) + position ; jamais l'original.
+    """
+    await _get_owned_image_or_404(db, image_id=image_id, owner_id=current_user.id)
+    items = (await db.execute(
+        select(PromptGalleryImage)
+        .where(PromptGalleryImage.prompt_id == image_id)
+        .order_by(PromptGalleryImage.position, PromptGalleryImage.created_at)
+    )).scalars().all()
+    return {"count": len(items), "gallery": [_gallery_item_dict(g) for g in items]}
+
+
+@router.post(
+    "/artist/me/images/{image_id}/gallery",
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_my_image_gallery(
+    image_id: UUID,
+    files: list[UploadFile] = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Ajoute PLUSIEURS images à la galerie d'une image possédée (owner only).
+    Multipart `files` (List[UploadFile]). Pour chaque fichier : même validation
+    type/taille que la création d'image, upload_image_assets (original + apercu)
+    puis INSERT d'une ligne PromptGalleryImage (position = max+1, croissante).
+
+    Renvoie la galerie à jour ({id, previewKey, position}). 404 si l'image n'est
+    pas celle de l'utilisateur. Aucune règle « min 10 » (reco front seulement).
+    """
+    await _get_owned_image_or_404(db, image_id=image_id, owner_id=current_user.id)
+
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aucun fichier fourni.",
+        )
+
+    # Position de départ = max(position) + 1 (ordre stable, croissant).
+    current_max = (await db.execute(
+        select(func.max(PromptGalleryImage.position)).where(
+            PromptGalleryImage.prompt_id == image_id
+        )
+    )).scalar()
+    next_position = (current_max + 1) if current_max is not None else 0
+
+    for f in files:
+        ct = (f.content_type or "").lower()
+        filename = f.filename or ""
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if ct not in ALLOWED_CONTENT_TYPES and ext not in IMAGE_MIME_BY_EXT:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Format non supporté. Utilise PNG, JPG ou WebP.",
+            )
+        data = await f.read()
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Fichier vide."
+            )
+        if len(data) > IMAGE_MAX_BYTES:
+            mb = len(data) / 1024 / 1024
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Image trop lourde ({mb:.1f} Mo). Limite : 20 Mo.",
+            )
+        try:
+            g_image_key, g_preview_key = await upload_image_assets(
+                data=data, filename=filename, content_type=ct
+            )
+        except R2NotConfigured as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
+            )
+        except ImageUploadError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            )
+        db.add(PromptGalleryImage(
+            prompt_id=image_id,
+            image_r2_key=g_image_key,
+            preview_r2_key=g_preview_key,
+            position=next_position,
+        ))
+        next_position += 1
+
+    await db.commit()
+
+    items = (await db.execute(
+        select(PromptGalleryImage)
+        .where(PromptGalleryImage.prompt_id == image_id)
+        .order_by(PromptGalleryImage.position, PromptGalleryImage.created_at)
+    )).scalars().all()
+    return {"count": len(items), "gallery": [_gallery_item_dict(g) for g in items]}
+
+
+@router.delete(
+    "/artist/me/images/{image_id}/gallery/{gallery_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_my_image_gallery_item(
+    image_id: UUID,
+    gallery_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retire une image de galerie (owner only). 404 si l'image-produit n'est pas
+    celle de l'utilisateur, ou si l'item de galerie n'existe pas / n'appartient
+    pas à cette image. Supprime aussi les fichiers R2 (original + apercu) en
+    best-effort (idempotent, ne bloque pas la suppression de la ligne).
+    """
+    await _get_owned_image_or_404(db, image_id=image_id, owner_id=current_user.id)
+    item = (await db.execute(
+        select(PromptGalleryImage).where(
+            PromptGalleryImage.id == gallery_id,
+            PromptGalleryImage.prompt_id == image_id,
+        )
+    )).scalar_one_or_none()
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Gallery image not found"
+        )
+
+    # Best-effort R2 cleanup (delete_r2_object est idempotent + log-only).
+    from app.services.r2 import delete_r2_object
+    for k in (item.image_r2_key, item.preview_r2_key):
+        if k:
+            try:
+                await delete_r2_object(k)
+            except Exception:  # noqa: BLE001
+                pass
+
+    await db.delete(item)
+    await db.commit()
+
+
+@router.get("/images/{image_id}/gallery/{gallery_id}/download")
+async def download_image_gallery_item(
+    image_id: UUID,
+    gallery_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Télécharge l'ORIGINAL d'une image de galerie — MÊME gate que
+    /images/{id}/download : acheteur possédant l'image-produit (UnlockedPrompt
+    current_owner_id) OU artiste propriétaire. À l'achat, le front itère sur la
+    galerie et appelle cette route pour chaque item afin de récupérer tout le set.
+
+    404 indistinct si l'image ou l'item n'existe pas (anti-énumération). 403 si
+    l'user ne possède pas l'image. La possession précède tout accès R2.
+    NB : on n'exclut PAS is_deleted (l'acheteur garde son download après un
+    soft-delete de l'image-produit), comme pour le download principal.
+    """
+    product = (await db.execute(
+        select(Prompt).where(
+            Prompt.id == image_id,
+            Prompt.product_type == "image",
+        )
+    )).scalar_one_or_none()
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Image not found"
+        )
+
+    # Possession : MÊME gate que /images/{id}/download.
+    owns = (await db.execute(
+        select(UnlockedPrompt.id).where(
+            UnlockedPrompt.prompt_id == image_id,
+            UnlockedPrompt.current_owner_id == current_user.id,
+        )
+    )).scalar_one_or_none()
+    if owns is None and product.artist_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Achète cet exemplaire pour pouvoir le télécharger.",
+        )
+
+    item = (await db.execute(
+        select(PromptGalleryImage).where(
+            PromptGalleryImage.id == gallery_id,
+            PromptGalleryImage.prompt_id == image_id,
+        )
+    )).scalar_one_or_none()
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Gallery image not found"
+        )
+
+    key = item.image_r2_key
+    if not key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fichier image indisponible pour cet exemplaire.",
+        )
+
+    from app.services.r2 import get_r2_client, is_configured
+
+    if not is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+    client = get_r2_client()
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 client unavailable",
+        )
+
+    try:
+        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"R2 object not found: {type(e).__name__}",
+        )
+
+    ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
+    mime = IMAGE_MIME_BY_EXT.get(ext, "application/octet-stream")
+    base = (product.title or "image").replace('"', "").strip() or "image"
+    safe_name = f"{base}-{item.position + 1}"
+    filename = f"{safe_name}.{ext}" if ext else safe_name
+
+    def _iter_chunks():
+        try:
+            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
+                yield chunk
+        finally:
+            try:
+                obj["Body"].close()
+            except Exception:
+                pass
+
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    content_length = obj.get("ContentLength")
+    if content_length:
+        headers["Content-Length"] = str(content_length)
+
+    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # Likes durables de prompts (C4 livraison 5)
 #
 # Store dédié `prompt_likes` (PK composite user_id+prompt_id) — remplace le hack
@@ -1370,6 +1713,7 @@ async def list_my_liked_prompts(
             for p in images_only
         ]
         await _enrich_linked_sounds(db, images_only, images)
+        await _enrich_galleries(db, images_only, images)
         return {"ids": ids, "count": len(images), "images": images}
 
     return {"ids": ids, "count": len(ids)}

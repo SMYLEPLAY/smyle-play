@@ -334,6 +334,19 @@ function renderLibraryImageCell(p, i, artistName, artistLink) {
       </div>
     </div>`;
 
+  // C4 galerie avatar — set de visuels supplémentaires livrés à l'achat.
+  // Chaque entrée a un downloadUrl gaté (acheteur/owner). Le bouton télécharge
+  // TOUT le set d'un clic (en plus de l'original principal + la recette).
+  const gallery = Array.isArray(p.gallery) ? p.gallery : [];
+  const galleryBlock = gallery.length ? `
+    <div class="lib-content-block">
+      <div class="lib-content-header"><span class="lib-content-label">🖼 Galerie incluse (${gallery.length})</span></div>
+      <div class="lib-content-body">
+        <button class="lib-copy-btn" onclick='libDownloadImageSet(${JSON.stringify(gallery.map(g => g.downloadUrl))}, this)'>⬇ Télécharger le set (${gallery.length})</button>
+        <span style="display:block;margin-top:4px;font-size:11px;color:#a09cb8">Tous les visuels de l'avatar en haute définition — un clic télécharge l'ensemble.</span>
+      </div>
+    </div>` : '';
+
   // Revente — bloc générique inchangé (mécanique resale partagée).
   const resaleBlock = `
     <div class="lib-content-block">
@@ -368,6 +381,7 @@ function renderLibraryImageCell(p, i, artistName, artistLink) {
         ${settingsBlock}
         ${negBlock}
         ${downloadBlock}
+        ${galleryBlock}
         ${resaleBlock}
       </div>
     </details>`;
@@ -402,8 +416,48 @@ async function libDownloadImage(imageId, btn) {
   }
 }
 
+// C4 galerie avatar — télécharge TOUT le set (chaque downloadUrl gaté serveur),
+// séquentiellement pour ne pas saturer. Un clic = tout le set de l'avatar.
+async function libDownloadImageSet(urls, btn) {
+  if (!Array.isArray(urls) || !urls.length) return;
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; }
+  let okCount = 0;
+  for (let i = 0; i < urls.length; i++) {
+    if (btn) btn.textContent = 'Téléchargement ' + (i + 1) + '/' + urls.length + '…';
+    try {
+      const resp = await apiFetch(urls[i], { raw: true });
+      if (!resp || !resp.ok) continue;
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename="?([^"]+)"?/);
+      const filename = (m && m[1]) ? m[1] : ('visuel-' + (i + 1));
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      okCount++;
+      // Petit délai entre les téléchargements (les navigateurs throttlent
+      // les clics programmatiques trop rapprochés).
+      await new Promise(r => setTimeout(r, 350));
+    } catch (_) { /* on continue le set malgré un échec ponctuel */ }
+  }
+  if (btn) { btn.disabled = false; btn.textContent = old; }
+  if (window.smyleToast) {
+    window.smyleToast(
+      okCount === urls.length ? 'Set téléchargé ✓' : (okCount + '/' + urls.length + ' visuels téléchargés.'),
+      { type: okCount ? 'success' : 'error' }
+    );
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.libDownloadImage = libDownloadImage;
+  window.libDownloadImageSet = libDownloadImageSet;
 }
 
 

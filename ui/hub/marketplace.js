@@ -1886,6 +1886,26 @@
     const ratioMeta = im.ratio
       ? `<div class="mp-id-meta-line">Format ${_esc(im.ratio)}</div>`
       : '';
+
+    // C4 galerie avatar — bande d'aperçus PUBLICS (previewKey). Les originaux HD
+    // ne s'obtiennent qu'à l'achat (downloadUrl gaté). En pratique, seuls les
+    // avatars ont une galerie. galleryPreviews = liste de previewKey publics.
+    const galCount = im.galleryCount || 0;
+    const galPreviews = Array.isArray(im.galleryPreviews) ? im.galleryPreviews : [];
+    const galleryBlockHTML = (galCount > 0)
+      ? `<div class="mp-id-gallery">
+           <div class="mp-id-gallery-label">🖼 ${galCount} visuel${galCount > 1 ? 's' : ''} inclus</div>
+           <div class="mp-id-gallery-strip">
+             ${galPreviews.map(k => {
+               const u = _imgPreviewUrl(k);
+               return u
+                 ? `<img src="${_esc(u)}" alt="" class="mp-id-gallery-thumb" loading="lazy" oncontextmenu="return false" draggable="false" />`
+                 : '';
+             }).join('')}
+           </div>
+           <div class="mp-id-gallery-note">L'achat débloque tous les visuels en haute définition + la recette.</div>
+         </div>`
+      : '';
     const descMeta = im.description
       ? `<div class="mp-id-desc">${_esc(im.description)}</div>`
       : '';
@@ -1947,6 +1967,7 @@
           ${badgesHTML}
           ${ratioMeta}
           ${descMeta}
+          ${galleryBlockHTML}
           ${likeHTML}
           ${oeuvreBlockHTML}
           <div class="mp-id-cta">${ctaHTML}</div>

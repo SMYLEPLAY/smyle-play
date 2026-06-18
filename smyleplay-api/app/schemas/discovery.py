@@ -14,7 +14,7 @@ pour bypass un unlock.
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # -----------------------------------------------------------------------------
@@ -191,6 +191,12 @@ class LibraryPromptItem(BaseModel):
     # affiche le bouton Télécharger (download gaté).
     product_type: str | None = None
     license_type: str | None = None
+    # C4 galerie avatar — pour une IMAGE possédée, galerie complète : par item
+    # {id, previewKey (apercu), position, downloadUrl (route GATÉE de l'original
+    # /images/{id}/gallery/{gid}/download)}. [] pour l'audio. Le front itère sur
+    # `gallery` pour télécharger tout le set à l'achat. L'original lui-même n'est
+    # JAMAIS sérialisé — uniquement le chemin de download gaté.
+    gallery: list[dict] = Field(default_factory=list)
 
 
 class LibraryPromptsResponse(BaseModel):
