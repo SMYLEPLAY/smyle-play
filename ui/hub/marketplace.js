@@ -162,8 +162,11 @@
       // Réutilise le look pilule des .mp-voir-tout. Contextuelle au mode via les
       // classes body mp-mode-musique / mp-mode-image, et home-only.
       '.mp-cat-nav{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:0 auto 20px;width:max-content;max-width:96%}' +
-      '.mp-cat-nav .mp-cat-link{display:inline-block;margin:0}' +
-      // Cachée par défaut (avant pose du mode), et masquée hors home.
+      // NE PAS forcer display ici (sinon ça écrase le display:none par
+      // spécificité → les 2 jeux s'affichaient en même temps). Marge seule.
+      '.mp-cat-nav .mp-cat-link{margin:0}' +
+      // Cachés par défaut ; seuls les liens du mode actif sont affichés (règles
+      // .mp-mode-* ci-dessous, spécificité supérieure au display:none).
       '.mp-cat-link{display:none}' +
       'body:not(.mp-view-home) .mp-cat-nav{display:none}' +
       // Mode Musique : Sons/Beats/Voix · Mode Image : Images/Avatars.
