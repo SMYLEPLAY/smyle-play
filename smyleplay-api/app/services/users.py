@@ -27,8 +27,13 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
         referral_code=await generate_referral_code(db),
     )
     db.add(db_user)
-    await db.commit()
+    # flush → refresh DANS la transaction (asyncpg : un refresh APRÈS commit
+    # s'exécute dans une nouvelle transaction qui ne voit pas toujours la ligne
+    # → "Could not refresh instance"). On charge les valeurs server-default
+    # (created_at, soldes, etc.) avant de committer.
+    await db.flush()
     await db.refresh(db_user)
+    await db.commit()
     return db_user
 
 
