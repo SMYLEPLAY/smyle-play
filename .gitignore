@@ -1,3 +1,14 @@
+# ── Relais de déploiement autonome — état runtime local (jamais versionné) ──
+# On garde .relay/README.md et le placeholder de la file ; le reste est local.
+.relay/queue/*
+!.relay/queue/.gitkeep
+.relay/pushed/
+.relay/done/
+.relay/failed/
+.relay/PAUSE
+.relay/*.lock
+.relay/*.log
+
 # ── Fichiers audio (hébergés sur Cloudflare R2, pas dans Git) ──────────────
 *.wav
 *.mp3
