@@ -1,0 +1,117 @@
+name: E2E smoke (Playwright)
+
+# Filet anti-régression front (H0.1b du durcissement). Premier maillon avant
+# la découpe des monolithes et le Monde Visuel : on démarre l'app prod unifiée
+# (`uvicorn main:app` = FastAPI + Flask servant le front via a2wsgi) et on
+# vérifie que la vitrine se charge et que le catalogue répond.
+#
+# Workflow SÉPARÉ de ci.yml exprès : pas de conflit de fichier avec les PR qui
+# touchent ci.yml, et un parcours front peut évoluer sans rouvrir le CI cœur.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  smoke:
+    name: Smoke storefront (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: smyleplay_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
+      SECRET_KEY: ci-flask-secret
+      JWT_SECRET: ci-jwt-secret
+      ENVIRONMENT: test
+      PORT: "8000"
+      CORS_ALLOWED_ORIGINS: "*"
+      E2E_BASE_URL: http://localhost:8000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Apply migrations
+        working-directory: smyleplay-api
+        run: alembic upgrade head
+
+      - name: Start unified app (FastAPI + Flask front)
+        run: |
+          # Entrée prod : sert le front (Flask via a2wsgi) + l'API (FastAPI).
+          uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/uvicorn.log 2>&1 &
+          echo $! > /tmp/uvicorn.pid
+
+      - name: Wait for /health
+        run: |
+          for i in {1..40}; do
+            if curl -fs http://localhost:8000/health > /dev/null; then
+              echo "OK: app up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "FAIL: app never came up"; echo "--- uvicorn log ---"; cat /tmp/uvicorn.log; exit 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright (+ chromium)
+        working-directory: e2e
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Stop app
+        if: always()
+        run: |
+          [ -f /tmp/uvicorn.pid ] && kill "$(cat /tmp/uvicorn.pid)" || true
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            /tmp/uvicorn.log
+          if-no-files-found: ignore
