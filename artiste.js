@@ -2605,7 +2605,9 @@ function renderArtistImages(images) {
         'data-owned="' + (owned || mine ? '1' : '0') + '" ' +
         'tabindex="0" role="button" title="' + ((mine || owned) ? 'Image possédée' : 'Voir la fiche') + '" ' +
         'style="border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.025);' + clickable + 'display:flex;flex-direction:column">' +
-        '<div style="position:relative;aspect-ratio:1/1;background:rgba(124,58,237,.10);overflow:hidden">' + cover + '</div>' +
+        '<div style="position:relative;aspect-ratio:1/1;background:rgba(124,58,237,.10);overflow:hidden">' + cover +
+          (mine ? '<button type="button" class="ap-img-del" data-del-image-id="' + _apImgEsc(im.id) + '" title="Supprimer cette image de mon profil" aria-label="Supprimer" style="position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(10,8,14,.72);color:#ff6b6b;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">🗑</button>' : '') +
+        '</div>' +
         '<div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px">' +
           '<div style="font-weight:700;color:#f3f0ff;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _apImgEsc(im.title || 'Sans titre') + '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">' + nature + rar + prov + oeuvre + '</div>' +
@@ -2644,6 +2646,27 @@ function renderArtistImages(images) {
           platform: card.dataset.platform || '',
           linkedSound: linkedSound,
         });
+      }
+    });
+  });
+
+  // Owner — bouton Supprimer sur chaque carte (soft-delete ; les acheteurs
+  // conservent leur accès en bibliothèque). stopPropagation pour ne pas
+  // déclencher l'ouverture du drawer.
+  section.querySelectorAll('.ap-img-del').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.delImageId;
+      if (!id) return;
+      if (!confirm('Supprimer cette image de ton profil ?\nLes acheteurs gardent leur accès dans leur bibliothèque.')) return;
+      btn.disabled = true;
+      try {
+        await apiFetch('/artist/me/images/' + encodeURIComponent(id), { method: 'DELETE', raw: true });
+        if (typeof showToast === 'function') showToast('Image supprimée');
+        loadArtistImages(state.artist.slug);   // refresh la grille
+      } catch (err) {
+        btn.disabled = false;
+        if (typeof showToast === 'function') showToast('Suppression impossible. Réessaie.');
       }
     });
   });
