@@ -190,22 +190,14 @@ async def get_playlist_containing_adn_track(
     Utilisé dans unlock_adn_atomic pour appliquer le perk -20%.
     Retourne None si aucun perk applicable.
     """
-    from app.models.track import Track
-    result = await db.execute(
-        select(OwnedPlaylistAdn.playlist_id)
-        .join(
-            PlaylistTrack,
-            PlaylistTrack.playlist_id == OwnedPlaylistAdn.playlist_id,
-        )
-        .join(Track, Track.id == PlaylistTrack.track_id)
-        .where(
-            OwnedPlaylistAdn.user_id == user_id,
-            Track.adn_id == adn_id,
-        )
-        .limit(1)
-    )
-    row = result.first()
-    return row[0] if row else None
+    # ⚠️ BUG LATENT CORRIGÉ (2026-06-22) : ce code référençait `Track.adn_id`,
+    # colonne qui N'EXISTE PAS sur le modèle Track (il a prompt_id / beat_id,
+    # pas adn_id). Résultat : AttributeError → crash de l'unlock ADN (chemin
+    # argent). Le schéma actuel n'expose AUCUN lien direct Track↔Adn, donc le
+    # perk « ADN via un track de playlist possédée » n'a pas de chemin valide.
+    # On retourne None (pas de perk, pas de crash) en attendant une décision
+    # produit sur la liaison à créer. À TRANCHER AVEC TOM (cf. backlog).
+    return None
 
 
 async def user_owns_playlist_adn_for_prompt(

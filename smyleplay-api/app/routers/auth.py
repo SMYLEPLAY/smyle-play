@@ -59,27 +59,14 @@ async def register(
         await ensure_default_wishlist(db, new_user)
     except Exception:
         await db.rollback()
-    # 10 Smyles de bienvenue (décision Tom 2026-06-11, handoff 0bis.6) —
-    # prérequis du circuit d'achat C2 (impossible de tester un achat avec
-    # un compte à 0) + amorce de la boucle d'engagement. Best-effort : une
-    # erreur ici ne casse jamais l'inscription (visible dans Sentry).
-    # Versé UNIQUEMENT à la création du compte → aucun risque de doublon.
-    try:
-        from app.models.transaction import TransactionType
-        from app.services.credits import grant_credits_atomic
-
-        await grant_credits_atomic(
-            db,
-            user_id=new_user.id,
-            amount=10,
-            reason="welcome_bonus",
-            tx_type=TransactionType.BONUS,
-        )
-        await db.commit()
-        # La réponse doit refléter le solde crédité (UserRead.credits_balance).
-        await db.refresh(new_user)
-    except Exception:
-        await db.rollback()
+    # 10 Smyles de bienvenue : DÉJÀ accordés par le défaut de colonne
+    # User.credits_balance (default=10 / server_default="10"). Le grant
+    # explicite qui se trouvait ici faisait un DOUBLE comptage
+    # (10 défaut + 10 grant = 20 Smyles) — bug corrigé 2026-06-22. Le solde
+    # de bienvenue vient donc uniquement du défaut de colonne (cohérent avec
+    # les helpers de test qui traitent 10 comme la baseline).
+    # NB : pour tracer ce bonus dans le ledger (Transaction), il faudrait
+    # passer le défaut à 0 ET garder un grant unique — décision produit à part.
     # Email de bienvenue — best-effort (chantier hygiène revenu 2026-06-10).
     # Mode test Resend tant que le domaine WATT n'est pas déposé.
     try:

@@ -253,23 +253,35 @@ class TestPlaylistTracks:
         assert len(detail["tracks"]) == 1
         assert detail["tracks"][0]["id"] == str(owned_track["id"])
 
-    async def test_public_playlist_rejects_foreign_track(
+    async def test_flip_to_public_rejects_foreign_track(
         self,
         client: AsyncClient,
         auth_headers: dict,
         foreign_user_and_track: dict,
     ) -> None:
+        """Règle actuelle (depuis 2026-05-14, cf. service add_track) : on peut
+        ajouter n'importe quelle track à une playlist PRIVÉE ; le rejet
+        "public_owner_mismatch" ne se déclenche qu'au PASSAGE en public si la
+        playlist contient une track étrangère."""
         created = (
             await client.post(
                 "/playlists",
                 headers=auth_headers,
-                json={"title": "Pub", "visibility": "public"},
+                json={"title": "Pub", "visibility": "private"},
             )
         ).json()
-        r = await client.post(
+        # Ajout d'une track étrangère dans une playlist privée → autorisé.
+        r_add = await client.post(
             f"/playlists/{created['id']}/tracks",
             headers=auth_headers,
             json={"track_id": str(foreign_user_and_track["track_id"])},
+        )
+        assert r_add.status_code == 201, r_add.text
+        # Passage en public → refusé (contient une track étrangère).
+        r = await client.patch(
+            f"/playlists/{created['id']}",
+            headers=auth_headers,
+            json={"visibility": "public"},
         )
         assert r.status_code == 422, r.text
         assert r.json()["detail"]["code"] == "public_owner_mismatch"
