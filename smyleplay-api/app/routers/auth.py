@@ -7,6 +7,7 @@ from app.core.ratelimit import (
     LIMIT_LOGIN,
     LIMIT_REGISTER,
     LIMIT_RESET_PASSWORD,
+    client_ip,
     limiter,
 )
 from app.database import get_db
@@ -42,7 +43,8 @@ async def register(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         )
-    new_user = await create_user(db, user)
+    # Capture l'IP d'inscription (anti-abus H0.4 : plafond parrainage par IP).
+    new_user = await create_user(db, user, signup_ip=client_ip(request))
     # Lien de parrainage — best-effort, silencieux. Un code invalide / absent
     # ne casse jamais l'inscription. Aucun crédit versé ici : seulement le lien
     # PENDING, débloqué plus tard à la 1ère action du filleul.
