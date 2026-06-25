@@ -6,6 +6,11 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.referrals import generate_referral_code
 
+# Bonus de bienvenue offert à l'inscription. Désormais GRANTé explicitement
+# (transaction BONUS tracée dans le ledger) au lieu du server_default de la
+# colonne credits_balance. Cf. migration 0066 + décision Tom 2026-06-25.
+WELCOME_BONUS_CREDITS = 10
+
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -33,6 +38,23 @@ async def create_user(db: AsyncSession, user: UserCreate) -> User:
     # (created_at, soldes, etc.) avant de committer.
     await db.flush()
     await db.refresh(db_user)
+
+    # Bonus de bienvenue : grant EXPLICITE et tracé (transaction BONUS) plutôt
+    # qu'un solde initial silencieux. grant_credits_atomic pose son propre
+    # savepoint + lock la row user ; on est encore avant le commit final, donc
+    # tout part dans la même transaction (atomique). Import local pour éviter
+    # tout cycle d'import au chargement du module.
+    from app.models.transaction import TransactionType
+    from app.services.credits import grant_credits_atomic
+
+    await grant_credits_atomic(
+        db,
+        db_user.id,
+        WELCOME_BONUS_CREDITS,
+        reason="welcome_bonus",
+        tx_type=TransactionType.BONUS,
+    )
+    await db.refresh(db_user)  # recharge credits_balance = 10 (post-grant)
     await db.commit()
     return db_user
 

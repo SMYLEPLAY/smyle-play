@@ -588,3 +588,41 @@ async def test_double_accept_trade_idempotent(client):
         assert await _balance(receiver) == 998, "Receiver débité plus d'une fois"
     finally:
         await _cleanup(sender, receiver)
+
+
+# =============================================================================
+# Test 6 — Bonus de bienvenue tracé dans le ledger (H0.6)
+# =============================================================================
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_welcome_bonus_is_ledgered():
+    """
+    À l'inscription, le bonus de bienvenue (10) doit :
+      - donner un solde net de 10 (inchangé pour l'utilisateur)
+      - ET laisser EXACTEMENT une transaction BONUS de 10 COMPLETED
+        (avant H0.6, le 10 venait du server_default → zéro trace comptable).
+    Garde-fou anti-régression du double-bonus de #344 : pas 20, pas 0.
+    """
+    email = f"pytest-welcome-{uuid.uuid4().hex[:12]}@smyleplay.example"
+    async with SessionLocal() as db:
+        user = await create_user(
+            db, UserCreate(email=email, password="12345678")
+        )
+        uid = user.id
+
+    try:
+        assert await _balance(uid) == 10, "Solde net du bonus doit rester 10"
+
+        async with SessionLocal() as db:
+            rows = (await db.execute(
+                text(
+                    "SELECT credits_amount, status FROM transactions "
+                    "WHERE buyer_id = :u AND type = 'bonus'"
+                ),
+                {"u": uid},
+            )).all()
+        assert len(rows) == 1, f"Attendu 1 transaction BONUS, reçu {len(rows)}"
+        assert rows[0].credits_amount == 10, "Le bonus tracé doit valoir 10"
+        assert rows[0].status == "completed", "La transaction BONUS doit être COMPLETED"
+    finally:
+        await _cleanup(uid)
