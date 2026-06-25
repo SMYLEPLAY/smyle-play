@@ -49,6 +49,14 @@ async def test_user() -> AsyncIterator[dict]:
         yield {"id": user_id, "email": email, "password": password}
     finally:
         async with SessionLocal() as db:
+            # Supprimer les dépendances de l'user AVANT l'user lui-même, sinon
+            # ForeignKeyViolation (dna_artist_id_fkey / tracks_artist_id_fkey :
+            # POST /tracks crée un Track + une DNA, sans ON DELETE CASCADE côté
+            # artist_id). Ordre : DNA → Track → User.
+            from app.models.dna import DNA
+            from app.models.track import Track
+            await db.execute(delete(DNA).where(DNA.artist_id == user_id))
+            await db.execute(delete(Track).where(Track.artist_id == user_id))
             await db.execute(delete(User).where(User.id == user_id))
             await db.commit()
 
