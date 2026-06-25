@@ -186,18 +186,38 @@ async def get_playlist_containing_adn_track(
 ) -> UUID | None:
     """
     Retourne le playlist_id d'une playlist dont l'ADN est possédé par user_id
-    ET qui contient un track lié à cet adn_id.
+    ET qui contient un track de l'artiste de cet ADN.
     Utilisé dans unlock_adn_atomic pour appliquer le perk -20%.
     Retourne None si aucun perk applicable.
     """
-    # ⚠️ BUG LATENT CORRIGÉ (2026-06-22) : ce code référençait `Track.adn_id`,
-    # colonne qui N'EXISTE PAS sur le modèle Track (il a prompt_id / beat_id,
-    # pas adn_id). Résultat : AttributeError → crash de l'unlock ADN (chemin
-    # argent). Le schéma actuel n'expose AUCUN lien direct Track↔Adn, donc le
-    # perk « ADN via un track de playlist possédée » n'a pas de chemin valide.
-    # On retourne None (pas de perk, pas de crash) en attendant une décision
-    # produit sur la liaison à créer. À TRANCHER AVEC TOM (cf. backlog).
-    return None
+    # RÉACTIVÉ 2026-06-25 (décision Tom : réactiver le perk pyramidal).
+    #
+    # L'ancien code référençait `Track.adn_id`, colonne inexistante → crash,
+    # d'où la neutralisation temporaire. Constat à la réactivation : le modèle
+    # `Adn` est UNIQUE par artiste (1 ADN profil / artiste) et n'a pas de lien
+    # vers un track ; un Track porte déjà `artist_id`. La liaison Track↔Adn
+    # existe donc DÉJÀ implicitement via l'artiste — aucune migration nécessaire.
+    #
+    # Sémantique (miroir de user_owns_playlist_adn_for_prompt, qui matche sur
+    # Track.prompt_id) : le buyer possède l'ADN d'une playlist contenant au
+    # moins un track de l'artiste dont il achète l'ADN profil → -20%.
+    from app.models.track import Track
+
+    result = await db.execute(
+        select(OwnedPlaylistAdn.playlist_id)
+        .join(
+            PlaylistTrack,
+            PlaylistTrack.playlist_id == OwnedPlaylistAdn.playlist_id,
+        )
+        .join(Track, Track.id == PlaylistTrack.track_id)
+        .join(Adn, Adn.artist_id == Track.artist_id)
+        .where(
+            OwnedPlaylistAdn.user_id == user_id,
+            Adn.id == adn_id,
+        )
+        .limit(1)
+    )
+    return result.scalars().first()
 
 
 async def user_owns_playlist_adn_for_prompt(

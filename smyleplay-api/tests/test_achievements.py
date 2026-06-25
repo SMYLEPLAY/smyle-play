@@ -117,7 +117,14 @@ async def _bonus_transactions(user_id: uuid.UUID) -> list[Transaction]:
             Transaction.buyer_id == user_id,
             Transaction.type == TransactionType.BONUS,
         )
-        return list((await db.execute(q)).scalars().all())
+        rows = list((await db.execute(q)).scalars().all())
+    # Depuis H0.6, l'inscription crée une transaction BONUS « welcome_bonus »
+    # (bonus de bienvenue tracé dans le ledger). On l'EXCLUT ici : ces tests
+    # ne comptent que les bonus de TROPHÉES.
+    return [
+        t for t in rows
+        if (t.metadata_json or {}).get("reason") != "welcome_bonus"
+    ]
 
 
 # -----------------------------------------------------------------------------

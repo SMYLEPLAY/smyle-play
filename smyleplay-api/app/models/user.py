@@ -159,11 +159,15 @@ class User(Base):
     )
 
     # --- Économie ---
+    # Défaut 0 : le bonus de bienvenue (10) est désormais GRANTé explicitement
+    # par create_user via grant_credits_atomic (transaction BONUS tracée dans le
+    # ledger). Cf. migration 0066. Avant, le 10 venait du server_default → aucune
+    # trace comptable de l'origine de ces crédits.
     credits_balance: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-        default=10,
-        server_default="10",
+        default=0,
+        server_default="0",
     )
     credits_earned_total: Mapped[int] = mapped_column(
         Integer,

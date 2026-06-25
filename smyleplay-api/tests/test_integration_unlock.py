@@ -237,6 +237,50 @@ async def _make_trade_offer(
         return offer.id
 
 
+async def _make_track(artist_id: uuid.UUID, title: str = "PerkTrack") -> uuid.UUID:
+    from app.models.track import Track
+    async with SessionLocal() as db:
+        t = Track(title=title, artist_id=artist_id)
+        db.add(t)
+        await db.commit()
+        await db.refresh(t)
+        return t.id
+
+
+async def _setup_owned_playlist_adn(
+    buyer_id: uuid.UUID, owner_id: uuid.UUID, track_id: uuid.UUID
+) -> uuid.UUID:
+    """
+    Crée une playlist (owner) contenant track_id, et fait que buyer_id en
+    possède l'ADN. Retourne le playlist_id. Sert à tester le perk pyramidal.
+    """
+    from app.models.owned_playlist_adn import OwnedPlaylistAdn
+    from app.models.playlist import Playlist, PlaylistTrack
+    async with SessionLocal() as db:
+        pl = Playlist(owner_id=owner_id, title="PerkPlaylist")
+        db.add(pl)
+        await db.flush()
+        db.add(PlaylistTrack(playlist_id=pl.id, track_id=track_id, position=0))
+        db.add(OwnedPlaylistAdn(user_id=buyer_id, playlist_id=pl.id))
+        await db.commit()
+        return pl.id
+
+
+async def _cleanup_playlist_and_track(
+    playlist_id: uuid.UUID, track_id: uuid.UUID
+) -> None:
+    """tracks.artist_id n'est PAS ON DELETE CASCADE → nettoyer avant _cleanup."""
+    from app.models.owned_playlist_adn import OwnedPlaylistAdn
+    from app.models.playlist import Playlist, PlaylistTrack
+    from app.models.track import Track
+    async with SessionLocal() as db:
+        await db.execute(delete(PlaylistTrack).where(PlaylistTrack.playlist_id == playlist_id))
+        await db.execute(delete(OwnedPlaylistAdn).where(OwnedPlaylistAdn.playlist_id == playlist_id))
+        await db.execute(delete(Playlist).where(Playlist.id == playlist_id))
+        await db.execute(delete(Track).where(Track.id == track_id))
+        await db.commit()
+
+
 async def _do_unlock_prompt(buyer_id: uuid.UUID, prompt_id: uuid.UUID):
     """
     Ouvre une session indépendante (vraie concurrence) et unlock un prompt.
@@ -588,3 +632,74 @@ async def test_double_accept_trade_idempotent(client):
         assert await _balance(receiver) == 998, "Receiver débité plus d'une fois"
     finally:
         await _cleanup(sender, receiver)
+
+
+# =============================================================================
+# Test 6 — Bonus de bienvenue tracé dans le ledger (H0.6)
+# =============================================================================
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_welcome_bonus_is_ledgered():
+    """
+    À l'inscription, le bonus de bienvenue (10) doit :
+      - donner un solde net de 10 (inchangé pour l'utilisateur)
+      - ET laisser EXACTEMENT une transaction BONUS de 10 COMPLETED
+        (avant H0.6, le 10 venait du server_default → zéro trace comptable).
+    Garde-fou anti-régression du double-bonus de #344 : pas 20, pas 0.
+    """
+    email = f"pytest-welcome-{uuid.uuid4().hex[:12]}@smyleplay.example"
+    async with SessionLocal() as db:
+        user = await create_user(
+            db, UserCreate(email=email, password="12345678")
+        )
+        uid = user.id
+
+    try:
+        assert await _balance(uid) == 10, "Solde net du bonus doit rester 10"
+
+        async with SessionLocal() as db:
+            rows = (await db.execute(
+                text(
+                    "SELECT credits_amount, status FROM transactions "
+                    "WHERE buyer_id = :u AND type = 'bonus'"
+                ),
+                {"u": uid},
+            )).all()
+        assert len(rows) == 1, f"Attendu 1 transaction BONUS, reçu {len(rows)}"
+        assert rows[0].credits_amount == 10, "Le bonus tracé doit valoir 10"
+        assert rows[0].status == "completed", "La transaction BONUS doit être COMPLETED"
+    finally:
+        await _cleanup(uid)
+
+
+# =============================================================================
+# Test 7 — Perk pyramidal ADN playlist réactivé (H0.6a)
+# =============================================================================
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_adn_playlist_perk_applies():
+    """
+    Réactivation du perk -20% (get_playlist_containing_adn_track).
+
+    Scénario : le buyer possède l'ADN d'une playlist qui contient un track de
+    l'artiste A ; il achète ensuite l'ADN profil de A. Le perk -20% doit
+    s'appliquer → ADN à 50 payé 40 (50 * 8 // 10).
+
+    Avant réactivation, la fonction renvoyait None (perk neutralisé) → payé 50.
+    """
+    artist = await _make_user(initial_balance=0, artist_name="PerkArtist")
+    buyer = await _make_user(initial_balance=1000)
+    adn = await _make_published_adn(artist, price=50)
+    track = await _make_track(artist, "PerkTrack")
+    playlist_id = await _setup_owned_playlist_adn(buyer, artist, track)
+
+    try:
+        result = await _do_unlock_adn(buyer, adn)
+        assert result[0] == "ok", f"Unlock ADN a échoué : {result}"
+        paid = 1000 - await _balance(buyer)
+        assert paid == 40, (
+            f"Perk -20% non appliqué : payé {paid} (attendu 40 = 50*8//10)"
+        )
+    finally:
+        await _cleanup_playlist_and_track(playlist_id, track)
+        await _cleanup(artist, buyer)
