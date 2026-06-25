@@ -52,6 +52,7 @@ from app.services.streak import (
 from app.services.marketplace import compute_rarity_tier
 from app.services.unlocks import PromptNotPurchasable, unlock_prompt_atomic
 from app.services.resale import (
+    ResaleLinkedAccounts,
     ResaleSelfBuy,
     buy_resale_atomic,
     list_prompt_for_resale,
@@ -168,6 +169,51 @@ async def _cleanup_users(*uids: uuid.UUID) -> None:
 # =============================================================================
 # Parrainage
 # =============================================================================
+
+async def test_resale_blocked_between_referral_linked_accounts():
+    """
+    Anti wash-trading (H0.4) : un parrain et son filleul ne peuvent pas se
+    revendre un prompt entre eux (sinon farm de royalties / gonflage de rareté
+    entre comptes complices). buy_resale_atomic doit lever ResaleLinkedAccounts
+    et ne RIEN débiter.
+    """
+    artist = await _make_user(initial_balance=0, artist_name="WashArtist")
+    seller = await _make_user(initial_balance=1000)
+    buyer = await _make_user(initial_balance=1000)
+    prompt = await _make_prompt(artist, price=10)
+
+    # Le seller acquiert le prompt puis le met en revente.
+    async with SessionLocal() as db:
+        await unlock_prompt_atomic(db, buyer_id=seller, prompt_id=prompt)
+        await db.commit()
+    async with SessionLocal() as db:
+        up = await list_prompt_for_resale(
+            db, owner_id=seller, prompt_id=prompt, price=20
+        )
+        up_id = up.id
+        await db.commit()
+
+    # Lien de parrainage seller (parrain) → buyer (filleul).
+    async with SessionLocal() as db:
+        db.add(Referral(
+            referrer_id=seller, referred_id=buyer,
+            status=ReferralStatus.PENDING, reward_credits=10,
+        ))
+        await db.commit()
+
+    buyer_balance_before = await _balance(buyer)
+    try:
+        async with SessionLocal() as db:
+            with pytest.raises(ResaleLinkedAccounts):
+                await buy_resale_atomic(
+                    db, buyer_id=buyer, unlocked_prompt_id=up_id
+                )
+            await db.rollback()
+        # Aucun débit : le blocage précède toute mutation de solde.
+        assert await _balance(buyer) == buyer_balance_before
+    finally:
+        await _cleanup_users(artist, seller, buyer)
+
 
 async def test_referral_reward_on_first_action_and_idempotent():
     referrer = await _make_user(initial_balance=100)

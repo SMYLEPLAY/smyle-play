@@ -20,6 +20,7 @@ from app.schemas.resale import ResaleBuyResult, ResaleListRequest, ResaleMarketI
 from app.services.resale import (
     ResaleAlreadyOwned,
     ResaleInsufficientCredits,
+    ResaleLinkedAccounts,
     ResaleNotListed,
     ResaleNotOwned,
     ResaleSelfBuy,
@@ -120,6 +121,9 @@ async def buy(
     except ResaleSelfBuy as e:
         await db.rollback()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ResaleLinkedAccounts as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(e))
     except ResaleAlreadyOwned as e:
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(e))

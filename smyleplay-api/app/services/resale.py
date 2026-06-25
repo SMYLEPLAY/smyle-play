@@ -18,7 +18,7 @@ même pattern que unlock_*_atomic. Le caller commit.
 """
 from uuid import UUID
 
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,6 +54,11 @@ class ResaleSelfBuy(ResaleError):
 
 
 class ResaleAlreadyOwned(ResaleError):
+    pass
+
+
+class ResaleLinkedAccounts(ResaleError):
+    """Revente entre comptes liés par parrainage — bloquée (anti wash-trading)."""
     pass
 
 
@@ -129,6 +134,27 @@ async def buy_resale_atomic(
 
     if buyer_id == seller_id:
         raise ResaleSelfBuy("Tu ne peux pas acheter ton propre prompt")
+
+    # 1.b ANTI WASH-TRADING (H0.4) : interdit la revente entre comptes liés par
+    # parrainage (parrain↔filleul, dans les deux sens). Empêche de blanchir/
+    # farmer des royalties et de gonfler artificiellement la rareté en se
+    # revendant entre comptes complices. Le self-buy est déjà bloqué au-dessus ;
+    # ici on couvre les paires de comptes distincts mais liés.
+    from app.models.referral import Referral
+    linked = (await db.execute(
+        select(Referral.id).where(
+            or_(
+                and_(Referral.referrer_id == buyer_id,
+                     Referral.referred_id == seller_id),
+                and_(Referral.referrer_id == seller_id,
+                     Referral.referred_id == buyer_id),
+            )
+        ).limit(1)
+    )).scalar_one_or_none()
+    if linked is not None:
+        raise ResaleLinkedAccounts(
+            "Revente impossible entre comptes liés par parrainage."
+        )
 
     # 2. L'acheteur ne possède-t-il pas déjà un exemplaire de ce prompt ?
     #    (la contrainte UNIQUE (current_owner_id, prompt_id) l'interdirait).
