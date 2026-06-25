@@ -103,6 +103,24 @@
     { label: 'Auditeur',    val: 'auditeur'      },
   ];
 
+  // Rôles CONNECT pour le MODE IMAGE — créateurs visuels (miroir exact des
+  // chips CONNECT image de la loupe, ui/modals/search.js · ROLE_CODES visuels
+  // schemas/user.py). Affichés à la place de _PAGE_ROLES quand mp_mode=image.
+  const _PAGE_ROLES_IMG = [
+    { label: 'Illustrateur',         val: 'illustrateur'         },
+    { label: 'Graphiste',            val: 'graphiste'            },
+    { label: 'Directeur artistique', val: 'directeur_artistique' },
+    { label: 'Photographe',          val: 'photographe'          },
+    { label: 'Concept artist',       val: 'concept_artist'       },
+    { label: 'Character designer',   val: 'character_designer'   },
+    { label: 'Retoucheur',           val: 'retoucheur'           },
+    { label: 'Coloriste',            val: 'coloriste'            },
+    { label: 'Artiste 3D',           val: 'artiste_3d'           },
+    { label: 'Prompteur',            val: 'prompteur'            },
+    { label: 'Designer',             val: 'designer'             },
+    { label: 'Collectionneur',       val: 'collectionneur'       },
+  ];
+
   function _injectViewStyles() {
     if (document.getElementById('mp-view-styles')) return;
     const s = document.createElement('style');
@@ -1832,6 +1850,17 @@
     });
     if (!opts || opts.persist !== false) _writeMode(m);
     if (m === 'image') _loadImageWorld();
+
+    // Le panneau de filtres inline (home) dépend du mode : moods/rôles musique
+    // OU styles/usages/créateurs image. On le REDESSINE au changement de mode
+    // (sinon il reste figé sur la musique — bug signalé 2026-06-25). On purge
+    // au passage les filtres musique actifs, sans objet en mode image.
+    if (_VIEW === 'home') {
+      _pageMoodSet.clear();
+      _pageRoleSet.clear();
+      const hint = document.querySelector('.mp-hero-search-hint');
+      if (hint) { hint.dataset.searchBar = ''; _installPageSearchBar(); }
+    }
   }
 
   // Branche le commutateur (clic onglet) + restaure le mode persisté. Appelé
@@ -2248,17 +2277,33 @@
     //   /artistes → rôles CONNECT (filtre les profils)
     //   home      → LES DEUX, en groupes titrés (2026-06-11) — un seul
     //               pattern de recherche sur tout le site.
+    // Home : le panneau suit le MODE (Musique ⇄ Image). En image, on montre les
+    // styles + usages d'image et les créateurs visuels, en miroir de la loupe.
+    const _isImg = isHome && _readMode() === 'image';
     const _moodsChips = _PAGE_MOODS.map(m =>
       '<button type="button" class="mp-hsb-mood" data-mood="' + m + '">' + _esc(m) + '</button>'
     ).join('');
     const _rolesChips = _PAGE_ROLES.map(r =>
       '<button type="button" class="mp-hsb-mood" data-role="' + _esc(r.val) + '">' + _esc(r.label) + '</button>'
     ).join('');
+    const _stylesChips = _IMG_STYLES.map(s =>
+      '<button type="button" class="mp-hsb-mood" data-style="' + _esc(s.val) + '">' + _esc(s.label) + '</button>'
+    ).join('');
+    const _usageChips = _IMG_USAGE.map(u =>
+      '<button type="button" class="mp-hsb-mood" data-usage="' + _esc(u.val) + '">' + _esc(u.label) + '</button>'
+    ).join('');
+    const _rolesImgChips = _PAGE_ROLES_IMG.map(r =>
+      '<button type="button" class="mp-hsb-mood" data-role="' + _esc(r.val) + '">' + _esc(r.label) + '</button>'
+    ).join('');
     const moodChipsHtml =
       '<div class="mp-hsb-moods" id="mp-hsb-moods" hidden>' +
         (isHome
-          ? '<span class="mp-hsb-group-lbl">🧬 Moods · sons</span>' + _moodsChips +
-            '<span class="mp-hsb-group-lbl">👤 Rôles · artistes</span>' + _rolesChips
+          ? (_isImg
+              ? '<span class="mp-hsb-group-lbl">🎨 Styles · images</span>' + _stylesChips +
+                '<span class="mp-hsb-group-lbl">🏷️ Usage</span>' + _usageChips +
+                '<span class="mp-hsb-group-lbl">👤 Créateurs visuels</span>' + _rolesImgChips
+              : '<span class="mp-hsb-group-lbl">🧬 Moods · sons</span>' + _moodsChips +
+                '<span class="mp-hsb-group-lbl">👤 Rôles · artistes</span>' + _rolesChips)
           : (isArtists ? _rolesChips : _moodsChips)) +
       '</div>';
 
@@ -2276,7 +2321,7 @@
         '<span class="mp-hsb-wrap">' +
           '<svg class="mp-hsb-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>' +
           '<input type="search" class="mp-hsb-input" autocomplete="off" ' +
-            'placeholder="' + (isArtists ? 'Filtrer les artistes…' : (isHome ? 'Rechercher un son ou un artiste…' : 'Filtrer les sons par titre, artiste, mood…')) + '">' +
+            'placeholder="' + (isArtists ? 'Filtrer les artistes…' : (isHome ? (_isImg ? 'Rechercher une image ou un artiste…' : 'Rechercher un son ou un artiste…') : 'Filtrer les sons par titre, artiste, mood…')) + '">' +
         '</span>' +
         filterBtnHtml +
       '</span>' +
@@ -2380,6 +2425,16 @@
 
       hint.querySelectorAll('.mp-hsb-mood').forEach(chip => {
         chip.addEventListener('click', () => {
+          // Mode Image — styles / usages : on ouvre la vitrine images DÉJÀ
+          // filtrée (deep-link /images?style= / ?tag=, géré au chargement).
+          if (chip.dataset.style !== undefined) {
+            window.location.href = '/images?style=' + encodeURIComponent(chip.dataset.style);
+            return;
+          }
+          if (chip.dataset.usage !== undefined) {
+            window.location.href = '/images?tag=' + encodeURIComponent(chip.dataset.usage);
+            return;
+          }
           const isRole = chip.dataset.role !== undefined;
           const set    = isRole ? _pageRoleSet : _pageMoodSet;
           const key    = isRole ? chip.dataset.role : chip.dataset.mood;
