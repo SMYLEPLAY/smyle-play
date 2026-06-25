@@ -1,0 +1,127 @@
+name: Restore drill (preuve de restauration backup)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# H0.2 du durcissement — PROUVER que les backups R2 sont restaurables.
+#
+# Un backup non restauré n'est pas un backup. Ce drill télécharge le dump R2 le
+# plus récent (produit par backup-db.yml), le restaure dans un Postgres
+# ÉPHÉMÈRE, vérifie la présence + le remplissage des tables critiques, et
+# mesure le temps de restauration (RTO). Prérequis dur avant Stripe.
+#
+# ⚠️ CONFIDENTIALITÉ : le dump contient emails + hash de mots de passe. Ce
+# workflow ne tourne donc PAS sur les pull requests, n'expose AUCUN artefact
+# contenant la donnée, et la base de restauration est détruite avec le runner.
+# Déclenchement : planning hebdo + bouton manuel uniquement.
+#
+# Secrets requis (déjà configurés pour backup-db.yml) :
+#   R2_ACCESS_KEY_ID · R2_SECRET_ACCESS_KEY
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # chaque lundi 05:00 UTC (après le backup de 04:00)
+  workflow_dispatch: {}
+
+jobs:
+  restore-drill:
+    name: Restaurer le dernier dump R2 + vérifier
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        # Même majeure que la prod (Railway = Postgres 18) pour garantir la
+        # compatibilité du dump produit par un client pg_dump 18.
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: drill
+          POSTGRES_PASSWORD: drill
+          POSTGRES_DB: restore_target
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      R2_ENDPOINT: https://2376b01ec5baa2915948d63fcca6a367.r2.cloudflarestorage.com
+      BUCKET: smyleplay-db-backups-watt
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: drill
+      PGPASSWORD: drill
+      PGDATABASE: restore_target
+
+    steps:
+      - name: Récupérer le dump R2 le plus récent
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: |
+          set -euo pipefail
+          export AWS_ACCESS_KEY_ID="$(printf %s "$AWS_ACCESS_KEY_ID" | tr -d '[:space:]')"
+          export AWS_SECRET_ACCESS_KEY="$(printf %s "$AWS_SECRET_ACCESS_KEY" | tr -d '[:space:]')"
+          # Les noms sont smyleplay_YYYY-MM-DD_HHMM.sql.gz → l'ordre lexical = ordre chrono.
+          LATEST=$(aws s3 ls "s3://$BUCKET/" --endpoint-url "$R2_ENDPOINT" \
+            | awk '{print $NF}' | grep -E '^smyleplay_.*\.sql\.gz$' | sort | tail -1)
+          test -n "$LATEST" || { echo "Aucun dump trouvé dans le bucket"; exit 1; }
+          echo "Dump le plus récent : $LATEST"
+          aws s3 cp "s3://$BUCKET/$LATEST" ./dump.sql.gz --endpoint-url "$R2_ENDPOINT"
+          gunzip -t ./dump.sql.gz
+          echo "LATEST=$LATEST" >> "$GITHUB_ENV"
+
+      - name: Installer le client psql 18
+        run: |
+          set -euo pipefail
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+          psql --version
+
+      - name: Restaurer (mesure RTO)
+        run: |
+          set -euo pipefail
+          START=$(date +%s)
+          # ON_ERROR_STOP : un échec SQL casse le drill (un restore partiel = un faux backup).
+          gunzip -c ./dump.sql.gz | psql -v ON_ERROR_STOP=1 -q
+          END=$(date +%s)
+          RTO=$((END - START))
+          echo "RTO_SECONDS=$RTO" >> "$GITHUB_ENV"
+          echo "Restauration terminée en ${RTO}s"
+
+      - name: Vérifier les tables critiques (présence + remplissage)
+        run: |
+          set -euo pipefail
+          {
+            echo "### Restore drill — $LATEST"
+            echo ""
+            echo "Restauration (RTO) : ${RTO_SECONDS}s"
+            echo ""
+            echo '| Table critique | Lignes |'
+            echo '|---|---|'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Tables critiques (noms réels du schéma) : présence obligatoire.
+          CRITICAL="users prompts transactions unlocked_prompts trade_offers play_events tracks adns owned_adns"
+          FAIL=0
+          for t in $CRITICAL; do
+            if ! psql -tAc "SELECT to_regclass('public.$t') IS NOT NULL;" | grep -q t; then
+              echo "❌ Table manquante : $t"
+              echo "| $t | **MANQUANTE** |" >> "$GITHUB_STEP_SUMMARY"
+              FAIL=1
+              continue
+            fi
+            N=$(psql -tAc "SELECT count(*) FROM public.$t;")
+            echo "✓ $t : $N lignes"
+            echo "| $t | $N |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          # Garde-fou : la table users d'une prod réelle ne peut pas être vide.
+          NU=$(psql -tAc "SELECT count(*) FROM public.users;")
+          if [ "$NU" -lt 1 ]; then echo "❌ users vide — restauration suspecte"; FAIL=1; fi
+          test "$FAIL" -eq 0 || { echo "Drill ÉCHOUÉ : schéma incomplet"; exit 1; }
+          echo "✅ Drill réussi : toutes les tables critiques présentes et restaurées."
