@@ -52,10 +52,13 @@ from sqlalchemy import delete, select, text
 # couvre les fixtures, ce marker couvre les tests eux-mêmes.
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
+from datetime import datetime, timedelta, timezone
+
 from app.database import SessionLocal
 from app.models.achievement import Achievement, UserAchievement
 from app.models.adn import Adn
 from app.models.prompt import Prompt
+from app.models.trade import TradeOffer, TradeStatus
 from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.user import UserCreate
@@ -198,6 +201,40 @@ async def _cleanup(*user_ids: uuid.UUID) -> None:
         await db.execute(text("SET session_replication_role = 'origin'"))
         await db.execute(delete(User).where(User.id.in_(ids)))
         await db.commit()
+
+
+async def _email_of(uid: uuid.UUID) -> str:
+    async with SessionLocal() as db:
+        row = (await db.execute(
+            text("SELECT email FROM users WHERE id = :u"), {"u": uid},
+        )).first()
+        return row.email
+
+
+async def _make_trade_offer(
+    sender_id: uuid.UUID,
+    receiver_id: uuid.UUID,
+    offered_prompt_id: uuid.UUID,
+    requested_prompt_id: uuid.UUID,
+    price: int = 10,
+) -> uuid.UUID:
+    """Crée une offre de trade PENDING prête à être acceptée."""
+    async with SessionLocal() as db:
+        offer = TradeOffer(
+            sender_id=sender_id,
+            receiver_id=receiver_id,
+            offered_prompt_id=offered_prompt_id,
+            requested_prompt_id=requested_prompt_id,
+            offered_price_at_trade=price,
+            requested_price_at_trade=price,
+            credit_supplement=0,
+            status=TradeStatus.PENDING,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+        db.add(offer)
+        await db.commit()
+        await db.refresh(offer)
+        return offer.id
 
 
 async def _do_unlock_prompt(buyer_id: uuid.UUID, prompt_id: uuid.UUID):
@@ -485,3 +522,69 @@ async def test_credit_conservation():
         )
     finally:
         await _cleanup(artist, buyer)
+
+
+# =============================================================================
+# Test 5 — Idempotence trade : double-acceptation simultanée (H0.3)
+# =============================================================================
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_double_accept_trade_idempotent(client):
+    """
+    Le receiver accepte DEUX FOIS la même offre simultanément (double-clic /
+    double-requête). Avant le durcissement H0.3, l'absence de verrou sur la
+    ligne offre rejouait le burn de frais des deux côtés (double débit).
+
+    Invariants après la course (garantis par le FOR UPDATE sur l'offre) :
+      - exactement 1 réponse 200 et 1 réponse 409 (offre non pending)
+      - l'offre est ACCEPTED (une seule)
+      - les frais ne sont débités QU'UNE FOIS de chaque côté
+        (prix snapshot 10 → frais = max(2, 20%) = 2 ; supplément 0)
+        → sender 1000→998, receiver 1000→998 (et surtout PAS 996)
+    """
+    sender = await _make_user(initial_balance=1000, artist_name="TradeSender")
+    receiver = await _make_user(initial_balance=1000, artist_name="TradeReceiver")
+    offered = await _make_published_prompt(sender, price=10)    # prompt du sender
+    requested = await _make_published_prompt(receiver, price=10)  # prompt du receiver
+
+    offer_id = await _make_trade_offer(
+        sender, receiver, offered, requested, price=10
+    )
+
+    # Auth du receiver (seul autorisé à accepter). Mot de passe fixé par _make_user.
+    email = await _email_of(receiver)
+    login = await client.post(
+        "/auth/login", json={"email": email, "password": "12345678"}
+    )
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    url = f"/trades/offers/{offer_id}/accept"
+    try:
+        # Deux acceptations CONCURRENTES (vraie course, sessions DB distinctes).
+        r1, r2 = await asyncio.gather(
+            client.patch(url, headers=headers),
+            client.patch(url, headers=headers),
+        )
+        codes = sorted([r1.status_code, r2.status_code])
+        assert codes == [200, 409], (
+            f"Double-accept doit donner exactement un 200 + un 409, reçu {codes} "
+            f"(r1={r1.status_code} {r1.text[:120]} | r2={r2.status_code} {r2.text[:120]})"
+        )
+
+        # Une seule offre, passée ACCEPTED.
+        async with SessionLocal() as db:
+            n_accepted = (await db.execute(
+                text(
+                    "SELECT COUNT(*) FROM trade_offers "
+                    "WHERE id = :o AND status = 'accepted'"
+                ),
+                {"o": offer_id},
+            )).scalar()
+            assert n_accepted == 1, f"Offre non unique/ACCEPTED : {n_accepted}"
+
+        # Frais débités UNE seule fois de chaque côté (sinon 996).
+        assert await _balance(sender) == 998, "Sender débité plus d'une fois"
+        assert await _balance(receiver) == 998, "Receiver débité plus d'une fois"
+    finally:
+        await _cleanup(sender, receiver)

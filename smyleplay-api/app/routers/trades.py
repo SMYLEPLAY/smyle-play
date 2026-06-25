@@ -33,6 +33,7 @@ from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 from app.schemas.trade import PromptSnap, TradeOfferCreate, TradeOfferRead
+from app.services.credits import _acquire_user_locks
 from app.services.notifications import create_notification
 
 router = APIRouter(prefix="/trades", tags=["trades"])
@@ -276,7 +277,16 @@ async def accept_trade(
     Accepte une offre de trade (receiver uniquement).
     Atomique : crée les UnlockedPrompt + transfère les crédits supplement.
     """
-    offer = await _get_offer_or_404(offer_id, db)
+    # Verrou de ligne sur l'offre : SÉRIALISE les acceptations concurrentes
+    # (double-clic / double-requête). Une 2e acceptation simultanée bloque sur
+    # ce FOR UPDATE jusqu'au commit de la 1re, puis relit le statut ACCEPTED
+    # → 409. Sans ce verrou, deux acceptations en parallèle rejouaient le burn
+    # de frais ET le transfert de supplément (double débit). H0.3 durcissement.
+    offer = (await db.execute(
+        select(TradeOffer).where(TradeOffer.id == offer_id).with_for_update()
+    )).scalar_one_or_none()
+    if not offer:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Offre introuvable")
 
     if offer.receiver_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
@@ -339,11 +349,18 @@ async def accept_trade(
             return TRADE_FEE_FLOOR
         return max(TRADE_FEE_FLOOR, round(price * TRADE_FEE_RATE))
 
+    # Verrous ordonnés (tri UUID) sur les DEUX users AVANT toute lecture de
+    # solde : la mutation de balance ci-dessous est un read-modify-write ORM
+    # (sender.credits_balance -= ...), donc vulnérable au lost-update si une
+    # autre opération (unlock, pack…) touche le même user en parallèle. Le
+    # FOR UPDATE sérialise ces écritures. Ordre trié = pas de deadlock.
+    await _acquire_user_locks(db, [offer.sender_id, current_user.id])
+
     sender = (await db.execute(
-        select(User).where(User.id == offer.sender_id)
+        select(User).where(User.id == offer.sender_id).with_for_update()
     )).scalar_one()
     receiver = (await db.execute(
-        select(User).where(User.id == current_user.id)
+        select(User).where(User.id == current_user.id).with_for_update()
     )).scalar_one()
 
     # Le sender reçoit le prompt DEMANDÉ ; le receiver reçoit le prompt OFFERT.
