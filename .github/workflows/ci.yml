@@ -242,3 +242,67 @@ jobs:
           rc=${PIPESTATUS[0]}
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           exit $rc
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4 — Sécurité : dépendances (pip-audit), code (bandit), secrets (gitleaks)
+  # Pré-requis "argent inviolable" du durcissement (H0.1a). Bloquant : un merge
+  # échoue si une dépendance vulnérable, un défaut de code medium+ ou un secret
+  # est introduit. Calibré 2026-06-25 sur l'état propre du repo :
+  #   • pip-audit : 0 vulnérabilité connue ;
+  #   • bandit -ll -ii : 0 défaut medium+ (les Low B105/B110 ne bloquent pas) ;
+  #   • gitleaks --no-git : 0 secret dans les fichiers (scan de l'état du disque,
+  #     pas de l'historique → une fuite passée ne fige pas les PR, mais tout
+  #     secret AJOUTÉ dans une PR est bloqué).
+  # ─────────────────────────────────────────────────────────────────────────────
+  security:
+    name: Sécurité (pip-audit · bandit · gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install scanners
+        run: pip install pip-audit bandit
+
+      - name: pip-audit (dépendances vulnérables)
+        run: |
+          set -o pipefail
+          {
+            echo '### pip-audit'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          pip-audit -r requirements.txt --progress-spinner off 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          rc=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
+      - name: bandit (défauts de code medium+)
+        run: |
+          set -o pipefail
+          {
+            echo '### bandit (medium+)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # -ll : seuil de sévérité medium+ ; -ii : confiance medium+.
+          # Bloque (exit ≠ 0) seulement sur un défaut medium+/medium+.
+          bandit -r smyleplay-api/app -ll -ii 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          rc=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
+      - name: gitleaks (secrets dans les fichiers)
+        run: |
+          set -euo pipefail
+          VER="8.21.2"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" \
+            | tar xz gitleaks
+          # --no-git : scanne l'état du disque (fichiers présents), pas l'historique.
+          # L'arbre suivi est propre (vérifié 2026-06-25) ; tout secret introduit
+          # dans une PR apparaît dans les fichiers et fait échouer ce job.
+          # `detect` = forme stable sur tout gitleaks v8 ; exit 1 par défaut si fuite.
+          ./gitleaks detect --source . --no-git --no-banner --redact
