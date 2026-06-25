@@ -1,0 +1,12 @@
+{
+  "name": "smyleplay-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Smokes Playwright — filet anti-régression des parcours front (H0.1b).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}
