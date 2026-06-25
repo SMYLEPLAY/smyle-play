@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
+from pathlib import Path as _Path
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -28,10 +30,16 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Request,
     UploadFile,
     status,
 )
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+
+# index.html à la racine du repo (smyleplay-api/app/routers/images.py → parents[3]).
+# Sert à rendre la PAGE marketplace quand un navigateur ouvre /images en direct
+# (sinon l'API JSON ci-dessous masque la page HTML Flask — cf. content-nego).
+_INDEX_HTML = _Path(__file__).resolve().parents[3] / "index.html"
 from pydantic import ValidationError
 from sqlalchemy import desc, false as sa_false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -601,6 +609,7 @@ def _apply_image_filters(
 
 @router.get("/images")
 async def list_public_images(
+    request: Request,
     q: str = Query(default="", max_length=100),
     platform: Optional[str] = Query(default=None, max_length=50),
     rarity: Optional[str] = Query(default=None, max_length=20),
@@ -631,6 +640,14 @@ async def list_public_images(
     rareté + prix. JAMAIS image_r2_key / prompt_text / image_settings (hors
     'ratio' descriptif) / negative_prompt.
     """
+    # Le chemin /images est à la fois cette API JSON (sans préfixe → prioritaire
+    # sur le mount Flask) ET l'URL de la PAGE vitrine images. Une navigation
+    # navigateur (Accept: text/html) doit recevoir la PAGE, pas du JSON brut
+    # (sinon un lien direct/partagé/crawler SEO affiche le JSON). Les appels
+    # data passent par apiFetch (Accept: application/json) ou fetch (*/*) → JSON.
+    if "text/html" in request.headers.get("accept", ""):
+        return FileResponse(_INDEX_HTML)
+
     base = (
         select(Prompt, User)
         .join(User, Prompt.artist_id == User.id)
