@@ -53,6 +53,10 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    # IP de l'inscription (anti-abus H0.4 : plafond parrainage par IP +
+    # détection multi-comptes). Nullable : comptes pré-migration 0067 = NULL.
+    signup_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
     # --- Profil artiste ---
     artist_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)

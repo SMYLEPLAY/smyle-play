@@ -25,11 +25,14 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     return result.scalar_one_or_none()
 
 
-async def create_user(db: AsyncSession, user: UserCreate) -> User:
+async def create_user(
+    db: AsyncSession, user: UserCreate, signup_ip: str | None = None
+) -> User:
     db_user = User(
         email=user.email,
         password_hash=hash_password(user.password),
         referral_code=await generate_referral_code(db),
+        signup_ip=signup_ip,  # anti-abus H0.4 (None si indéterminé)
     )
     db.add(db_user)
     # flush → refresh DANS la transaction (asyncpg : un refresh APRÈS commit
