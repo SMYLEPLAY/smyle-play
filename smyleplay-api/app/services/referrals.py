@@ -34,6 +34,12 @@ REFERRAL_REWARD_CREDITS = 10
 # Volontairement haut pour ne jamais gêner un parrainage légitime viral.
 REFERRAL_DAILY_CAP = 20
 
+# Anti-abus PAR IP (H0.4, décision Tom 2026-06-25) : plafond glissant 24h de
+# filleuls récompensés partageant la MÊME IP d'inscription. Borne le farming
+# par multi-comptes créés depuis un même réseau. Bas (vs le cap par parrain)
+# car une même IP qui génère >3 filleuls récompensés/jour est très suspecte.
+REFERRAL_IP_DAILY_CAP = 3
+
 # Alphabet sans caractères ambigus (pas de O/0, I/1) → codes lisibles à l'oral.
 _CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 _CODE_LENGTH = 8
@@ -128,6 +134,25 @@ async def maybe_reward_referral(db: AsyncSession, referred_user_id: UUID) -> boo
     )
     if recent_rewarded is not None and int(recent_rewarded) >= REFERRAL_DAILY_CAP:
         return False
+
+    # Anti-abus PAR IP : plafond glissant 24h de filleuls récompensés partageant
+    # l'IP d'inscription du filleul courant. IP inconnue (NULL) → pas de cap
+    # (on ne bloque jamais sur une donnée absente, ex. comptes pré-0067).
+    referred_ip = await db.scalar(
+        select(User.signup_ip).where(User.id == referred_user_id)
+    )
+    if referred_ip:
+        recent_ip = await db.scalar(
+            select(func.count(Referral.id))
+            .join(User, User.id == Referral.referred_id)
+            .where(
+                Referral.status == ReferralStatus.REWARDED,
+                Referral.rewarded_at >= since,
+                User.signup_ip == referred_ip,
+            )
+        )
+        if recent_ip is not None and int(recent_ip) >= REFERRAL_IP_DAILY_CAP:
+            return False
 
     amount = referral.reward_credits
 

@@ -296,6 +296,54 @@ async def test_referral_daily_cap(monkeypatch):
         await _cleanup_users(referrer, a, b)
 
 
+async def test_referral_ip_daily_cap(monkeypatch):
+    # Anti-abus PAR IP (H0.4) : au-delà du plafond glissant 24h de filleuls
+    # récompensés partageant la même IP d'inscription, plus de récompense —
+    # même si le plafond PAR PARRAIN n'est pas atteint.
+    import app.services.referrals as ref_mod
+    monkeypatch.setattr(ref_mod, "REFERRAL_IP_DAILY_CAP", 1)
+
+    referrer = await _make_user(initial_balance=100)
+    a = await _make_user(initial_balance=0)
+    b = await _make_user(initial_balance=0)
+    SAME_IP = "203.0.113.7"
+    try:
+        # A et B s'inscrivent depuis la MÊME IP.
+        async with SessionLocal() as db:
+            await db.execute(
+                text("UPDATE users SET signup_ip = :ip WHERE id = :u"),
+                {"ip": SAME_IP, "u": a},
+            )
+            await db.execute(
+                text("UPDATE users SET signup_ip = :ip WHERE id = :u"),
+                {"ip": SAME_IP, "u": b},
+            )
+            await db.commit()
+
+        async with SessionLocal() as db:
+            code = (await db.get(User, referrer)).referral_code
+
+        # Filleul A : attaché puis récompensé (1 récompensé sur cette IP).
+        async with SessionLocal() as db:
+            await ref_mod.attach_referral_at_signup(db, await db.get(User, a), code)
+            await db.commit()
+        async with SessionLocal() as db:
+            assert await ref_mod.maybe_reward_referral(db, a) is True
+            await db.commit()
+        bal_after_a = await _balance(referrer)
+
+        # Filleul B : même IP → PLAFONNÉ par IP (cap=1, déjà 1 récompensé).
+        async with SessionLocal() as db:
+            await ref_mod.attach_referral_at_signup(db, await db.get(User, b), code)
+            await db.commit()
+        async with SessionLocal() as db:
+            assert await ref_mod.maybe_reward_referral(db, b) is False
+            await db.commit()
+        assert await _balance(referrer) == bal_after_a
+    finally:
+        await _cleanup_users(referrer, a, b)
+
+
 # =============================================================================
 # Streak
 # =============================================================================
