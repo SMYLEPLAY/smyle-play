@@ -493,31 +493,22 @@
 .mp-son-card {
   /* position:relative = ancre du badge recette en coin (QA 2026-06-13) */
   position: relative;
-  padding: 14px;
-  border-radius: 14px;
-  /* Verre architectural (refonte 2026-06-26) : remplissage translucide + flou
-     d'arrière-plan (frosted) + arête haute lumineuse (épaisseur du verre).
-     Structure et contenu inchangés — uniquement la matière de la carte. */
-  background: linear-gradient(160deg, rgba(42,40,62,.30), rgba(12,12,20,.26));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(13px) saturate(122%);
-  backdrop-filter: blur(13px) saturate(122%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 18px 44px rgba(0,0,0,.45);
-  transition: transform .25s, border-color .25s, box-shadow .25s;
+  padding: 16px;
+  /* CELLULE SUPPRIMÉE (refonte 2026-06-26) : plus de fond, ni de bordure, ni de
+     coins arrondis, ni d'ombre. Il ne reste que les FRAGMENTS de verre (::after)
+     qui encadrent le contenu — celui-ci « flotte » sur le fond pétrole. */
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transition: transform .25s;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-/* Reflet « miroir » qui suit le curseur (--mx/--my posées par watt-cards.js). */
-.mp-son-card::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit;
-  pointer-events: none; z-index: 1; mix-blend-mode: screen; opacity: .5;
-  transition: opacity .35s;
-  background: radial-gradient(360px 210px at var(--mx,30%) var(--my,0%),
-    rgba(255,255,255,.14), rgba(180,170,255,.04) 26%, transparent 56%);
-}
-.mp-son-card:hover::before { opacity: 1; }
+/* Plus de reflet rectangulaire (la cellule n'existe plus). */
+.mp-son-card::before { content: none; }
 /* Cadre de verre brisé (assets photo générés par Tom, fond rendu transparent).
    Posé en border-image : les coins éclatés restent nets, les arêtes s'étirent ;
    le centre est vide (pas de `fill`) → contenu de la carte intact. 3 variantes
@@ -535,8 +526,6 @@
 
 .mp-son-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(139, 92, 246, 0.45);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 26px 60px rgba(0,0,0,.55), 0 0 40px rgba(124,58,237,.12);
 }
 
 .mp-adn-badge {
