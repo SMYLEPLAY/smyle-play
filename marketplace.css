@@ -525,13 +525,13 @@
 .mp-son-card::after {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3; opacity: .9;
   border: 26px solid transparent;
-  border-image-source: url(/assets/glass/frame1.png);
+  border-image-source: url(/assets/glass/frame1.png?v=2);
   border-image-slice: 118;
   border-image-width: 26px;
   border-image-repeat: stretch;
 }
-.mp-son-card:nth-of-type(3n+2)::after { border-image-source: url(/assets/glass/frame2.png); }
-.mp-son-card:nth-of-type(3n)::after   { border-image-source: url(/assets/glass/frame3.png); }
+.mp-son-card:nth-of-type(3n+2)::after { border-image-source: url(/assets/glass/frame2.png?v=2); }
+.mp-son-card:nth-of-type(3n)::after   { border-image-source: url(/assets/glass/frame3.png?v=2); }
 
 .mp-son-card:hover {
   transform: translateY(-4px);
