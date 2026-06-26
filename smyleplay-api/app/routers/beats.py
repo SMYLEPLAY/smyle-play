@@ -169,6 +169,10 @@ async def download_beat(
             detail="Achète cet exemplaire pour pouvoir le télécharger.",
         )
 
+    # Journal de téléchargement (H0.5+) — best-effort, n'interrompt jamais le DL.
+    from app.services.downloads import log_download
+    await log_download(db, user_id=current_user.id, product_id=beat_id, kind="audio")
+
     # Fichier = audio du track lié : via prompt_id (recette, cas C2) OU
     # beat_id (produit beat legacy). Le plus récent si plusieurs.
     from sqlalchemy import or_ as _or
