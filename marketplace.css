@@ -494,20 +494,41 @@
   /* position:relative = ancre du badge recette en coin (QA 2026-06-13) */
   position: relative;
   padding: 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
+  border-radius: 14px;
+  /* Verre architectural (refonte 2026-06-26) : remplissage translucide + flou
+     d'arrière-plan (frosted) + arête haute lumineuse (épaisseur du verre).
+     Structure et contenu inchangés — uniquement la matière de la carte. */
+  background: linear-gradient(160deg, rgba(42,40,62,.30), rgba(12,12,20,.26));
   border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: transform 0.2s, border-color 0.2s, background 0.2s;
+  -webkit-backdrop-filter: blur(13px) saturate(122%);
+  backdrop-filter: blur(13px) saturate(122%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 18px 44px rgba(0,0,0,.45);
+  transition: transform .25s, border-color .25s, box-shadow .25s;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+/* Reflet « miroir » qui suit le curseur (--mx/--my posées par watt-cards.js). */
+.mp-son-card::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 1; mix-blend-mode: screen; opacity: .5;
+  transition: opacity .35s;
+  background: radial-gradient(360px 210px at var(--mx,30%) var(--my,0%),
+    rgba(255,255,255,.14), rgba(180,170,255,.04) 26%, transparent 56%);
+}
+.mp-son-card:hover::before { opacity: 1; }
+/* Lumière diagonale figée — verre poli. */
+.mp-son-card::after {
+  content: ""; position: absolute; left: -30%; top: -60%; width: 55%; height: 220%;
+  transform: rotate(20deg); pointer-events: none; z-index: 1; opacity: .55;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent);
+}
 
 .mp-son-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(124, 58, 237, 0.4);
-  background: rgba(124, 58, 237, 0.05);
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 26px 60px rgba(0,0,0,.55), 0 0 40px rgba(124,58,237,.12);
 }
 
 .mp-adn-badge {
