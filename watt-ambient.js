@@ -4,7 +4,8 @@
    tout le contenu. Ne touche à AUCUN item, AUCUNE mécanique. Si WebGL échoue
    ou si la moindre erreur survient, on ne fait rien (l'app reste intacte).
    Réversible : retirer la balise <script> + la règle de fond dans style.css.
-   Réf direction artistique : OBSIDIAN/02_WATT/2026-06-25_WATT_CREATIVE_DIRECTION.md
+   Réglage 2026-06-26 : mouvement accentué + parallaxe curseur, mais reste très
+   sombre (loi 85 % noir). Réf : OBSIDIAN/02_WATT/2026-06-25_WATT_CREATIVE_DIRECTION.md
    ───────────────────────────────────────────────────────────────────────── */
 (function () {
   try {
@@ -14,17 +15,13 @@
     c.setAttribute('aria-hidden', 'true');
     c.style.cssText =
       'position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:block;';
-    var mount = function () {
-      document.body.insertBefore(c, document.body.firstChild);
-      start();
-    };
+
     var gl = c.getContext('webgl') || c.getContext('experimental-webgl');
     if (!gl) {
       c.style.background =
-        'radial-gradient(1200px 800px at 72% -5%,#15101f,#050508 60%)';
-      if (document.body) document.body.insertBefore(c, document.body.firstChild);
-      else document.addEventListener('DOMContentLoaded',
-        function(){document.body.insertBefore(c, document.body.firstChild);});
+        'radial-gradient(1200px 800px at 72% -5%,#17122a,#050508 60%)';
+      var put = function(){ document.body.insertBefore(c, document.body.firstChild); };
+      if (document.body) put(); else document.addEventListener('DOMContentLoaded', put);
       return;
     }
 
@@ -36,19 +33,22 @@
 
     var vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
     var fs =
-      'precision highp float;uniform vec2 u_r;uniform float u_t;' +
+      'precision highp float;uniform vec2 u_r;uniform float u_t;uniform vec2 u_m;' +
       'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}' +
       'float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);' +
       'return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}' +
       'float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<6;i++){s+=a*n(p);p*=2.02;a*=.5;}return s;}' +
-      'void main(){vec2 uv=gl_FragCoord.xy/u_r;vec2 p=uv*vec2(u_r.x/u_r.y,1.)*2.4;float t=u_t*0.022;' +
-      'vec2 q=vec2(fbm(p+t),fbm(p+vec2(5.2,1.3)-t*.8));' +
-      'vec2 r=vec2(fbm(p+3.5*q+vec2(1.7,9.2)+t*.5),fbm(p+3.5*q+vec2(8.3,2.8)-t*.4));' +
-      'float f=fbm(p+3.5*r);' +
-      'vec3 col=mix(vec3(.010,.010,.020),vec3(.037,.032,.072),f);' +
-      'col+=smoothstep(.64,.98,f)*vec3(.15,.085,.29)*.5;' +
-      'col+=pow(max(0.,r.x),3.)*vec3(.04,.10,.26)*.45;' +
-      'float vig=smoothstep(1.35,.22,length(uv-vec2(.5,.42)));col*=mix(.42,1.,vig)*.9;' +
+      'void main(){vec2 uv=gl_FragCoord.xy/u_r;vec2 p=uv*vec2(u_r.x/u_r.y,1.)*2.3;' +
+      'p+=(u_m-0.5)*0.55;' +                         /* parallaxe curseur, douce */
+      'float t=u_t*0.05;' +                          /* mouvement accentué */
+      'vec2 q=vec2(fbm(p+t),fbm(p+vec2(5.2,1.3)-t*.85));' +
+      'vec2 r=vec2(fbm(p+3.6*q+vec2(1.7,9.2)+t*.6),fbm(p+3.6*q+vec2(8.3,2.8)-t*.5));' +
+      'float f=fbm(p+3.6*r);' +
+      'vec3 col=mix(vec3(.012,.012,.024),vec3(.05,.043,.094),f);' +   /* base très sombre */
+      'col+=smoothstep(.55,.98,f)*vec3(.17,.10,.34)*.72;' +          /* veines violettes plus lisibles */
+      'col+=pow(max(0.,r.x),2.6)*vec3(.05,.12,.30)*.6;' +            /* profondeur bleue */
+      'col+=pow(max(0.,q.y),3.5)*vec3(.10,.06,.22)*.5;' +
+      'float vig=smoothstep(1.4,.18,length(uv-vec2(.5,.42)));col*=mix(.4,1.,vig);' +
       'gl_FragColor=vec4(col,1.);}';
 
     function sh(type, src) {
@@ -67,30 +67,37 @@
     gl.vertexAttribPointer(lp, 2, gl.FLOAT, false, 0, 0);
     var ur = gl.getUniformLocation(prog, 'u_r');
     var ut = gl.getUniformLocation(prog, 'u_t');
+    var um = gl.getUniformLocation(prog, 'u_m');
     var t0 = Date.now(), raf = 0;
+    var mx = 0.5, my = 0.5, tx = 0.5, ty = 0.5;   /* cible + valeur lissée */
+    window.addEventListener('mousemove', function (e) {
+      tx = e.clientX / window.innerWidth;
+      ty = e.clientY / window.innerHeight;
+    }, { passive: true });
+
+    function frame() {
+      mx += (tx - mx) * 0.04;                       /* lissage = mouvement organique */
+      my += (ty - my) * 0.04;
+      gl.uniform2f(ur, c.width, c.height);
+      gl.uniform1f(ut, (Date.now() - t0) / 1000);
+      gl.uniform2f(um, mx, my);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      raf = requestAnimationFrame(frame);
+    }
+    function run() { cancelAnimationFrame(raf); frame(); }
 
     function start() {
       size();
       window.addEventListener('resize', size);
-      (function loop() {
-        gl.uniform2f(ur, c.width, c.height);
-        gl.uniform1f(ut, (Date.now() - t0) / 1000);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        raf = requestAnimationFrame(loop);
-      })();
-      // Économie : on coupe l'animation quand l'onglet n'est pas visible.
+      run();
       document.addEventListener('visibilitychange', function () {
-        if (document.hidden) { cancelAnimationFrame(raf); }
-        else { (function loop() {
-          gl.uniform2f(ur, c.width, c.height);
-          gl.uniform1f(ut, (Date.now() - t0) / 1000);
-          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-          raf = requestAnimationFrame(loop);
-        })(); }
+        if (document.hidden) cancelAnimationFrame(raf); else run();
       });
     }
 
-    if (document.body) mount();
-    else document.addEventListener('DOMContentLoaded', mount);
+    if (document.body) { document.body.insertBefore(c, document.body.firstChild); start(); }
+    else document.addEventListener('DOMContentLoaded', function () {
+      document.body.insertBefore(c, document.body.firstChild); start();
+    });
   } catch (e) { /* fond optionnel : ne jamais casser l'app */ }
 })();

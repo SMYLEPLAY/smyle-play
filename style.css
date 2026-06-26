@@ -10,7 +10,7 @@
    (watt-ambient.js, canvas en z-index:-1). html garde le noir d'origine en
    secours si WebGL est absent. Réversible : remettre body background var(--bg). */
 html { background: var(--bg); }
-body { background: rgba(5,5,8,.74); color: var(--white); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+body { background: rgba(5,5,8,.58); color: var(--white); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   min-height: 100vh; overflow-x: hidden; padding-bottom: var(--player-h); }
 button { font-family: inherit; }
 
