@@ -491,31 +491,24 @@
 /* --- Carte son (catalogue) ----------------------------------- */
 
 .mp-son-card {
-  /* ÉCLAT DE VERRE WIREFRAME (refonte 2026-06-26) : forme irrégulière (clip-path
-     posé par watt-cards.js) + maillage triangulé lumineux dessiné sur un <canvas>
-     superposé. Fond verre très faible, clippé à l'éclat. Contenu/mécaniques
-     inchangés. Padding large = zone sûre pour que le contenu évite les angles. */
+  /* position:relative = ancre du badge recette en coin (QA 2026-06-13).
+     Carte normale (retour à l'état d'origine — expérience verre/éclats abandonnée). */
   position: relative;
-  padding: 22px 20px;
-  background: rgba(12,12,20,.5);
-  -webkit-backdrop-filter: blur(3px) saturate(120%);
-  backdrop-filter: blur(3px) saturate(120%);
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  transition: transform .25s;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s, border-color 0.2s, background 0.2s;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.mp-son-card::before { content: none; }
-.mp-son-card::after  { content: none; }
-/* Le maillage lumineux : superposé, ne capte aucun clic. */
-.mp-son-card .wf { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
 
 .mp-son-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.4);
+  background: rgba(124, 58, 237, 0.05);
 }
 
 .mp-adn-badge {
