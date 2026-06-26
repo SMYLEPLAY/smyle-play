@@ -6,7 +6,11 @@
   --electric: #0055ff; --gap: 24px; --radius: 3px; --player-h: 80px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--white); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+/* Fond de page : voile sombre translucide au-dessus du calque pétrole
+   (watt-ambient.js, canvas en z-index:-1). html garde le noir d'origine en
+   secours si WebGL est absent. Réversible : remettre body background var(--bg). */
+html { background: var(--bg); }
+body { background: rgba(5,5,8,.74); color: var(--white); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   min-height: 100vh; overflow-x: hidden; padding-bottom: var(--player-h); }
 button { font-family: inherit; }
 
