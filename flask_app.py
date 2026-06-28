@@ -121,6 +121,15 @@ def create_app(config_class=None):
         # branché (chantier hors sprint actuel — voir Tarification_v1).
         return send_from_directory(BASE_DIR, 'tarifs.html')
 
+    @app.route('/offres')
+    def offres_page():
+        # C6 — page Offres : les 3 paliers créateur (Standard/Premium/Mythique)
+        # avec commission (20/12/5), emplacements de vente et visibilité.
+        # Surligne le palier courant via /users/me. Activation Premium/Mythique
+        # = post-Stripe (CTA désactivé pour l'instant). Distincte de /tarifs
+        # (packs de crédits).
+        return send_from_directory(BASE_DIR, 'offres.html')
+
     @app.route('/u/<slug>')
     def user_page(slug):
         # La page /u/<slug> est l'unique endroit où vit le profil membre :
