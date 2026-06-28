@@ -613,6 +613,7 @@
           <a class="stb-drop-item" href="${_esc(profileHref)}">Mon profil</a>
           <a class="stb-drop-item" href="/dashboard">WATT BOARD</a>
           <a class="stb-drop-item" href="/library">Bibliothèque</a>
+          <a class="stb-drop-item" href="/offres">Offres créateur</a>
           <div class="stb-drop-sep" role="separator"></div>
           <button class="stb-drop-item stb-drop-logout" type="button"
                   onclick="window.SmyleTopbar.logout(event)">Déconnexion</button>

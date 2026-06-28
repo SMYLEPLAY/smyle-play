@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offres créateur · WATT</title>
+  <meta name="theme-color" content="#050508" />
+  <link rel="stylesheet" href="/style.css?v=20260626" />
+  <link rel="stylesheet" href="/ui/core/tokens.css?v=20260626" />
+  <style>
+    body { background: #050508; }
+    .off-wrap { max-width: 1040px; margin: 48px auto; padding: 0 20px; color: #e8e6f5; }
+    .off-back { display: inline-block; margin-bottom: 24px; color: #cc88ff; text-decoration: none; font-size: 14px; }
+    .off-back:hover { text-decoration: underline; }
+    .off-eyebrow { color: #cc88ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 12px; }
+    .off-h1 { font-size: 38px; margin: 0 0 8px; letter-spacing: -.01em; }
+    .off-sub { color: #a09cb8; font-size: 16px; margin: 0 0 36px; max-width: 660px; line-height: 1.55; }
+    .off-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .off-card {
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px; padding: 26px 24px;
+      display: flex; flex-direction: column; gap: 18px;
+      position: relative; transition: border-color .2s, transform .2s;
+    }
+    .off-card:hover { transform: translateY(-2px); border-color: rgba(204,136,255,.35); }
+    .off-card.is-current { border-color: rgba(124,58,237,.6); background: rgba(124,58,237,.06); }
+    .off-card-name { font-size: 19px; font-weight: 700; letter-spacing: .02em; }
+    .off-card-tag { font-size: 13px; color: #a09cb8; margin-top: -10px; }
+    .off-commission { display: flex; align-items: baseline; gap: 8px; }
+    .off-commission b { font-size: 40px; font-weight: 800; color: #fff; line-height: 1; }
+    .off-commission span { font-size: 14px; color: #a09cb8; }
+    .off-perks { list-style: none; padding: 0; margin: 0; font-size: 14px; color: #d2cfe0; }
+    .off-perks li { padding: 9px 0; border-top: 1px solid rgba(255,255,255,.06); display: flex; gap: 10px; }
+    .off-perks li:first-child { border-top: none; }
+    .off-perks .ic { color: #cc88ff; flex: none; }
+    .off-cta {
+      margin-top: auto; text-align: center;
+      background: rgba(204,136,255,.10); color: #cc88ff;
+      border: 1px solid rgba(204,136,255,.32);
+      padding: 12px 16px; border-radius: 11px;
+      font-weight: 600; letter-spacing: .03em; font-size: 13px;
+      cursor: not-allowed; opacity: .6;
+    }
+    .off-cta.is-current { background: rgba(124,58,237,.18); color: #d8c4ff; border-color: rgba(124,58,237,.5); cursor: default; opacity: 1; }
+    .off-badge {
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(0,200,255,.10); color: #8bd9ff;
+      border: 1px solid rgba(0,200,255,.28);
+      padding: 4px 10px; border-radius: 999px; font-size: 11px;
+      letter-spacing: .08em; text-transform: uppercase;
+    }
+    .off-badge.current { background: rgba(124,58,237,.2); color: #d8c4ff; border-color: rgba(124,58,237,.5); }
+    .off-foot { color: #6b677f; font-size: 13px; margin-top: 30px; line-height: 1.6; max-width: 680px; }
+    .off-foot a { color: #cc88ff; }
+  </style>
+</head>
+<body>
+  <div class="off-wrap">
+    <a href="/" class="off-back">← Retour à la marketplace</a>
+    <div class="off-eyebrow">Paliers créateur</div>
+    <h1 class="off-h1">Offres créateur</h1>
+    <p class="off-sub">
+      Plus tu montes de palier, moins la plateforme prélève sur tes ventes,
+      plus tu peux mettre d'œuvres en vente, et plus tu gagnes en visibilité.
+      Chaque créateur démarre en Standard, gratuitement.
+    </p>
+
+    <div class="off-grid" id="off-grid"></div>
+
+    <p class="off-foot">
+      La commission est le pourcentage prélevé par la plateforme sur chaque
+      vente ; le reste te revient. Les paliers Premium et Mythique deviendront
+      activables à l'ouverture des paiements — aucun paiement n'est actif pour
+      le moment et ton palier reste Standard. Les chiffres ci-dessus sont
+      définitifs sauf annonce contraire. Voir aussi les
+      <a href="/tarifs">packs de crédits</a>.
+    </p>
+  </div>
+
+  <script src="/ui/core/api.js?v=20260626" defer></script>
+  <script src="/ui/core/legal-footer.js" defer></script>
+  <script>
+  (function () {
+    // Source de vérité = backend (app/services/tiers.py). Dupliqué ici pour
+    // l'affichage statique ; le palier COURANT vient de /users/me (tier_info).
+    var PALIERS = [
+      { tier: 'standard', label: 'Standard', tagline: 'Gratuit · pour démarrer',
+        commission: 20, slots: '10 emplacements de vente', featured: false },
+      { tier: 'premium', label: 'Premium', tagline: 'Pour les créateurs réguliers',
+        commission: 12, slots: '50 emplacements de vente', featured: true },
+      { tier: 'mythique', label: 'Mythique', tagline: 'Pour les créateurs intensifs',
+        commission: 5, slots: 'Emplacements illimités', featured: true },
+    ];
+
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    function render(currentTier) {
+      var grid = document.getElementById('off-grid');
+      if (!grid) return;
+      grid.innerHTML = PALIERS.map(function (p) {
+        var isCur = currentTier && currentTier === p.tier;
+        var perks = [
+          '<li><span class="ic">▾</span> Commission de <b style="color:#fff">' + p.commission + '%</b> sur tes ventes (tu gardes ' + (100 - p.commission) + '%)</li>',
+          '<li><span class="ic">▾</span> ' + esc(p.slots) + '</li>',
+          '<li><span class="ic">' + (p.featured ? '★' : '·') + '</span> ' + (p.featured ? 'Mise en avant dans la marketplace' : 'Visibilité standard') + '</li>',
+        ].join('');
+        var badge = isCur
+          ? '<span class="off-badge current">Ton palier</span>'
+          : (p.tier === 'standard' ? '' : '<span class="off-badge">Bientôt</span>');
+        var cta = isCur
+          ? '<div class="off-cta is-current">Palier actuel</div>'
+          : (p.tier === 'standard'
+              ? '<div class="off-cta">Palier de départ</div>'
+              : '<div class="off-cta">Activable à l\'ouverture des paiements</div>');
+        return (
+          '<div class="off-card' + (isCur ? ' is-current' : '') + '">' +
+            badge +
+            '<div class="off-card-name">' + esc(p.label) + '</div>' +
+            '<div class="off-card-tag">' + esc(p.tagline) + '</div>' +
+            '<div class="off-commission"><b>' + p.commission + '%</b><span>de commission</span></div>' +
+            '<ul class="off-perks">' + perks + '</ul>' +
+            cta +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    // Affichage immédiat (sans palier surligné), puis surlignage si connecté.
+    render(null);
+    try {
+      var token = (window.getAuthToken && window.getAuthToken()) || null;
+      if (token) {
+        fetch('/users/me', { headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + token } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (me) { if (me && me.tier) render(me.tier); })
+          .catch(function () { /* non connecté / hors-ligne : on garde l'affichage neutre */ });
+      }
+    } catch (e) { /* defensive */ }
+  })();
+  </script>
+</body>
+</html>

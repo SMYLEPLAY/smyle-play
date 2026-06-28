@@ -120,12 +120,24 @@ class UserRead(BaseModel):
     roles: list[str] | None = None
     credits_balance: int = 0
     credits_earned_total: int = 0
+    # C6 — palier créateur (standard/premium/mythique). Pilote commission,
+    # emplacements de vente et visibilité (cf. app/services/tiers.py).
+    tier: str = "standard"
     created_at: datetime
 
     @computed_field
     @property
     def euro_equivalent_earned(self) -> float:
         return round(self.credits_earned_total * 0.70, 2)
+
+    @computed_field
+    @property
+    def tier_info(self) -> dict:
+        """Récap du palier courant (commission, emplacements, visibilité)
+        pour la page Offres et l'UI dashboard."""
+        from app.services.tiers import tier_public_info
+
+        return tier_public_info(self.tier)
 
     @computed_field
     @property
