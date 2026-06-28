@@ -50,6 +50,7 @@ from app.models.transaction import (
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.services.credits import (
     _acquire_user_locks,
+    artist_pct_for_user,
     compute_adn_price_with_playlist_perk,
     compute_effective_price,
     compute_split,
@@ -232,7 +233,10 @@ async def unlock_prompt_atomic(
 
         # 5. Pricing entier (cumul -30% puis -20% si les deux).
         paid = compute_effective_price(base_price, perk_applied, playlist_perk)
-        artist_revenue, platform_fee = compute_split(paid)
+        # C6 : commission selon le PALIER de l'artiste vendeur (80/88/95).
+        # Standard = 80% = comportement historique.
+        artist_pct = await artist_pct_for_user(db, artist_id)
+        artist_revenue, platform_fee = compute_split(paid, artist_pct)
         # Sanity check (devrait être impossible vu compute_split garanti) :
         assert artist_revenue + platform_fee == paid
 
@@ -421,7 +425,9 @@ async def unlock_adn_atomic(
     async with db.begin_nested():
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
-        artist_revenue, platform_fee = compute_split(paid)
+        # C6 : commission selon le palier de l'artiste (80/88/95).
+        artist_pct = await artist_pct_for_user(db, artist_id)
+        artist_revenue, platform_fee = compute_split(paid, artist_pct)
         assert artist_revenue + platform_fee == paid
 
         buyer_row = (await db.execute(

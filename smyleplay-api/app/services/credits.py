@@ -149,6 +149,24 @@ def compute_split(
     return artist_revenue, platform_fee
 
 
+async def artist_pct_for_user(db: AsyncSession, user_id: UUID) -> int:
+    """Part artiste (%) selon le PALIER du vendeur (C6).
+
+    Lit `users.tier` et renvoie 80 / 88 / 95 (commission 20 / 12 / 5).
+    Tout palier inconnu / NULL (comptes pré-migration 0069) retombe sur
+    Standard (80%) = comportement historique. À appeler DANS la section
+    lockée d'un flux de vente, juste avant `compute_split`.
+    """
+    from app.services.tiers import artist_pct_for_tier  # import local: pas de cycle
+
+    row = (await db.execute(
+        text("SELECT tier FROM users WHERE id = :uid"),
+        {"uid": user_id},
+    )).first()
+    tier = row.tier if row is not None else None
+    return artist_pct_for_tier(tier)
+
+
 async def _acquire_user_locks(
     db: AsyncSession,
     user_ids: list[UUID],
