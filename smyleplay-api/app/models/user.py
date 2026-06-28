@@ -38,6 +38,11 @@ class User(Base):
             "brand_color IS NULL OR brand_color ~ '^#[0-9A-Fa-f]{6}$'",
             name="ck_users_brand_color_hex",
         ),
+        # C6 paliers créateur : enum fermé, défaut 'standard'.
+        CheckConstraint(
+            "tier IN ('standard', 'premium', 'mythique')",
+            name="ck_users_tier_enum",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -123,6 +128,18 @@ class User(Base):
         nullable=False,
         default=False,
         server_default="false",
+    )
+
+    # C6 paliers créateur (migration 0069). 'standard' (gratuit, défaut) /
+    # 'premium' / 'mythique'. Détermine la COMMISSION de vente (20/12/5 → part
+    # artiste 80/88/95, cf. app/services/tiers.py), le nombre d'EMPLACEMENTS
+    # de vente, et la VISIBILITÉ. Défaut 'standard' = comportement historique
+    # inchangé. L'activation Premium/Mythique (paiement) viendra avec Stripe.
+    tier: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="standard",
+        server_default="standard",
     )
 
     # --- Parrainage (mécanique 1) ---
