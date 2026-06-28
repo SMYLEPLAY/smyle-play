@@ -120,6 +120,12 @@ class Transaction(Base):
     external_reference: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
+    # A0 — clé d'idempotence (migration 0070). Nullable ; index UNIQUE partiel
+    # (où non NULL). Une opération idempotente passe cette clé → un rejeu portant
+    # la même clé est rejeté par la DB. Immuable après création (trigger append-only).
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
     euro_amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
