@@ -32,6 +32,19 @@ async def read_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/me/listing-slots")
+async def read_my_listing_slots(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Jauge d'emplacements de vente (C6.3) : produits publiés vs limite du
+    palier. `enforced=False` tant que les paliers payants ne sont pas ouverts
+    (la jauge s'affiche mais ne bloque pas)."""
+    from app.services.listings import listing_slots_status
+
+    return await listing_slots_status(db, current_user.id, current_user.tier)
+
+
 @router.patch("/me", response_model=UserRead)
 async def update_me(
     payload: UserUpdate,
