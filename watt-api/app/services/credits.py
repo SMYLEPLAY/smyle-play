@@ -185,6 +185,18 @@ _BUCKET_COLUMNS = {
 # encaissable), puis les achetés, puis les gagnés (encaissables, à préserver).
 _SPEND_PRIORITY = ("promo", "achetes", "gagnes")
 
+# A1.3 — routage type de transaction → bucket pour les CRÉDITS via
+# grant_credits_atomic. credit_purchase = acheté ; bonus/grant (bienvenue,
+# parrainage, streak, trophée, Saison 0) = promo ; earning = gagné ; refund =
+# acheté (conservateur, non encaissable). Défaut prudent = acheté.
+_TXTYPE_BUCKET = {
+    TransactionType.CREDIT_PURCHASE: "achetes",
+    TransactionType.BONUS: "promo",
+    TransactionType.GRANT: "promo",
+    TransactionType.EARNING: "gagnes",
+    TransactionType.REFUND: "achetes",
+}
+
 
 async def credit_bucket(
     db: AsyncSession,
@@ -394,14 +406,11 @@ async def grant_credits_atomic(
         db.add(tx)
         await db.flush()
 
-        # 3. Créditer le user (update atomique additif)
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :amount "
-                "WHERE id = :uid"
-            ),
-            {"amount": amount, "uid": user_id},
+        # 3. Créditer le user (update atomique additif) — A1.3 : on route vers
+        # le bon bucket selon le type de transaction (credit_bucket met aussi à
+        # jour credits_balance, donc somme(buckets) == credits_balance).
+        await credit_bucket(
+            db, user_id, amount, bucket=_TXTYPE_BUCKET.get(tx_type, "achetes")
         )
 
         # 4. Finaliser la transaction
