@@ -113,6 +113,11 @@ def create_app(config_class=None):
     def dashboard_page():
         return send_from_directory(BASE_DIR, 'dashboard.html')
 
+    # D0 télémétrie — funnel admin (lecture seule, gated is_official côté API).
+    @app.route('/admin/analytics')
+    def admin_analytics_page():
+        return send_from_directory(BASE_DIR, 'analytics.html')
+
     @app.route('/tarifs')
     def tarifs_page():
         # Page placeholder tarifs (chantier #12 backlog v3) — aucun

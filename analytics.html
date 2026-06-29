@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>WATT · Funnel (admin)</title>
+<style>
+  :root { --bg:#0a0712; --card:#0d0a16; --line:#2c2440; --vio:#6c4cf0; --gold:#ffb627; --mut:#9990ad; --mut2:#6f6885; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:#eee; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding:28px 18px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 2px; }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 20px; }
+  .row { display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
+  select, button { background:var(--card); color:#eee; border:1px solid var(--line); border-radius:9px; padding:8px 12px; font-size:13px; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  .step { margin:12px 0; }
+  .step-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+  .step-name { font-size:14px; font-weight:700; }
+  .step-num { font-size:14px; }
+  .step-num b { color:var(--gold); font-size:18px; }
+  .step-pct { color:var(--mut); font-size:12px; margin-left:8px; }
+  .bar { height:12px; background:#1a1430; border-radius:999px; overflow:hidden; }
+  .bar > i { display:block; height:100%; background:var(--vio); border-radius:999px; }
+  .conv { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .conv > div { background:#0a0712; border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+  .conv .v { font-size:20px; font-weight:800; color:var(--gold); }
+  .conv .l { font-size:11px; color:var(--mut); margin-top:3px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td { padding:7px 4px; border-bottom:1px solid #1a1430; }
+  td:last-child { text-align:right; color:var(--mut); }
+  .ttl { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--mut); margin:0 0 10px; font-weight:700; }
+  .msg { color:var(--mut); font-size:14px; padding:30px 0; text-align:center; }
+  .err { color:#e58; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Funnel produit</h1>
+  <p class="sub">Télémétrie D0 · privacy-first · visiteur → inscrit → 1er achat → revient</p>
+  <div class="row">
+    <label style="font-size:13px;color:var(--mut)">Fenêtre</label>
+    <select id="days">
+      <option value="7">7 jours</option>
+      <option value="30" selected>30 jours</option>
+      <option value="90">90 jours</option>
+    </select>
+    <button id="reload">Rafraîchir</button>
+  </div>
+  <div id="out"><p class="msg">Chargement…</p></div>
+</div>
+
+<script src="ui/core/api.js"></script>
+<script>
+(function () {
+  var out = document.getElementById('out');
+  function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+  function render(d) {
+    var top = (d.funnel[0] && d.funnel[0].count) || 0;
+    var steps = d.funnel.map(function (s) {
+      var w = top ? Math.round(s.count * 100 / top) : 0;
+      return '<div class="step"><div class="step-top">'
+        + '<span class="step-name">' + esc(s.label) + '</span>'
+        + '<span class="step-num"><b>' + s.count + '</b>'
+        + '<span class="step-pct">' + s.of_top + '% des visiteurs</span></span></div>'
+        + '<div class="bar"><i style="width:' + w + '%"></i></div></div>';
+    }).join('');
+
+    var c = d.conversions;
+    var conv = '<div class="conv">'
+      + '<div><div class="v">' + c.visit_to_signup + '%</div><div class="l">Visite → Inscription</div></div>'
+      + '<div><div class="v">' + c.signup_to_purchase + '%</div><div class="l">Inscription → Achat</div></div>'
+      + '<div><div class="v">' + c.visit_to_purchase + '%</div><div class="l">Visite → Achat</div></div>'
+      + '</div>';
+
+    var ev = (d.by_event || []).map(function (e) {
+      return '<tr><td>' + esc(e.name) + '</td><td>' + e.count + '</td></tr>';
+    }).join('') || '<tr><td colspan="2" style="color:var(--mut2)">Aucun événement encore.</td></tr>';
+
+    out.innerHTML =
+        '<div class="card"><p class="ttl">Funnel (' + d.window_days + ' j)</p>' + steps + '</div>'
+      + '<div class="card"><p class="ttl">Taux de conversion</p>' + conv + '</div>'
+      + '<div class="card"><p class="ttl">Événements bruts</p><table>' + ev + '</table></div>';
+  }
+
+  function load() {
+    var days = document.getElementById('days').value;
+    out.innerHTML = '<p class="msg">Chargement…</p>';
+    if (typeof apiFetch !== 'function') { out.innerHTML = '<p class="msg err">API indisponible.</p>'; return; }
+    apiFetch('/admin/funnel?days=' + days)
+      .then(render)
+      .catch(function (e) {
+        var s = e && e.status;
+        var m = (s === 403) ? 'Réservé à l\'administration — connecte-toi avec le compte officiel.'
+              : (s === 401) ? 'Connecte-toi avec le compte admin.'
+              : 'Impossible de charger le funnel.';
+        out.innerHTML = '<p class="msg err">' + m + '</p>';
+      });
+  }
+  document.getElementById('reload').addEventListener('click', load);
+  document.getElementById('days').addEventListener('change', load);
+  load();
+})();
+</script>
+</body>
+</html>
