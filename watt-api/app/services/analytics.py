@@ -19,6 +19,8 @@ ALLOWED_EVENTS: set[str] = {
     "purchase",         # déblocage / achat réussi
     "purchase_failed",  # achat échoué (solde, erreur)
     "boutique_open",    # ouverture de la boutique
+    "onboarding_start", # didacticiel premier-run ouvert (D1)
+    "onboarding_complete",  # didacticiel terminé / CTA (D1) → mesure de complétion
 }
 
 MAX_BATCH = 50          # événements max par requête
