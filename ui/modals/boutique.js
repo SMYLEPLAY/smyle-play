@@ -34,6 +34,56 @@
     { name: 'Mythique', icon: '👑', accent: '#ffb627' },
   ];
 
+  // ── THE PLAN — produit éditorial digital (pack PDF par Smyle) ──────────────
+  // Prix EXCLUSIVEMENT en Smyles (jamais en €). Conversion sur le barème
+  // backend EUR_PER_CREDIT = 0,70 €/Smyle :
+  //   49,99 € ≈ 70 Smyles (prix barré) · 24,99 € ≈ 35 Smyles (prix réel, −50 %).
+  // Deux éditions. Prix EXCLUSIVEMENT en Smyles (barème EUR_PER_CREDIT=0,70).
+  //   49,99 € ≈ 70 Smyles (barré) · 24,99 € ≈ 35 Smyles (réel, −50 %).
+  const THE_PLAN_EDITIONS = [
+    {
+      id: 'ia',
+      title: 'THE PLAN',
+      badge: 'Édition IA',
+      flagship: true,
+      edition: 'Édition IA · 2026',
+      cover: '/assets/the-plan/cover-ia.png',
+      priceStrike: 70,
+      price: 35,
+      tagline: 'La méthode pour bâtir ton artiste IA — de l\'ADN au drop, jusqu\'à la fanbase.',
+      bio: "La méthode Smyle pensée pour les créateurs de WATT. Définir l'ADN de ton artiste, "
+         + "construire son univers, générer puis curer tes sons, rythmer tes drops et monétiser "
+         + "sur la marketplace. Le pack réunit une lettre de démarrage, le guide stratégique complet "
+         + "et une fiche technique à remplir à chaque arc.",
+      contents: [
+        { icon: '✉️', name: 'Welcome', desc: 'Démarrer ton artiste IA sur WATT' },
+        { icon: '🧬', name: 'The Plan', desc: 'La méthode : ADN, stack, curation, drops, revenus' },
+        { icon: '📝', name: 'Fiche technique', desc: 'Le carnet à remplir · un arc à la fois' },
+      ],
+    },
+    {
+      id: 'classic',
+      title: 'THE PLAN',
+      badge: 'Édition classique',
+      flagship: false,
+      edition: 'Édition 01 · 2026',
+      cover: '/assets/the-plan/cover-classic.png',
+      priceStrike: 70,
+      price: 35,
+      tagline: 'La méthode pour transformer ta musique en carrière — pour artistes indépendants.',
+      bio: "La méthode Smyle originelle, pour artistes indépendants : poser ta vision, choisir ton "
+         + "équipage, construire tes arcs, diffuser avec stratégie et bâtir un modèle de revenus. "
+         + "Le pack réunit une lettre d'introduction, le guide stratégique complet et une fiche "
+         + "technique à remplir à chaque cycle.",
+      contents: [
+        { icon: '✉️', name: 'Welcome', desc: "Lettre d'introduction + guide de démarrage" },
+        { icon: '🧭', name: 'The Plan', desc: 'Le guide stratégique — la méthode, arc par arc' },
+        { icon: '📝', name: 'Fiche technique', desc: 'Le carnet à remplir · 5 chapitres' },
+      ],
+    },
+  ];
+  const _planById = (id) => THE_PLAN_EDITIONS.find(e => e.id === id) || THE_PLAN_EDITIONS[0];
+
   // ── Helpers externes (tolérants : la page peut ne pas tout exposer) ───────
   function _api(path, opts) {
     if (typeof apiFetch !== 'function') return Promise.reject(new Error('api indisponible'));
@@ -131,6 +181,29 @@
         <div style="color:#6c4cf0;font-size:20px;">›</div>
       </div>`;
 
+    // ── THE PLAN — section dédiée (2 éditions) ─────────────────────────────
+    html += _sectionTitle('THE PLAN');
+    html += THE_PLAN_EDITIONS.map((p, i) => `
+      <div class="bqPlanCard" data-edition="${p.id}" style="cursor:pointer;background:#0d0a16;border:1px solid ${p.flagship ? '#6c4cf0' : '#2c2440'};border-radius:14px;padding:14px;display:flex;gap:14px;align-items:center;transition:border-color .15s;${i ? 'margin-top:10px;' : ''}"
+           onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='${p.flagship ? '#6c4cf0' : '#2c2440'}'">
+        <img src="${p.cover}" alt="THE PLAN ${p.badge} — cover" loading="lazy"
+             style="width:64px;height:96px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#1d1730;border:1px solid #2c2440;" />
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:17px;font-weight:800;">${p.title}</span>
+            <span style="font-size:10px;font-weight:700;text-transform:uppercase;background:${p.flagship ? '#6c4cf0' : '#3a3350'};color:#fff;padding:3px 8px;border-radius:999px;">${p.badge}</span>
+            ${p.flagship ? '<span style="font-size:9px;font-weight:700;text-transform:uppercase;color:#ffb627;">★ Recommandé</span>' : ''}
+          </div>
+          <div style="font-size:12px;color:#9990ad;margin-top:3px;">${p.tagline}</div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px;">
+            <span style="font-size:12px;color:#6f6885;text-decoration:line-through;">${p.priceStrike} Smyles</span>
+            <span style="font-size:17px;font-weight:800;color:#ffb627;">${p.price} Smyles</span>
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;background:#ffb627;color:#1a1410;padding:2px 7px;border-radius:999px;">−50 %</span>
+          </div>
+        </div>
+        <div style="color:#6c4cf0;font-size:20px;">›</div>
+      </div>`).join('');
+
     html += _sectionTitle('Recharger tes Smyles');
     html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">`;
     html += SMYLE_PACKS.map(p => `
@@ -168,6 +241,9 @@
     body.querySelector('#bqPackCard').addEventListener('click', _onPackCardClick);
     const marketCard = body.querySelector('#bqMarketCard');
     if (marketCard) marketCard.addEventListener('click', _openMarket);
+    body.querySelectorAll('.bqPlanCard').forEach(card => {
+      card.addEventListener('click', () => _openPlan(card.getAttribute('data-edition')));
+    });
     body.querySelectorAll('.bqSoon').forEach(el => el.addEventListener('click', () => {
       _toast('Bientôt disponible — on y travaille 🛠️', { type: 'info', duration: 2600 });
     }));
@@ -187,6 +263,7 @@
     _ensureBoutique();
     _renderBoutiqueBody();
     document.getElementById('bqBoutiqueModal').style.display = 'flex';
+    try { if (window.SmyleTrack) window.SmyleTrack.event('boutique_open'); } catch (_) {}
   }
   function _closeBoutique() {
     const m = document.getElementById('bqBoutiqueModal');
@@ -274,6 +351,7 @@
       <p style="font-size:13px;color:#9990ad;">Ouverture du pack…</p>`;
     try {
       const r = await _api('/packs/mystery/open', { method: 'POST' });
+      try { if (window.SmyleTrack) window.SmyleTrack.event('purchase', { type: 'mystery_pack' }); } catch (_) {}
       _refreshBalance();
       const title = (r && r.title) || 'Un son';
       const rar = RARITY[r && r.rarity] || { label: 'Commun', color: '#9aa0aa' };
@@ -380,6 +458,7 @@
     }
     try {
       const r = await _api(`/resale/${unlockedId}/buy`, { method: 'POST' });
+      try { if (window.SmyleTrack) window.SmyleTrack.event('purchase', { type: 'resale', price: r && r.price_paid }); } catch (_) {}
       _refreshBalance();
       _toast(`Acheté ✓ (−${r.price_paid} Smyles)`, { type: 'success', duration: 3000 });
       await _openMarket();   // rafraîchit la liste (le son acheté disparaît)
@@ -391,6 +470,122 @@
       _toast(msg, { type: 'error', duration: 3000 });
       await _openMarket();
     }
+  }
+
+  // ── THE PLAN — fiche produit (carte ID) + achat ───────────────────────────
+  function _ensurePlan() {
+    let m = document.getElementById('bqPlanModal');
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'bqPlanModal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:1300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);padding:16px;';
+    m.innerHTML = `
+      <div style="position:relative;max-width:560px;width:100%;max-height:92vh;overflow:auto;background:#14101f;border:1px solid #2c2440;border-radius:18px;padding:24px;color:#eee;font-family:inherit;">
+        <button id="bqPlanClose" aria-label="Fermer" style="position:absolute;top:14px;right:18px;background:none;border:none;color:#aaa;font-size:24px;cursor:pointer;line-height:1;">×</button>
+        <div id="bqPlanBody" style="font-size:14px;">Chargement…</div>
+      </div>`;
+    document.body.appendChild(m);
+    m.addEventListener('click', (e) => { if (e.target === m) _closePlan(); });
+    m.querySelector('#bqPlanClose').addEventListener('click', _closePlan);
+    return m;
+  }
+  function _closePlan() {
+    const m = document.getElementById('bqPlanModal');
+    if (m) m.style.display = 'none';
+  }
+  function _openPlan(editionId) {
+    if (!_isLoggedIn()) {
+      _closeBoutique();
+      if (typeof window.openAuthModal === 'function') window.openAuthModal('login');
+      else _toast('Connecte-toi pour accéder à la boutique', { type: 'info', duration: 3000 });
+      return;
+    }
+    _ensurePlan();
+    document.getElementById('bqPlanModal').style.display = 'flex';
+    _renderPlanDetail(_planById(editionId));
+  }
+
+  function _renderPlanDetail(p) {
+    const body = document.getElementById('bqPlanBody');
+    if (!body) return;
+    const contents = p.contents.map(c => `
+      <div style="display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-top:1px solid #221b34;">
+        <div style="font-size:20px;line-height:1.2;">${c.icon}</div>
+        <div><div style="font-size:13px;font-weight:700;">${c.name}</div>
+        <div style="font-size:12px;color:#9990ad;margin-top:2px;">${c.desc}</div></div>
+      </div>`).join('');
+    body.innerHTML = `
+      <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;">
+        <img src="${p.cover}" alt="THE PLAN — cover"
+             style="width:120px;height:180px;object-fit:cover;border-radius:10px;flex-shrink:0;background:#1d1730;border:1px solid #2c2440;" />
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9990ad;">${p.badge} · ${p.edition}</div>
+          <div style="font-size:24px;font-weight:800;margin:4px 0 6px;letter-spacing:.5px;">${p.title}</div>
+          <div style="font-size:12px;color:#cfc6e6;line-height:1.5;">${p.tagline}</div>
+          <div style="display:flex;align-items:baseline;gap:9px;margin-top:12px;">
+            <span style="font-size:13px;color:#6f6885;text-decoration:line-through;">${p.priceStrike} Smyles</span>
+            <span style="font-size:22px;font-weight:800;color:#ffb627;">${p.price} Smyles</span>
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;background:#ffb627;color:#1a1410;padding:2px 7px;border-radius:999px;">−50 %</span>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#bcb3d0;line-height:1.6;margin:0 0 14px;">${p.bio}</p>
+      <div style="background:#0d0a16;border:1px solid #2c2440;border-radius:12px;padding:6px 14px;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9990ad;padding:9px 0 2px;">Dans le pack</div>
+        ${contents}
+      </div>
+      <button id="bqPlanBuy" data-edition="${p.id}" style="width:100%;background:#6c4cf0;border:none;color:#fff;border-radius:12px;padding:14px;cursor:pointer;font-size:16px;font-weight:700;">Acheter — ${p.price} Smyles</button>
+      <div style="font-size:11px;color:#6f6885;text-align:center;margin-top:9px;">Téléchargement immédiat après l'achat · 3 PDF</div>`;
+    const btn = body.querySelector('#bqPlanBuy');
+    if (btn) btn.addEventListener('click', () => _buyPlan(p));
+  }
+
+  async function _buyPlan(p) {
+    const body = document.getElementById('bqPlanBody');
+    const btn = body && body.querySelector('#bqPlanBuy');
+    if (btn) { btn.disabled = true; btn.textContent = 'Achat en cours…'; btn.style.opacity = '.7'; }
+    try {
+      const r = await _api(`/products/the-plan/${p.id}/buy`, { method: 'POST' });
+      try { if (window.SmyleTrack) window.SmyleTrack.event('purchase', { type: 'the_plan', edition: p.id, price: p.price }); } catch (_) {}
+      _refreshBalance();
+      _toast(`THE PLAN débloqué 🔓 (−${(r && r.price_paid) || p.price} Smyles)`, { type: 'success', duration: 3200 });
+      _renderPlanSuccess(r && r.files, p);
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = `Acheter — ${p.price} Smyles`; btn.style.opacity = '1'; }
+      let msg = 'Achat impossible. Réessaie.';
+      if (e && e.status === 402) msg = 'Solde insuffisant — recharge tes Smyles.';
+      else if (e && e.status === 409) { _renderPlanSuccess(null, p); return; } // déjà possédé
+      else if (e && e.status === 404) msg = 'Paiement en cours d\'activation — reviens bientôt.';
+      else if (e && e.status === 401) msg = 'Reconnecte-toi pour acheter.';
+      _toast(msg, { type: 'error', duration: 3200 });
+    }
+  }
+
+  function _renderPlanSuccess(files, p) {
+    const body = document.getElementById('bqPlanBody');
+    if (!body) return;
+    const ed = (p && p.id) || 'ia';
+    // files attendu : [{ slug, name, url }]. Fallback : liens nommés vers l'endpoint gaté.
+    const list = (Array.isArray(files) && files.length ? files : [
+      { name: '01 · Welcome',        url: `/products/the-plan/${ed}/download/welcome` },
+      { name: '02 · The Plan',       url: `/products/the-plan/${ed}/download/the-plan` },
+      { name: '03 · Fiche technique', url: `/products/the-plan/${ed}/download/fiche-technique` },
+    ]).map(f => `
+      <a href="${f.url}" target="_blank" rel="noopener"
+         style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0d0a16;border:1px solid #2c2440;border-radius:10px;padding:13px 15px;margin-top:8px;text-decoration:none;color:#eee;">
+        <span style="font-size:13px;font-weight:600;">${f.name}</span>
+        <span style="font-size:12px;font-weight:700;color:#6c4cf0;">Télécharger ↓</span>
+      </a>`).join('');
+    body.innerHTML = `
+      <div style="text-align:center;margin-bottom:6px;">
+        <div style="font-size:40px;line-height:1;">📦</div>
+        <div style="font-size:20px;font-weight:800;margin-top:8px;">THE PLAN est à toi</div>
+        <p style="font-size:12px;color:#9990ad;margin:6px 0 4px;">Télécharge tes 3 PDF. Ils restent dans ta bibliothèque.</p>
+      </div>
+      ${list}
+      <button id="bqPlanDone" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:11px;cursor:pointer;font-size:13px;margin-top:14px;">Fermer</button>`;
+    const done = body.querySelector('#bqPlanDone');
+    if (done) done.addEventListener('click', _closePlan);
   }
 
   // ── API publique ──────────────────────────────────────────────────────────

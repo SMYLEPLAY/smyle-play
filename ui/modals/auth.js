@@ -73,6 +73,8 @@ async function doSignup(email, password, { onAttempt, referralCode } = {}) {
     }
     return { ok: false, msg: String(msg) };
   }
+  // Télémétrie D0 — inscription réussie (best-effort, jamais bloquant).
+  try { if (window.SmyleTrack) window.SmyleTrack.event('signup', ref ? { referred: true } : null); } catch (_) {}
   // Auto-login après register
   return doLogin(email, password);
 }

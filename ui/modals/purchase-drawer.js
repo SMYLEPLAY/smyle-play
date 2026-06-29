@@ -148,6 +148,7 @@
     if (!id) return;
     if (document.getElementById('pd-overlay')) return;
     _injectCss();
+    try { if (window.SmyleTrack) window.SmyleTrack.event('drawer_open', { type: type }); } catch (_) {}
 
     var price  = (opts.price != null && isFinite(opts.price)) ? opts.price : null;
     var title  = opts.title || 'Cet exemplaire';
@@ -254,6 +255,7 @@
       btn.textContent = 'Déblocage…';
       if (!window.apiFetch) { _toast('Connexion indisponible. Recharge la page.', 'error'); btn.disabled = false; return; }
       window.apiFetch(ENDPOINTS[type] + encodeURIComponent(id), { method: 'POST' }).then(function (resp) {
+        try { if (window.SmyleTrack) window.SmyleTrack.event('purchase', { type: type, price: price }); } catch (_) {}
         close();
         var msg = (resp && resp.perk_applied)
           ? 'Débloqué avec perk ADN −30 % 🔓'
@@ -273,6 +275,7 @@
         btn.disabled = false;
         btn.textContent = 'Débloquer' + (price != null ? ' · ' + price : '') + ' ⚡';
         var status = err && err.status;
+        try { if (window.SmyleTrack) window.SmyleTrack.event('purchase_failed', { type: type, status: status || 0 }); } catch (_) {}
         if (status === 401) {
           close();
           _toast('Connecte-toi pour acheter — ta bibliothèque garde tes exemplaires.', 'error');
