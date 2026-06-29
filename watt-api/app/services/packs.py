@@ -221,7 +221,12 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
 
         # 6. Débite le buyer, crédite l'artiste.
         await db.execute(
-            text("UPDATE users SET credits_balance = credits_balance - :p WHERE id = :uid"),
+            text(
+                "UPDATE users SET smyles_promo = GREATEST(0, smyles_promo - :p), "
+                "smyles_achetes = GREATEST(0, smyles_achetes - GREATEST(0, :p - smyles_promo)), "
+                "smyles_gagnes = GREATEST(0, smyles_gagnes - GREATEST(0, :p - smyles_promo - smyles_achetes)), "
+                "credits_balance = credits_balance - :p WHERE id = :uid"
+            ),
             {"p": price, "uid": buyer_id},
         )
         await db.execute(

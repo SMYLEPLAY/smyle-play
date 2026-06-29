@@ -216,7 +216,12 @@ async def buy_resale_atomic(
 
         # 7. Débite l'acheteur.
         await db.execute(
-            text("UPDATE users SET credits_balance = credits_balance - :p WHERE id = :uid"),
+            text(
+                "UPDATE users SET smyles_promo = GREATEST(0, smyles_promo - :p), "
+                "smyles_achetes = GREATEST(0, smyles_achetes - GREATEST(0, :p - smyles_promo)), "
+                "smyles_gagnes = GREATEST(0, smyles_gagnes - GREATEST(0, :p - smyles_promo - smyles_achetes)), "
+                "credits_balance = credits_balance - :p WHERE id = :uid"
+            ),
             {"p": price, "uid": buyer_id},
         )
         # 8. Crédite le vendeur (balance + earned_total).

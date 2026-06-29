@@ -380,14 +380,25 @@ async def accept_trade(
             detail="Tu n'as pas assez de crédits pour le frais d'échange",
         )
 
-    # Débit des frais (burn — aucun crédit reversé en face).
-    sender.credits_balance -= sender_fee
-    receiver.credits_balance -= receiver_fee
+    # Débit des frais (burn) + transfert du supplément — A1.3c : on maintient
+    # les sous-soldes (promo → achetés → gagnés) en plus du solde total, pour
+    # préserver l'invariant somme(buckets) == credits_balance.
+    def _debit_buckets(u, amt):
+        rem = amt
+        for attr in ("smyles_promo", "smyles_achetes", "smyles_gagnes"):
+            take = min(rem, getattr(u, attr))
+            setattr(u, attr, getattr(u, attr) - take)
+            rem -= take
+        u.credits_balance -= amt
+
+    _debit_buckets(sender, sender_fee)
+    _debit_buckets(receiver, receiver_fee)
 
     # Transfert du supplément (sender → receiver), si présent.
     if supplement > 0:
-        sender.credits_balance -= supplement
+        _debit_buckets(sender, supplement)
         receiver.credits_balance += supplement
+        receiver.smyles_achetes += supplement  # reçu en trade → bucket non encaissable (prudent)
         receiver.credits_earned_total += supplement
 
     # 4. Clore l'offre
