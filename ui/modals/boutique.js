@@ -118,7 +118,7 @@
       <div style="position:relative;max-width:600px;width:100%;max-height:90vh;overflow:auto;background:#14101f;border:1px solid #2c2440;border-radius:18px;padding:26px;color:#eee;font-family:inherit;">
         <button id="bqBoutiqueClose" aria-label="Fermer" style="position:absolute;top:16px;right:20px;background:none;border:none;color:#aaa;font-size:24px;cursor:pointer;line-height:1;">×</button>
         <h2 style="margin:0 0 4px;font-size:22px;">Boutique</h2>
-        <p style="margin:0 0 22px;font-size:13px;color:#9990ad;">Dépense tes Smyles. D'autres produits arrivent bientôt.</p>
+        <p style="margin:0 0 22px;font-size:13px;color:#9990ad;">Dépense tes Smyles. D'autres produits arrivent bientôt. · <a href="/comment-ca-marche" style="color:#6c4cf0;text-decoration:none;">Comment ça marche ?</a></p>
         <div id="bqBody"></div>
       </div>`;
     document.body.appendChild(m);
