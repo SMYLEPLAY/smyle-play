@@ -275,7 +275,10 @@ async def unlock_prompt_atomic(
         await db.execute(
             text(
                 "UPDATE users "
-                "SET credits_balance = credits_balance - :paid "
+                "SET smyles_promo = GREATEST(0, smyles_promo - :paid), "
+                "    smyles_achetes = GREATEST(0, smyles_achetes - GREATEST(0, :paid - smyles_promo)), "
+                "    smyles_gagnes = GREATEST(0, smyles_gagnes - GREATEST(0, :paid - smyles_promo - smyles_achetes)), "
+                "    credits_balance = credits_balance - :paid "
                 "WHERE id = :uid"
             ),
             {"paid": paid, "uid": buyer_id},
@@ -463,7 +466,10 @@ async def unlock_adn_atomic(
         await db.execute(
             text(
                 "UPDATE users "
-                "SET credits_balance = credits_balance - :paid "
+                "SET smyles_promo = GREATEST(0, smyles_promo - :paid), "
+                "    smyles_achetes = GREATEST(0, smyles_achetes - GREATEST(0, :paid - smyles_promo)), "
+                "    smyles_gagnes = GREATEST(0, smyles_gagnes - GREATEST(0, :paid - smyles_promo - smyles_achetes)), "
+                "    credits_balance = credits_balance - :paid "
                 "WHERE id = :uid"
             ),
             {"paid": paid, "uid": buyer_id},
@@ -601,7 +607,12 @@ async def unlock_playlist_adn_atomic(
         await db.flush()
 
         await db.execute(
-            text("UPDATE users SET credits_balance = credits_balance - :paid WHERE id = :uid"),
+            text(
+                "UPDATE users SET smyles_promo = GREATEST(0, smyles_promo - :paid), "
+                "smyles_achetes = GREATEST(0, smyles_achetes - GREATEST(0, :paid - smyles_promo)), "
+                "smyles_gagnes = GREATEST(0, smyles_gagnes - GREATEST(0, :paid - smyles_promo - smyles_achetes)), "
+                "credits_balance = credits_balance - :paid WHERE id = :uid"
+            ),
             {"paid": paid, "uid": buyer_id},
         )
         await db.execute(
@@ -731,7 +742,12 @@ async def unlock_album_adn_atomic(
         await db.flush()
 
         await db.execute(
-            text("UPDATE users SET credits_balance = credits_balance - :paid WHERE id = :uid"),
+            text(
+                "UPDATE users SET smyles_promo = GREATEST(0, smyles_promo - :paid), "
+                "smyles_achetes = GREATEST(0, smyles_achetes - GREATEST(0, :paid - smyles_promo)), "
+                "smyles_gagnes = GREATEST(0, smyles_gagnes - GREATEST(0, :paid - smyles_promo - smyles_achetes)), "
+                "credits_balance = credits_balance - :paid WHERE id = :uid"
+            ),
             {"paid": paid, "uid": buyer_id},
         )
         await db.execute(

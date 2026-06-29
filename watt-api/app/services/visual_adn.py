@@ -311,7 +311,10 @@ async def unlock_visual_adn_atomic(
         await db.execute(
             text(
                 "UPDATE users "
-                "SET credits_balance = credits_balance - :paid "
+                "SET smyles_promo = GREATEST(0, smyles_promo - :paid), "
+                "    smyles_achetes = GREATEST(0, smyles_achetes - GREATEST(0, :paid - smyles_promo)), "
+                "    smyles_gagnes = GREATEST(0, smyles_gagnes - GREATEST(0, :paid - smyles_promo - smyles_achetes)), "
+                "    credits_balance = credits_balance - :paid "
                 "WHERE id = :uid"
             ),
             {"paid": paid, "uid": buyer_id},
