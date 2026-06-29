@@ -175,6 +175,15 @@ async def _earned(uid: uuid.UUID) -> int:
         return int(row.credits_earned_total)
 
 
+async def _gagnes(uid: uuid.UUID) -> int:
+    async with SessionLocal() as db:
+        row = (await db.execute(
+            text("SELECT smyles_gagnes FROM users WHERE id = :u"),
+            {"u": uid},
+        )).first()
+        return int(row.smyles_gagnes)
+
+
 async def _cleanup(*user_ids: uuid.UUID) -> None:
     """
     CASCADE delete les users → prompts/adns/owned/unlocked partent avec.
@@ -563,6 +572,29 @@ async def test_credit_conservation():
             f"Conservation cassée : "
             f"Δbuyer={delta_buyer}, Δartist={delta_artist}, "
             f"platform_fee={platform_fee_expected}"
+        )
+    finally:
+        await _cleanup(artist, buyer)
+
+
+async def test_unlock_credits_seller_gagnes_bucket():
+    """A1.3b — un unlock crédite le sous-solde GAGNÉS du vendeur du montant
+    artist_revenue (les gains sont encaissables). Δsmyles_gagnes == Δcredits_balance
+    côté artiste."""
+    artist = await _make_user(initial_balance=0, artist_name="ArtistGagnes")
+    buyer = await _make_user(initial_balance=1000)
+    prompt = await _make_published_prompt(artist, price=10)
+
+    gagnes_b = await _gagnes(artist)
+    bal_artist_b = await _balance(artist)
+    try:
+        result = await _do_unlock_prompt(buyer, prompt)
+        assert result[0] == "ok", f"Unlock a échoué : {result}"
+
+        delta_gagnes = await _gagnes(artist) - gagnes_b
+        delta_bal = await _balance(artist) - bal_artist_b
+        assert delta_gagnes == delta_bal and delta_gagnes > 0, (
+            f"gagnés artiste += {delta_gagnes}, solde += {delta_bal} (doivent être égaux et > 0)"
         )
     finally:
         await _cleanup(artist, buyer)

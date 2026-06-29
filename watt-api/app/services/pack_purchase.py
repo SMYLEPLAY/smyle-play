@@ -131,6 +131,7 @@ async def buy_pack_atomic(
         await db.execute(
             text(
                 "UPDATE users SET credits_balance = credits_balance + :r, "
+                "smyles_gagnes = smyles_gagnes + :r, "
                 "credits_earned_total = credits_earned_total + :r WHERE id = :uid"
             ),
             {"r": artist_revenue, "uid": artist_id},

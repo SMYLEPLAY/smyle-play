@@ -320,6 +320,7 @@ async def unlock_visual_adn_atomic(
             text(
                 "UPDATE users "
                 "SET credits_balance = credits_balance + :rev, "
+                "    smyles_gagnes = smyles_gagnes + :rev, "
                 "    credits_earned_total = credits_earned_total + :rev "
                 "WHERE id = :uid"
             ),
