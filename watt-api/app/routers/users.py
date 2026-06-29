@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import get_current_user
@@ -43,6 +43,22 @@ async def read_my_listing_slots(
     from app.services.listings import listing_slots_status
 
     return await listing_slots_status(db, current_user.id, current_user.tier)
+
+
+@router.get("/eco-cockpit")
+async def eco_cockpit(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """A4 — cockpit économique (admin only, lecture seule). Gardé par is_official
+    (le compte Smyle). Solvabilité + Smyles en circulation + canari + business."""
+    if not current_user.is_official:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail="Réservé à l'administration"
+        )
+    from app.services.dashboard import eco_cockpit_data
+
+    return await eco_cockpit_data(db)
 
 
 @router.patch("/me", response_model=UserRead)
