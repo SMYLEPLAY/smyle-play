@@ -118,6 +118,11 @@ def create_app(config_class=None):
     def admin_analytics_page():
         return send_from_directory(BASE_DIR, 'analytics.html')
 
+    # D1 comprendre — page didactique « Comment ça marche » + glossaire.
+    @app.route('/comment-ca-marche')
+    def how_it_works_page():
+        return send_from_directory(BASE_DIR, 'comment-ca-marche.html')
+
     @app.route('/tarifs')
     def tarifs_page():
         # Page placeholder tarifs (chantier #12 backlog v3) — aucun

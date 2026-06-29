@@ -23,7 +23,8 @@
 
   var API_BASE = (window.SMYLE_API_BASE ? String(window.SMYLE_API_BASE).replace(/\/+$/, '') : '');
   var ALLOWED = ['visit', 'page_view', 'signup', 'profile_complete', 'product_view',
-                 'drawer_open', 'purchase', 'purchase_failed', 'boutique_open'];
+                 'drawer_open', 'purchase', 'purchase_failed', 'boutique_open',
+                 'onboarding_start', 'onboarding_complete'];
 
   // ── Session anonyme (non-PII) ─────────────────────────────────────────────
   function _sid() {
