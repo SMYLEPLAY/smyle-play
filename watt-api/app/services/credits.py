@@ -270,6 +270,39 @@ async def debit_with_priority(
     return taken
 
 
+# -----------------------------------------------------------------------------
+# A1.2 — vérification de cohérence (mode shadow). Lecture seule.
+# Invariant cible : smyles_achetes + smyles_gagnes + smyles_promo == credits_balance.
+# Tant que tous les chemins crédit/débit ne sont pas branchés (A1.3), des comptes
+# peuvent être incohérents (ex: crédit non encore routé vers un bucket) — d'où le
+# mode shadow : on MESURE l'écart sans s'appuyer sur les buckets. Le CHECK DB
+# d'invariant ne sera posé qu'en A1.4, une fois ce compteur stabilisé à 0.
+# -----------------------------------------------------------------------------
+
+async def user_bucket_consistent(db: AsyncSession, user_id: UUID) -> bool:
+    """True si, pour cet utilisateur, somme(buckets) == credits_balance."""
+    row = (await db.execute(
+        text(
+            "SELECT (smyles_achetes + smyles_gagnes + smyles_promo = credits_balance) "
+            "AS ok FROM users WHERE id = :uid"
+        ),
+        {"uid": user_id},
+    )).first()
+    return bool(row.ok) if row is not None else False
+
+
+async def count_bucket_inconsistencies(db: AsyncSession) -> int:
+    """Nombre d'utilisateurs où somme(buckets) != credits_balance (shadow A1.2).
+    Doit tendre vers 0 quand tous les chemins crédit/débit passent par les helpers."""
+    row = (await db.execute(
+        text(
+            "SELECT count(*) AS n FROM users "
+            "WHERE smyles_achetes + smyles_gagnes + smyles_promo <> credits_balance"
+        )
+    )).first()
+    return int(row.n)
+
+
 async def _acquire_user_locks(
     db: AsyncSession,
     user_ids: list[UUID],
