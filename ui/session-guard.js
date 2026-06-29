@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/session-guard.js
+   WATT — ui/session-guard.js
 
    Petit module UX qui écoute l'event `smyle:session-expired` émis par
    ui/core/api.js dès qu'une requête retourne 401 alors qu'un JWT était

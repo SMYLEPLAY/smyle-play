@@ -1,5 +1,5 @@
 """
-SMYLE PLAY — Entry point UNIFIÉ (uvicorn)
+WATT — Entry point UNIFIÉ (uvicorn)
 ─────────────────────────────────────────
 Architecture :
   ┌───────────────── FastAPI (ASGI) ─────────────────┐
@@ -17,22 +17,22 @@ Lancement :
   uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
 
 IMPORTANT : l'ordre du sys.path est critique.
-  - smyleplay-api/ DOIT être avant le root pour que `from app.main`
+  - watt-api/ DOIT être avant le root pour que `from app.main`
     résolve le package FastAPI et non le module renommé flask_app.
 """
 
 import os
 import sys
 
-# 1) Prioriser smyleplay-api/ dans sys.path pour l'import du package FastAPI
+# 1) Prioriser watt-api/ dans sys.path pour l'import du package FastAPI
 _ROOT = os.path.dirname(os.path.abspath(__file__))
-_API_DIR = os.path.join(_ROOT, "smyleplay-api")
+_API_DIR = os.path.join(_ROOT, "watt-api")
 if _API_DIR not in sys.path:
     sys.path.insert(0, _API_DIR)
 if _ROOT not in sys.path:
     sys.path.insert(1, _ROOT)  # pour `import flask_app`, `import config`, etc.
 
-# 2) Import FastAPI app (package `app` = smyleplay-api/app/)
+# 2) Import FastAPI app (package `app` = watt-api/app/)
 from app.main import app as fastapi_app  # noqa: E402
 
 # 3) Import Flask app (module `flask_app` = ./flask_app.py)

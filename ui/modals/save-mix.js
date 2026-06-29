@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/modals/save-mix.js
+   WATT — ui/modals/save-mix.js
    Save Mix modal: persist the current mix as a named playlist.
 
    Reads shared state from ui/core/state.js:

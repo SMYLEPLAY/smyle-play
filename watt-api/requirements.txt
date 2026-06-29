@@ -1,4 +1,4 @@
-# SMYLE PLAY — API FastAPI (sous-ensemble du requirements.txt racine)
+# WATT — API FastAPI (sous-ensemble du requirements.txt racine)
 # Source de vérité globale : ../requirements.txt
 # Ce fichier permet d'installer uniquement les deps API pour dev/test isolé.
 # Installation : pip install -r requirements.txt

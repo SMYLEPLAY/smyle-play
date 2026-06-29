@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SMYLE PLAY — Serveur local
+WATT — Serveur local
   • Sert les fichiers statiques (index.html, style.css, script.js, audio…)
   • Expose GET /api/tracks → JSON de toutes les playlists scannées en temps réel
 
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     httpd = HTTPServer(('', port), SmyleHandler)
 
     print(f'\n  ╔══════════════════════════════════════╗')
-    print(f'  ║  SMYLE PLAY → http://localhost:{port}  ║')
+    print(f'  ║  WATT → http://localhost:{port}  ║')
     print(f'  ╠══════════════════════════════════════╣')
     print(f'  ║  Dossier : {base_dir[:28]}  ║')
     print(f'  ║  Ctrl+C pour arrêter le serveur      ║')

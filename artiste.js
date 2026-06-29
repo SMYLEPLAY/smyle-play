@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   SMYLE PLAY — artiste.js  (Phase 5 — 2026-04-20)
+   WATT — artiste.js  (Phase 5 — 2026-04-20)
 
    La page /u/<slug> est la BOUTIQUE PUBLIQUE — 100% LECTURE SEULE.
    L'édition du profil vit UNIQUEMENT sur /dashboard#sec-identity (ATELIER).
@@ -601,7 +601,7 @@ function toggleSectionForFans(sectionId, value, isSelf) {
    juste "voilà qui je suis". Multi-select, stocké en JSON array côté DB.
 
    La liste canonique ROLE_CATALOG doit rester synchrone avec ROLE_CODES
-   dans smyleplay-api/app/schemas/user.py — l'ordre aussi (ordre d'affichage).
+   dans watt-api/app/schemas/user.py — l'ordre aussi (ordre d'affichage).
    Si tu ajoutes un rôle : MAJ les 2 fichiers + migration si besoin. */
 
 const ROLE_CATALOG = [
@@ -1537,7 +1537,7 @@ async function _applyVisualAdnOwnedState(card, visualAdnId) {
 
 // P1-F4 (2026-05-04) — libellés humains des enums backend pour les
 // réglages de génération exposés sur les cards prompts publiques.
-// Aligned avec PromptPlatform / PromptVocalGender (smyleplay-api).
+// Aligned avec PromptPlatform / PromptVocalGender (watt-api).
 const _PROMPT_PLATFORM_LBL = {
   suno:         'Suno',
   udio:         'Udio',
@@ -2720,7 +2720,7 @@ function renderVoices(artist) {
     const priceStr  = formatCount(v.price_credits);
 
     // Rareté #X/N — le payload public expose max_supply + editions_sold
-    // (audit smyleplay-api routers/voices.py + services/voices.py 2026-06-12).
+    // (audit watt-api routers/voices.py + services/voices.py 2026-06-12).
     // Prochain exemplaire minté = editions_sold + 1. 1/1 = légendaire.
     const _vSold   = v.editions_sold || 0;
     const _vSupply = (v.max_supply != null) ? v.max_supply : null;

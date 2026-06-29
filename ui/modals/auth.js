@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/modals/auth.js
+   WATT — ui/modals/auth.js
    Auth modal + auth area. Branché sur FastAPI (JWT smyle_api_token).
 
    Avant : fake users en localStorage (vestige prototype).

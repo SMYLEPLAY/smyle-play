@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/core/storage.js
+   WATT — ui/core/storage.js
    localStorage wrappers: users, current user, play counters, user playlists.
    Pure functions — no shared state. Doit être chargé après state.js/dom.js
    et avant les consommateurs (modals, player, hub, app).

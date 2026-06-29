@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — wattboard-v3.js
+   WATT — wattboard-v3.js
    Chantier C1 (blueprint VF 2026-06-10) — WattBoard v3.
 
    Le board devient la HOME du /dashboard :

@@ -38,7 +38,7 @@ if [ -z "$FILES" ]; then echo "✗ Indique au moins un fichier à committer."; e
 for _p in $FILES; do
   if [ ! -e "$_p" ]; then
     echo "✗ Fichier introuvable : $_p"
-    echo "  (chemins relatifs à la racine du repo ; le backend est sous smyleplay-api/)"
+    echo "  (chemins relatifs à la racine du repo ; le backend est sous watt-api/)"
     exit 4
   fi
 done

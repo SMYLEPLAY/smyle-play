@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — images-list.js
+   WATT — images-list.js
    C4 Monde Visuel V1 — livraison ③ (2026-06-15).
 
    Écran « Mes images » du WattBoard (tuile Images IA → bouton « Voir »).

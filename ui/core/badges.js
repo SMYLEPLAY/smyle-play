@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/core/badges.js
+   WATT — ui/core/badges.js
    Helpers de rendu des 3 repères constants (chantier C0, blueprint VF).
 
    Usage (script classique, expose window.SpBadges) :

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/messaging/messaging.js
+   WATT — ui/messaging/messaging.js
    Composant messagerie 1:1
 
    Usage :

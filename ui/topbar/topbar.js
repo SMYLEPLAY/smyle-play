@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/topbar/topbar.js
+   WATT — ui/topbar/topbar.js
    Composant topbar partagé (Phase 4 refonte architecture).
 
    Objectif

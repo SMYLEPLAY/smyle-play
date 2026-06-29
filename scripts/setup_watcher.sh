@@ -1,5 +1,5 @@
 #!/bin/bash
-# ── SMYLE PLAY — Setup interactif du watcher ─────────────────────────────────
+# ── WATT — Setup interactif du watcher ─────────────────────────────────
 # Usage : double-clique ou ./setup_watcher.sh
 # Ce script t'aide à configurer .env, installer les dépendances, et tester.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ if [ -z "$SKIP_ENV" ]; then
   CLOUD_AUDIO_BASE_URL=${CLOUD_AUDIO_BASE_URL:-https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev}
 
   cat > .env <<EOF
-# SMYLE PLAY — .env local (jamais commité, voir .gitignore)
+# WATT — .env local (jamais commité, voir .gitignore)
 # Généré par setup_watcher.sh le $(date +"%Y-%m-%d %H:%M:%S")
 
 # ── Cloudflare R2 ────────────────────────────────────────────────────────────

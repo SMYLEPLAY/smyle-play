@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/panels/playlist.js
+   WATT — ui/panels/playlist.js
    Track panel: open/close a playlist, render its tracks, quick-play.
 
    Reads shared state from ui/core/state.js:

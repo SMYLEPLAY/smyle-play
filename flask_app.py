@@ -1,5 +1,5 @@
 """
-SMYLE PLAY — Application Flask principale
+WATT — Application Flask principale
 ─────────────────────────────────────────
 • Sert les fichiers statiques (index.html, style.css, script.js)
 • API playlists officielles : GET /api/tracks, GET /api/playlists
@@ -1457,6 +1457,6 @@ if __name__ == '__main__':
     port  = app.config['PORT']
     debug = app.config['DEBUG']
     print(f'\n  ╔══════════════════════════════════════╗')
-    print(f'  ║  SMYLE PLAY → http://localhost:{port}  ║')
+    print(f'  ║  WATT → http://localhost:{port}  ║')
     print(f'  ╚══════════════════════════════════════╝\n')
     app.run(host='0.0.0.0', port=port, debug=debug)

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/modals/contact.js
+   WATT — ui/modals/contact.js
    Contact modal: local log + mailto fallback.
 
    Pure DOM/localStorage — no shared state. Self-contained.

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   SMYLE PLAY — library.js
+   WATT — library.js
    Page /library · contenu possédé (prompts IA + ADN Playlists débloqués)
    Backend : GET /me/library/prompts · GET /me/library/adns (auth requis)
    ═══════════════════════════════════════════════════════════════════════════ */

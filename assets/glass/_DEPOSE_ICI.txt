@@ -1,0 +1,2 @@
+Glisse ici l'image des cadres de verre brisé (PNG/JPG), puis dis à Claude le nom du fichier.
+Claude se charge ensuite de : découper les 3 cadres + passer le fond en noir + les poser en bordure sur les cartes.

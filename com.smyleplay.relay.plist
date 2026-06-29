@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SMYLE PLAY — LaunchAgent du RELAIS DE DEPLOIEMENT AUTONOME
+  WATT — LaunchAgent du RELAIS DE DEPLOIEMENT AUTONOME
   ==========================================================
   Lance le relais en mode «once» :
     • instantanement quand une tache est deposee dans .relay/queue

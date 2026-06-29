@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/playlists.js
+   WATT — ui/playlists.js
    Câblage frontend des endpoints playlists API (backend déjà complet).
 
    Fournit :

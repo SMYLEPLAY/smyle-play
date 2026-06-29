@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/core/api.js
+   WATT — ui/core/api.js
    Helper unique pour tous les appels au backend FastAPI.
    Gère : URL de base, token JWT dans localStorage, parsing JSON, erreurs.
 

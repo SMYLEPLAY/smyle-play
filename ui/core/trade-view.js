@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/core/trade-view.js
+   WATT — ui/core/trade-view.js
    Écran réutilisable "Proposition d'échange" : voir les 2 prompts (+ écoute),
    accepter / refuser / annuler selon le rôle. Global, chargé sur toutes les
    pages → utilisable depuis les notifs (topbar + page-services) et les messages.
