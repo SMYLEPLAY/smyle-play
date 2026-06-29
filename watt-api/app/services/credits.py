@@ -167,6 +167,109 @@ async def artist_pct_for_user(db: AsyncSession, user_id: UUID) -> int:
     return artist_pct_for_tier(tier)
 
 
+# -----------------------------------------------------------------------------
+# A1 — sous-soldes par catégorie de Smyle (achetés / gagnés / promo).
+# Helpers centralisés : tout crédit/débit DOIT passer par eux (câblage en A1.3)
+# pour que l'invariant `somme buckets == credits_balance` vive à UN seul endroit.
+# À utiliser DANS un savepoint déjà locké (_acquire_user_locks) par le caller.
+# -----------------------------------------------------------------------------
+
+# Whitelist stricte nom logique → colonne SQL (anti-injection).
+_BUCKET_COLUMNS = {
+    "achetes": "smyles_achetes",
+    "gagnes": "smyles_gagnes",
+    "promo": "smyles_promo",
+}
+
+# Ordre de dépense par défaut : on consomme d'abord le promo (expirable, non
+# encaissable), puis les achetés, puis les gagnés (encaissables, à préserver).
+_SPEND_PRIORITY = ("promo", "achetes", "gagnes")
+
+
+async def credit_bucket(
+    db: AsyncSession,
+    user_id: UUID,
+    amount: int,
+    *,
+    bucket: str,
+) -> None:
+    """Ajoute `amount` Smyles au bucket donné + au solde total (atomique en SQL).
+
+    `bucket` ∈ {'achetes', 'gagnes', 'promo'}. Maintient l'invariant
+    somme == credits_balance.
+    """
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+    col = _BUCKET_COLUMNS.get(bucket)
+    if col is None:
+        raise ValueError(f"unknown bucket: {bucket!r}")
+    await db.execute(
+        text(
+            f"UPDATE users SET {col} = {col} + :a, "  # noqa: S608 (col whitelisté)
+            "credits_balance = credits_balance + :a WHERE id = :uid"
+        ),
+        {"a": amount, "uid": user_id},
+    )
+
+
+async def debit_with_priority(
+    db: AsyncSession,
+    user_id: UUID,
+    amount: int,
+) -> dict[str, int]:
+    """Débite `amount` Smyles en consommant promo → achetés → gagnés.
+
+    Renvoie la ventilation effectivement débitée par bucket. Lève ValueError si
+    le solde total est insuffisant (le check métier reste de la responsabilité
+    du caller ; ici garde-fou défensif). Maintient somme == credits_balance.
+    """
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+    row = (await db.execute(
+        text(
+            "SELECT smyles_promo, smyles_achetes, smyles_gagnes "
+            "FROM users WHERE id = :uid FOR UPDATE"
+        ),
+        {"uid": user_id},
+    )).first()
+    if row is None:
+        raise ValueError("user not found")
+    available = {
+        "promo": int(row.smyles_promo),
+        "achetes": int(row.smyles_achetes),
+        "gagnes": int(row.smyles_gagnes),
+    }
+    if amount > sum(available.values()):
+        raise ValueError("insufficient smyles for debit")
+
+    taken = {"promo": 0, "achetes": 0, "gagnes": 0}
+    remaining = amount
+    for b in _SPEND_PRIORITY:
+        if remaining <= 0:
+            break
+        t = min(remaining, available[b])
+        taken[b] = t
+        remaining -= t
+
+    await db.execute(
+        text(
+            "UPDATE users SET "
+            "smyles_promo = smyles_promo - :p, "
+            "smyles_achetes = smyles_achetes - :a, "
+            "smyles_gagnes = smyles_gagnes - :g, "
+            "credits_balance = credits_balance - :tot WHERE id = :uid"
+        ),
+        {
+            "p": taken["promo"],
+            "a": taken["achetes"],
+            "g": taken["gagnes"],
+            "tot": amount,
+            "uid": user_id,
+        },
+    )
+    return taken
+
+
 async def _acquire_user_locks(
     db: AsyncSession,
     user_ids: list[UUID],

@@ -43,6 +43,10 @@ class User(Base):
             "tier IN ('standard', 'premium', 'mythique')",
             name="ck_users_tier_enum",
         ),
+        # A1 — sous-soldes par catégorie de Smyle (jamais négatifs).
+        CheckConstraint("smyles_achetes >= 0", name="ck_users_smyles_achetes_nonneg"),
+        CheckConstraint("smyles_gagnes >= 0", name="ck_users_smyles_gagnes_nonneg"),
+        CheckConstraint("smyles_promo >= 0", name="ck_users_smyles_promo_nonneg"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -140,6 +144,21 @@ class User(Base):
         nullable=False,
         default="standard",
         server_default="standard",
+    )
+
+    # A1 — sous-soldes par CATÉGORIE de Smyle (migration 0071). Origine =
+    # cashabilité : achetés (€, non encaissables) / gagnés (vente, ENCAISSABLES =
+    # dette) / promo (offerts, non encaissables, expirables). Invariant cible :
+    # smyles_achetes + smyles_gagnes + smyles_promo == credits_balance (activé
+    # en A1.4 ; pendant A1.1→A1.3 les buckets sont maintenus en parallèle).
+    smyles_achetes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    smyles_gagnes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    smyles_promo: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
     )
 
     # --- Parrainage (mécanique 1) ---
