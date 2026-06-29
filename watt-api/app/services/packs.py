@@ -228,6 +228,7 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
             text(
                 "UPDATE users "
                 "SET credits_balance = credits_balance + :rev, "
+                "    smyles_gagnes = smyles_gagnes + :rev, "
                 "    credits_earned_total = credits_earned_total + :rev "
                 "WHERE id = :uid"
             ),

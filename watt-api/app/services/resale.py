@@ -223,6 +223,7 @@ async def buy_resale_atomic(
         await db.execute(
             text(
                 "UPDATE users SET credits_balance = credits_balance + :c, "
+                "smyles_gagnes = smyles_gagnes + :c, "
                 "credits_earned_total = credits_earned_total + :c WHERE id = :uid"
             ),
             {"c": seller_cut, "uid": seller_id},
@@ -232,6 +233,7 @@ async def buy_resale_atomic(
             await db.execute(
                 text(
                     "UPDATE users SET credits_balance = credits_balance + :r, "
+                    "smyles_gagnes = smyles_gagnes + :r, "
                     "credits_earned_total = credits_earned_total + :r WHERE id = :uid"
                 ),
                 {"r": artist_royalty, "uid": original_artist_id},

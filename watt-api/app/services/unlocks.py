@@ -286,6 +286,7 @@ async def unlock_prompt_atomic(
             text(
                 "UPDATE users "
                 "SET credits_balance = credits_balance + :rev, "
+                "    smyles_gagnes = smyles_gagnes + :rev, "
                 "    credits_earned_total = credits_earned_total + :rev "
                 "WHERE id = :uid"
             ),
@@ -471,6 +472,7 @@ async def unlock_adn_atomic(
             text(
                 "UPDATE users "
                 "SET credits_balance = credits_balance + :rev, "
+                "    smyles_gagnes = smyles_gagnes + :rev, "
                 "    credits_earned_total = credits_earned_total + :rev "
                 "WHERE id = :uid"
             ),
@@ -606,6 +608,7 @@ async def unlock_playlist_adn_atomic(
             text(
                 "UPDATE users "
                 "SET credits_balance = credits_balance + :rev, "
+                "    smyles_gagnes = smyles_gagnes + :rev, "
                 "    credits_earned_total = credits_earned_total + :rev "
                 "WHERE id = :uid"
             ),
@@ -735,6 +738,7 @@ async def unlock_album_adn_atomic(
             text(
                 "UPDATE users "
                 "SET credits_balance = credits_balance + :rev, "
+                "    smyles_gagnes = smyles_gagnes + :rev, "
                 "    credits_earned_total = credits_earned_total + :rev "
                 "WHERE id = :uid"
             ),
