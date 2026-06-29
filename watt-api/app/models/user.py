@@ -47,6 +47,8 @@ class User(Base):
         CheckConstraint("smyles_achetes >= 0", name="ck_users_smyles_achetes_nonneg"),
         CheckConstraint("smyles_gagnes >= 0", name="ck_users_smyles_gagnes_nonneg"),
         CheckConstraint("smyles_promo >= 0", name="ck_users_smyles_promo_nonneg"),
+        # A2 — portion des gagnés gelée (litige/fraude/séquestre).
+        CheckConstraint("smyles_gagnes_bloque >= 0", name="ck_users_smyles_gagnes_bloque_nonneg"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -158,6 +160,12 @@ class User(Base):
         Integer, nullable=False, default=0, server_default="0"
     )
     smyles_promo: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    # A2 — portion des gagnés GELÉE (litige/fraude/séquestre), non retirable.
+    # ⊆ smyles_gagnes. Le reste des gagnés devient retirable après maturation
+    # (cf. app/services/escrow.py). Défaut 0.
+    smyles_gagnes_bloque: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
 
