@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# SMYLE PLAY — agents/suno_prompt_architect.py
+# WATT — agents/suno_prompt_architect.py
 #
 # Agent de génération de prompts Suno.
 # Construit un prompt cohérent avec l'univers ADN pour générer un morceau
@@ -133,7 +133,7 @@ def _title_phrase(title: str) -> str:
     if not title or not title.strip():
         return ''
     clean = title.strip()
-    # Retirer les suffixes techniques courants des fichiers SMYLE PLAY
+    # Retirer les suffixes techniques courants des fichiers WATT
     for suffix in [' Drift', ' drift', ' copie', ' DRIFT']:
         clean = clean.replace(suffix, '')
     clean = clean.strip()

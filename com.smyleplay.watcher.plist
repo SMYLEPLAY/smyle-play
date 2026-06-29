@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SMYLE PLAY — macOS LaunchAgent pour détection instantanée
+  WATT — macOS LaunchAgent pour détection instantanée
   ─────────────────────────────────────────────────────────
   Déclenche ./deploy.sh dès qu'un fichier est déposé/modifié dans
   l'un des 4 dossiers de playlist. Complément au cron 15min qui sert

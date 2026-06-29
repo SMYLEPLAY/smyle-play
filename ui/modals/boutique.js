@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/modals/boutique.js
+   WATT — ui/modals/boutique.js
    La BOUTIQUE : vitrine universelle où dépenser / rechargera ses Smyles.
 
    AUTONOME : module IIFE qui embarque SA PROPRE logique d'ouverture de pack

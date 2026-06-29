@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/core/events.js
+   WATT — ui/core/events.js
    Bus d'événements cross-pages + cross-tabs.
 
    Pourquoi ?

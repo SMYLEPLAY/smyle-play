@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/modals/engagement.js
+   WATT — ui/modals/engagement.js
    Streak + Parrainage rendus accessibles sur TOUTES les pages.
 
    AUTONOME (IIFE) : embarque sa propre logique, ne dépend pas de auth.js →

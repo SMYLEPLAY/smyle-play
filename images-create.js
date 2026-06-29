@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — images-create.js
+   WATT — images-create.js
    Chantier C4 (Monde Visuel V1) — livraison ② : FRONT de création d'image.
 
    Pilote l'écran #sec-image-create (ouvert par le WattBoard via la tuile

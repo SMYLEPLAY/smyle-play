@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/panels/mix.js
+   WATT — ui/panels/mix.js
    My Mix panel: add/remove/reorder tracks, drag-and-drop, open/close UI.
 
    Reads shared state from ui/core/state.js:

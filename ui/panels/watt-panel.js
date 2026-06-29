@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/panels/watt-panel.js
+   WATT — ui/panels/watt-panel.js
    WATT Panel — WATTBOARD (espace artiste)
 
    Refonte : DNA + CONNECT ont été retirés de ce panneau. Leur logique de

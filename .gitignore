@@ -88,8 +88,8 @@ data/exports/*
 venv/
 .venv/
 env/
-smyleplay-api/venv/
-smyleplay-api/_archive_bak/
+watt-api/venv/
+watt-api/_archive_bak/
 
 # ── Secrets (NE JAMAIS COMMIT) ───────────────────────────────────────────
 .env

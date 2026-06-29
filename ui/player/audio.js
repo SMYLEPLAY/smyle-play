@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/player/audio.js
+   WATT — ui/player/audio.js
    Audio player: load/play/next/prev for playlist AND mix mode.
 
    Reads shared state from ui/core/state.js:

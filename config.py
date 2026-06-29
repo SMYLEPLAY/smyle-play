@@ -1,5 +1,5 @@
 """
-SMYLE PLAY — Configuration centralisée
+WATT — Configuration centralisée
 Toutes les valeurs sensibles viennent des variables d'environnement.
 En local, copie .env.example → .env et remplis les valeurs.
 """

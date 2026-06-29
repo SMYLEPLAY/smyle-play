@@ -1,5 +1,5 @@
 /**
- * SMYLE PLAY — ui/modals/credits-buy.js
+ * WATT — ui/modals/credits-buy.js
  *
  * P1-C2a (2026-04-28) — Modale d'achat de SMYLES.
  * Déclenchée par un click sur le badge balance topbar (cf. ui/smyle-balance.js).

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SMYLE PLAY — LaunchAgent macOS : Suno Router
+  WATT — LaunchAgent macOS : Suno Router
   ─────────────────────────────────────────────
   Surveille ~/Downloads et route automatiquement les nouveaux WAV/MP3
   Suno vers la bonne playlist, via breadcrumb ou DNA classifier.

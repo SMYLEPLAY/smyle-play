@@ -1,6 +1,6 @@
 #!/bin/bash
-# ── SMYLE PLAY Launcher ──────────────────────────────────────────────────────
-# Double-clique sur ce fichier pour lancer SMYLE PLAY dans ton navigateur.
+# ── WATT Launcher ──────────────────────────────────────────────────────
+# Double-clique sur ce fichier pour lancer WATT dans ton navigateur.
 # Nécessite Python 3 (installé par défaut sur macOS 12+).
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -16,5 +16,5 @@ done
 # Ouvrir le navigateur après 1 seconde
 (sleep 1 && open "http://localhost:$PORT") &
 
-# Démarrer le serveur SMYLE PLAY (scan automatique des dossiers audio)
+# Démarrer le serveur WATT (scan automatique des dossiers audio)
 python3 server.py $PORT

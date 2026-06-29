@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# SMYLE PLAY — agents/playlist_manager.py
+# WATT — agents/playlist_manager.py
 #
 # Agent d'attribution de playlist selon l'ADN musical.
 # Fait le lien entre l'ADN classifié et la playlist cible dans l'app.

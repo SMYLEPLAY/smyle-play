@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/albums.js
+   WATT — ui/albums.js
    Albums d'images (curation visuelle) — calque le pattern playlists.js.
 
    Couvre 3 choses :

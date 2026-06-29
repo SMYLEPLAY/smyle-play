@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# SMYLE PLAY — agents/dna_classifier.py
+# WATT — agents/dna_classifier.py
 #
 # Agent de classification ADN musical.
 # Analyse un morceau (nom, genre, tags, bpm) et lui attribue un univers ADN.
@@ -28,7 +28,7 @@ class DNAResult(TypedDict):
 
 
 # ── Dictionnaire de mots-clés par ADN ────────────────────────────────────────
-# Construit à partir des titres réels des playlists SMYLE PLAY.
+# Construit à partir des titres réels des playlists WATT.
 # Chaque entrée a un poids (1 = normal, 2 = fort signal, 3 = signal dominant).
 
 _DNA_KEYWORDS: dict[str, dict[str, int]] = {

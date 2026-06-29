@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   SMYLE PLAY — ui/hub/marketplace.js
+   WATT — ui/hub/marketplace.js
    Hydratation de l'accueil transformée en marketplace (Phase 2).
 
    Responsabilités
