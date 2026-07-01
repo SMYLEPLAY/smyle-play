@@ -1783,8 +1783,11 @@
     }
   }
 
-  // Section Œuvre complète — affichée dans LES DEUX modes. Carte = cover son +
-  // vignette image + badge oeuvre. Clic → ouvre la fiche son (drawer existant).
+  // Section Œuvre complète — carte ID SCINDÉE son|visuel (binarité, D2 2026-07-01).
+  // Réutilise renderOeuvreCard (banner-card.js) : moitié gauche = SON, moitié
+  // droite = VISUEL, badges de provenance des deux côtés. Clic → drawer du son
+  // (comportement conservé). Fallback ancienne double-cover si le composant
+  // n'est pas chargé (dégradation gracieuse).
   function _renderOeuvres(oeuvres) {
     const section = document.getElementById('mp-section-oeuvres');
     const el = document.getElementById('mp-grid-oeuvres');
@@ -1795,10 +1798,22 @@
       return;
     }
     section.hidden = false;
-    const oeuvreBadge = (window.SpBadges && SpBadges.oeuvre) ? SpBadges.oeuvre() : '';
+    const hasSplit = (typeof window.renderOeuvreCard === 'function');
     el.innerHTML = oeuvres.map(o => {
       const son = o.sound || {};
       const img = o.image || {};
+      if (hasSplit) {
+        // Mapping /oeuvres → carte scindée. Le payload liste ne porte pas la
+        // plateforme IA → défauts du composant (Suno / ChatGPT), cohérents avec
+        // le contenu WATT. Enrichissement backend possible en suivi.
+        const card = window.renderOeuvreCard({
+          title:  son.title || 'Œuvre complète',
+          son:    { title: son.title || 'Son', platform: son.platform || '', color: son.color || '' },
+          visuel: { title: son.title || 'Visuel', previewKey: img.previewKey || '', platform: img.platform || '' },
+        }, { href: '#' });
+        return '<div class="mp-oeuvre-slot" data-son-id="' + _esc(son.id || '') + '">' + card + '</div>';
+      }
+      // Fallback (composant absent) : ancienne carte double-cover.
       const sonCover = son.coverUrl
         ? '<img src="' + _esc(son.coverUrl) + '" alt="" loading="lazy">'
         : '<div class="mp-oeuvre-card-cover-fallback" aria-hidden="true">🎵</div>';
@@ -1814,11 +1829,6 @@
           '</div>' +
           '<div class="mp-oeuvre-card-body">' +
             '<div class="mp-oeuvre-card-title">' + _esc(son.title || 'Œuvre complète') + '</div>' +
-            '<div class="mp-img-card-badges">' + oeuvreBadge + '</div>' +
-            '<div class="mp-oeuvre-card-prices">' +
-              '<span>🎵 ' + _esc(son.priceCredits) + ' Smyles</span>' +
-              '<span>🖼️ ' + _esc(img.priceCredits) + ' Smyles</span>' +
-            '</div>' +
           '</div>' +
         '</article>'
       );
@@ -1828,8 +1838,10 @@
     if (!el._bound) {
       el._bound = true;
       el.addEventListener('click', (e) => {
-        const card = e.target.closest('.mp-oeuvre-card');
+        const card = e.target.closest('.mp-oeuvre-slot, .mp-oeuvre-card');
         if (!card) return;
+        // La carte scindée est un <a href="#"> → on neutralise le saut d'ancre.
+        e.preventDefault();
         const sonId = card.dataset.sonId;
         // Clic → fiche du SON (drawer track existant). On retrouve le track
         // par son promptId (chaque track-recent porte promptId du son lié).
