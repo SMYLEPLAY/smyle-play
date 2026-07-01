@@ -754,7 +754,11 @@
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
 <script src="/ui/playlists.js?v=20260615c4l5" defer></script>
 <script src="/ui/albums.js?v=20260616c4adnalbum" defer></script>
-<script src="ui/hub/marketplace.js?v=20260625filters"></script>
+<!-- banner-card.js expose window.renderOeuvreCard (carte ID scindée son|visuel).
+     Chargé AVANT marketplace.js pour que la section Œuvres de l'accueil (D2)
+     puisse rendre la carte binaire. -->
+<script src="banner-card.js?v=20260701d2"></script>
+<script src="ui/hub/marketplace.js?v=20260701d2oeuvre"></script>
 <script src="ui/app.js"></script>
 <script src="ui/player/fade.js?v=20260630fade"></script>
 <script src="ui/player/mini-bar.js?v=20260613a" defer></script>
