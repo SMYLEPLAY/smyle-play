@@ -32,7 +32,7 @@ const WATT = {
   violet:  '#8800ff',
 };
 
-const WATT_UNIVERSES = ['sunset', 'jungle', 'night', 'hitmix'];
+const WATT_UNIVERSES = ['sunset', 'jungle', 'night'];
 
 // Émotions rapides mappées aux univers — utilisé par WattDNA.analyze
 const EMOTION_MAP = {
