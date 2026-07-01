@@ -1865,7 +1865,21 @@ async def upload_playlist_cover(
 async def serve_image(key: str):
     """
     Proxy une image R2 par sa clé (ex. 'images/avatar/abc123.webp').
+
+    ⚠️ Gate dur (fin binarité D2) : l'ORIGINAL d'une image vendable
+    (préfixe `images/originals/`) n'est JAMAIS servi par ce proxy public.
+    Il passe exclusivement par GET /images/{id}/download, qui vérifie la
+    possession (UnlockedPrompt ou artiste) avant tout accès R2. Sans ce
+    gate, cette route — enregistrée AVANT images.stream_image_preview dans
+    main.py, donc prioritaire — servait n'importe quelle clé, y compris
+    les originaux gatés. 404 indistinct (anti-énumération), miroir du gate
+    de stream_image_preview (routers/images.py).
     """
+    if key.startswith("images/originals/"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+
     from app.services.r2 import get_r2_client, is_configured
 
     if not is_configured():
