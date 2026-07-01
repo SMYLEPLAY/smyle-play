@@ -774,7 +774,7 @@
                 : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
               const qpId = 'ap-qp-' + p.id;
               const adnBadge = p.adn_for_sale
-                ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
+                ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-dna-desc="' + (p.dna_description || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
                 : '';
               // Tracks de la playlist pour les boutons like/add
               const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
@@ -934,7 +934,9 @@
     const playlistId  = badgeEl.dataset.playlistId;
     const adnPrice    = parseInt(badgeEl.dataset.adnPrice, 10) || 0;
     const adnTitle    = badgeEl.dataset.adnTitle || 'cette playlist';
-    const seedPrompt  = badgeEl.dataset.seedPrompt || '';
+    // Chantier C (02/07) — le badge ne transporte plus JAMAIS le génome
+    // (fuite corrigée côté API aussi) : le teaser public = dna_description.
+    const dnaDesc     = badgeEl.dataset.dnaDesc || '';
 
     // C2/ADN playlist — drawer d'achat unifié (fallback : modale historique).
     if (window.PurchaseDrawer) {
@@ -943,6 +945,7 @@
         id: playlistId,
         price: adnPrice || null,
         title: 'ADN · ' + adnTitle,
+        desc: dnaDesc || null,
       });
       return;
     }
@@ -961,8 +964,8 @@
         '<button class="adn-buy-close" id="adn-buy-close" aria-label="Fermer">✕</button>' +
         '<p class="adn-buy-eyebrow">ADN Playlist</p>' +
         '<h3 class="adn-buy-title">' + _esc(adnTitle) + '</h3>' +
-        (seedPrompt
-          ? '<p class="adn-buy-desc">' + _esc(seedPrompt) + '</p>'
+        (dnaDesc
+          ? '<p class="adn-buy-desc">' + _esc(dnaDesc) + '</p>'
           : '<p class="adn-buy-desc">La synthèse créative de tous les sons de cette playlist — ton blueprint pour reproduire cet univers.</p>') +
         '<ul class="adn-buy-perks">' +
           '<li>🧬 Accès à l\'ADN créatif complet de la playlist</li>' +
@@ -1080,7 +1083,12 @@
           // ici (avant, il ne pouvait être posé qu’à la création). Verrouillé
           // publiquement tant que la vente est active (le backend masque
           // seed_prompt si adn_for_sale).
-          '<label class="pl-edit-label" for="pl-edit-seed" style="margin-top:10px">Contenu de l\'ADN — la tranche d\'identité vendue</label>' +
+          // Chantier C (02/07) — teaser PUBLIC, parité avec l'ADN Album
+          // (ui/albums.js #al-adn-desc) : visible avant achat, par opposition
+          // au génome ci-dessous qui reste verrouillé.
+          '<label class="pl-edit-label" for="pl-edit-desc" style="margin-top:10px">Description publique <span class="pl-adn-opt">(teaser court — visible avant achat)</span></label>' +
+          '<textarea id="pl-edit-desc" class="pl-edit-input" rows="2" maxlength="2000" placeholder="Décris l\'esprit de cet ADN sans révéler la recette…">' + _esc(playlistData.dna_description || '') + '</textarea>' +
+          '<label class="pl-edit-label" for="pl-edit-seed" style="margin-top:10px">Génome — la recette d\'identité vendue <span class="pl-adn-opt">(verrouillé publiquement)</span></label>' +
           '<textarea id="pl-edit-seed" class="pl-edit-input" rows="4" placeholder="Prompt / recette d\'identité de cette playlist (ce que l\'acheteur reçoit)…">' + _esc(playlistData.seed_prompt || '') + '</textarea>' +
         '</div>' +
         '<button class="pl-edit-save" id="pl-edit-save">Enregistrer</button>' +
@@ -1109,6 +1117,7 @@
         const adnSale  = adnChk && adnChk.checked;
         const adnPrice = adnSale ? (parseInt(document.getElementById('pl-edit-price').value, 10) || null) : null;
         const adnSeed  = (document.getElementById('pl-edit-seed')?.value || '').trim();
+        const adnDesc  = (document.getElementById('pl-edit-desc')?.value || '').trim();
 
         if (adnSale && !adnPrice) {
           if (errEl) { errEl.textContent = 'Fixe un prix en Smyles pour activer la vente d\'ADN.'; errEl.style.display = 'block'; }
@@ -1127,6 +1136,7 @@
         if (adnSale && adnPrice) patch.adn_price = adnPrice;
         if (!adnSale) patch.adn_price = null;
         if (adnSeed) patch.seed_prompt = adnSeed;
+        patch.dna_description = adnDesc || null;
 
         try {
           await updatePlaylist(playlistData.id, patch);
