@@ -1782,3 +1782,90 @@
   color: #7c5cff;
   font-size: 12px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DUALITÉ ADN (B, 2026-07-01) — badges d'en-tête + tag playlist sur la
+   card de son. Les badges vivent SUR LA CARD (barre au-dessus de la
+   pochette), jamais incrustés dans l'image (choix Tom). Musique = mauve
+   (gauche) · Visuel = bleu électrique (droite). Face manquante = invitation
+   (ghost pointillé) pour inspirer le mono-artiste à faire la 2e face.
+   ═══════════════════════════════════════════════════════════════════════ */
+.mp-son-card-adnrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 2px;
+  min-height: 20px;
+}
+.mp-son-card-adn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  cursor: default;
+}
+.mp-son-card-adn-lbl { font-weight: 800; }
+.mp-son-card-adn--music {
+  color: #d3a9ff;
+  background: rgba(124, 58, 237, 0.16);
+  border-color: rgba(204, 136, 255, 0.45);
+}
+.mp-son-card-adn--visual {
+  color: #8fd6ff;
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.42);
+}
+/* Face manquante — invitation discrète (ghost) : contour pointillé, atténué. */
+.mp-son-card-adn.is-invitation {
+  color: rgba(255, 255, 255, 0.34);
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.20);
+  font-weight: 600;
+}
+.mp-son-card-adn.is-invitation .mp-son-card-adn-lbl { font-weight: 700; }
+
+/* Tag playlist/univers cliquable — pastille à la couleur de la playlist,
+   ouvre la playlist sur le profil de l'artiste (/@slug#pl-<id>). */
+.mp-son-card-pltag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 2px 8px 2px 7px;
+  border-radius: 9px;
+  font-size: .68rem;
+  font-weight: 600;
+  color: #e7deff;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Fallback si color-mix non supporté */
+  background: rgba(124, 58, 237, 0.16);
+  border: 1px solid rgba(124, 58, 237, 0.5);
+  background: color-mix(in srgb, var(--pltag-color, #7C3AED) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pltag-color, #7C3AED) 55%, transparent);
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.mp-son-card-pltag:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--pltag-color, #7C3AED) 30%, transparent);
+  border-color: var(--pltag-color, #7C3AED);
+}
+.mp-son-card-pltag-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pltag-color, #7C3AED);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--pltag-color, #7C3AED) 70%, transparent);
+}
