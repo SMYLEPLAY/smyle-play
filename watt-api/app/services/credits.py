@@ -66,6 +66,11 @@ PERK_DENOMINATOR = 10
 PLAYLIST_PERK_NUMERATOR = 8
 PLAYLIST_PERK_DENOMINATOR = 10
 
+# Coefficient du perk « œuvre complète » (C5) : -15% sur le BUNDLE des deux
+# ADN de collection (ADN Playlist + ADN Album) achetés ensemble.
+OEUVRE_PACK_NUMERATOR = 85
+OEUVRE_PACK_DENOMINATOR = 100
+
 
 def compute_effective_price(
     base_price: int,
@@ -100,6 +105,40 @@ def compute_effective_price(
     if has_playlist_perk:
         price = max(1, (price * PLAYLIST_PERK_NUMERATOR) // PLAYLIST_PERK_DENOMINATOR)
     return price
+
+
+def compute_oeuvre_pack_price(face_prices: list[int], has_artist_perk: bool) -> int:
+    """
+    Prix du pack « œuvre complète » (C5) — bundle des ADN de collection des
+    deux faces (ADN Playlist + ADN Album) d'une même œuvre.
+
+    Cascade des perks (⚠️ plafond, décision plan binarité) :
+      1. Chaque face reçoit le perk ARTISTE -30% si `has_artist_perk` (détenteur
+         de l'ADN profil/visuel de l'artiste) — via compute_effective_price
+         (plancher 1 par face).
+      2. Le pack applique -15% sur la SOMME des faces.
+
+    Le perk -20% « ADN collection » n'est PAS appliqué ici par construction :
+    l'acheteur ne possède pas encore les ADN de collection (il les acquiert via
+    ce pack). C'est un perk AVAL, sur les achats À L'UNITÉ futurs (ADN Track /
+    prompt image). La cascade -30% × -20% × -15% ne peut donc jamais frapper un
+    même montant — le plafond est STRUCTUREL, pas seulement arithmétique.
+
+    Plancher : >= nombre de faces (>= 1 Smyle par face), le pack ne tombe jamais
+    à 0. Arithmétique entière, arrondi inférieur (favorise l'acheteur).
+
+    Exemples (2 faces) :
+        compute_oeuvre_pack_price([40, 35], False) == 63   # (40+35)*85//100
+        compute_oeuvre_pack_price([40, 35], True)  == 44   # (28+24)=52 → *85//100
+        compute_oeuvre_pack_price([1, 1], True)    == 2    # plancher = nb faces
+    """
+    if not face_prices:
+        raise ValueError("face_prices must be non-empty")
+    subtotal = sum(
+        compute_effective_price(int(p), has_artist_perk) for p in face_prices
+    )
+    packed = (subtotal * OEUVRE_PACK_NUMERATOR) // OEUVRE_PACK_DENOMINATOR
+    return max(len(face_prices), packed)
 
 
 def compute_adn_price_with_playlist_perk(base_price: int, has_perk: bool) -> int:

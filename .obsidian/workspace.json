@@ -178,6 +178,7 @@
   },
   "active": "6cab3afc4a43d29b",
   "lastOpenFiles": [
+    "scripts/cleanup_stray_files.sh",
     "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/urllib3/LICENSE.txt",
     "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/truststore/LICENSE",
     "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/tomli_w/LICENSE",
@@ -188,7 +189,6 @@
     "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/pyproject_hooks/LICENSE",
     "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/pygments/LICENSE",
     "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/platformdirs/LICENSE",
-    "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/pkg_resources/LICENSE",
     "watt-api/venv/lib/python3.14/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/idna/LICENSE.md",
     "watt-api/venv/lib/python3.14/site-packages/pip/_vendor/idna/LICENSE.md",
     "watt-api/venv/lib/python3.14/site-packages/uvicorn-0.49.0.dist-info/licenses/LICENSE.md",

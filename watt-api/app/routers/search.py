@@ -31,6 +31,7 @@ from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.user import User
 from app.models.user_follow import UserFollow
@@ -241,3 +242,82 @@ async def search_tracks(
         })
 
     return {"query": q, "count": len(tracks), "tracks": tracks}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# GET /watt/search/images
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/images")
+async def search_images(
+    q: str = Query(default="", max_length=100),
+    universe: Optional[str] = Query(default=None, max_length=50),
+    style: Optional[str] = Query(default=None, max_length=40),
+    tags: List[str] = Query(default=[]),
+    limit: int = Query(default=_MAX_RESULTS, ge=1, le=_MAX_RESULTS),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Recherche d'IMAGES publiées (miroir VISUEL strict de /watt/search/tracks).
+
+    Une image est une ligne `prompts` (product_type='image'). On ne remonte que
+    les images PUBLIÉES, non supprimées, dont l'artiste a son profil public —
+    même gate que les tracks. N'expose JAMAIS la recette (prompt_text) ni
+    l'original (image_r2_key) : aperçu public + provenance + métadonnées seules.
+
+    Paramètres :
+      - q        : texte libre (title, image_style, image_tags, universe)
+      - universe : filtre exact slug (sunset-lover, jungle-osmose, …)
+      - style    : filtre exact sur image_style
+      - tags     : multi-select OR sur image_tags (CSV)
+      - limit    : max 30.
+    """
+    stmt = (
+        select(Prompt, User)
+        .join(User, Prompt.artist_id == User.id)
+        .where(
+            Prompt.product_type == "image",
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            User.profile_public.is_(True),
+        )
+    )
+
+    if q and len(q) >= _MIN_QUERY_LEN:
+        stmt = _apply_text_search(
+            stmt, q, Prompt.title, Prompt.image_style, Prompt.image_tags, Prompt.universe
+        )
+
+    if universe:
+        stmt = stmt.where(Prompt.universe == universe)
+
+    if style:
+        stmt = stmt.where(Prompt.image_style == style)
+
+    effective_tags = [t for t in tags if t]
+    if effective_tags:
+        tag_filters = [Prompt.image_tags.ilike(f"%{t}%") for t in effective_tags]
+        stmt = stmt.where(or_(*tag_filters))
+
+    stmt = stmt.order_by(desc(Prompt.created_at)).limit(limit)
+
+    rows = (await db.execute(stmt)).all()
+
+    images = []
+    for p, user in rows:
+        images.append({
+            "id":           str(p.id),
+            "title":        p.title,
+            "previewKey":   p.preview_r2_key or "",
+            "platform":     p.image_platform or "",
+            "style":        p.image_style or "",
+            "tags":         p.image_tags or "",
+            "universe":     p.universe or "",
+            "priceCredits": int(p.price_credits or 0),
+            "artistId":     str(user.id),
+            "artistSlug":   _derive_artist_slug(user),
+            "artistName":   user.artist_name or "",
+        })
+
+    return {"query": q, "count": len(images), "images": images}

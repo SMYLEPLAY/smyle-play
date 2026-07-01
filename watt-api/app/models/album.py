@@ -57,6 +57,15 @@ class Album(Base):
             "visibility IN ('public', 'private')",
             name="ck_albums_visibility_enum",
         ),
+        # Miroir STRICT de ck_tracks_universe_enum (track.py) : les 4 œuvres
+        # officielles WATT. NULL = album hors-univers (cas par défaut). Permet
+        # de teinter la face VISUELLE d'une œuvre comme la face SON l'est déjà
+        # via tracks.universe (chantier C3, migration 0076).
+        CheckConstraint(
+            "universe IS NULL OR universe IN "
+            "('sunset-lover', 'jungle-osmose', 'night-city', 'hit-mix')",
+            name="ck_albums_universe_enum",
+        ),
         Index("ix_albums_owner_visibility", "owner_id", "visibility"),
     )
 
@@ -117,6 +126,20 @@ class Album(Base):
     )
     # Prix en Smyles (NULL = pas de prix fixé → non vendable même si flag on).
     adn_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # ─── Binding « Œuvre » (chantier C3, migration 0076) ──────────────────
+    # Slug partagé avec la playlist sœur (cf. Playlist.oeuvre_slug). Une Œuvre
+    # = (playlist + album) MÊME oeuvre_slug + MÊME owner_id. NULL = album
+    # hors-œuvre. Indexé pour GET /oeuvre/{slug}. Pas de FK (clé logique douce).
+    oeuvre_slug: Mapped[str | None] = mapped_column(
+        String(80), nullable=True, index=True
+    )
+    # Univers WATT de la face visuelle — miroir de tracks.universe pour les 4
+    # œuvres officielles (SMYLE). NULL = album utilisateur lambda. Indexé pour
+    # filtrer les surfaces officielles. CHECK ck_albums_universe_enum ci-dessus.
+    universe: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, index=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

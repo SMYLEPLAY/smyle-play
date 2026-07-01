@@ -1664,3 +1664,121 @@
 .mp-son-card-permalink:hover {
   color: rgba(255,255,255,.75);
 }
+
+/* =============================================================
+   CARTE ID SCINDÉE — ŒUVRE binaire (C4b · renderOeuvreCard)
+   Deux moitiés symétriques : gauche SON · droite VISUEL.
+   ============================================================= */
+.oeuvre-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #16121f;
+  border: 1px solid rgba(124,92,255,.22);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.oeuvre-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124,92,255,.45);
+  box-shadow: 0 10px 32px rgba(0,0,0,.4);
+}
+.oeuvre-card.is-complete {
+  border-color: rgba(124,92,255,.5);
+}
+.oeuvre-card__split {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  align-items: stretch;
+  min-height: 150px;
+}
+.oeuvre-card__half {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+.oeuvre-card__half--son {
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--oeuvre-son-color,#7c5cff) 38%, transparent), transparent),
+    #1a1426;
+}
+.oeuvre-card__half--visuel {
+  background: #0e0b16;
+}
+.oeuvre-card__half.is-empty {
+  align-items: center;
+  justify-content: center;
+}
+.oeuvre-card__empty {
+  font-size: 12px;
+  color: rgba(255,255,255,.32);
+}
+.oeuvre-card__cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.oeuvre-card__half--visuel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.72) 0%, rgba(0,0,0,.05) 55%, transparent 100%);
+  z-index: 1;
+}
+.oeuvre-card__half--visuel > * { position: relative; z-index: 2; }
+.oeuvre-card__seam {
+  background: linear-gradient(to bottom, transparent, rgba(124,92,255,.55), transparent);
+}
+.oeuvre-card__face-tag {
+  align-self: flex-start;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.78);
+}
+.oeuvre-card__wave {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 20px;
+  opacity: .5;
+}
+.oeuvre-card__half-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.oeuvre-card__prov { font-size: 11px; }
+.oeuvre-card__prov .sp-provenance { font-size: 11px; }
+.oeuvre-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+.oeuvre-card__seal {
+  color: #7c5cff;
+  font-size: 12px;
+}

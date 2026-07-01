@@ -79,6 +79,14 @@ class Prompt(Base):
             "('masculin', 'feminin', 'instrumental', 'neutre', 'mixte')",
             name="ck_prompts_vocal_gender_enum",
         ),
+        # Univers WATT par image (migration 0077) — miroir STRICT de
+        # ck_tracks_universe_enum. NULL = hors-univers (recettes audio, images
+        # lambda) ; renseigné pour les covers des 4 œuvres officielles.
+        CheckConstraint(
+            "universe IS NULL OR universe IN "
+            "('sunset-lover', 'jungle-osmose', 'night-city', 'hit-mix')",
+            name="ck_prompts_universe_enum",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -184,6 +192,13 @@ class Prompt(Base):
     # portée côté router pour rester souple et portable.
     image_style: Mapped[str | None] = mapped_column(String(40), nullable=True)
     image_tags: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Univers WATT (migration 0077) — miroir de tracks.universe pour les images.
+    # NULL = hors-univers ; renseigné pour les covers des 4 œuvres officielles.
+    # CHECK ck_prompts_universe_enum (cf. __table_args__). Indexé.
+    universe: Mapped[str | None] = mapped_column(
+        String(40), nullable=True, index=True
+    )
 
     # ── C4 « Oeuvre complete » (migration 0059) — liaison 1:1 son <-> image ──
     # Pointe vers l'AUTRE produit de la paire (un son lie a une image ou

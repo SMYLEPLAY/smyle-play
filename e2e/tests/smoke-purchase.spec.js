@@ -45,7 +45,14 @@ test('drawer d’achat : rendu + clic « Débloquer » appelle l’unlock', asyn
   });
 
   await page.addInitScript(([key, tok]) => {
-    try { localStorage.setItem(key, tok); } catch (e) { /* */ }
+    try {
+      localStorage.setItem(key, tok);
+      // Neutralise la modal d'onboarding premier-run (obWelcome, z-index 1400)
+      // qui, sinon, s'ouvre pour un compte fraîchement connecté et intercepte
+      // le clic sur le drawer d'achat (z-index 1300). Un utilisateur récurrent
+      // ne la voit pas — on reproduit cet état pour tester le drawer seul.
+      localStorage.setItem('smyle_onboarded_v1', '1');
+    } catch (e) { /* */ }
   }, [TOKEN_KEY, token]);
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });

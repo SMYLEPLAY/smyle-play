@@ -55,6 +55,10 @@ from app.routers.albums import (
     public_router as albums_public_router,
     router as albums_router,
 )
+from app.routers.oeuvre import (
+    owner_router as oeuvre_owner_router,
+    router as oeuvre_router,
+)
 
 
 def create_app() -> FastAPI:
@@ -138,6 +142,8 @@ def create_app() -> FastAPI:
     app.include_router(telemetry_router)
     app.include_router(albums_router)
     app.include_router(albums_public_router)
+    app.include_router(oeuvre_router)
+    app.include_router(oeuvre_owner_router)
 
     return app
 

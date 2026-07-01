@@ -34,6 +34,11 @@
     'visual-adn': '/unlocks/visual-adns/',
     'voix':       '/unlocks/voices/',
     'playlist':   '/unlocks/playlist-adn/',
+    // C4a — ADN d'album = miroir VISUEL de l'ADN Playlist. Même schéma d'URL
+    // (/unlocks/album-adn/{id}) → passe désormais par le drawer unifié comme
+    // toutes les autres natures (fin de l'asymétrie : l'ADN album partait en
+    // fetch direct hors composant dans ui/albums.js).
+    'album-adn':  '/unlocks/album-adn/',
   };
   var TYPE_LABELS = {
     'son':        '🧬 Recette + fichier',
@@ -42,6 +47,7 @@
     'visual-adn': '🎨 ADN visuel d’artiste',
     'voix':       '🎙 Voix',
     'playlist':   '🎚 ADN de playlist',
+    'album-adn':  '🎨 ADN d’album',
   };
   var SUCCESS_TOASTS = {
     'son':        'Exemplaire débloqué 🔓 — fichier + recette dans ta bibliothèque',
@@ -50,8 +56,9 @@
     'visual-adn': 'ADN visuel débloqué 🎨 — retrouve-le dans ta bibliothèque',
     'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
     'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
+    'album-adn':  'ADN Album débloqué 🎨 — génome révélé dans ta bibliothèque',
   };
-  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', autre: 'Autre' };
+  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', flux: 'Flux', stable_diffusion: 'Stable Diffusion', autre: 'Autre' };
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -164,6 +171,14 @@
         '<li>🔓 <span>Achat = <strong>recette (prompt + réglages) + image originale</strong>, téléchargeable depuis ta bibliothèque.</span></li>' +
         '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
         '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>';
+    } else if (type === 'playlist' || type === 'album-adn') {
+      // C4a — ADN de collection (son = playlist · visuel = album). Repères
+      // honnêtes et SYMÉTRIQUES : on achète un génome de style, pas une copie.
+      var faceWord = (type === 'album-adn') ? 'images' : 'sons';
+      reperes =
+        '<li>🧬 <span>Achat = le <strong>génome de style</strong> de la collection — le blueprint pour reproduire cet univers.</span></li>' +
+        '<li>💎 <span><strong>−20 %</strong> sur tous les ADN ' + _esc(faceWord === 'images' ? 'd’images' : 'de sons') + ' de cette collection.</span></li>' +
+        '<li>♻️ <span>Honnêteté : un ADN donne des <strong>résultats dans le même esprit, jamais identiques</strong>.</span></li>';
     } else {
       reperes =
         '<li>🎧 <span>L’écoute reste <strong>libre pour tout le monde</strong> — tu achètes la possession, pas l’accès.</span></li>' +

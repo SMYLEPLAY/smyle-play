@@ -44,6 +44,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -94,13 +95,24 @@ UNIVERSES = {
     },
 }
 
-# Hash d'un mot de passe impossible à deviner : ces comptes-univers ne sont
-# PAS destinés à être utilisés pour se connecter. Ils existent uniquement
-# pour être propriétaires (artist_id) des tracks curatées v1.
+# Hash d'un mot de passe impossible à deviner : fallback historique.
+# Conservé pour le cas où l'on NE veut PAS rendre les comptes connectables.
 IMPOSSIBLE_PASSWORD_HASH = bcrypt.hashpw(
     b"__seed_only_no_login__",
     bcrypt.gensalt(),
 ).decode("utf-8")
+
+# Si WATT_UNIVERSE_PASSWORD est défini, les comptes-univers reçoivent un
+# VRAI mot de passe → on peut s'y connecter et éditer leurs sons (cover,
+# recette) depuis le dashboard. Sinon on retombe sur le hash bidon
+# (comportement v1, comptes non connectables).
+# Évite la récurrence du bug "impossible d'éditer les sons curatés".
+_UNIVERSE_PASSWORD = os.environ.get("WATT_UNIVERSE_PASSWORD")
+SEED_PASSWORD_HASH = (
+    bcrypt.hashpw(_UNIVERSE_PASSWORD.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    if _UNIVERSE_PASSWORD
+    else IMPOSSIBLE_PASSWORD_HASH
+)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -138,12 +150,14 @@ async def get_or_create_universe_user(
 
     user = User(
         email=cfg["email"],
-        password_hash=IMPOSSIBLE_PASSWORD_HASH,
+        password_hash=SEED_PASSWORD_HASH,
         artist_name=cfg["artist_name"],
         brand_color=cfg["brand_color"],
         language="fr",
         credits_balance=0,
         credits_earned_total=0,
+        # Profil public : les sons curatés (+ covers) sont visibles sur /u/<slug>.
+        profile_public=True,
     )
     session.add(user)
     await session.flush()

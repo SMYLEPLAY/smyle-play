@@ -53,6 +53,7 @@
   var PLATFORMS = {
     suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio',
     midjourney: 'Midjourney', dalle: 'DALL-E', 'dall-e': 'DALL-E', flux: 'Flux',
+    chatgpt: 'ChatGPT', openai: 'ChatGPT',
     stable_diffusion: 'Stable Diffusion', autre: 'Autre',
   };
 

@@ -368,6 +368,11 @@ async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
             "name":      t.title,
             "duration":  t.duration_seconds,
             "url":       t.audio_url or "",
+            # 2026-07-01 — pochette du son (posée via /tracks PATCH cover_url).
+            # Sans ce champ, les playlists officielles n'affichaient jamais les
+            # covers (le front lit track.cover_url dans loadTrack / mini-bar).
+            "cover_url": t.cover_url or "",
+            "coverUrl":  t.cover_url or "",   # alias camelCase (parité front)
         })
     return out
 

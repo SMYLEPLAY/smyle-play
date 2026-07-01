@@ -97,6 +97,17 @@ class Playlist(Base):
     # Forward-compat V2 — non exposé à l'API V1 (feature flag côté routeur).
     dna_description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # ─── Binding « Œuvre » (chantier C3, migration 0076) ──────────────────
+    # Slug partagé playlist↔album d'une même Œuvre. Une Œuvre = (playlist +
+    # album) ayant le MÊME oeuvre_slug ET le MÊME owner_id. NULL = playlist
+    # hors-œuvre (cas par défaut, aucune régression). Indexé pour la lecture
+    # GET /oeuvre/{slug}. Pas de FK : le slug est une clé logique douce, pas
+    # une entité — il peut exister côté son avant que la face visuelle soit
+    # créée (et inversement).
+    oeuvre_slug: Mapped[str | None] = mapped_column(
+        String(80), nullable=True, index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
