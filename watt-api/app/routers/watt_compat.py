@@ -168,12 +168,6 @@ UNIVERSES_META = {
         "r2_folder": "NIGHT CITY",
         "theme": "night-city",
     },
-    "hit-mix": {
-        "label": "HIT MIX",
-        "folder": "HIT MIX",
-        "r2_folder": "HIT MIX",
-        "theme": "hit-mix",
-    },
 }
 
 
