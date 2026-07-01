@@ -36,6 +36,7 @@ from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.user import User
 from app.models.user_follow import UserFollow
+from app.models.visual_adn import VisualAdn
 from app.models.voice import Voice
 
 
@@ -290,6 +291,94 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         out["artistName"] = artist.artist_name or ""
         out["artistSlug"] = _derive_artist_slug(artist)
     return out
+
+
+async def _enrich_tracks_dualite(db: AsyncSession, tracks_out: list, rows: list) -> None:
+    """
+    DUALITÉ ADN (chantier B, 2026-07-01) — enrichit chaque track dict avec :
+
+      - adnMusique : {"has": bool, "price": int|None}
+          L'artiste a-t-il un ADN MUSICAL publié (Adn, sommet de la pyramide
+          sonore, 1 par artiste) ? price = son price_credits.
+      - adnVisuel  : {"has": bool, "price": int|None}
+          L'artiste a-t-il un ADN VISUEL publié (VisualAdn, sommet de la
+          pyramide visuelle, 1 par artiste) ? price = son price_credits.
+      - playlistTag : {"playlistId", "playlistTitle", "playlistColor"}
+          Première playlist PUBLIQUE contenant ce son (tag univers cliquable).
+          Les playlists publiques ne contiennent que les sons de leur owner
+          (invariant modèle) → filtrer visibility='public' suffit à garantir
+          que le tag pointe bien vers une playlist de l'artiste du son.
+
+    `tracks_out` et `rows` sont parallèles : tracks_out[i] provient de rows[i]
+    = (Track, User). On zippe pour réinjecter sans re-requêter.
+
+    Design badges (front) : ces champs alimentent 2 badges d'angle sur la card
+    (musique haut-gauche, visuel haut-droite). Dégradé gracieux mono-artiste :
+    si un seul ADN existe, l'autre badge devient une INVITATION (face manquante).
+    """
+    if not tracks_out:
+        return
+
+    artist_ids = {a.id for _, a in rows}
+    track_ids = [t.id for t, _ in rows]
+
+    music_adn: dict = {}
+    visual_adn: dict = {}
+    if artist_ids:
+        m_rows = (await db.execute(
+            select(Adn.artist_id, Adn.price_credits).where(
+                Adn.artist_id.in_(artist_ids),
+                Adn.is_published.is_(True),
+                Adn.is_deleted.is_(False),
+            )
+        )).all()
+        music_adn = {r.artist_id: r.price_credits for r in m_rows}
+
+        v_rows = (await db.execute(
+            select(VisualAdn.artist_id, VisualAdn.price_credits).where(
+                VisualAdn.artist_id.in_(artist_ids),
+                VisualAdn.is_published.is_(True),
+                VisualAdn.is_deleted.is_(False),
+            )
+        )).all()
+        visual_adn = {r.artist_id: r.price_credits for r in v_rows}
+
+    playlist_by_track: dict = {}
+    if track_ids:
+        p_rows = (await db.execute(
+            select(
+                PlaylistTrack.track_id,
+                Playlist.id.label("pl_id"),
+                Playlist.title.label("pl_title"),
+                Playlist.color.label("pl_color"),
+            )
+            .join(Playlist, Playlist.id == PlaylistTrack.playlist_id)
+            .where(
+                PlaylistTrack.track_id.in_(track_ids),
+                Playlist.visibility == "public",
+            )
+            .order_by(PlaylistTrack.added_at)
+        )).all()
+        for r in p_rows:
+            if r.track_id not in playlist_by_track:
+                playlist_by_track[r.track_id] = {
+                    "playlistId":    str(r.pl_id),
+                    "playlistTitle": r.pl_title or "",
+                    "playlistColor": r.pl_color or "",
+                }
+
+    for (t, a), td in zip(rows, tracks_out):
+        td["adnMusique"] = {
+            "has":   a.id in music_adn,
+            "price": music_adn.get(a.id),
+        }
+        td["adnVisuel"] = {
+            "has":   a.id in visual_adn,
+            "price": visual_adn.get(a.id),
+        }
+        pl = playlist_by_track.get(t.id)
+        if pl:
+            td["playlistTag"] = pl
 
 
 async def _count_tracks_for_artist(db: AsyncSession, artist_id) -> int:
@@ -1056,6 +1145,9 @@ async def tracks_recent(
         for td in tracks_out:
             if td.get("promptId"):
                 td["promptPriceCredits"] = price_by_id.get(td["promptId"])
+
+    # DUALITÉ ADN (B) — badges musique/visuel + tag playlist par son.
+    await _enrich_tracks_dualite(db, tracks_out, rows)
 
     return {"tracks": tracks_out}
 

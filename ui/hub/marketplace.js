@@ -646,11 +646,42 @@
       const beatChip = t.isBeat
         ? `<span class="mp-son-card-beat" title="Proposé comme beat" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(34,197,94,.14);color:#86efac;font-size:.68rem;font-weight:600;">🥁 Beat${t.bpm ? ' · ' + t.bpm + ' BPM' : ''}</span>`
         : '';
-      const tagsRow = (platformBadge || moodChips || beatChip)
-        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${platformBadge}${beatChip}${moodChips}</div>`
+      // ── DUALITÉ ADN (B) — 2 badges d'angle sur la CARD (hors image) ──────
+      // Musique haut-gauche · Visuel haut-droite. Dégradé gracieux mono :
+      // l'ADN présent est solide, la face manquante devient une INVITATION
+      // (ghost) qui montre qu'il reste un ADN à créer. Zéro ADN → rien
+      // (pas de bruit visuel — honnête, on n'invite pas dans le vide).
+      const adnM  = t.adnMusique || null;
+      const adnV  = t.adnVisuel  || null;
+      const hasM  = !!(adnM && adnM.has);
+      const hasV  = !!(adnV && adnV.has);
+      let adnBadges = '';
+      if (hasM || hasV) {
+        const mInv = hasM ? '' : ' is-invitation';
+        const vInv = hasV ? '' : ' is-invitation';
+        const mTitle = hasM
+          ? ('ADN musical' + (adnM.price != null ? ' · ' + adnM.price + ' Smyles' : ''))
+          : 'Cet artiste n’a pas encore d’ADN musical';
+        const vTitle = hasV
+          ? ('ADN visuel' + (adnV.price != null ? ' · ' + adnV.price + ' Smyles' : ''))
+          : 'Cet artiste n’a pas encore d’ADN visuel — invitez-le à le créer';
+        adnBadges =
+          `<div class="mp-son-card-adnrow">` +
+            `<span class="mp-son-card-adn mp-son-card-adn--music${mInv}" title="${_esc(mTitle)}" aria-hidden="true">🎵<span class="mp-son-card-adn-lbl">ADN</span></span>` +
+            `<span class="mp-son-card-adn mp-son-card-adn--visual${vInv}" title="${_esc(vTitle)}" aria-hidden="true">🎨<span class="mp-son-card-adn-lbl">ADN</span></span>` +
+          `</div>`;
+      }
+      // ── Tag playlist/univers cliquable (B2) → profil artiste + deep-link ──
+      const plt = t.playlistTag || null;
+      const plTag = (plt && plt.playlistTitle && artistSlug)
+        ? `<a class="mp-son-card-pltag" href="/@${_esc(artistSlug)}#pl-${_esc(plt.playlistId || '')}" onclick="event.stopPropagation();" title="Voir la playlist « ${_esc(plt.playlistTitle)} » sur le profil de ${_esc(name)}" style="--pltag-color:${_esc(plt.playlistColor || color)}"><span class="mp-son-card-pltag-dot" aria-hidden="true"></span>${_esc(plt.playlistTitle)}</a>`
+        : '';
+      const tagsRow = (plTag || platformBadge || moodChips || beatChip)
+        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${plTag}${platformBadge}${beatChip}${moodChips}</div>`
         : '';
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
+          adnBadges +
           `<div class="mp-son-card-cover">` +
             coverHTML +
             `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +

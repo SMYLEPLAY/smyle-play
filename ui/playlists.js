@@ -834,10 +834,44 @@
         });
       })();
 
+      // Deep-link (B2) : tag playlist d'une card de son → /@slug#pl-<id>.
+      // On met en avant la playlist ciblée (scroll + pulse), sans auto-play.
+      _focusHashPlaylist();
+
     } catch (e) {
       root.style.display = 'none';
       console.warn('[playlists] artist load failed:', e);
     }
+  }
+
+  // Injecte une seule fois la règle de mise en avant deep-link.
+  function _injectFocusStyle() {
+    if (document.getElementById('sp-pl-focus-style')) return;
+    var st = document.createElement('style');
+    st.id = 'sp-pl-focus-style';
+    st.textContent =
+      '@keyframes sp-pl-focus-pulse{0%{box-shadow:0 0 0 0 rgba(var(--nc-rgb,204,136,255),.55)}' +
+      '70%{box-shadow:0 0 0 10px rgba(var(--nc-rgb,204,136,255),0)}' +
+      '100%{box-shadow:0 0 0 0 rgba(var(--nc-rgb,204,136,255),0)}}' +
+      '.ap-pl-world.is-focus{animation:sp-pl-focus-pulse 1.1s ease-out 2;' +
+      'outline:2px solid rgba(var(--nc-rgb,204,136,255),.9);outline-offset:2px}';
+    document.head.appendChild(st);
+  }
+
+  // Lit location.hash (#pl-<id>), scrolle vers la playlist ciblée et la pulse.
+  function _focusHashPlaylist() {
+    var m = (location.hash || '').match(/^#pl-(.+)$/);
+    if (!m) return;
+    var id = m[1];
+    var el = document.querySelector('.ap-pl-world[data-pl-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+    if (!el) return;
+    _injectFocusStyle();
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch (_) { el.scrollIntoView(); }
+    el.classList.remove('is-focus');
+    // reflow pour rejouer l'animation si on re-clique le même hash
+    void el.offsetWidth;
+    el.classList.add('is-focus');
+    setTimeout(function () { el.classList.remove('is-focus'); }, 2600);
   }
 
   // ── 5. QUICK-PLAY playlists utilisateur ───────────────────────────────────
