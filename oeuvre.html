@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#070608" />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <title>Œuvre · WATT</title>
+  <link rel="stylesheet" href="topbar.css" />
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <link rel="stylesheet" href="/ui/core/badges.css?v=20260630oeuvre" />
+  <!-- marketplace.css porte les styles .oeuvre-card* (carte ID scindée, C4b) -->
+  <link rel="stylesheet" href="marketplace.css?v=20260630oeuvre" />
+  <link rel="stylesheet" href="oeuvre.css?v=20260630oeuvre" />
+  <script src="/ui/core/badges.js?v=20260630oeuvre" defer></script>
+</head>
+<body class="oeuvre-page">
+
+<!-- TOPBAR PARTAGÉE -->
+<div id="smyle-topbar"></div>
+
+<main class="oeuvre-main" id="oeuvre-main">
+
+  <!-- État chargement -->
+  <div class="oeuvre-loading" id="oeuvre-loading">Chargement de l'œuvre…</div>
+
+  <!-- État introuvable -->
+  <div class="oeuvre-empty" id="oeuvre-empty" style="display:none">
+    <div class="oeuvre-empty-icon">◇</div>
+    <h2>Œuvre introuvable</h2>
+    <p>Cette œuvre n'existe pas ou n'est pas encore publiée.</p>
+    <a href="/" class="oeuvre-empty-btn">→ Retour à l'accueil</a>
+  </div>
+
+  <!-- Contenu (rendu par oeuvre.js) -->
+  <div class="oeuvre-content" id="oeuvre-content" style="display:none">
+
+    <!-- En-tête : carte ID scindée + titre -->
+    <header class="oeuvre-head" id="oeuvre-head"></header>
+
+    <!-- Corps binaire : SON | PACK | VISUEL -->
+    <div class="oeuvre-grid">
+      <section class="oeuvre-col oeuvre-col--son" id="oeuvre-col-son"></section>
+      <aside class="oeuvre-col oeuvre-col--pack" id="oeuvre-col-pack"></aside>
+      <section class="oeuvre-col oeuvre-col--visuel" id="oeuvre-col-visuel"></section>
+    </div>
+
+  </div>
+</main>
+
+<!-- Toast -->
+<div class="lib-toast" id="oeuvre-toast"></div>
+
+<script src="ui/core/api.js"></script>
+<script src="ui/core/telemetry.js"></script>
+<script src="ui/core/events.js"></script>
+<script src="ui/core/toast.js"></script>
+<script src="ui/topbar/topbar.js?v=20260630" defer></script>
+<!-- Carte ID scindée (renderOeuvreCard) -->
+<script src="banner-card.js?v=20260630oeuvre" defer></script>
+<!-- Drawer d'achat unifié : son · image · playlist · album-adn -->
+<script src="/ui/modals/purchase-drawer.js?v=20260630oeuvre"></script>
+<script src="oeuvre.js?v=20260630oeuvre" defer></script>
+<script src="/ui/smyle-balance.js" defer></script>
+<script src="/ui/session-guard.js" defer></script>
+</body>
+</html>

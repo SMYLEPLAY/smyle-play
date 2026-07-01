@@ -70,7 +70,10 @@ router = APIRouter(tags=["images"])
 _MAX_IMAGE_RESULTS = 60
 
 # Plateformes reconnues pour le filtre provenance (miroir de ImagePlatform).
-_VALID_PLATFORMS = {"midjourney", "dalle", "stable_diffusion", "flux", "autre"}
+# Garder SYNCHRONISÉ avec app.schemas.image.ImagePlatform.
+_VALID_PLATFORMS = {
+    "midjourney", "dalle", "chatgpt", "stable_diffusion", "flux", "autre"
+}
 
 # ──────────────────────────────────────────────────────────────────────────
 # Taxonomie visuelle (C4 DNA image, migration 0061) — listes autorisées.
@@ -192,6 +195,22 @@ async def create_my_image(
 
     image_settings est reçu en chaîne JSON (multipart) puis parsé en dict.
     """
+    # ── Gate "profil publié" (parité STRICTE avec POST /tracks/) ────────────
+    # On harmonise sur les règles de la musique : publier une image exige,
+    # comme publier un son, que le profil public soit publié au préalable
+    # (users.profile_public). Même payload 409 + redirect /u/me que tracks.py
+    # pour que le front réutilise la même CTA. 409 = intention-utilisateur non
+    # remplie (ni 400 validation, ni 403 permissions).
+    if not bool(getattr(current_user, "profile_public", False)):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error":    "profile_not_published",
+                "message":  "Publie d'abord ton profil pour pouvoir publier une image.",
+                "redirect": "/u/me",
+            },
+        )
+
     # ── Parse image_settings (JSON string → dict) ───────────────────────────
     settings_dict = None
     if image_settings:

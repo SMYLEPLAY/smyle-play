@@ -561,6 +561,24 @@
     if (!btn) return;
     btn.addEventListener('click', async () => {
       const errEl = content.querySelector('#al-adn-buy-err');
+      // C4a — drawer d'achat UNIFIÉ (miroir strict de l'ADN Playlist). Fin de
+      // l'asymétrie : l'ADN album passait par un fetch direct hors composant.
+      // Fallback sur le flux historique si le drawer n'est pas chargé.
+      if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {
+        window.PurchaseDrawer.open({
+          type: 'album-adn',
+          id: album.id,
+          price: album.adnPrice || null,
+          title: 'ADN · ' + (album.title || 'cet album'),
+          onSuccess: function () {
+            // Re-fetch : le génome devient visible après achat → on recharge la
+            // modale album entière (re-GET /albums/{id}), comme l'ancien flux.
+            const overlay = document.getElementById('al-view-modal');
+            if (overlay) { overlay.remove(); openAlbumViewModal(album.id); }
+          },
+        });
+        return;
+      }
       if (!_isAuth()) {
         if (errEl) { errEl.textContent = 'Connecte-toi pour acheter cet ADN.'; errEl.style.display = 'block'; }
         return;

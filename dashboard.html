@@ -1017,6 +1017,7 @@
                   <select class="dash-input" id="dashCoverImgPlatform">
                     <option value="">— Choisis —</option>
                     <option value="midjourney">Midjourney</option>
+                    <option value="chatgpt">ChatGPT (GPT Image)</option>
                     <option value="dalle">DALL-E</option>
                     <option value="stable_diffusion">Stable Diffusion</option>
                     <option value="flux">Flux</option>
@@ -2003,7 +2004,8 @@
       <select class="dash-input" id="imgcPlatform">
         <option value="">— Sélectionne la plateforme —</option>
         <option value="midjourney">Midjourney</option>
-        <option value="dalle">DALL·E / GPT Image (OpenAI)</option>
+        <option value="chatgpt">ChatGPT (GPT Image)</option>
+        <option value="dalle">DALL·E (OpenAI API)</option>
         <option value="flux">Flux</option>
         <option value="stable_diffusion">Stable Diffusion</option>
         <option value="autre">Autre</option>
@@ -2325,6 +2327,12 @@
       </div>
       <h2 class="dash-section-title">Playlists</h2>
       <span class="dash-section-sub">Organise tes sons en collections · publiques ou privées</span>
+      <button type="button" class="dash-btn-secondary" id="composeOeuvreBtn"
+              style="margin-left:auto"
+              onclick="if(window.OeuvreCompose)window.OeuvreCompose.open();"
+              title="Lier une playlist (son) et un album (visuel) en une œuvre binaire">
+        🔗 Composer une œuvre
+      </button>
     </div>
     <div id="dash-playlists-root"></div>
   </section>
@@ -2565,6 +2573,7 @@
 
 <script src="ui/core/api.js"></script>
 <script src="ui/core/telemetry.js"></script>
+<script src="ui/core/onboarding.js"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
@@ -2581,6 +2590,8 @@
 <script src="/ui/modals/boutique.js" defer></script>
 <script src="/ui/modals/engagement.js" defer></script>
 <script src="/ui/modals/search.js?v=20260615a" defer></script>
+<!-- Composer une œuvre binaire (lier playlist + album) -->
+<script src="/ui/modals/oeuvre-compose.js?v=20260630" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 
 <!-- DASH_SECTIONS_COLLAPSIBLE -->

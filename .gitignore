@@ -111,3 +111,10 @@ node_modules/
 
 *.sql
 *.dump
+
+# Nettoyage 2026-06-29 — design abandonné + fichiers Obsidian traînants
+assets/glass/
+Clippings/
+Sans titre.base
+Sans titre.canvas
+_unlink_test_*

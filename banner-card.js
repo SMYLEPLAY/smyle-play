@@ -146,7 +146,117 @@
     container.innerHTML = html;
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     CARTE ID SCINDÉE — ŒUVRE binaire (C4b)
+     ─────────────────────────────────────────────────────────────────────
+     Une œuvre = deux faces. La carte est coupée en deux moitiés strictement
+     symétriques : gauche = SON (playlist + badge IA audio, ex. Suno) ·
+     droite = VISUEL (cover album + badge IA visuel, ex. ChatGPT). Clic →
+     page binaire /oeuvre/<slug>. Les badges réutilisent SpBadges.provenance
+     des DEUX côtés (même composant son & visuel).
+
+     oeuvre : {
+       slug, title,                          // titre de l'œuvre (optionnel)
+       son:    { title, platform:'suno',    color, version },     // ou null
+       visuel: { title, platform:'chatgpt', previewKey, version } // ou null
+     }
+     opts : { href }                         // défaut /oeuvre/<slug>
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  function _imgPreviewUrl(key) {
+    if (!key) return '';
+    return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
+  }
+
+  function _provenanceBadge(platform, version) {
+    if (window.SpBadges && typeof window.SpBadges.provenance === 'function') {
+      return window.SpBadges.provenance(platform, version);
+    }
+    if (!platform) return '';
+    return '<span class="sp-provenance">⚡ ' + _escape(platform) + '</span>';
+  }
+
+  function _oeuvreSonHalf(son) {
+    if (!son) {
+      return '<div class="oeuvre-card__half oeuvre-card__half--son is-empty">' +
+        '<span class="oeuvre-card__empty">Son à venir</span></div>';
+    }
+    const color = son.color || '#7c5cff';
+    return '' +
+      '<div class="oeuvre-card__half oeuvre-card__half--son" style="--oeuvre-son-color:' + _escape(color) + '">' +
+        '<span class="oeuvre-card__face-tag">SON</span>' +
+        '<span class="oeuvre-card__wave" aria-hidden="true">🎵</span>' +
+        '<div class="oeuvre-card__half-title">' + _escape(son.title || 'Playlist') + '</div>' +
+        '<div class="oeuvre-card__prov">' + _provenanceBadge(son.platform || 'suno', son.version) + '</div>' +
+      '</div>';
+  }
+
+  function _oeuvreVisuelHalf(visuel) {
+    if (!visuel) {
+      return '<div class="oeuvre-card__half oeuvre-card__half--visuel is-empty">' +
+        '<span class="oeuvre-card__empty">Visuel à venir</span></div>';
+    }
+    const url = _imgPreviewUrl(visuel.previewKey);
+    const cover = url
+      ? '<img class="oeuvre-card__cover" src="' + _escape(url) + '" alt="" loading="lazy"/>'
+      : '<span class="oeuvre-card__wave" aria-hidden="true">🖼️</span>';
+    return '' +
+      '<div class="oeuvre-card__half oeuvre-card__half--visuel">' +
+        cover +
+        '<span class="oeuvre-card__face-tag">VISUEL</span>' +
+        '<div class="oeuvre-card__half-title">' + _escape(visuel.title || 'Album') + '</div>' +
+        '<div class="oeuvre-card__prov">' + _provenanceBadge(visuel.platform || 'chatgpt', visuel.version) + '</div>' +
+      '</div>';
+  }
+
+  /**
+   * Retourne le HTML d'une carte d'œuvre binaire (son | visuel).
+   * @param {Object} oeuvre  { slug, title, son, visuel }
+   * @param {Object} [opts]  { href }
+   * @returns {string} HTML
+   */
+  function renderOeuvreCard(oeuvre, opts) {
+    oeuvre = oeuvre || {};
+    opts = opts || {};
+    const slug = oeuvre.slug || '';
+    const href = opts.href || (slug ? '/oeuvre/' + _escape(slug) : '#');
+    const complete = !!(oeuvre.son && oeuvre.visuel);
+    const seal = complete
+      ? '<span class="oeuvre-card__seal" title="Œuvre complète">◆</span>'
+      : '';
+    const title = oeuvre.title
+      ? '<div class="oeuvre-card__title">' + _escape(oeuvre.title) + seal + '</div>'
+      : '';
+
+    return '' +
+      '<a class="oeuvre-card' + (complete ? ' is-complete' : '') + '" href="' + href + '">' +
+        '<div class="oeuvre-card__split">' +
+          _oeuvreSonHalf(oeuvre.son) +
+          '<span class="oeuvre-card__seam" aria-hidden="true"></span>' +
+          _oeuvreVisuelHalf(oeuvre.visuel) +
+        '</div>' +
+        title +
+      '</a>';
+  }
+
+  /**
+   * Rend une liste de cartes d'œuvres dans un container.
+   * @param {HTMLElement} container
+   * @param {Array} oeuvres
+   * @param {Object} [opts]
+   */
+  function renderOeuvreCardList(container, oeuvres, opts) {
+    if (!container) return;
+    if (!Array.isArray(oeuvres) || oeuvres.length === 0) {
+      container.innerHTML = '<div class="banner-card-empty" style="padding:24px;text-align:center;font-size:13px;color:rgba(255,255,255,.35)">Aucune œuvre</div>';
+      return;
+    }
+    container.innerHTML = oeuvres.map(o => renderOeuvreCard(o, opts)).join('');
+  }
+
   // Exposé global pour utilisation inline dans les pages
   window.renderArtistBanner = renderArtistBanner;
   window.renderArtistBannerList = renderArtistBannerList;
+  window.renderOeuvreCard = renderOeuvreCard;
+  window.renderOeuvreCardList = renderOeuvreCardList;
 })();

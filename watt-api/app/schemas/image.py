@@ -28,10 +28,16 @@ from app.schemas.marketplace import (
     PROMPT_TITLE_MIN,
 )
 
-# 4 plateformes + Autre (décision Tom 2026-06-14). Pas d'images de référence
+# Plateformes visuelles reconnues (décision Tom 2026-06-14, + chatgpt 2026-06-30).
+# `chatgpt` = covers générées via ChatGPT / GPT Image (OpenAI) — distinct de
+# `dalle` (API DALL·E directe) pour un badge de provenance exact (cf. C2 :
+# les covers Jungle Osmose sont faites avec ChatGPT). Pas d'images de référence
 # en V1. La validation enum est portée côté Pydantic ; la DB ne contraint que
-# la présence (NOT NULL) via ck_prompts_image_provenance.
-ImagePlatform = Literal["midjourney", "dalle", "stable_diffusion", "flux", "autre"]
+# la PRÉSENCE (NOT NULL) via ck_prompts_image_provenance — pas la liste de
+# valeurs — donc AUCUNE migration n'est nécessaire pour ajouter une plateforme.
+ImagePlatform = Literal[
+    "midjourney", "dalle", "chatgpt", "stable_diffusion", "flux", "autre"
+]
 
 # Borne lâche sur le prompt d'image : NOT NULL mais sans plafond strict
 # (un prompt d'image peut faire 3 mots comme 500). On garde un plafond
