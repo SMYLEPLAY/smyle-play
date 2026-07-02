@@ -55,12 +55,13 @@
   aspect-ratio: 1 / 1;
   border-radius: 20px;
   overflow: hidden;
+  background: #0e0b16; /* fond neutre sombre pour les marges de l'image contain */
   box-shadow: 0 18px 50px -20px rgba(124, 92, 255, .5);
 }
 .oeuvre-card__cover-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain; /* image entière, jamais rognée */
   display: block;
 }
 .oeuvre-card__cover-ph {
@@ -328,6 +329,51 @@
   border-radius: 999px;
 }
 .oeuvre-pack .oeuvre-btn--pack { max-width: 360px; margin: 14px auto 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Carte à 2 états : Présentation (défaut) ↔ Détail (.oeuvre-grid.is-detail)
+   ─────────────────────────────────────────────────────────────────────────
+   En présentation on ne garde par colonne que : en-tête de face, tag IA,
+   et le bouton d'achat ADN. Tout le contenu lourd est masqué en CSS mais
+   reste dans le DOM (les boutons d'achat à l'unité restent fonctionnels
+   une fois dépliés). Un seul toggle (#oeuvre-detail-toggle) bascule l'état.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* Contenu lourd masqué en présentation */
+.oeuvre-grid .oeuvre-list,
+.oeuvre-grid .oeuvre-img-grid,
+.oeuvre-grid .oeuvre-adn-desc {
+  display: none;
+}
+/* Révélé au clic (état détail) — les deux colonnes se déplient ensemble */
+.oeuvre-grid.is-detail .oeuvre-list { display: block; }
+.oeuvre-grid.is-detail .oeuvre-img-grid { display: grid; }
+.oeuvre-grid.is-detail .oeuvre-adn-desc { display: block; }
+
+/* Affordance : bandeau/bouton centré « Voir le détail » ↔ « Réduire » */
+.oeuvre-detail-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+.oeuvre-detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d8ccff;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, .1);
+  border: 1px solid rgba(124, 92, 255, .32);
+  transition: filter .15s ease, background .15s ease;
+}
+.oeuvre-detail-toggle:hover { filter: brightness(1.12); background: rgba(124, 92, 255, .16); }
+.oeuvre-detail-toggle__chevron { transition: transform .18s ease; }
+.oeuvre-detail-toggle[aria-expanded="true"] .oeuvre-detail-toggle__chevron {
+  transform: rotate(180deg);
+}
 
 /* Toast (réutilise .lib-toast visuel minimal) */
 .lib-toast {

@@ -223,6 +223,19 @@
     });
   }
 
+  // ── Toggle présentation ↔ détail (déplie les DEUX colonnes ensemble) ───
+  function _wireDetailToggle() {
+    var btn = document.getElementById('oeuvre-detail-toggle');
+    var grid = document.getElementById('oeuvre-grid');
+    if (!btn || !grid) return;
+    var label = btn.querySelector('.oeuvre-detail-toggle__label');
+    btn.addEventListener('click', function () {
+      var detail = grid.classList.toggle('is-detail');
+      btn.setAttribute('aria-expanded', detail ? 'true' : 'false');
+      if (label) label.textContent = detail ? 'Réduire' : 'Voir le détail';
+    });
+  }
+
   // ── Chargement / rendu ─────────────────────────────────────────────────
   function _show(id) {
     ['oeuvre-loading', 'oeuvre-empty', 'oeuvre-content'].forEach(function (x) {
@@ -248,6 +261,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     _wireBuyButtons();
+    _wireDetailToggle();
     load();
   });
 })();
