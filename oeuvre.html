@@ -9,11 +9,11 @@
   <title>Œuvre · WATT</title>
   <link rel="stylesheet" href="topbar.css" />
   <link rel="stylesheet" href="/ui/core/tokens.css" />
-  <link rel="stylesheet" href="/ui/core/badges.css?v=20260630oeuvre" />
+  <link rel="stylesheet" href="/ui/core/badges.css?v=20260702c" />
   <!-- marketplace.css porte les styles .oeuvre-card* (carte ID scindée, C4b) -->
-  <link rel="stylesheet" href="marketplace.css?v=20260630oeuvre" />
-  <link rel="stylesheet" href="oeuvre.css?v=20260630oeuvre" />
-  <script src="/ui/core/badges.js?v=20260630oeuvre" defer></script>
+  <link rel="stylesheet" href="marketplace.css?v=20260702c" />
+  <link rel="stylesheet" href="oeuvre.css?v=20260702c" />
+  <script src="/ui/core/badges.js?v=20260702c" defer></script>
 </head>
 <body class="oeuvre-page">
 
@@ -39,10 +39,20 @@
     <!-- En-tête : carte ID scindée + titre -->
     <header class="oeuvre-head" id="oeuvre-head"></header>
 
-    <!-- Corps binaire : SON (gauche) | VISUEL (droite) -->
-    <div class="oeuvre-grid">
+    <!-- Corps binaire : SON (gauche) | VISUEL (droite).
+         Deux états : présentation (défaut) ↔ détail (.is-detail sur .oeuvre-grid). -->
+    <div class="oeuvre-grid" id="oeuvre-grid">
       <section class="oeuvre-col oeuvre-col--son" id="oeuvre-col-son"></section>
       <section class="oeuvre-col oeuvre-col--visuel" id="oeuvre-col-visuel"></section>
+    </div>
+
+    <!-- Toggle unique : déplie/replie le contenu lourd des DEUX colonnes -->
+    <div class="oeuvre-detail-row">
+      <button type="button" class="oeuvre-detail-toggle" id="oeuvre-detail-toggle"
+              aria-expanded="false" aria-controls="oeuvre-grid">
+        <span class="oeuvre-detail-toggle__label">Voir le détail</span>
+        <span class="oeuvre-detail-toggle__chevron" aria-hidden="true">▾</span>
+      </button>
     </div>
 
     <!-- Offre groupée : acheter les DEUX faces, pleine largeur, centré -->
@@ -60,10 +70,10 @@
 <script src="ui/core/toast.js"></script>
 <script src="ui/topbar/topbar.js?v=20260630" defer></script>
 <!-- Carte ID scindée (renderOeuvreCard) -->
-<script src="banner-card.js?v=20260630oeuvre" defer></script>
+<script src="banner-card.js?v=20260702c" defer></script>
 <!-- Drawer d'achat unifié : son · image · playlist · album-adn -->
-<script src="/ui/modals/purchase-drawer.js?v=20260630oeuvre"></script>
-<script src="oeuvre.js?v=20260630oeuvre" defer></script>
+<script src="/ui/modals/purchase-drawer.js?v=20260702c"></script>
+<script src="oeuvre.js?v=20260702c" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 </body>
