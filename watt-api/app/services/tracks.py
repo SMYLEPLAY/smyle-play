@@ -155,6 +155,25 @@ async def delete_track(
         return None
 
     track.is_deleted = True
+
+    # Symétrie image↔son (02/07) : supprimer un SON retire aussi son produit
+    # (la recette liée) du catalogue — miroir exact du delete image
+    # (routers/images.py) : soft-delete + dépublication + détachement de
+    # l'œuvre complète (le partenaire visuel survivant redevient visible et
+    # vendable individuellement, jamais de produit fantôme). Les acheteurs
+    # de la recette GARDENT leur exemplaire (UnlockedPrompt intact — même
+    # règle que le download image possédé).
+    if track.prompt_id is not None:
+        from app.models.prompt import Prompt
+        prompt = (await db.execute(
+            select(Prompt).where(Prompt.id == track.prompt_id)
+        )).scalar_one_or_none()
+        if prompt is not None:
+            from app.services.links import detach_partner_on_removal
+            await detach_partner_on_removal(db, prompt=prompt)
+            prompt.is_deleted = True
+            prompt.is_published = False
+
     await db.commit()
     await db.refresh(track)
     return track
