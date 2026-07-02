@@ -1140,6 +1140,40 @@ async def tracks_recent(
             if td.get("promptId"):
                 td["promptPriceCredits"] = price_by_id.get(td["promptId"])
 
+    # Carte scindée SON|VISUEL (1.2, 02/07) — image liée (aperçu only,
+    # anti-fuite : jamais image_r2_key/prompt) + PROVENANCE (image_platform)
+    # pour la zone VISUEL des cards : « ⚡ Suno » côté son ↔ « ⚡ ChatGPT »
+    # côté image. Batch en 2 requêtes, même pattern que le profil.
+    if prompt_ids:
+        from app.models.prompt import Prompt as _Prompt
+        link_rows = (await db.execute(
+            select(_Prompt.id, _Prompt.linked_prompt_id).where(
+                _Prompt.id.in_(prompt_ids),
+                _Prompt.linked_prompt_id.isnot(None),
+            )
+        )).all()
+        img_by_id: dict = {}
+        if link_rows:
+            img_rows = (await db.execute(
+                select(_Prompt).where(
+                    _Prompt.id.in_([r.linked_prompt_id for r in link_rows]),
+                    _Prompt.product_type == "image",
+                    _Prompt.is_published.is_(True),
+                    _Prompt.is_deleted.is_(False),
+                )
+            )).scalars().all()
+            img_by_id = {i.id: i for i in img_rows}
+        link_by_son = {str(r.id): r.linked_prompt_id for r in link_rows}
+        for td in tracks_out:
+            img = img_by_id.get(link_by_son.get(td.get("promptId") or ""))
+            if img is not None:
+                td["linkedImage"] = {
+                    "id": str(img.id),
+                    "previewKey": img.preview_r2_key or "",
+                    "priceCredits": img.price_credits,
+                    "platform": img.image_platform or "",
+                }
+
     # DUALITÉ ADN (B) — badges musique/visuel + tag playlist par son.
     await _enrich_tracks_dualite(db, tracks_out, rows)
 
