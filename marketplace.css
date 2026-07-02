@@ -1790,6 +1790,87 @@
    (gauche) · Visuel = bleu électrique (droite). Face manquante = invitation
    (ghost pointillé) pour inspirer le mono-artiste à faire la 2e face.
    ═══════════════════════════════════════════════════════════════════════ */
+/* ── CARTE ID SCINDÉE (binarité 1.3, 02/07) ─ zone MUSIQUE | couture |
+   zone VISUEL. La cover migre dans la zone visuel (droite) ; le badge
+   recette redevient un élément de flux dans la zone musique. ─────────── */
+.mp-son-card-split {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+}
+.mp-son-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.mp-son-zone--music { flex: 1 1 54%; }
+.mp-son-zone--visual { flex: 0 0 40%; max-width: 42%; }
+.mp-son-card-seam {
+  flex: 0 0 1px;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.16) 20%, rgba(255,255,255,.16) 80%, transparent);
+}
+.mp-son-zone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 18px;
+}
+.mp-son-zone-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.40);
+  white-space: nowrap;
+}
+.mp-son-zone--visual .mp-son-card-cover { aspect-ratio: 1 / 1; }
+.mp-son-zone-vrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+/* Dans la carte scindée, recette (zone musique) et visuel (zone visuel)
+   sont des éléments de FLUX — on neutralise l'ancrage absolu historique
+   du badge recette (coin de carte). */
+.mp-son-card--split .mp-recipe-badge {
+  position: static;
+  top: auto;
+  right: auto;
+}
+.mp-img-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(12, 9, 20, .92);
+  border: 1px solid rgba(56, 189, 248, .55);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #d9f1ff;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mp-img-badge:hover {
+  background: rgba(20, 16, 30, .96);
+  border-color: rgba(56, 189, 248, .85);
+}
+/* Écrans étroits : les deux zones s'empilent (musique dessus, visuel
+   dessous), la couture devient horizontale. */
+@media (max-width: 480px) {
+  .mp-son-card-split { flex-direction: column; }
+  .mp-son-card-seam {
+    flex-basis: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.16) 20%, rgba(255,255,255,.16) 80%, transparent);
+  }
+  .mp-son-zone--visual { max-width: none; flex-basis: auto; }
+}
+
 .mp-son-card-adnrow {
   display: flex;
   align-items: center;

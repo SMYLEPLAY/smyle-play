@@ -2073,6 +2073,7 @@ function renderTracks(artist) {
     const deleteBtn = artist.isSelf
       ? `<button type="button" class="ap-track-delete-btn"
                  data-track-id="${t.id}"
+                 data-track-uuid="${t.trackUuid || t.id}"
                  data-track-name="${(t.name || '').replace(/"/g, '&quot;')}"
                  title="Supprimer ce son">🗑</button>`
       : '';
@@ -2180,9 +2181,9 @@ function renderTracks(artist) {
     if (delBtn) {
       ev.preventDefault();
       ev.stopPropagation();
-      const tid = delBtn.dataset.trackId;
+      const tid = delBtn.dataset.trackUuid || delBtn.dataset.trackId;
       const tname = delBtn.dataset.trackName || 'ce son';
-      if (tid && confirm(`Supprimer "${tname}" ?\n\nCette action est définitive (le fichier audio R2 + la recette liée seront aussi supprimés).`)) {
+      if (tid && confirm(`Supprimer "${tname}" ?\n\nLe son disparaît de ton profil et du catalogue, et sa recette est retirée de la vente. Les personnes qui l'ont déjà achetée gardent leur exemplaire.`)) {
         deleteTrackFromProfile(tid, delBtn);
       }
       return;
@@ -2320,29 +2321,28 @@ async function unlockVisualDnaFromProfile() {
 // PR Sprint 1 PR3 R2 cleanup). Le backend vérifie l'owner — un visiteur
 // qui invoquerait l'endpoint reçoit 403, le bouton est juste caché côté
 // front pour ne pas exposer une action qui ne marcherait pas.
-async function deleteTrackFromProfile(trackId, btn) {
-  if (!trackId) return;
+async function deleteTrackFromProfile(trackUuid, btn) {
+  if (!trackUuid) return;
   if (btn) btn.disabled = true;
   try {
-    if (typeof apiFetch === 'function') {
-      // L'endpoint principal côté FastAPI ne fait PAS encore la suppression
-      // R2 via le path /watt/tracks/<id>. On passe par l'endpoint Flask
-      // qui supprime à la fois en DB et en R2 (cf flask_app.py
-      // /api/watt/tracks/<int:track_id>).
-      // Note : l'ID public peut être un UUID FastAPI ou un int legacy.
-      // Le fetch direct gère les 2.
-      const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`/watt/tracks/${encodeURIComponent(trackId)}`, {
-        method: 'DELETE',
-        headers,
-      });
-      if (!res.ok && res.status !== 204) {
-        let detail = `${res.status}`;
-        try { const j = await res.json(); detail = j.detail || j.message || detail; } catch (_) {}
-        throw new Error(detail);
-      }
+    // Suppression via l'endpoint canonique FastAPI DELETE /tracks/{uuid}
+    // (02/07) : SOFT delete symétrique du delete image — le son disparaît
+    // du profil et du catalogue, la recette liée est retirée de la vente,
+    // l'œuvre complète est détachée (le visuel survivant reste vendable),
+    // et les acheteurs GARDENT leur exemplaire en bibliothèque.
+    // (Remplace l'ancien appel /watt/tracks/<id> : hard delete DB+R2 porté
+    // du Flask historique — destructeur pour les acheteurs et fragile.)
+    const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/tracks/${encodeURIComponent(trackUuid)}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok && res.status !== 204) {
+      let detail = `${res.status}`;
+      try { const j = await res.json(); detail = j.detail || j.message || detail; } catch (_) {}
+      throw new Error(detail);
     }
     toast('Son supprimé');
     setTimeout(() => loadArtist(), 400);
