@@ -1,4 +1,4 @@
-# WATT — Dépendances Python (process unifié FastAPI + Flask via ASGI)
+# SMYLE PLAY — Dépendances Python (process unifié FastAPI + Flask via ASGI)
 # Installation : pip3 install -r requirements.txt
 
 # ── ASGI / FastAPI (stack moderne) ────────────────────────────────────────────

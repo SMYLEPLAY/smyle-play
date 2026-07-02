@@ -88,8 +88,8 @@ data/exports/*
 venv/
 .venv/
 env/
-watt-api/venv/
-watt-api/_archive_bak/
+smyleplay-api/venv/
+smyleplay-api/_archive_bak/
 
 # ── Secrets (NE JAMAIS COMMIT) ───────────────────────────────────────────
 .env
@@ -111,10 +111,3 @@ node_modules/
 
 *.sql
 *.dump
-
-# Nettoyage 2026-06-29 — design abandonné + fichiers Obsidian traînants
-assets/glass/
-Clippings/
-Sans titre.base
-Sans titre.canvas
-_unlink_test_*

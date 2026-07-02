@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WATT — Suno Router
+SMYLE PLAY — Suno Router
 ─────────────────────────
 Surveille ~/Downloads et route automatiquement les nouveaux fichiers audio
 téléchargés depuis Suno vers le bon dossier playlist du projet.

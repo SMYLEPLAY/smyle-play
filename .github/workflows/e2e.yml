@@ -34,7 +34,7 @@ jobs:
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
-          POSTGRES_DB: watt_ci
+          POSTGRES_DB: smyleplay_ci
         ports:
           - 5432:5432
         options: >-
@@ -44,7 +44,7 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/watt_ci
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
       SECRET_KEY: ci-flask-secret
       JWT_SECRET: ci-jwt-secret
       ENVIRONMENT: test
@@ -67,7 +67,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Apply migrations
-        working-directory: watt-api
+        working-directory: smyleplay-api
         run: alembic upgrade head
 
       - name: Start unified app (FastAPI + Flask front)

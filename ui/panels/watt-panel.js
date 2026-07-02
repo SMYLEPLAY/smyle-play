@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/panels/watt-panel.js
+   SMYLE PLAY — ui/panels/watt-panel.js
    WATT Panel — WATTBOARD (espace artiste)
 
    Refonte : DNA + CONNECT ont été retirés de ce panneau. Leur logique de
@@ -32,7 +32,7 @@ const WATT = {
   violet:  '#8800ff',
 };
 
-const WATT_UNIVERSES = ['sunset', 'jungle', 'night'];
+const WATT_UNIVERSES = ['sunset', 'jungle', 'night', 'hitmix'];
 
 // Émotions rapides mappées aux univers — utilisé par WattDNA.analyze
 const EMOTION_MAP = {

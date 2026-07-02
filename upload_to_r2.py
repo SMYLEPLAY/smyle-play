@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WATT — Upload des fichiers audio vers Cloudflare R2
+SMYLE PLAY — Upload des fichiers audio vers Cloudflare R2
 ─────────────────────────────────────────────────────────
 Usage :
   1. Installe boto3 :   pip3 install boto3
@@ -66,7 +66,7 @@ def main():
     total_bytes  = 0
     skipped      = 0
 
-    print(f'\n  WATT → Upload R2 ({R2_BUCKET})')
+    print(f'\n  SMYLE PLAY → Upload R2 ({R2_BUCKET})')
     print(f'  Endpoint : {endpoint}\n')
 
     for folder in PLAYLIST_FOLDERS:

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# WATT — agents/orchestrator.py
+# SMYLE PLAY — agents/orchestrator.py
 #
 # Orchestrateur global de la chaîne autonome WATT.
 # Coordonne les 3 agents en séquence :

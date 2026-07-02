@@ -88,8 +88,9 @@
 
   // ── Bloc ADN de collection (réutilisé son & visuel) ────────────────────
   function _adnBlock(opts) {
-    // opts: { icon, label, forSale, price, desc, drawerType, id, title }
+    // opts: { icon, label, forSale, price, desc, drawerType, id, title, cta }
     if (!opts.forSale || !opts.price) return '';
+    var cta = opts.cta || 'Acheter l\'ADN';
     return '' +
       '<div class="oeuvre-adn">' +
         '<div class="oeuvre-adn-hdr">' + opts.icon + ' <strong>' + _esc(opts.label) + '</strong>' +
@@ -98,8 +99,14 @@
         '<button type="button" class="oeuvre-btn oeuvre-btn--adn" ' +
           'data-buy="' + _esc(opts.drawerType) + '" data-id="' + _esc(opts.id) + '" ' +
           'data-price="' + _esc(opts.price) + '" data-title="' + _esc(opts.title) + '">' +
-          'Débloquer l\'ADN · ' + _esc(opts.price) + ' ⚡</button>' +
+          _esc(cta) + ' · ' + _esc(opts.price) + ' ⚡</button>' +
       '</div>';
+  }
+
+  // Tag identité IA · plateforme (Suno pour SON, ChatGPT pour VISUEL).
+  function _iaTag(platform) {
+    if (!platform) return '';
+    return '<span class="oeuvre-ia-tag">IA · ' + _esc(platform) + '</span>';
   }
 
   // ── Colonne SON ────────────────────────────────────────────────────────
@@ -120,11 +127,12 @@
       return '<li class="oeuvre-row"><span class="oeuvre-row-ttl">🎵 ' + _esc(t.title) + '</span>' + action + '</li>';
     }).join('');
     el.innerHTML =
-      '<div class="oeuvre-col-hdr"><span class="oeuvre-col-face">SON</span>' +
+      '<div class="oeuvre-col-hdr"><span class="oeuvre-col-face">🎵 MUSIQUE</span>' +
+        _iaTag('Suno') +
         '<h2>' + _esc(son.title) + '</h2></div>' +
-      _adnBlock({ icon: '🎚', label: 'ADN Playlist', forSale: son.adnForSale, price: son.adnPrice,
+      _adnBlock({ icon: '🎚', label: 'ADN Musique', forSale: son.adnForSale, price: son.adnPrice,
                   desc: son.dnaDescription, drawerType: 'playlist', id: son.playlistId,
-                  title: 'ADN · ' + son.title }) +
+                  title: 'ADN · ' + son.title, cta: 'Acheter l\'ADN Musique' }) +
       '<ul class="oeuvre-list">' + (rows || '<li class="oeuvre-col-empty">Aucun son</li>') + '</ul>';
   }
 
@@ -149,15 +157,33 @@
         action + '</div></li>';
     }).join('');
     el.innerHTML =
-      '<div class="oeuvre-col-hdr"><span class="oeuvre-col-face">VISUEL</span>' +
+      '<div class="oeuvre-col-hdr"><span class="oeuvre-col-face">🎨 VISUEL</span>' +
+        _iaTag('ChatGPT') +
         '<h2>' + _esc(visuel.title) + '</h2></div>' +
-      _adnBlock({ icon: '🎨', label: 'ADN Album', forSale: visuel.adnForSale, price: visuel.adnPrice,
+      _adnBlock({ icon: '🎨', label: 'ADN Visuel', forSale: visuel.adnForSale, price: visuel.adnPrice,
                   desc: visuel.dnaDescription, drawerType: 'album-adn', id: visuel.albumId,
-                  title: 'ADN · ' + visuel.title }) +
+                  title: 'ADN · ' + visuel.title, cta: 'Acheter l\'ADN Visuel' }) +
       '<ul class="oeuvre-img-grid">' + (cards || '<li class="oeuvre-col-empty">Aucune image</li>') + '</ul>';
   }
 
-  // ── Centre : PACK œuvre complète ───────────────────────────────────────
+  // Prix pack INDICATIF (base, sans perk artiste). Miroir de la formule backend
+  // compute_oeuvre_pack_price : subtotal des deux ADN puis −15% (85 % arrondi
+  // inférieur), plancher = nombre de faces. Le prix RÉEL débité peut être plus
+  // bas si l'acheteur détient le perk artiste (−30 % par face) — non calculable
+  // ici sans auth, d'où le libellé « à partir de ». Ne s'affiche que si les DEUX
+  // ADN sont réellement en vente avec un prix (champs adnPrice du payload).
+  function _packPrice(data) {
+    var son = data.son, visuel = data.visuel;
+    if (!son || !visuel) return null;
+    if (!son.adnForSale || !son.adnPrice) return null;
+    if (!visuel.adnForSale || !visuel.adnPrice) return null;
+    var a = parseInt(son.adnPrice, 10), b = parseInt(visuel.adnPrice, 10);
+    if (!isFinite(a) || !isFinite(b)) return null;
+    var packed = Math.floor((a + b) * 85 / 100);
+    return Math.max(packed, 2); // plancher = 2 faces
+  }
+
+  // ── Bas de page : PACK œuvre complète (offre groupée) ──────────────────
   function _renderPack(data) {
     var el = document.getElementById('oeuvre-col-pack');
     if (!data.isComplete) {
@@ -167,12 +193,19 @@
         '</div>';
       return;
     }
+    var price = _packPrice(data);
+    var btnLabel = price != null
+      ? '◆ Acheter les deux · à partir de ' + price + ' ⚡'
+      : '◆ Débloquer l\'œuvre complète';
+    var noteExtra = price != null
+      ? ' <span class="oeuvre-pack-save">−15 % vs séparé</span>'
+      : '';
     el.innerHTML = '<div class="oeuvre-pack oeuvre-pack--full">' +
       '<div class="oeuvre-pack-seal">◆</div>' +
-      '<h3 class="oeuvre-pack-ttl">Œuvre complète</h3>' +
-      '<p class="oeuvre-pack-note">Son + Visuel en un seul geste, au tarif groupé.</p>' +
+      '<h3 class="oeuvre-pack-ttl">Œuvre complète · Musique + Visuel</h3>' +
+      '<p class="oeuvre-pack-note">Les deux ADN en un seul geste, au tarif groupé.' + noteExtra + '</p>' +
       '<button type="button" class="oeuvre-btn oeuvre-btn--pack" onclick="window.__oeuvreBuyComplete()">' +
-        '◆ Débloquer l\'œuvre complète</button>' +
+        btnLabel + '</button>' +
       '</div>';
   }
 

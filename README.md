@@ -1,4 +1,4 @@
-# WATT
+# SMYLE PLAY
 
 Plateforme de musique générative WATT — API FastAPI + Flask legacy, Postgres, stockage R2.
 
@@ -11,7 +11,7 @@ Smyleplay/
 ├── main.py                  # Entry point (uvicorn)
 ├── flask_app.py             # App Flask legacy
 ├── config.py · models.py    # Config & modèles globaux
-├── watt-api/           # API FastAPI + Alembic
+├── smyleplay-api/           # API FastAPI + Alembic
 ├── agents/                  # Agents Python (classifier, orchestrator, ...)
 ├── ui/                      # Assets front
 │
@@ -50,7 +50,7 @@ cp .env.example .env
 # éditer DATABASE_URL, JWT_SECRET, R2_*, etc.
 
 # 3. Migrations
-cd watt-api && alembic upgrade head && cd ..
+cd smyleplay-api && alembic upgrade head && cd ..
 
 # 4. Run
 uvicorn main:app --reload

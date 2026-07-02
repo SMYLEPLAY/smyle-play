@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — wattboard-v3.js
+   SMYLE PLAY — wattboard-v3.js
    Chantier C1 (blueprint VF 2026-06-10) — WattBoard v3.
 
    Le board devient la HOME du /dashboard :
@@ -33,6 +33,10 @@
     adn:       { ids: ['sec-dna'],                   label: 'ADN musical' },
     voix:      { ids: ['sec-voice-sale'],            label: 'Voix' },
     playlists: { ids: ['sec-playlists'],             label: 'Playlists' },
+    // ADN Playlist — mirror AUDIO de l'ADN Album (visuel). Réutilise l'écran
+    // Playlists (#sec-playlists) qui porte déjà la création + le bouton 🧬
+    // « Configurer ADN » (seed prompt + ADN en vente + prix).
+    'adn-playlist': { ids: ['sec-playlists'],        label: 'ADN Playlist' },
     trades:    { ids: ['sec-trades'],                label: 'Échanges' },
     stats:     { ids: ['sec-stats', 'sec-ranking'],  label: 'Analytique' },
     trophees:  { ids: ['sec-trophees'],              label: 'Trophées' },
@@ -136,6 +140,20 @@
     if (kind === 'adn-visuel') { openScreen('visual-adn'); return; }
     // C4 — ADN Album (génome de style d'un album) garde son écran dédié.
     if (kind === 'adn-album')  { openScreen('adn-album'); return; }
+    // ADN Playlist — ouvre l'écran Playlists et lance directement le modal de
+    // création (titre + couleur + seed prompt + ADN en vente + prix). Toute la
+    // logique existe déjà dans ui/playlists.js (openCreatePlaylistModal).
+    if (kind === 'adn-playlist') {
+      openScreen('adn-playlist');
+      try {
+        if (window.SmylePlaylists && window.SmylePlaylists.openCreatePlaylistModal) {
+          window.SmylePlaylists.openCreatePlaylistModal(function () {
+            try { window.SmylePlaylists.renderDashboardPlaylists('dash-playlists-root'); } catch (_) {}
+          });
+        }
+      } catch (_) {}
+      return;
+    }
     if (kind === 'voix') { openScreen('voix'); return; }
     openScreen('sons');
     try { if (typeof setUploadMode === 'function') setUploadMode(CREATE_MAP[kind] || 'with_prompt'); } catch (_) {}
@@ -295,7 +313,8 @@
     // Côté acheteurs, /beats (C2) listera les sons vendus en tant que beats.
     return tileHtml('sons',  '🤖', 'Sons IA',     'sons',  { createKind: 'son',  viewKey: 'sons',  countLabel: 'publiés' })
          + tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',   countLabel: 'signature' })
-         + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' });
+         + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' })
+         + tileHtml('adn-playlist', '🧬', 'ADN Playlist', null, { viewKey: 'adn-playlist', viewOnly: true, countLabel: 'le génome d\'une playlist vendable', countText: 'Gérer' });
   }
 
   /* ── Menu "+ Créer" ─────────────────────────────────────────────────── */
@@ -316,7 +335,8 @@
       '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature créative vendable</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>';
+      '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>' +
+      '<button type="button" class="wb3-create-item" data-wb3-create="adn-playlist">🧬 <span>ADN Playlist<em>Le génome d\'une playlist — l\'achat débloque la recette + le seed prompt</em></span></button>';
   }
 
   function closeCreateMenu() {

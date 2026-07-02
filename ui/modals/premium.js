@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/modals/premium.js
+   SMYLE PLAY — ui/modals/premium.js
    Premium interest modal: register lead + mailto notification.
 
    Calls helpers from:

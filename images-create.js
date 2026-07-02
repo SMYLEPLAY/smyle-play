@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — images-create.js
+   SMYLE PLAY — images-create.js
    Chantier C4 (Monde Visuel V1) — livraison ② : FRONT de création d'image.
 
    Pilote l'écran #sec-image-create (ouvert par le WattBoard via la tuile
@@ -21,7 +21,7 @@
 
   /* Valeurs enum backend (app/schemas/image.py → ImagePlatform). Toute autre
      valeur = 422. On garde cette liste pour valider AVANT l'envoi. */
-  var PLATFORMS = ['midjourney', 'dalle', 'chatgpt', 'stable_diffusion', 'flux', 'autre'];
+  var PLATFORMS = ['midjourney', 'dalle', 'stable_diffusion', 'flux', 'autre'];
 
   var IMAGE_MAX_BYTES = 20 * 1024 * 1024;     /* 20 Mo (= IMAGE_MAX_BYTES API) */
   var ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];

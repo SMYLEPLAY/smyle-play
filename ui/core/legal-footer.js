@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/core/legal-footer.js
+   SMYLE PLAY / WATT — ui/core/legal-footer.js
    Pack légal v1 (2026-06-10). Injecte un footer discret et identique sur
    toutes les pages qui incluent ce script : liens vers /legal (CGU,
    confidentialité, mentions, contenu). Zéro dépendance, zéro impact layout

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# WATT — Script de push initial vers GitHub
+# SMYLE PLAY — Script de push initial vers GitHub
 # Lance ce fichier UNE SEULE FOIS depuis ton Mac pour connecter le repo.
 #
 # Usage : bash "PUSH_TO_GITHUB.sh"  (depuis le dossier du projet)
@@ -10,7 +10,7 @@ set -e  # stoppe le script à la première erreur
 
 echo ""
 echo "  ┌──────────────────────────────────────────────┐"
-echo "  │  WATT — Push initial vers GitHub       │"
+echo "  │  SMYLE PLAY — Push initial vers GitHub       │"
 echo "  └──────────────────────────────────────────────┘"
 echo ""
 
@@ -47,14 +47,14 @@ echo "        ✓ Remote configuré"
 # Commit initial
 echo "  [4/5] Commit initial..."
 git add .
-git commit -m "WATT v1.0 — Flask + PostgreSQL + Cloudflare R2
+git commit -m "SMYLE PLAY v1.0 — Flask + PostgreSQL + Cloudflare R2
 
 Architecture complète :
 - app.py: Flask REST API (tracks, auth, plays, feedback, /health)
 - config.py: configuration centralisée env vars
 - models.py: SQLAlchemy — User, PlayCount, SavedMix, Feedback
 - scanner.py: scan local + scan R2 bucket (prod sans fichiers locaux)
-- index.html / style.css / script.js: interface WATT
+- index.html / style.css / script.js: interface SMYLE PLAY
 - Procfile: gunicorn prêt Railway/Render
 - railway.toml: healthcheck + restart policy
 - upload_to_r2.py: script upload audio vers R2

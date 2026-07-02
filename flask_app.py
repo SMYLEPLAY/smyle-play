@@ -1,5 +1,5 @@
 """
-WATT — Application Flask principale
+SMYLE PLAY — Application Flask principale
 ─────────────────────────────────────────
 • Sert les fichiers statiques (index.html, style.css, script.js)
 • API playlists officielles : GET /api/tracks, GET /api/playlists
@@ -113,16 +113,6 @@ def create_app(config_class=None):
     def dashboard_page():
         return send_from_directory(BASE_DIR, 'dashboard.html')
 
-    # D0 télémétrie — funnel admin (lecture seule, gated is_official côté API).
-    @app.route('/admin/analytics')
-    def admin_analytics_page():
-        return send_from_directory(BASE_DIR, 'analytics.html')
-
-    # D1 comprendre — page didactique « Comment ça marche » + glossaire.
-    @app.route('/comment-ca-marche')
-    def how_it_works_page():
-        return send_from_directory(BASE_DIR, 'comment-ca-marche.html')
-
     @app.route('/tarifs')
     def tarifs_page():
         # Page placeholder tarifs (chantier #12 backlog v3) — aucun
@@ -169,15 +159,6 @@ def create_app(config_class=None):
     @app.route('/library')
     def library_page():
         return send_from_directory(BASE_DIR, 'library.html')
-
-    # Page ŒUVRE binaire (C4c) — /oeuvre/<slug> sert le shell oeuvre.html ;
-    # oeuvre.js extrait le slug de l'URL et appelle l'API JSON
-    # GET /watt/oeuvre/<slug> (FastAPI). NB : l'API est sous /watt/oeuvre
-    # justement pour ne PAS entrer en collision avec cette route de page
-    # (les routes FastAPI ont précédence sur le mount Flask).
-    @app.route('/oeuvre/<slug>')
-    def oeuvre_page(slug):
-        return send_from_directory(BASE_DIR, 'oeuvre.html')
 
     # Pack légal v1 (chantier hygiène revenu 2026-06-10) — page unique à
     # sections ancrées (#mentions, #cgu, #confidentialite, #contenu).
@@ -1476,6 +1457,6 @@ if __name__ == '__main__':
     port  = app.config['PORT']
     debug = app.config['DEBUG']
     print(f'\n  ╔══════════════════════════════════════╗')
-    print(f'  ║  WATT → http://localhost:{port}  ║')
+    print(f'  ║  SMYLE PLAY → http://localhost:{port}  ║')
     print(f'  ╚══════════════════════════════════════╝\n')
     app.run(host='0.0.0.0', port=port, debug=debug)

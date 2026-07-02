@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/modals/auth.js
+   SMYLE PLAY — ui/modals/auth.js
    Auth modal + auth area. Branché sur FastAPI (JWT smyle_api_token).
 
    Avant : fake users en localStorage (vestige prototype).
@@ -73,8 +73,6 @@ async function doSignup(email, password, { onAttempt, referralCode } = {}) {
     }
     return { ok: false, msg: String(msg) };
   }
-  // Télémétrie D0 — inscription réussie (best-effort, jamais bloquant).
-  try { if (window.SmyleTrack) window.SmyleTrack.event('signup', ref ? { referred: true } : null); } catch (_) {}
   // Auto-login après register
   return doLogin(email, password);
 }

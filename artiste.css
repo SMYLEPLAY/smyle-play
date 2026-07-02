@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WATT — Page Artiste Publique
+   SMYLE PLAY — Page Artiste Publique
    Sprint C · Design premium cohérent WATT · Mobile-first
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -17,7 +17,7 @@
 
   /* ── Chantier 1.2 — Couleur de marque artiste ─────────────────────────────
      Surchargées dynamiquement par artiste.js depuis artist.brandColor.
-     Fallback = or WATT, cohérent avec l'UI historique.
+     Fallback = or SMYLE PLAY, cohérent avec l'UI historique.
      --brand     : couleur hex (#RRGGBB)
      --brand-rgb : triplet r,g,b pour composer des rgba() dans les bordures
                    et halos sans recalculer côté CSS.
@@ -1008,7 +1008,7 @@ img { max-width: 100%; display: block; }
   color: rgba(245, 242, 252, .98);
   /* Flicker néon teinté --brand (D.A WATT, même logique que .logo-text /
      .hitmix-title sur la home). Le halo lumineux autour du nom respire par
-     saccades pour rester dans l'univers "enseigne néon" de WATT.
+     saccades pour rester dans l'univers "enseigne néon" de SMYLE PLAY.
      Le dégradé texte reste intact, on ne touche qu'au text-shadow via drop
      filter pour qu'il fonctionne avec background-clip:text. */
   filter:

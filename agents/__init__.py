@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# WATT — agents/
+# SMYLE PLAY — agents/
 # Chaîne autonome WATT : classification ADN → playlist → prompt Suno
 #
 # Pipeline :

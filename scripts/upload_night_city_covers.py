@@ -153,7 +153,13 @@ def main() -> int:
         if up.status_code >= 300:
             print(f"  ❌ upload {cov.name}: {up.status_code} {up.text[:120]}")
             continue
-        cover_url = up.json().get("cover_url")
+        _uj = up.json()
+        # L'endpoint /watt/upload-image renvoie {"url": ...} (PAS "cover_url").
+        # Lire "url" en priorité — sinon on PATCH un null et la cover reste vide.
+        cover_url = _uj.get("url") or _uj.get("cover_url") or _uj.get("coverUrl")
+        if not cover_url:
+            print(f"  ❌ {t.get('title')}: réponse upload sans url → {_uj}")
+            continue
         pat = requests.patch(
             f"{base}/tracks/{tid}", headers=H, json={"cover_url": cover_url}, timeout=30
         )

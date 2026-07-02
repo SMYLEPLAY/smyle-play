@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WATT — Dashboard Artiste PLUG WATT
+   SMYLE PLAY — Dashboard Artiste PLUG WATT
    dashboard.js — Logique complète + canvas réseau + chart SVG 7j
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -2132,7 +2132,7 @@ async function uploadTrack() {
   // C2 — plus de modes : validation précoce du seul flag beat (plus bas).
 
   // ── DÉCISION 100 % IA (2026-06-10) ──────────────────────────────────────
-  // WATT ne vend QUE des produits générés par IA. L'outil de
+  // Smyleplay ne vend QUE des produits générés par IA. L'outil de
   // génération (plateforme) est donc obligatoire pour TOUTE publication
   // audio — plus seulement pour les recettes. C'est la provenance affichée
   // sur les cartes (4e repère, arme transparence).

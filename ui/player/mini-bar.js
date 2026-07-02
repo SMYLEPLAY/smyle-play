@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/player/mini-bar.js
+   SMYLE PLAY — ui/player/mini-bar.js
    Barre audio fixe en bas de page — visible sur toutes les pages.
 
    Fix v2 :

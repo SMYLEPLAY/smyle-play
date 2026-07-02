@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/core/badges.js
+   SMYLE PLAY — ui/core/badges.js
    Helpers de rendu des 3 repères constants (chantier C0, blueprint VF).
 
    Usage (script classique, expose window.SpBadges) :
@@ -53,7 +53,6 @@
   var PLATFORMS = {
     suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio',
     midjourney: 'Midjourney', dalle: 'DALL-E', 'dall-e': 'DALL-E', flux: 'Flux',
-    chatgpt: 'ChatGPT', openai: 'ChatGPT',
     stable_diffusion: 'Stable Diffusion', autre: 'Autre',
   };
 
