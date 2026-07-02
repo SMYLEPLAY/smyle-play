@@ -111,3 +111,5 @@ node_modules/
 
 *.sql
 *.dump
+
+_d2wt/
