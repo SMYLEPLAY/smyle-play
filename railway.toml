@@ -7,7 +7,10 @@ builder = "nixpacks"
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2 --access-log"
 
 # Pré-deploy : applique les migrations Alembic avant de booter le process.
-preDeployCommand = "cd smyleplay-api && alembic upgrade head"
+# La base suit la chaîne de migrations de watt-api (révision courante 0079).
+# On DOIT donc lancer alembic depuis watt-api : smyleplay-api ne connaît que
+# jusqu'à 0070 et ne peut pas situer 0079 → le pré-déploiement crashait.
+preDeployCommand = "cd watt-api && alembic upgrade head"
 
 healthcheckPath = "/health"
 healthcheckTimeout = 30
