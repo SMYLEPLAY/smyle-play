@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/panels/playlist.js
+   SMYLE PLAY — ui/panels/playlist.js
    Track panel: open/close a playlist, render its tracks, quick-play.
 
    Reads shared state from ui/core/state.js:
@@ -75,16 +75,10 @@ function openPlaylist(key, cardEl) {
         const addPlBtn = tuuid
           ? `<button class="add-to-pl-btn panel-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist" onclick="event.stopPropagation()">+</button>`
           : '';
-        // Pochette du son (2026-07-01) — vignette par ligne si cover_url présent.
-        const _cu = t.cover_url || t.coverUrl || '';
-        const cover = _cu
-          ? `<img class="track-cover" src="${String(_cu).replace(/"/g, '&quot;')}" alt="" loading="lazy" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex:0 0 auto;margin-right:6px">`
-          : '';
         return `
         <div class="track-item${currentPlaylist === key && currentTrackIdx === i ? ' active' : ''}"
              id="ti-${t.id}" onclick="loadTrack('${key}', ${i})">
           <span class="track-num">${String(i + 1).padStart(2, '0')}</span>
-          ${cover}
           <div class="track-info">
             <div class="track-name">${t.name}</div>
           </div>

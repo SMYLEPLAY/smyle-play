@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/hub/marketplace.js
+   SMYLE PLAY — ui/hub/marketplace.js
    Hydratation de l'accueil transformée en marketplace (Phase 2).
 
    Responsabilités
@@ -646,95 +646,29 @@
       const beatChip = t.isBeat
         ? `<span class="mp-son-card-beat" title="Proposé comme beat" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(34,197,94,.14);color:#86efac;font-size:.68rem;font-weight:600;">🥁 Beat${t.bpm ? ' · ' + t.bpm + ' BPM' : ''}</span>`
         : '';
-      // ── DUALITÉ ADN (B) — 2 badges d'angle sur la CARD (hors image) ──────
-      // Musique haut-gauche · Visuel haut-droite. Dégradé gracieux mono :
-      // l'ADN présent est solide, la face manquante devient une INVITATION
-      // (ghost) qui montre qu'il reste un ADN à créer. Zéro ADN → rien
-      // (pas de bruit visuel — honnête, on n'invite pas dans le vide).
-      const adnM  = t.adnMusique || null;
-      const adnV  = t.adnVisuel  || null;
-      const hasM  = !!(adnM && adnM.has);
-      const hasV  = !!(adnV && adnV.has);
-      // Carte scindée (1.3) : chaque badge ADN vit dans SA zone — 🎵 dans
-      // l'en-tête musique, 🎨 dans l'en-tête visuel. Invitation ghost si la
-      // face manque (dès qu'au moins une face existe — sinon rien).
-      const mInv = hasM ? '' : ' is-invitation';
-      const vInv = hasV ? '' : ' is-invitation';
-      const mTitle = hasM
-        ? ('ADN musical' + (adnM.price != null ? ' · ' + adnM.price + ' Smyles' : ''))
-        : 'Cet artiste n’a pas encore d’ADN musical';
-      const vTitle = hasV
-        ? ('ADN visuel' + (adnV.price != null ? ' · ' + adnV.price + ' Smyles' : ''))
-        : 'Cet artiste n’a pas encore d’ADN visuel — invitez-le à le créer';
-      const adnMusicBadge = (hasM || hasV)
-        ? `<span class="mp-son-card-adn mp-son-card-adn--music${mInv}" title="${_esc(mTitle)}" aria-hidden="true">🎵<span class="mp-son-card-adn-lbl">ADN</span></span>`
+      const tagsRow = (platformBadge || moodChips || beatChip)
+        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${platformBadge}${beatChip}${moodChips}</div>`
         : '';
-      const adnVisualBadge = (hasM || hasV)
-        ? `<span class="mp-son-card-adn mp-son-card-adn--visual${vInv}" title="${_esc(vTitle)}" aria-hidden="true">🎨<span class="mp-son-card-adn-lbl">ADN</span></span>`
-        : '';
-      // Zone VISUEL (1.2) : provenance de l'image liée (⚡ ChatGPT…) +
-      // achat du visuel — symétrique du ⚡ Suno et de la recette côté son.
-      const _IMG_PLATFORM_LABELS = { chatgpt: 'ChatGPT', midjourney: 'Midjourney', dalle: 'DALL·E', stable_diffusion: 'Stable Diffusion', flux: 'Flux', autre: 'Autre' };
-      const li = t.linkedImage || null;
-      const imgPlatKey   = li ? String(li.platform || '').trim().toLowerCase() : '';
-      const imgPlatLabel = _IMG_PLATFORM_LABELS[imgPlatKey] || (imgPlatKey || '');
-      const imgProvBadge = imgPlatLabel
-        ? `<span class="mp-son-card-platform mp-son-card-platform--img" title="Visuel généré avec ${_esc(imgPlatLabel)}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(56,189,248,.14);color:#8fd6ff;font-size:.68rem;font-weight:600;">⚡ ${_esc(imgPlatLabel)}</span>`
-        : '';
-      const imgPriceBtn = (li && li.id && li.priceCredits != null)
-        ? `<button type="button" class="mp-img-badge"
-                   data-image-id="${_esc(String(li.id))}"
-                   data-image-price="${li.priceCredits}"
-                   data-image-platform="${_esc(imgPlatKey)}"
-                   data-track-name="${_esc(title)}"
-                   title="Acheter le visuel · ${li.priceCredits} Smyles">
-            🖼 <span class="mp-recipe-badge-price">${li.priceCredits} Smyles</span>
-           </button>`
-        : '';
-      // ── Tag playlist/univers cliquable (B2) → profil artiste + deep-link ──
-      const plt = t.playlistTag || null;
-      const plTag = (plt && plt.playlistTitle && artistSlug)
-        ? `<a class="mp-son-card-pltag" href="/@${_esc(artistSlug)}#pl-${_esc(plt.playlistId || '')}" onclick="event.stopPropagation();" title="Voir la playlist « ${_esc(plt.playlistTitle)} » sur le profil de ${_esc(name)}" style="--pltag-color:${_esc(plt.playlistColor || color)}"><span class="mp-son-card-pltag-dot" aria-hidden="true"></span>${_esc(plt.playlistTitle)}</a>`
-        : '';
-      const tagsRow = (plTag || platformBadge || moodChips || beatChip)
-        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${plTag}${platformBadge}${beatChip}${moodChips}</div>`
-        : '';
-      // ── CARTE ID SCINDÉE (binarité 1.3) ─ zone MUSIQUE à gauche (titre,
-      // ⚡ Suno, moods, 🎵 ADN, recette) | couture | zone VISUEL à droite
-      // (cover, ⚡ ChatGPT, 🎨 ADN, achat visuel). Mêmes classes/délégués
-      // qu'avant — seule la GÉOMÉTRIE change (aucun handler à migrer).
       return (
-        `<div class="mp-son-card mp-son-card--split" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
-          `<div class="mp-son-card-split">` +
-            `<div class="mp-son-zone mp-son-zone--music">` +
-              `<div class="mp-son-zone-head"><span class="mp-son-zone-tag">🎵 Son</span>${adnMusicBadge}</div>` +
-              `<div class="mp-son-card-title">${_esc(title)}</div>` +
-              `<div class="mp-son-card-artist">` +
-                `<a class="mp-son-card-artist-name" href="/@${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
-                permalinkBtn +
-              `</div>` +
-              tagsRow +
-              (recipeBtn ? `<div class="mp-son-card-recipe-row">${recipeBtn}</div>` : '') +
-              `<div class="mp-son-card-meta">` +
-                `<span class="mp-son-card-meta-plays">${plays} \u00e9coutes</span>` +
-                `<div class="mp-son-card-meta-actions">` +
-                  `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.trackUuid || t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
-                  `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter \u00e0 une playlist" aria-label="Ajouter \u00e0 une playlist">+</button>` +
-                `</div>` +
-              `</div>` +
-            `</div>` +
-            `<span class="mp-son-card-seam" aria-hidden="true"></span>` +
-            `<div class="mp-son-zone mp-son-zone--visual">` +
-              `<div class="mp-son-card-cover">` +
-                coverHTML +
-                `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +
-                  `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
-                `</button>` +
-              `</div>` +
-              `<div class="mp-son-zone-head"><span class="mp-son-zone-tag">🎨 Visuel</span>${adnVisualBadge}</div>` +
-              ((imgProvBadge || imgPriceBtn)
-                ? `<div class="mp-son-zone-vrow">${imgProvBadge}${imgPriceBtn}</div>`
-                : '') +
+        `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
+          `<div class="mp-son-card-cover">` +
+            coverHTML +
+            `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +
+              `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
+            `</button>` +
+          `</div>` +
+          `<div class="mp-son-card-title">${_esc(title)}</div>` +
+          `<div class="mp-son-card-artist">` +
+            `<a class="mp-son-card-artist-name" href="/@${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
+            permalinkBtn +
+          `</div>` +
+          tagsRow +
+          (recipeBtn ? `<div class="mp-son-card-recipe-row">${recipeBtn}</div>` : '') +
+          `<div class="mp-son-card-meta">` +
+            `<span class="mp-son-card-meta-plays">${plays} \u00e9coutes</span>` +
+            `<div class="mp-son-card-meta-actions">` +
+              `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.trackUuid || t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
+              `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter \u00e0 une playlist" aria-label="Ajouter \u00e0 une playlist">+</button>` +
             `</div>` +
           `</div>` +
           (streamUrl
@@ -994,23 +928,6 @@
         console.log('[marketplace] fallback audio inline card');
         if (audio.paused) audio.play().catch(e => console.error('audio inline card:', e));
         else audio.pause();
-        return;
-      }
-
-      // Click sur badge visuel lié → drawer d'achat image (1.3)
-      const imgBadgeEl = ev.target.closest('.mp-img-badge');
-      if (imgBadgeEl) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (window.PurchaseDrawer) {
-          window.PurchaseDrawer.open({
-            type:     'image',
-            id:       imgBadgeEl.dataset.imageId,
-            price:    parseInt(imgBadgeEl.dataset.imagePrice, 10) || null,
-            title:    imgBadgeEl.dataset.trackName ? ('Visuel · ' + imgBadgeEl.dataset.trackName) : 'Visuel lié',
-            platform: imgBadgeEl.dataset.imagePlatform || null,
-          });
-        }
         return;
       }
 
@@ -1835,11 +1752,8 @@
     }
   }
 
-  // Section Œuvre complète — carte ID SCINDÉE son|visuel (binarité, D2 2026-07-01).
-  // Réutilise renderOeuvreCard (banner-card.js) : moitié gauche = SON, moitié
-  // droite = VISUEL, badges de provenance des deux côtés. Clic → drawer du son
-  // (comportement conservé). Fallback ancienne double-cover si le composant
-  // n'est pas chargé (dégradation gracieuse).
+  // Section Œuvre complète — affichée dans LES DEUX modes. Carte = cover son +
+  // vignette image + badge oeuvre. Clic → ouvre la fiche son (drawer existant).
   function _renderOeuvres(oeuvres) {
     const section = document.getElementById('mp-section-oeuvres');
     const el = document.getElementById('mp-grid-oeuvres');
@@ -1850,22 +1764,10 @@
       return;
     }
     section.hidden = false;
-    const hasSplit = (typeof window.renderOeuvreCard === 'function');
+    const oeuvreBadge = (window.SpBadges && SpBadges.oeuvre) ? SpBadges.oeuvre() : '';
     el.innerHTML = oeuvres.map(o => {
       const son = o.sound || {};
       const img = o.image || {};
-      if (hasSplit) {
-        // Mapping /oeuvres → carte scindée. Le payload liste ne porte pas la
-        // plateforme IA → défauts du composant (Suno / ChatGPT), cohérents avec
-        // le contenu WATT. Enrichissement backend possible en suivi.
-        const card = window.renderOeuvreCard({
-          title:  son.title || 'Œuvre complète',
-          son:    { title: son.title || 'Son', platform: son.platform || '', color: son.color || '' },
-          visuel: { title: son.title || 'Visuel', previewKey: img.previewKey || '', platform: img.platform || '' },
-        }, { href: '#' });
-        return '<div class="mp-oeuvre-slot" data-son-id="' + _esc(son.id || '') + '">' + card + '</div>';
-      }
-      // Fallback (composant absent) : ancienne carte double-cover.
       const sonCover = son.coverUrl
         ? '<img src="' + _esc(son.coverUrl) + '" alt="" loading="lazy">'
         : '<div class="mp-oeuvre-card-cover-fallback" aria-hidden="true">🎵</div>';
@@ -1881,6 +1783,11 @@
           '</div>' +
           '<div class="mp-oeuvre-card-body">' +
             '<div class="mp-oeuvre-card-title">' + _esc(son.title || 'Œuvre complète') + '</div>' +
+            '<div class="mp-img-card-badges">' + oeuvreBadge + '</div>' +
+            '<div class="mp-oeuvre-card-prices">' +
+              '<span>🎵 ' + _esc(son.priceCredits) + ' Smyles</span>' +
+              '<span>🖼️ ' + _esc(img.priceCredits) + ' Smyles</span>' +
+            '</div>' +
           '</div>' +
         '</article>'
       );
@@ -1890,10 +1797,8 @@
     if (!el._bound) {
       el._bound = true;
       el.addEventListener('click', (e) => {
-        const card = e.target.closest('.mp-oeuvre-slot, .mp-oeuvre-card');
+        const card = e.target.closest('.mp-oeuvre-card');
         if (!card) return;
-        // La carte scindée est un <a href="#"> → on neutralise le saut d'ancre.
-        e.preventDefault();
         const sonId = card.dataset.sonId;
         // Clic → fiche du SON (drawer track existant). On retrouve le track
         // par son promptId (chaque track-recent porte promptId du son lié).

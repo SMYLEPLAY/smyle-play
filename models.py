@@ -1,5 +1,5 @@
 """
-WATT — Modèles SQLAlchemy (PostgreSQL / SQLite)
+SMYLE PLAY — Modèles SQLAlchemy (PostgreSQL / SQLite)
 Ces modèles remplacent le localStorage en production.
 En dev sans DATABASE_URL, SQLite est utilisé automatiquement.
 """
@@ -29,7 +29,7 @@ def _slugify(name: str) -> str:
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 class User(db.Model):
-    """Compte utilisateur WATT."""
+    """Compte utilisateur SMYLE PLAY."""
     __tablename__ = 'users'
 
     id            = db.Column(db.Integer, primary_key=True)

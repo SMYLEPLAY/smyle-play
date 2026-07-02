@@ -15,7 +15,7 @@ env:
   PYTHON_VERSION: "3.11"
   PG_USER: ci
   PG_PASSWORD: ci
-  PG_DB: watt_ci
+  PG_DB: smyleplay_ci
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ jobs:
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
-          POSTGRES_DB: watt_ci
+          POSTGRES_DB: smyleplay_ci
         ports:
           - 5432:5432
         options: >-
@@ -42,7 +42,7 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/watt_ci
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
 
     steps:
       - uses: actions/checkout@v4
@@ -61,24 +61,24 @@ jobs:
       - name: Wait for Postgres
         run: |
           for i in {1..30}; do
-            pg_isready -h localhost -U ci -d watt_ci && exit 0
+            pg_isready -h localhost -U ci -d smyleplay_ci && exit 0
             sleep 1
           done
           echo "Postgres not ready"; exit 1
 
       - name: Alembic upgrade head
-        working-directory: watt-api
+        working-directory: smyleplay-api
         run: alembic upgrade head
 
       - name: Dump final schema state
-        working-directory: watt-api
+        working-directory: smyleplay-api
         run: |
           alembic current
           alembic history | head -40
 
       - name: Verify key tables exist
         run: |
-          PGPASSWORD=ci psql -h localhost -U ci -d watt_ci -c "\dt" \
+          PGPASSWORD=ci psql -h localhost -U ci -d smyleplay_ci -c "\dt" \
             | tee /tmp/tables.txt
           for table in users tracks transactions; do
             grep -q " $table " /tmp/tables.txt || { echo "Missing table: $table"; exit 1; }
@@ -99,7 +99,7 @@ jobs:
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
-          POSTGRES_DB: watt_ci
+          POSTGRES_DB: smyleplay_ci
         ports:
           - 5432:5432
         options: >-
@@ -109,7 +109,7 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/watt_ci
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
       SECRET_KEY: ci-flask-secret
       JWT_SECRET: ci-jwt-secret
       ENVIRONMENT: test
@@ -131,7 +131,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run migrations
-        working-directory: watt-api
+        working-directory: smyleplay-api
         run: alembic upgrade head
 
       - name: Start API
@@ -184,7 +184,7 @@ jobs:
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
-          POSTGRES_DB: watt_ci
+          POSTGRES_DB: smyleplay_ci
         ports:
           - 5432:5432
         options: >-
@@ -194,7 +194,7 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/watt_ci
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
       SECRET_KEY: ci-flask-secret
       JWT_SECRET: ci-jwt-secret
       ENVIRONMENT: test
@@ -218,17 +218,17 @@ jobs:
       - name: Wait for Postgres
         run: |
           for i in {1..30}; do
-            pg_isready -h localhost -U ci -d watt_ci && exit 0
+            pg_isready -h localhost -U ci -d smyleplay_ci && exit 0
             sleep 1
           done
           echo "Postgres not ready"; exit 1
 
       - name: Apply migrations
-        working-directory: watt-api
+        working-directory: smyleplay-api
         run: alembic upgrade head
 
       - name: Run pytest suite
-        working-directory: watt-api
+        working-directory: smyleplay-api
         run: |
           set -o pipefail
           # -rf : liste les tests FAILED en fin de sortie. On copie le tout
@@ -290,7 +290,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           # -ll : seuil de sévérité medium+ ; -ii : confiance medium+.
           # Bloque (exit ≠ 0) seulement sur un défaut medium+/medium+.
-          bandit -r watt-api/app -ll -ii 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          bandit -r smyleplay-api/app -ll -ii 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           rc=${PIPESTATUS[0]}
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           exit $rc

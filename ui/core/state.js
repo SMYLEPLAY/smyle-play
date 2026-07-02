@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/core/state.js
+   SMYLE PLAY — ui/core/state.js
    Mutable state partagé entre tous les modules UI.
    Doit être chargé AVANT tout autre module UI dans index.html.
    ───────────────────────────────────────────────────────────────────────── */

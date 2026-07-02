@@ -1,5 +1,5 @@
 """
-WATT — Scanner de playlists
+SMYLE PLAY — Scanner de playlists
 Scanne les dossiers locaux (dev) ou le bucket R2 (production).
 Aucune dépendance externe en mode local (stdlib uniquement).
 """

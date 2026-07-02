@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/core/dom.js
+   SMYLE PLAY — ui/core/dom.js
    Pure DOM / formatting helpers. No shared state.
    Doit être chargé après state.js et avant tout consommateur dans index.html.
    ───────────────────────────────────────────────────────────────────────── */

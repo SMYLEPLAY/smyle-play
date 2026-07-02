@@ -1,5 +1,5 @@
 #!/bin/bash
-# ── WATT — Déploiement manuel / trigger launchd ────────────────────────
+# ── SMYLE PLAY — Déploiement manuel / trigger launchd ────────────────────────
 # Usage :
 #   ./deploy.sh                 → pipeline + git push
 #   ./deploy.sh --cleanup-r2    → + nettoyage R2 (fichiers orphelins)

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/hub/community.js
+   SMYLE PLAY — ui/hub/community.js
    Community hub: fetch playlists + WATT community injection +
    top-3 artists rendering from /api/artists.
 
@@ -206,7 +206,7 @@ async function _renderHubFromAPI() {
 
   if (!artists.length) {
     // Philosophie unifiée : pas de signup séparé "WATT", on invite à créer
-    // un compte WATT qui inclut automatiquement l'espace artiste.
+    // un compte SMYLE PLAY qui inclut automatiquement l'espace artiste.
     el.innerHTML = `<div class="hub-t3-empty">Aucun artiste pour l'instant · <a href="/?auth=signup" class="hub-t3-empty-link">Créer mon compte →</a></div>`;
     return;
   }

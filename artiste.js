@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WATT — artiste.js  (Phase 5 — 2026-04-20)
+   SMYLE PLAY — artiste.js  (Phase 5 — 2026-04-20)
 
    La page /u/<slug> est la BOUTIQUE PUBLIQUE — 100% LECTURE SEULE.
    L'édition du profil vit UNIQUEMENT sur /dashboard#sec-identity (ATELIER).
@@ -601,7 +601,7 @@ function toggleSectionForFans(sectionId, value, isSelf) {
    juste "voilà qui je suis". Multi-select, stocké en JSON array côté DB.
 
    La liste canonique ROLE_CATALOG doit rester synchrone avec ROLE_CODES
-   dans watt-api/app/schemas/user.py — l'ordre aussi (ordre d'affichage).
+   dans smyleplay-api/app/schemas/user.py — l'ordre aussi (ordre d'affichage).
    Si tu ajoutes un rôle : MAJ les 2 fichiers + migration si besoin. */
 
 const ROLE_CATALOG = [
@@ -1537,7 +1537,7 @@ async function _applyVisualAdnOwnedState(card, visualAdnId) {
 
 // P1-F4 (2026-05-04) — libellés humains des enums backend pour les
 // réglages de génération exposés sur les cards prompts publiques.
-// Aligned avec PromptPlatform / PromptVocalGender (watt-api).
+// Aligned avec PromptPlatform / PromptVocalGender (smyleplay-api).
 const _PROMPT_PLATFORM_LBL = {
   suno:         'Suno',
   udio:         'Udio',
@@ -2073,7 +2073,6 @@ function renderTracks(artist) {
     const deleteBtn = artist.isSelf
       ? `<button type="button" class="ap-track-delete-btn"
                  data-track-id="${t.id}"
-                 data-track-uuid="${t.trackUuid || t.id}"
                  data-track-name="${(t.name || '').replace(/"/g, '&quot;')}"
                  title="Supprimer ce son">🗑</button>`
       : '';
@@ -2181,9 +2180,9 @@ function renderTracks(artist) {
     if (delBtn) {
       ev.preventDefault();
       ev.stopPropagation();
-      const tid = delBtn.dataset.trackUuid || delBtn.dataset.trackId;
+      const tid = delBtn.dataset.trackId;
       const tname = delBtn.dataset.trackName || 'ce son';
-      if (tid && confirm(`Supprimer "${tname}" ?\n\nLe son disparaît de ton profil et du catalogue, et sa recette est retirée de la vente. Les personnes qui l'ont déjà achetée gardent leur exemplaire.`)) {
+      if (tid && confirm(`Supprimer "${tname}" ?\n\nCette action est définitive (le fichier audio R2 + la recette liée seront aussi supprimés).`)) {
         deleteTrackFromProfile(tid, delBtn);
       }
       return;
@@ -2321,28 +2320,29 @@ async function unlockVisualDnaFromProfile() {
 // PR Sprint 1 PR3 R2 cleanup). Le backend vérifie l'owner — un visiteur
 // qui invoquerait l'endpoint reçoit 403, le bouton est juste caché côté
 // front pour ne pas exposer une action qui ne marcherait pas.
-async function deleteTrackFromProfile(trackUuid, btn) {
-  if (!trackUuid) return;
+async function deleteTrackFromProfile(trackId, btn) {
+  if (!trackId) return;
   if (btn) btn.disabled = true;
   try {
-    // Suppression via l'endpoint canonique FastAPI DELETE /tracks/{uuid}
-    // (02/07) : SOFT delete symétrique du delete image — le son disparaît
-    // du profil et du catalogue, la recette liée est retirée de la vente,
-    // l'œuvre complète est détachée (le visuel survivant reste vendable),
-    // et les acheteurs GARDENT leur exemplaire en bibliothèque.
-    // (Remplace l'ancien appel /watt/tracks/<id> : hard delete DB+R2 porté
-    // du Flask historique — destructeur pour les acheteurs et fragile.)
-    const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(`/tracks/${encodeURIComponent(trackUuid)}`, {
-      method: 'DELETE',
-      headers,
-    });
-    if (!res.ok && res.status !== 204) {
-      let detail = `${res.status}`;
-      try { const j = await res.json(); detail = j.detail || j.message || detail; } catch (_) {}
-      throw new Error(detail);
+    if (typeof apiFetch === 'function') {
+      // L'endpoint principal côté FastAPI ne fait PAS encore la suppression
+      // R2 via le path /watt/tracks/<id>. On passe par l'endpoint Flask
+      // qui supprime à la fois en DB et en R2 (cf flask_app.py
+      // /api/watt/tracks/<int:track_id>).
+      // Note : l'ID public peut être un UUID FastAPI ou un int legacy.
+      // Le fetch direct gère les 2.
+      const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`/watt/tracks/${encodeURIComponent(trackId)}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (!res.ok && res.status !== 204) {
+        let detail = `${res.status}`;
+        try { const j = await res.json(); detail = j.detail || j.message || detail; } catch (_) {}
+        throw new Error(detail);
+      }
     }
     toast('Son supprimé');
     setTimeout(() => loadArtist(), 400);
@@ -2720,7 +2720,7 @@ function renderVoices(artist) {
     const priceStr  = formatCount(v.price_credits);
 
     // Rareté #X/N — le payload public expose max_supply + editions_sold
-    // (audit watt-api routers/voices.py + services/voices.py 2026-06-12).
+    // (audit smyleplay-api routers/voices.py + services/voices.py 2026-06-12).
     // Prochain exemplaire minté = editions_sold + 1. 1/1 = légendaire.
     const _vSold   = v.editions_sold || 0;
     const _vSupply = (v.max_supply != null) ? v.max_supply : null;

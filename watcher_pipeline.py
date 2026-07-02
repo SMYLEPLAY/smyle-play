@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WATT — WATT Deploy Watcher Pipeline
+SMYLE PLAY — WATT Deploy Watcher Pipeline
 ─────────────────────────────────────────
 Détecte les nouveaux fichiers audio dans les 4 dossiers playlist,
 les uploade sur Cloudflare R2, et regenere tracks.json pour Railway.

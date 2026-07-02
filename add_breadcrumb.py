@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WATT — add_breadcrumb
+SMYLE PLAY — add_breadcrumb
 ────────────────────────────
 Enregistre l'intention de routage pour le prochain téléchargement Suno.
 

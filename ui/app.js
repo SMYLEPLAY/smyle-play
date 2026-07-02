@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/app.js
+   SMYLE PLAY — ui/app.js
    Application entry point for index.html.
 
    Responsibilities (no function declarations — everything is inline

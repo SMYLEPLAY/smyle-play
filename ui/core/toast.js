@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/core/toast.js
+   SMYLE PLAY — ui/core/toast.js
    Toast global réutilisable sur toutes les pages.
    API :
      window.smyleToast('Message', { type: 'success' | 'info' | 'error', duration: 3000 })

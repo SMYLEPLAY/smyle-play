@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   WATT — ui/panels/agent.js
+   SMYLE PLAY — ui/panels/agent.js
    WATT Control Center — panneau de monitoring communautaire.
 
    Reads shared state from ui/core/state.js: (aucune dépendance directe)

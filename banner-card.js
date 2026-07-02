@@ -146,117 +146,73 @@
     container.innerHTML = html;
   }
 
-  /* ═══════════════════════════════════════════════════════════════════════
-     CARTE ID SCINDÉE — ŒUVRE binaire (C4b)
-     ─────────────────────────────────────────────────────────────────────
-     Une œuvre = deux faces. La carte est coupée en deux moitiés strictement
-     symétriques : gauche = SON (playlist + badge IA audio, ex. Suno) ·
-     droite = VISUEL (cover album + badge IA visuel, ex. ChatGPT). Clic →
-     page binaire /oeuvre/<slug>. Les badges réutilisent SpBadges.provenance
-     des DEUX côtés (même composant son & visuel).
+  // ═════════════════════════════════════════════════════════════════════════
+  // CARTE ID ŒUVRE (page /oeuvre/<slug>) — cover centrée + identité binaire
+  // ─────────────────────────────────────────────────────────────────────────
+  // Rend l'en-tête de la page œuvre : la cover au centre en haut, le titre
+  // dessous, puis deux chips d'identité discrets (face SON · plateforme /
+  // face VISUEL · plateforme). Consommé par oeuvre.js → _renderHead.
+  //
+  // opts : {
+  //   slug   : 'jungle-osmose'
+  //   title  : "Nom de l'œuvre"
+  //   son    : { title, platform, color } | null   // face musique
+  //   visuel : { title, platform, previewKey } | null // face visuelle
+  // }
+  // ═════════════════════════════════════════════════════════════════════════
 
-     oeuvre : {
-       slug, title,                          // titre de l'œuvre (optionnel)
-       son:    { title, platform:'suno',    color, version },     // ou null
-       visuel: { title, platform:'chatgpt', previewKey, version } // ou null
-     }
-     opts : { href }                         // défaut /oeuvre/<slug>
-     ═══════════════════════════════════════════════════════════════════════ */
-
-  function _imgPreviewUrl(key) {
+  // Miroir de _imgUrl (oeuvre.js) : encode chaque segment de la clé R2.
+  function _imgUrl(key) {
     if (!key) return '';
     return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
   }
 
-  function _provenanceBadge(platform, version) {
-    if (window.SpBadges && typeof window.SpBadges.provenance === 'function') {
-      return window.SpBadges.provenance(platform, version);
-    }
-    if (!platform) return '';
-    return '<span class="sp-provenance">⚡ ' + _escape(platform) + '</span>';
+  // Étiquette plateforme lisible : 'suno' → 'Suno', 'chatgpt' → 'ChatGPT'.
+  function _platformLabel(p) {
+    if (!p) return 'IA';
+    const key = String(p).toLowerCase();
+    const map = { suno: 'Suno', chatgpt: 'ChatGPT', midjourney: 'Midjourney', udio: 'Udio' };
+    return map[key] || String(p);
   }
 
-  function _oeuvreSonHalf(son) {
-    if (!son) {
-      return '<div class="oeuvre-card__half oeuvre-card__half--son is-empty">' +
-        '<span class="oeuvre-card__empty">Son à venir</span></div>';
-    }
-    const color = son.color || '#7c5cff';
-    return '' +
-      '<div class="oeuvre-card__half oeuvre-card__half--son" style="--oeuvre-son-color:' + _escape(color) + '">' +
-        '<span class="oeuvre-card__face-tag">SON</span>' +
-        '<span class="oeuvre-card__wave" aria-hidden="true">🎵</span>' +
-        '<div class="oeuvre-card__half-title">' + _escape(son.title || 'Playlist') + '</div>' +
-        '<div class="oeuvre-card__prov">' + _provenanceBadge(son.platform || 'suno', son.version) + '</div>' +
-      '</div>';
-  }
-
-  function _oeuvreVisuelHalf(visuel) {
-    if (!visuel) {
-      return '<div class="oeuvre-card__half oeuvre-card__half--visuel is-empty">' +
-        '<span class="oeuvre-card__empty">Visuel à venir</span></div>';
-    }
-    const url = _imgPreviewUrl(visuel.previewKey);
-    const cover = url
-      ? '<img class="oeuvre-card__cover" src="' + _escape(url) + '" alt="" loading="lazy"/>'
-      : '<span class="oeuvre-card__wave" aria-hidden="true">🖼️</span>';
-    return '' +
-      '<div class="oeuvre-card__half oeuvre-card__half--visuel">' +
-        cover +
-        '<span class="oeuvre-card__face-tag">VISUEL</span>' +
-        '<div class="oeuvre-card__half-title">' + _escape(visuel.title || 'Album') + '</div>' +
-        '<div class="oeuvre-card__prov">' + _provenanceBadge(visuel.platform || 'chatgpt', visuel.version) + '</div>' +
-      '</div>';
-  }
-
-  /**
-   * Retourne le HTML d'une carte d'œuvre binaire (son | visuel).
-   * @param {Object} oeuvre  { slug, title, son, visuel }
-   * @param {Object} [opts]  { href }
-   * @returns {string} HTML
-   */
-  function renderOeuvreCard(oeuvre, opts) {
-    oeuvre = oeuvre || {};
+  function renderOeuvreCard(opts) {
     opts = opts || {};
-    const slug = oeuvre.slug || '';
-    const href = opts.href || (slug ? '/oeuvre/' + _escape(slug) : '#');
-    const complete = !!(oeuvre.son && oeuvre.visuel);
-    const seal = complete
-      ? '<span class="oeuvre-card__seal" title="Œuvre complète">◆</span>'
-      : '';
-    const title = oeuvre.title
-      ? '<div class="oeuvre-card__title">' + _escape(oeuvre.title) + seal + '</div>'
-      : '';
+    const son = opts.son || null;
+    const visuel = opts.visuel || null;
+    const title = opts.title || 'Œuvre';
 
-    return '' +
-      '<a class="oeuvre-card' + (complete ? ' is-complete' : '') + '" href="' + href + '">' +
-        '<div class="oeuvre-card__split">' +
-          _oeuvreSonHalf(oeuvre.son) +
-          '<span class="oeuvre-card__seam" aria-hidden="true"></span>' +
-          _oeuvreVisuelHalf(oeuvre.visuel) +
-        '</div>' +
-        title +
-      '</a>';
-  }
-
-  /**
-   * Rend une liste de cartes d'œuvres dans un container.
-   * @param {HTMLElement} container
-   * @param {Array} oeuvres
-   * @param {Object} [opts]
-   */
-  function renderOeuvreCardList(container, oeuvres, opts) {
-    if (!container) return;
-    if (!Array.isArray(oeuvres) || oeuvres.length === 0) {
-      container.innerHTML = '<div class="banner-card-empty" style="padding:24px;text-align:center;font-size:13px;color:rgba(255,255,255,.35)">Aucune œuvre</div>';
-      return;
+    // Cover centrée : aperçu de la face visuelle, sinon bloc coloré (couleur
+    // de la face son si dispo, sinon violet du thème).
+    const coverUrl = visuel && visuel.previewKey ? _imgUrl(visuel.previewKey) : '';
+    let coverHtml;
+    if (coverUrl) {
+      coverHtml = `<img class="oeuvre-card__cover-img" src="${_escape(coverUrl)}" alt="${_escape(title)}" loading="lazy"/>`;
+    } else {
+      const bg = son && son.color ? _escape(son.color) : '#7c5cff';
+      coverHtml = `<div class="oeuvre-card__cover-ph" style="background:${bg}">◆</div>`;
     }
-    container.innerHTML = oeuvres.map(o => renderOeuvreCard(o, opts)).join('');
+
+    // Chips d'identité : face SON (🎵) + face VISUEL (🎨), plateforme IA.
+    const chips = [];
+    if (son) {
+      chips.push(`<span class="oeuvre-card__chip oeuvre-card__chip--son">🎵 IA · ${_escape(_platformLabel(son.platform))}</span>`);
+    }
+    if (visuel) {
+      chips.push(`<span class="oeuvre-card__chip oeuvre-card__chip--visuel">🎨 IA · ${_escape(_platformLabel(visuel.platform))}</span>`);
+    }
+    const chipsHtml = chips.length
+      ? `<div class="oeuvre-card__chips">${chips.join('')}</div>`
+      : '';
+
+    return `<div class="oeuvre-card">
+      <div class="oeuvre-card__cover">${coverHtml}</div>
+      <h1 class="oeuvre-card__title">${_escape(title)}</h1>
+      ${chipsHtml}
+    </div>`;
   }
 
   // Exposé global pour utilisation inline dans les pages
   window.renderArtistBanner = renderArtistBanner;
   window.renderArtistBannerList = renderArtistBannerList;
   window.renderOeuvreCard = renderOeuvreCard;
-  window.renderOeuvreCardList = renderOeuvreCardList;
 })();
