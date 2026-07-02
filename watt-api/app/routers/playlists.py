@@ -175,6 +175,7 @@ async def get_playlist_endpoint(
         seed_prompt=playlist.seed_prompt if seed_visible else None,
         adn_for_sale=playlist.adn_for_sale,
         adn_price=playlist.adn_price,
+        dna_description=playlist.dna_description,
         created_at=playlist.created_at,
         tracks=await _tracks_with_prompt_prices(db, tracks),
     )
@@ -324,7 +325,17 @@ async def list_public_playlists_by_slug(
     items = await svc.list_user_playlists(
         db, target.id, visibility="public"
     )
-    return await _playlist_reads_with_counts(db, items)
+    reads = await _playlist_reads_with_counts(db, items)
+    # ⚠️ Fuite corrigée (audit chantier C, 02/07) : PlaylistRead embarque
+    # seed_prompt tel quel — sur cette route PUBLIQUE, le génome d'un ADN
+    # EN VENTE était donc lisible sans achat (et le front le collait même
+    # dans le DOM du badge). Même règle que get_public_playlist_with_tracks :
+    # seed exposé seulement si l'ADN n'est PAS en vente. Le teaser public,
+    # c'est dna_description — jamais le génome.
+    for pl, pr in zip(items, reads):
+        if pl.adn_for_sale:
+            pr.seed_prompt = None
+    return reads
 
 
 # ─── Public-facing : /watt/playlists/{id} — quick-play ────────────────────
@@ -360,6 +371,7 @@ async def get_public_playlist_with_tracks(
         seed_prompt=playlist.seed_prompt if seed_visible else None,
         adn_for_sale=playlist.adn_for_sale,
         adn_price=playlist.adn_price,
+        dna_description=playlist.dna_description,
         created_at=playlist.created_at,
         tracks=await _tracks_with_prompt_prices(db, tracks),
     )

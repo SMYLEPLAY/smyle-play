@@ -37,6 +37,10 @@ class PlaylistCreate(BaseModel):
     seed_prompt: str | None = None
     adn_for_sale: bool = False
     adn_price: int | None = Field(default=None, ge=1, le=100_000)
+    # Teaser PUBLIC de l'ADN (chantier C parité album) — visible avant achat,
+    # par opposition au génome (seed_prompt) qui reste gaté. Miroir STRICT de
+    # Album.dna_description (schemas/album.py, max_length=2000).
+    dna_description: str | None = Field(default=None, max_length=2000)
 
 
 class PlaylistUpdate(BaseModel):
@@ -51,6 +55,7 @@ class PlaylistUpdate(BaseModel):
     seed_prompt: str | None = None
     adn_for_sale: bool | None = None
     adn_price: int | None = Field(default=None, ge=1, le=100_000)
+    dna_description: str | None = Field(default=None, max_length=2000)
 
 
 class PlaylistRead(BaseModel):
@@ -66,6 +71,7 @@ class PlaylistRead(BaseModel):
     cover_video_url: str | None
     adn_for_sale: bool
     adn_price: int | None
+    dna_description: str | None = None
     created_at: datetime
     # Fix QA C3 ② (2026-06-12) — nb de tracks SANS charger les tracks
     # (la projection reste compacte). Rempli par les routeurs liste via
@@ -87,6 +93,7 @@ class PlaylistWithTracks(BaseModel):
     seed_prompt: str | None
     adn_for_sale: bool
     adn_price: int | None
+    dna_description: str | None = None
     created_at: datetime
     tracks: list[TrackRead] = Field(default_factory=list)
 
