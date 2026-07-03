@@ -155,9 +155,9 @@
       '.mp-oeuvres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}' +
       '.mp-oeuvre-card{cursor:pointer;border:1px solid rgba(255,255,255,.09);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.025);transition:border-color .15s,transform .15s}' +
       '.mp-oeuvre-card:hover{border-color:rgba(124,58,237,.6);transform:translateY(-2px)}' +
-      '.mp-oeuvre-card-covers{position:relative;display:flex;aspect-ratio:2/1}' +
-      '.mp-oeuvre-card-cover{flex:1;position:relative;overflow:hidden;background:rgba(124,58,237,.10);display:flex;align-items:center;justify-content:center}' +
-      '.mp-oeuvre-card-cover img{width:100%;height:100%;object-fit:cover;display:block}' +
+      '.mp-oeuvre-card-covers{position:relative;display:flex;aspect-ratio:1/1}' +
+      '.mp-oeuvre-card-cover{flex:1;position:relative;overflow:hidden;background:#0e0b16;display:flex;align-items:center;justify-content:center}' +
+      '.mp-oeuvre-card-cover img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block}' +
       '.mp-oeuvre-card-cover-fallback{font-size:2rem;opacity:.5}' +
       '.mp-oeuvre-card-body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:6px}' +
       '.mp-oeuvre-card-title{font-weight:700;color:#f3f0ff;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
@@ -1768,18 +1768,16 @@
     el.innerHTML = oeuvres.map(o => {
       const son = o.sound || {};
       const img = o.image || {};
-      const sonCover = son.coverUrl
-        ? '<img src="' + _esc(son.coverUrl) + '" alt="" loading="lazy">'
+      // Une seule cover, entière (jamais rognée) : cover du son en priorité,
+      // sinon l'aperçu de l'image partenaire, sinon le fallback icône.
+      const coverUrl = son.coverUrl || _imgPreviewUrl(img.previewKey);
+      const cover = coverUrl
+        ? '<img src="' + _esc(coverUrl) + '" alt="" loading="lazy">'
         : '<div class="mp-oeuvre-card-cover-fallback" aria-hidden="true">🎵</div>';
-      const imgUrl = _imgPreviewUrl(img.previewKey);
-      const imgCover = imgUrl
-        ? '<img src="' + _esc(imgUrl) + '" alt="" loading="lazy">'
-        : '<div class="mp-oeuvre-card-cover-fallback" aria-hidden="true">🖼️</div>';
       return (
         '<article class="mp-oeuvre-card" data-son-id="' + _esc(son.id || '') + '" tabindex="0" role="button" title="Voir l\'œuvre">' +
           '<div class="mp-oeuvre-card-covers">' +
-            '<div class="mp-oeuvre-card-cover">' + sonCover + '</div>' +
-            '<div class="mp-oeuvre-card-cover">' + imgCover + '</div>' +
+            '<div class="mp-oeuvre-card-cover">' + cover + '</div>' +
           '</div>' +
           '<div class="mp-oeuvre-card-body">' +
             '<div class="mp-oeuvre-card-title">' + _esc(son.title || 'Œuvre complète') + '</div>' +
@@ -1800,6 +1798,10 @@
         const card = e.target.closest('.mp-oeuvre-card');
         if (!card) return;
         const sonId = card.dataset.sonId;
+        // NB : la page binaire /oeuvre/<slug> s'appuie sur `oeuvre_slug`
+        // (Playlist+Album). Le payload /oeuvres (Prompt son + image liée) ne
+        // porte AUCUN slug d'œuvre → pas de navigation possible ici. On garde
+        // donc le comportement drawer existant (fiche son / fiche image).
         // Clic → fiche du SON (drawer track existant). On retrouve le track
         // par son promptId (chaque track-recent porte promptId du son lié).
         const track = _state.tracks.find(t => String(t.promptId) === String(sonId));
