@@ -211,7 +211,14 @@ async def unlock_adn(
     """
     Achète un ADN. Pas de perk applicable. Une fois acheté, débloque le
     perk -30% sur tous les futurs prompts de cet artiste.
+
+    OFFRES-ADN (2026-07-03, décision Tom : sommet inclus) : achat direct
+    DÉSACTIVÉ — les ADN se vendent uniquement via POST /adn-offers. 410 Gone.
     """
+    raise HTTPException(
+        status.HTTP_410_GONE,
+        detail="L'achat direct d'ADN est fermé — fais une offre via /adn-offers",
+    )
     try:
         result = await unlock_adn_atomic(
             db=db,
@@ -401,7 +408,14 @@ async def unlock_playlist_adn(
     """
     Achète l'ADN d'une playlist publique avec des Smyles.
     Donne ensuite droit au perk -20% sur les ADN Track de cette playlist.
+
+    OFFRES-ADN (2026-07-03) : achat direct DÉSACTIVÉ — les ADN se vendent
+    uniquement sur proposition via POST /adn-offers. 410 Gone.
     """
+    raise HTTPException(
+        status.HTTP_410_GONE,
+        detail="L'achat direct d'ADN est fermé — fais une offre via /adn-offers",
+    )
     try:
         result = await unlock_playlist_adn_atomic(
             db=db,
@@ -462,7 +476,14 @@ async def unlock_visual_adn(
     de /unlocks/adns. Une fois acheté, débloque le perk -30% sur toutes les
     IMAGES de cet artiste, et révèle le génome (description / palette) en
     bibliothèque via /me/library/visual-adns.
+
+    OFFRES-ADN (2026-07-03) : achat direct DÉSACTIVÉ — les ADN se vendent
+    uniquement sur proposition via POST /adn-offers. 410 Gone.
     """
+    raise HTTPException(
+        status.HTTP_410_GONE,
+        detail="L'achat direct d'ADN est fermé — fais une offre via /adn-offers",
+    )
     from app.services.visual_adn import unlock_visual_adn_atomic
 
     try:
@@ -556,7 +577,14 @@ async def unlock_album_adn(
     Achète l'ADN d'un album d'images public (génome de style) avec des Smyles.
     Calque STRICT de /unlocks/playlist-adn. Donne accès au génome complet
     (seed_prompt + palette) via /me/library/album-adns.
+
+    OFFRES-ADN (2026-07-03) : achat direct DÉSACTIVÉ — les ADN se vendent
+    uniquement sur proposition via POST /adn-offers. 410 Gone.
     """
+    raise HTTPException(
+        status.HTTP_410_GONE,
+        detail="L'achat direct d'ADN est fermé — fais une offre via /adn-offers",
+    )
     try:
         result = await unlock_album_adn_atomic(
             db=db,

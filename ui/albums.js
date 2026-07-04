@@ -539,20 +539,18 @@
 
     if (!forSale) return '';  // pas en vente, pas possédé → rien
 
-    // En vente, non possédé : teaser + achat. JAMAIS de génome ici.
+    // En vente, non possédé : teaser SEUL. JAMAIS de génome ici.
+    // OFFRES-ADN (2026-07-03) : plus d'achat direct (backend 410) — vente
+    // sur proposition uniquement. Bouton « Faire une offre » = étape 3.
     const style = album.adnStyle ? '<span class="al-adn-chip">' + _esc(_styleLabel(album.adnStyle)) + '</span>' : '';
-    const price = album.adnPrice;
     return '' +
       '<section class="al-adn-block al-adn-sale">' +
         '<div class="al-adn-hdr"><span class="al-adn-ico">🎨</span>' +
           '<h4 class="al-adn-title">ADN de l\'album ' + style + '</h4></div>' +
         '<p class="al-adn-honest">' + _esc(ADN_HONEST) + '</p>' +
         (album.dnaDescription ? '<p class="al-adn-desc">' + _esc(album.dnaDescription) + '</p>' : '') +
-        '<div class="al-adn-buy-row">' +
-          '<button type="button" class="pl-btn pl-btn-primary al-adn-buy-btn" id="al-adn-buy" data-album-id="' + _esc(album.id) + '">' +
-            '🎨 Débloquer l\'ADN · ' + _esc(price) + ' Smyles</button>' +
-        '</div>' +
-        '<div class="al-adn-err" id="al-adn-buy-err" style="display:none"></div>' +
+        '<div class="al-adn-offer-info">🤝 Cet ADN se vend sur proposition — ' +
+          'le bouton « Faire une offre » arrive bientôt.</div>' +
       '</section>';
   }
 
@@ -810,6 +808,7 @@
       .al-adn-err { margin-top:10px; font-size:12px; color:#ff6b6b; }
       .al-adn-buy-row { margin-top:6px; }
       .al-adn-buy-btn { width:100%; }
+      .al-adn-offer-info { margin-top:8px; font-size:12.5px; color:#a09cb8; line-height:1.5; text-align:center; padding:10px 8px; border:1px dashed rgba(204,136,255,.3); border-radius:10px; }
       .al-adn-owned-badge { font-size:11px; font-weight:700; color:#6fffb0; margin-left:auto; }
       .al-adn-line { font-size:12px; color:#cdc7e2; margin:0 0 8px; }
       .al-adn-genome { margin-top:10px; border:1px solid rgba(204,136,255,.25); border-radius:10px; overflow:hidden; }

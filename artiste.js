@@ -1021,6 +1021,13 @@ function closeBoutiqueDrawer() {
 }
 
 async function boutiqueDrawerUnlock(type, id) {
+  // OFFRES-ADN (2026-07-03) : les ADN (playlist + profil artiste) ne
+  // s'achètent plus en direct (backend 410) — vente sur proposition
+  // uniquement (étape 3 : faire une offre).
+  if (type === 'playlist' || type === 'adn-artist') {
+    toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.');
+    return;
+  }
   const btn = $('boutique-drawer-unlock-btn');
   if (btn) btn.disabled = true;
   const ENDPOINTS = {
@@ -2228,6 +2235,11 @@ function renderTracks(artist) {
 async function unlockDnaFromProfile() {
   const artist = state.artist;
   if (!artist || !artist.adn || artist.isSelf) return;
+  // OFFRES-ADN (2026-07-03, sommet inclus) : l'ADN profil ne s'achète plus
+  // en direct (backend 410) — vente sur proposition uniquement (étape 3).
+  toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.');
+  return;
+  // eslint-disable-next-line no-unreachable
   const adn = artist.adn;
 
   // C2/C3 — chemin canonique : drawer d'achat unifié (récap + confirmation +
@@ -2276,6 +2288,11 @@ async function unlockDnaFromProfile() {
 async function unlockVisualDnaFromProfile() {
   const artist = state.artist;
   if (!artist || !artist.visualAdn || artist.isSelf) return;
+  // OFFRES-ADN (2026-07-03) : l'ADN visuel ne s'achète plus en direct
+  // (backend 410) — vente sur proposition uniquement (étape 3 : faire une offre).
+  toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.');
+  return;
+  // eslint-disable-next-line no-unreachable
   const adn = artist.visualAdn;
 
   if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {

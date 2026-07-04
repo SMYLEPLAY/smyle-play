@@ -126,6 +126,9 @@ class Album(Base):
     )
     # Prix en Smyles (NULL = pas de prix fixé → non vendable même si flag on).
     adn_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # OFFRES-ADN : plancher CACHÉ fixé par l'artiste — une offre en dessous
+    # est rejetée automatiquement. Jamais exposé publiquement (migration 0080).
+    adn_reserve_credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # ─── Binding « Œuvre » (chantier C3, migration 0076) ──────────────────
     # Slug partagé avec la playlist sœur (cf. Playlist.oeuvre_slug). Une Œuvre

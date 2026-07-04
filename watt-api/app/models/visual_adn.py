@@ -63,6 +63,9 @@ class VisualAdn(Base):
     usage_guide: Mapped[str | None] = mapped_column(Text, nullable=True)
     example_outputs: Mapped[str | None] = mapped_column(Text, nullable=True)
     price_credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # OFFRES-ADN : plancher CACHÉ fixé par l'artiste — une offre en dessous
+    # est rejetée automatiquement. Jamais exposé publiquement (migration 0080).
+    adn_reserve_credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # IA utilisée pour générer le contenu (badge card publique). Nullable.
     ai_reference: Mapped[str | None] = mapped_column(
         String(30), nullable=True

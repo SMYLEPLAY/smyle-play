@@ -93,6 +93,9 @@ class Playlist(Base):
         Boolean, nullable=False, server_default=text("false")
     )
     adn_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # OFFRES-ADN : plancher CACHÉ fixé par l'artiste — une offre en dessous
+    # est rejetée automatiquement. Jamais exposé publiquement (migration 0080).
+    adn_reserve_credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Forward-compat V2 — non exposé à l'API V1 (feature flag côté routeur).
     dna_description: Mapped[str | None] = mapped_column(Text, nullable=True)
