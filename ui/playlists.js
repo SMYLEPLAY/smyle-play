@@ -951,10 +951,16 @@
     const token = typeof getAuthToken === 'function' ? getAuthToken() : null;
     const contentEl = document.getElementById('adn-buy-content');
 
+    // OFFRES-ADN (2026-07-03) : plus d'achat direct — les ADN se vendent
+    // uniquement sur proposition (le backend renvoie 410 sur l'unlock direct).
+    // Le bouton « Faire une offre » arrive à l'étape 3 du chantier.
+    const OFFER_INFO_HTML =
+      '<div class="adn-buy-offer-info" style="text-align:center;color:#a09cb8;' +
+      'padding:16px 8px;font-size:13px;line-height:1.5">🤝 Cet ADN se vend ' +
+      'sur proposition — le bouton « Faire une offre » arrive bientôt.</div>';
+
     if (!token) {
-      contentEl.innerHTML =
-        '<div class="adn-buy-price-row"><div class="adn-buy-price">' + adnPrice + '<span>Smyles</span></div></div>' +
-        '<button class="adn-buy-btn" id="adn-buy-confirm-btn" disabled>Connecte-toi pour acheter</button>';
+      contentEl.innerHTML = OFFER_INFO_HTML;
       return;
     }
 
@@ -968,35 +974,8 @@
       }
     } catch (_) { /* pas connecté ou autre — on continue */ }
 
-    // Non possédé : afficher prix + bouton
-    contentEl.innerHTML =
-      '<div class="adn-buy-price-row">' +
-        '<div class="adn-buy-price">' + adnPrice + '<span>Smyles</span></div>' +
-      '</div>' +
-      '<button class="adn-buy-btn" id="adn-buy-confirm-btn">🧬 Acheter l\'ADN</button>' +
-      '<div class="adn-buy-error" id="adn-buy-err" style="display:none"></div>';
-
-    const confirmBtn = document.getElementById('adn-buy-confirm-btn');
-    if (confirmBtn) {
-      confirmBtn.addEventListener('click', async function() {
-        confirmBtn.disabled     = true;
-        confirmBtn.textContent  = 'Traitement…';
-        const errEl = document.getElementById('adn-buy-err');
-
-        try {
-          await _req('/unlocks/playlist-adn/' + playlistId, { method: 'POST' });
-          contentEl.innerHTML = '<div class="adn-buy-owned">✅ ADN acheté ! Tu bénéficies maintenant de -20% sur les ADN Track de cette playlist.</div>';
-          badgeEl.textContent = '✅ ADN';
-          badgeEl.classList.add('is-owned');
-          if (typeof showToast === 'function') showToast('ADN playlist débloqué 🧬');
-        } catch (err) {
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = '🧬 Acheter l\'ADN';
-          const msg = (err && err.message) ? err.message : 'Erreur lors de l\'achat';
-          if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
-        }
-      });
-    }
+    // Non possédé : vente sur proposition uniquement (plus de bouton d'achat).
+    contentEl.innerHTML = OFFER_INFO_HTML;
   }
 
   // ── 6. UTILS ──────────────────────────────────────────────────────────────

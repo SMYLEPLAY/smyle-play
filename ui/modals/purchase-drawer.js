@@ -141,11 +141,20 @@
 
   function _onEsc(e) { if (e.key === 'Escape') close(); }
 
+  // OFFRES-ADN (2026-07-03) : les ADN playlist / visuel ne s'achètent plus
+  // en direct (backend 410) — vente sur proposition uniquement. Le drawer
+  // refuse ces types ; « Faire une offre » = étape 3 du chantier.
+  var OFFER_ONLY_TYPES = { 'playlist': 1, 'visual-adn': 1, 'adn-artist': 1 };
+
   function open(opts) {
     opts = opts || {};
     var type  = ENDPOINTS[opts.type] ? opts.type : 'son';
     var id    = opts.id;
     if (!id) return;
+    if (OFFER_ONLY_TYPES[type]) {
+      _toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.', 'info');
+      return;
+    }
     if (document.getElementById('pd-overlay')) return;
     _injectCss();
 

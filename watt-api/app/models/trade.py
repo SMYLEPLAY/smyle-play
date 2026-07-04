@@ -8,6 +8,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
     ForeignKey,
     Integer,
+    String,
     Text,
     func,
 )
@@ -46,6 +47,11 @@ class TradeOffer(Base):
                         name="ck_trade_offers_no_self"),
         CheckConstraint("credit_supplement >= 0",
                         name="ck_trade_offers_supplement_nonneg"),
+        # OFFRES-ADN : une offre cash sur ADN porte un montant >= 1.
+        CheckConstraint(
+            "amount_credits IS NULL OR amount_credits >= 1",
+            name="ck_trade_offers_amount_min",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -75,6 +81,20 @@ class TradeOffer(Base):
         ForeignKey("prompts.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # ── OFFRES-ADN (chantier 2026-07-03) ──────────────────────────────────
+    # Offre CASH sur un ADN cible (pas de troc prompt-contre-prompt).
+    # target_type ∈ {playlist_adn, album_adn, visual_adn} — String volontaire
+    # (pas d'enum DB) pour pouvoir ajouter un type sans migration.
+    # sender = ACHETEUR, receiver = VENDEUR (créateur de l'ADN).
+    target_type: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, index=True
+    )
+    target_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
+    # Montant proposé en Smyles (NULL pour les trades prompt classiques)
+    amount_credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # Crédits supplémentaires offerts par le sender (asymétrie de valeur)
     credit_supplement: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"

@@ -57,6 +57,9 @@ class Adn(Base):
     usage_guide: Mapped[str | None] = mapped_column(Text, nullable=True)
     example_outputs: Mapped[str | None] = mapped_column(Text, nullable=True)
     price_credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # OFFRES-ADN : plancher CACHÉ fixé par l'artiste — une offre en dessous
+    # est rejetée automatiquement. Jamais exposé publiquement (migration 0080).
+    adn_reserve_credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # 2026-05-13 — IA utilisée pour générer le contenu ADN (display badge
     # côté card publique). Nullable car ADN legacy ne savent pas.
     ai_reference: Mapped[str | None] = mapped_column(
