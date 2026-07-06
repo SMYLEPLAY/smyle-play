@@ -444,6 +444,11 @@
           '<label class="al-adn-lbl" for="al-adn-price">Prix en Smyles (1 – 100 000)</label>' +
           '<input type="number" id="al-adn-price" class="dash-input" min="1" max="100000" placeholder="ex : 50" value="' + _esc(price) + '" />' +
 
+          // OFFRES-ADN étape 5 : plancher CACHÉ (write-only → toujours vide).
+          '<label class="al-adn-lbl" for="al-adn-reserve">Plancher caché des offres <span class="al-adn-opt">(optionnel)</span></label>' +
+          '<input type="number" id="al-adn-reserve" class="dash-input" min="0" max="100000" placeholder="Minimum accepté — jamais montré aux acheteurs" />' +
+          '<p class="al-adn-hint">Les offres en dessous sont refusées automatiquement. Vide = inchangé · 0 = pas de plancher.</p>' +
+
           '<label class="al-adn-lbl" for="al-adn-style">Style dominant</label>' +
           '<select id="al-adn-style" class="dash-input">' + _styleOptions(style) + '</select>' +
 
@@ -497,6 +502,12 @@
       patch.adn_palette     = palette || null;
       patch.dna_description = desc || null;
       if (seed) patch.seed_prompt = seed;
+      // Plancher caché (offres) : n'envoie QUE si saisi.
+      const reserveRaw = (content.querySelector('#al-adn-reserve')?.value || '').trim();
+      if (reserveRaw !== '') {
+        const reserveVal = parseInt(reserveRaw, 10);
+        if (!isNaN(reserveVal) && reserveVal >= 0) patch.adn_reserve_credits = reserveVal;
+      }
 
       saveBtn.disabled = true;
       saveBtn.textContent = 'Sauvegarde…';
@@ -541,7 +552,7 @@
 
     // En vente, non possédé : teaser SEUL. JAMAIS de génome ici.
     // OFFRES-ADN (2026-07-03) : plus d'achat direct (backend 410) — vente
-    // sur proposition uniquement. Bouton « Faire une offre » = étape 3.
+    // sur proposition uniquement → bouton « Faire une offre » (étape 3).
     const style = album.adnStyle ? '<span class="al-adn-chip">' + _esc(_styleLabel(album.adnStyle)) + '</span>' : '';
     return '' +
       '<section class="al-adn-block al-adn-sale">' +
@@ -550,11 +561,29 @@
         '<p class="al-adn-honest">' + _esc(ADN_HONEST) + '</p>' +
         (album.dnaDescription ? '<p class="al-adn-desc">' + _esc(album.dnaDescription) + '</p>' : '') +
         '<div class="al-adn-offer-info">🤝 Cet ADN se vend sur proposition — ' +
-          'le bouton « Faire une offre » arrive bientôt.</div>' +
+          'offre libre, l\'artiste accepte ou refuse.</div>' +
+        '<div class="al-adn-buy-row">' +
+          '<button type="button" class="pl-btn pl-btn-primary al-adn-buy-btn" ' +
+            'id="al-adn-offer" data-album-id="' + _esc(album.id) + '">' +
+            '🤝 Faire une offre</button>' +
+        '</div>' +
       '</section>';
   }
 
   function _wireAdnViewer(content, album) {
+    // OFFRES-ADN : bouton « Faire une offre » (remplace l'achat direct).
+    const offerBtn = content.querySelector('#al-adn-offer');
+    if (offerBtn) {
+      offerBtn.addEventListener('click', () => {
+        if (window.AdnOfferModal) {
+          window.AdnOfferModal.open({
+            targetType: 'album_adn',
+            targetId:   album.id,
+            title:      album.title || 'ADN d\'album',
+          });
+        }
+      });
+    }
     const btn = content.querySelector('#al-adn-buy');
     if (!btn) return;
     btn.addEventListener('click', async () => {

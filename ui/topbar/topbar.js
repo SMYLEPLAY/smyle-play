@@ -206,7 +206,19 @@
       case 'like':    return `${actor} a liké votre son`;
       case 'follow':  return `${actor} vous suit`;
       case 'message': return `${actor} vous a envoyé un message`;
-      case 'trade':   return `${actor} vous propose un échange d'ADN`;
+      case 'trade': {
+        // OFFRES-ADN : une notif trade peut être une offre CASH sur un ADN
+        // (target_type='adn_offer') — libellés dédiés selon l'action.
+        const act = n.metadata_json && n.metadata_json.action;
+        const amt = (n.metadata_json && n.metadata_json.amount) || '';
+        if (act === 'adn_offer_received')
+          return `${actor} te propose <strong>${amt} Smyles</strong> pour ton ADN`;
+        if (act === 'adn_offer_accepted')
+          return `${actor} a accepté ton offre${amt ? ' · <strong>' + amt + ' Smyles</strong>' : ''} — ADN livré 🧬`;
+        if (act === 'adn_offer_rejected')
+          return `${actor} a refusé ton offre sur son ADN`;
+        return `${actor} vous propose un échange d'ADN`;
+      }
       case 'system':  return _esc((n.metadata_json && n.metadata_json.text) || 'Notification système');
       default:        return `Notification de ${actor}`;
     }
@@ -475,6 +487,13 @@
         extraClick = `if(window.SmyleMessaging){event.preventDefault();window.SmyleMessaging.open('${_esc(n.actor_id)}');}`;
       } else if (n.type === 'follow' && n.actor_id) {
         href = `/@${_esc((n.actor_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-'))}`;
+      } else if (n.type === 'trade' && n.target_type === 'adn_offer') {
+        // OFFRES-ADN : ouvre l'écran d'offre cash (accepter / refuser /
+        // annuler selon le rôle), sans quitter la page.
+        href = '/dashboard#sec-trades';
+        if (n.target_id) {
+          extraClick = `if(window.SmyleTopbar){event.preventDefault();window.SmyleTopbar.openAdnOfferView('${_esc(n.target_id)}');}`;
+        }
       } else if (n.type === 'trade') {
         // Ouvre l'écran de proposition directement (offre = n.target_id),
         // sans quitter la page. Fallback : section échanges du dashboard.
@@ -881,6 +900,83 @@
     document.body.appendChild(el);
   }
 
+  // ── OFFRES-ADN — Écran « Offre sur ADN » (calque de _openTradeView) ──────
+  // Offre CASH sur un ADN : le vendeur accepte/refuse, l'acheteur annule.
+  // Ouvert via SmyleTopbar.openAdnOfferView(offerId) (clic notification).
+  const _ADN_TYPE_LABELS = {
+    playlist_adn: '🎚 ADN de playlist',
+    album_adn:    '🎨 ADN d\'album',
+    visual_adn:   '🎨 ADN visuel',
+    profile_adn:  '🧬 ADN d\'artiste',
+  };
+
+  async function _openAdnOfferView(offerId) {
+    if (!offerId) return;
+    let offers = [];
+    try { offers = (await apiFetch('/adn-offers/me')) || []; } catch (_) {}
+    const o = offers.find(x => String(x.id) === String(offerId));
+    if (!o) { alert("Cette offre n'est plus disponible."); return; }
+
+    const myId = (_state.user && _state.user.id) ? String(_state.user.id) : null;
+    const isSeller = myId && String(o.seller_id) === myId;
+    const isBuyer  = myId && String(o.buyer_id) === myId;
+    const pending  = o.status === 'pending';
+    const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+    const typeLbl = _ADN_TYPE_LABELS[o.target_type] || 'ADN';
+
+    let actions;
+    if (pending && isSeller) {
+      actions = `
+        <button onclick="SmyleTopbar._adnOfferAct('${o.id}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">✅ Accepter · ${o.amount_credits} Smyles</button>
+        <button onclick="SmyleTopbar._adnOfferAct('${o.id}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">❌ Refuser</button>`;
+    } else if (pending && isBuyer) {
+      actions = `<button onclick="SmyleTopbar._adnOfferAct('${o.id}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler mon offre</button>`;
+    } else {
+      const lbl = { accepted: '✅ Offre acceptée — ADN livré', rejected: '❌ Refusée', cancelled: 'Annulée', expired: '⏳ Expirée' }[o.status] || o.status;
+      actions = `<div style="flex:1;text-align:center;opacity:.7;padding:8px">${lbl}</div>`;
+    }
+
+    const card = 'background:#0e0e14;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;margin-bottom:10px';
+    const prev = document.getElementById('smyle-adnofferview'); if (prev) prev.remove();
+    const el = document.createElement('div');
+    el.id = 'smyle-adnofferview';
+    el.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px';
+    el.innerHTML = `
+      <div style="background:#15151c;border:1px solid rgba(255,255,255,.12);border-radius:14px;max-width:420px;width:100%;padding:18px;color:#eee;font-size:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <strong>🤝 Offre sur ADN</strong>
+          <button onclick="document.getElementById('smyle-adnofferview').remove()" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <div style="opacity:.85;margin-bottom:10px">${isSeller
+          ? `${esc(o.buyer_name || 'Un artiste')} te propose un montant pour ton ADN`
+          : 'Ton offre'}</div>
+        <div style="${card}">
+          <div style="opacity:.6;font-size:12px">${typeLbl}</div>
+          <strong>${esc(o.target_title) || '—'}</strong>
+          <div style="margin-top:8px;font-size:18px;font-weight:700;color:#cc88ff">${o.amount_credits} Smyles</div>
+        </div>
+        ${o.message ? `<div style="opacity:.7;font-style:italic;margin-bottom:10px">« ${esc(o.message)} »</div>` : ''}
+        ${pending && isSeller ? `<div style="opacity:.55;font-size:12px;margin-bottom:12px">À l'acceptation : les Smyles sont transférés (moins la commission plateforme) et l'ADN est livré à l'acheteur.</div>` : ''}
+        <div style="display:flex;gap:8px">${actions}</div>
+      </div>`;
+    el.addEventListener('click', (ev) => { if (ev.target === el) el.remove(); });
+    document.body.appendChild(el);
+  }
+
+  async function _adnOfferAct(offerId, action) {
+    try {
+      await apiFetch(`/adn-offers/${offerId}/${action}`, { method: 'PATCH' });
+      const el = document.getElementById('smyle-adnofferview'); if (el) el.remove();
+      alert({ accept: '✅ Offre acceptée — Smyles reçus, ADN livré !',
+              reject: 'Offre refusée.',
+              cancel: 'Offre annulée.' }[action] || 'Fait.');
+      try { _render(); } catch (_) {}
+    } catch (err) {
+      const d = (err && err.body && err.body.detail) || err.message || 'Erreur';
+      alert('Erreur : ' + (typeof d === 'string' ? d : JSON.stringify(d)));
+    }
+  }
+
   async function _tradeAct(offerId, action) {
     try {
       await apiFetch(`/trades/offers/${offerId}/${action}`, { method: 'PATCH' });
@@ -895,8 +991,10 @@
 
   // API publique minimale (appelée depuis les onclick inlines du template).
   window.SmyleTopbar = {
-    openTradeView: _openTradeView,
-    _tradeAct:     _tradeAct,
+    openTradeView:    _openTradeView,
+    openAdnOfferView: _openAdnOfferView,
+    _tradeAct:        _tradeAct,
+    _adnOfferAct:     _adnOfferAct,
     refresh:     _render,
     clickMix:    _clickMix,
     clickLogin:  _clickLogin,

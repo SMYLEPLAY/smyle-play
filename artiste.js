@@ -1023,9 +1023,17 @@ function closeBoutiqueDrawer() {
 async function boutiqueDrawerUnlock(type, id) {
   // OFFRES-ADN (2026-07-03) : les ADN (playlist + profil artiste) ne
   // s'achètent plus en direct (backend 410) — vente sur proposition
-  // uniquement (étape 3 : faire une offre).
+  // uniquement → modal « Faire une offre » (étape 3).
   if (type === 'playlist' || type === 'adn-artist') {
-    toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.');
+    if (window.AdnOfferModal) {
+      window.AdnOfferModal.open({
+        targetType: type === 'playlist' ? 'playlist_adn' : 'profile_adn',
+        targetId:   id,
+        artistName: (state.artist && state.artist.artistName) || null,
+      });
+    } else {
+      toast('🤝 Cet ADN se vend sur proposition.');
+    }
     return;
   }
   const btn = $('boutique-drawer-unlock-btn');
@@ -2237,7 +2245,16 @@ async function unlockDnaFromProfile() {
   if (!artist || !artist.adn || artist.isSelf) return;
   // OFFRES-ADN (2026-07-03, sommet inclus) : l'ADN profil ne s'achète plus
   // en direct (backend 410) — vente sur proposition uniquement (étape 3).
-  toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.');
+  if (window.AdnOfferModal) {
+    window.AdnOfferModal.open({
+      targetType: 'profile_adn',
+      targetId:   artist.adn.id,
+      title:      'ADN · ' + (artist.artistName || 'Artiste'),
+      artistName: artist.artistName || null,
+    });
+  } else {
+    toast('🤝 Cet ADN se vend sur proposition.');
+  }
   return;
   // eslint-disable-next-line no-unreachable
   const adn = artist.adn;
@@ -2289,8 +2306,17 @@ async function unlockVisualDnaFromProfile() {
   const artist = state.artist;
   if (!artist || !artist.visualAdn || artist.isSelf) return;
   // OFFRES-ADN (2026-07-03) : l'ADN visuel ne s'achète plus en direct
-  // (backend 410) — vente sur proposition uniquement (étape 3 : faire une offre).
-  toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.');
+  // (backend 410) — vente sur proposition uniquement → modal offre (étape 3).
+  if (window.AdnOfferModal) {
+    window.AdnOfferModal.open({
+      targetType: 'visual_adn',
+      targetId:   artist.visualAdn.id,
+      title:      'ADN visuel · ' + (artist.artistName || 'Artiste'),
+      artistName: artist.artistName || null,
+    });
+  } else {
+    toast('🤝 Cet ADN se vend sur proposition.');
+  }
   return;
   // eslint-disable-next-line no-unreachable
   const adn = artist.visualAdn;

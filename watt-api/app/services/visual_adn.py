@@ -70,6 +70,7 @@ async def create_visual_adn(
     max_supply: int | None = None,
     style: str | None = None,
     palette: str | None = None,
+    adn_reserve_credits: int | None = None,
 ) -> VisualAdn:
     """Crée l'ADN visuel d'un artiste. 1 max par artiste."""
     existing = await db.execute(
@@ -88,6 +89,7 @@ async def create_visual_adn(
         max_supply=max_supply,
         style=style,
         palette=palette,
+        adn_reserve_credits=adn_reserve_credits,
         is_published=False,
         last_updated_by_artist_at=func.now(),
     )

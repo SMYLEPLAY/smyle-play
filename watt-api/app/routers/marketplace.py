@@ -132,6 +132,7 @@ async def create_my_adn(
             price_credits=payload.price_credits,
             ai_reference=payload.ai_reference,
             max_supply=payload.max_supply,
+            adn_reserve_credits=payload.adn_reserve_credits,
         )
         await db.commit()
         await db.refresh(adn)
@@ -250,6 +251,7 @@ async def create_my_visual_adn(
             max_supply=payload.max_supply,
             style=payload.style,
             palette=payload.palette,
+            adn_reserve_credits=payload.adn_reserve_credits,
         )
         await db.commit()
         await db.refresh(visual_adn)

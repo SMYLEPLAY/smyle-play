@@ -1350,6 +1350,12 @@
           <div class="dash-help" id="dashAdnPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
           <div class="dash-help">Min 30 crédits. Plus le prix est élevé, plus la rareté doit le justifier.</div>
 
+          <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
+          <label class="dash-label">Plancher caché des offres (optionnel)</label>
+          <input type="number" class="dash-input" id="dashAdnReserve"
+                 min="0" max="100000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
+          <div class="dash-help">Les ADN se vendent sur proposition : les offres sous ce montant sont refusées automatiquement. Vide = inchangé · 0 = pas de plancher.</div>
+
           <!-- 2026-05-13 — IA source du contenu ADN -->
           <label class="dash-label">IA utilisée (optionnel)</label>
           <select class="dash-input" id="dashAdnAiReference">
@@ -1547,6 +1553,12 @@
           <div class="dash-help" id="dashVisualAdnPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
           <div class="dash-help">Entre 30 et 500 crédits. Plus le prix est élevé, plus la rareté doit le justifier.</div>
 
+          <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
+          <label class="dash-label">Plancher caché des offres (optionnel)</label>
+          <input type="number" class="dash-input" id="dashVisualAdnReserve"
+                 min="0" max="100000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
+          <div class="dash-help">Les ADN se vendent sur proposition : les offres sous ce montant sont refusées automatiquement. Vide = inchangé · 0 = pas de plancher.</div>
+
           <label class="dash-label">IA utilisée (optionnel)</label>
           <select class="dash-input" id="dashVisualAdnAiReference">
             <option value="">— Aucune / non précisé —</option>
@@ -1644,6 +1656,11 @@
 
       <label class="dash-label" for="advPrice">Prix en Smyles (1 – 100 000)</label>
       <input type="number" class="dash-input" id="advPrice" min="1" max="100000" placeholder="ex : 50" />
+
+      <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
+      <label class="dash-label" for="advReserve">Plancher caché des offres (optionnel)</label>
+      <input type="number" class="dash-input" id="advReserve" min="0" max="100000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
+      <div class="dash-help">Les ADN se vendent sur proposition : les offres sous ce montant sont refusées automatiquement. Vide = inchangé · 0 = pas de plancher.</div>
 
       <label class="dash-label" for="advStyle">Style dominant</label>
       <select class="dash-input" id="advStyle">
@@ -2567,9 +2584,10 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
-<script src="/ui/modals/purchase-drawer.js?v=20260703offres"></script>
-<script src="/ui/playlists.js?v=20260703offres" defer></script>
-<script src="dashboard.js?v=20260617c4vadn"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20260703offres3"></script>
+<script src="/ui/modals/offer-modal.js?v=20260703offres3"></script>
+<script src="/ui/playlists.js?v=20260703offres3" defer></script>
+<script src="dashboard.js?v=20260703offres3"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260618c4ava" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
@@ -2921,6 +2939,12 @@
 
     var patch = { adn_for_sale: sale };
     patch.adn_price       = sale ? price : (price || null);
+    // OFFRES-ADN étape 5 : plancher caché — n'envoie que si saisi.
+    var reserveRaw = (($('advReserve') || {}).value || '').trim();
+    if (reserveRaw !== '') {
+      var rv = parseInt(reserveRaw, 10);
+      if (!isNaN(rv) && rv >= 0) patch.adn_reserve_credits = rv;
+    }
     patch.adn_style       = style || null;
     patch.adn_palette     = palette || null;
     patch.dna_description = desc || null;

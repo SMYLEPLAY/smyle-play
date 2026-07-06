@@ -51,6 +51,9 @@ class PlaylistUpdate(BaseModel):
     seed_prompt: str | None = None
     adn_for_sale: bool | None = None
     adn_price: int | None = Field(default=None, ge=1, le=100_000)
+    # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY — jamais
+    # exposé dans PlaylistRead (servi aussi en public). 0 = pas de plancher.
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
 
 
 class PlaylistRead(BaseModel):
