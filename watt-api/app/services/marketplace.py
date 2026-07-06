@@ -75,6 +75,7 @@ async def create_adn(
     price_credits: int,
     ai_reference: str | None = None,
     max_supply: int | None = None,
+    adn_reserve_credits: int | None = None,
 ) -> Adn:
     """
     Crée l'ADN d'un artiste. 1 max par artiste.
@@ -96,6 +97,7 @@ async def create_adn(
         example_outputs=example_outputs,
         price_credits=price_credits,
         ai_reference=ai_reference,
+        adn_reserve_credits=adn_reserve_credits,
         max_supply=max_supply,
         is_published=False,
         last_updated_by_artist_at=func.now(),

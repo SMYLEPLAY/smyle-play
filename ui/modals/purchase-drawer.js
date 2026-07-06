@@ -141,10 +141,14 @@
 
   function _onEsc(e) { if (e.key === 'Escape') close(); }
 
-  // OFFRES-ADN (2026-07-03) : les ADN playlist / visuel ne s'achètent plus
-  // en direct (backend 410) — vente sur proposition uniquement. Le drawer
-  // refuse ces types ; « Faire une offre » = étape 3 du chantier.
-  var OFFER_ONLY_TYPES = { 'playlist': 1, 'visual-adn': 1, 'adn-artist': 1 };
+  // OFFRES-ADN (2026-07-03) : les ADN ne s'achètent plus en direct
+  // (backend 410) — vente sur proposition uniquement. Le drawer redirige
+  // ces types vers le modal « Faire une offre » (étape 3).
+  var OFFER_ONLY_TYPES = {
+    'playlist':   'playlist_adn',
+    'visual-adn': 'visual_adn',
+    'adn-artist': 'profile_adn',
+  };
 
   function open(opts) {
     opts = opts || {};
@@ -152,7 +156,16 @@
     var id    = opts.id;
     if (!id) return;
     if (OFFER_ONLY_TYPES[type]) {
-      _toast('🤝 Cet ADN se vend sur proposition — « Faire une offre » arrive bientôt.', 'info');
+      if (window.AdnOfferModal) {
+        window.AdnOfferModal.open({
+          targetType: OFFER_ONLY_TYPES[type],
+          targetId:   id,
+          title:      opts.title || null,
+          artistName: opts.artistName || null,
+        });
+      } else {
+        _toast('🤝 Cet ADN se vend sur proposition — fais une offre depuis sa fiche.', 'info');
+      }
       return;
     }
     if (document.getElementById('pd-overlay')) return;

@@ -79,6 +79,8 @@ class AdnCreate(BaseModel):
         max_length=ADN_DESCRIPTION_MAX,
         description="Signature créative de l'artiste (200..5000 chars).",
     )
+    # OFFRES-ADN étape 5 : plancher CACHÉ posable dès la création. WRITE-ONLY.
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
     usage_guide: str | None = Field(
         default=None, max_length=ADN_USAGE_GUIDE_MAX
     )
@@ -139,6 +141,9 @@ class AdnUpdate(BaseModel):
         ge=ADN_MAX_SUPPLY_MIN,
         le=ADN_MAX_SUPPLY_MAX,
     )
+    # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY —
+    # jamais exposé en lecture. 0 = pas de plancher.
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
 
 
 class AdnRead(BaseModel):

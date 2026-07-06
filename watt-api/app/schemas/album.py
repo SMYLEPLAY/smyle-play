@@ -62,6 +62,9 @@ class AlbumUpdate(BaseModel):
     adn_palette: str | None = Field(default=None, max_length=255)
     adn_for_sale: bool | None = None
     adn_price: int | None = Field(default=None, ge=1)
+    # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY — jamais
+    # exposé dans AlbumRead (servi aussi en public). 0 = pas de plancher.
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
 
 
 class AlbumRead(BaseModel):

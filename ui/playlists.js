@@ -952,15 +952,30 @@
     const contentEl = document.getElementById('adn-buy-content');
 
     // OFFRES-ADN (2026-07-03) : plus d'achat direct — les ADN se vendent
-    // uniquement sur proposition (le backend renvoie 410 sur l'unlock direct).
-    // Le bouton « Faire une offre » arrive à l'étape 3 du chantier.
+    // uniquement sur proposition → bouton « Faire une offre » (étape 3).
     const OFFER_INFO_HTML =
       '<div class="adn-buy-offer-info" style="text-align:center;color:#a09cb8;' +
-      'padding:16px 8px;font-size:13px;line-height:1.5">🤝 Cet ADN se vend ' +
-      'sur proposition — le bouton « Faire une offre » arrive bientôt.</div>';
+      'padding:8px 8px 4px;font-size:12.5px;line-height:1.5">🤝 Cet ADN se vend ' +
+      'sur proposition — offre libre, l\'artiste accepte ou refuse.</div>' +
+      '<button class="adn-buy-btn" id="adn-offer-btn">🤝 Faire une offre</button>';
+
+    function wireOfferBtn() {
+      const btn = document.getElementById('adn-offer-btn');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        if (window.AdnOfferModal) {
+          window.AdnOfferModal.open({
+            targetType: 'playlist_adn',
+            targetId:   playlistId,
+            title:      adnTitle,
+          });
+        }
+      });
+    }
 
     if (!token) {
       contentEl.innerHTML = OFFER_INFO_HTML;
+      wireOfferBtn();  // le modal gère lui-même le cas non connecté
       return;
     }
 
@@ -974,8 +989,9 @@
       }
     } catch (_) { /* pas connecté ou autre — on continue */ }
 
-    // Non possédé : vente sur proposition uniquement (plus de bouton d'achat).
+    // Non possédé : vente sur proposition uniquement → faire une offre.
     contentEl.innerHTML = OFFER_INFO_HTML;
+    wireOfferBtn();
   }
 
   // ── 6. UTILS ──────────────────────────────────────────────────────────────
@@ -1027,6 +1043,11 @@
           // seed_prompt si adn_for_sale).
           '<label class="pl-edit-label" for="pl-edit-seed" style="margin-top:10px">Contenu de l\'ADN — la tranche d\'identité vendue</label>' +
           '<textarea id="pl-edit-seed" class="pl-edit-input" rows="4" placeholder="Prompt / recette d\'identité de cette playlist (ce que l\'acheteur reçoit)…">' + _esc(playlistData.seed_prompt || '') + '</textarea>' +
+          // OFFRES-ADN étape 5 : plancher CACHÉ. Write-only (jamais relu par
+          // l'API) → champ toujours vide, ne modifie que si rempli.
+          '<label class="pl-edit-label" for="pl-edit-reserve" style="margin-top:10px">Plancher caché des offres <span class="pl-optional">(optionnel)</span></label>' +
+          '<input type="number" id="pl-edit-reserve" class="pl-edit-input" min="0" max="100000" placeholder="Montant minimum accepté — jamais montré aux acheteurs" />' +
+          '<p class="pl-adn-hint" style="margin:4px 0 0;padding:0">Les offres en dessous sont refusées automatiquement. Laisser vide = ne pas changer · 0 = pas de plancher.</p>' +
         '</div>' +
         '<button class="pl-edit-save" id="pl-edit-save">Enregistrer</button>' +
         '<div class="pl-edit-err" id="pl-edit-err" style="display:none"></div>' +
@@ -1072,6 +1093,12 @@
         if (adnSale && adnPrice) patch.adn_price = adnPrice;
         if (!adnSale) patch.adn_price = null;
         if (adnSeed) patch.seed_prompt = adnSeed;
+        // Plancher caché : n'envoie QUE si l'artiste a saisi une valeur.
+        const reserveRaw = (document.getElementById('pl-edit-reserve')?.value || '').trim();
+        if (reserveRaw !== '') {
+          const reserveVal = parseInt(reserveRaw, 10);
+          if (!isNaN(reserveVal) && reserveVal >= 0) patch.adn_reserve_credits = reserveVal;
+        }
 
         try {
           await updatePlaylist(playlistData.id, patch);

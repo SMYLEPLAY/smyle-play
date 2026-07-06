@@ -4957,6 +4957,12 @@ async function saveAdn() {
   if (exampleOutputs) payload.example_outputs = exampleOutputs;
   if (aiRef)          payload.ai_reference    = aiRef;
   if (maxSupplyVal !== null) payload.max_supply = maxSupplyVal;
+  // OFFRES-ADN étape 5 : plancher caché (write-only) — n'envoie que si saisi.
+  const reserveRawM = ((document.getElementById('dashAdnReserve')||{}).value || '').trim();
+  if (reserveRawM !== '') {
+    const rv = parseInt(reserveRawM, 10);
+    if (!isNaN(rv) && rv >= 0) payload.adn_reserve_credits = rv;
+  }
 
   const isCreate = !_adnState.adn;
   const method   = isCreate ? 'POST' : 'PATCH';
@@ -5275,6 +5281,12 @@ async function saveVisualAdn() {
   if (style)          payload.style           = style;
   if (aiRef)          payload.ai_reference    = aiRef;
   if (maxSupplyVal !== null) payload.max_supply = maxSupplyVal;
+  // OFFRES-ADN étape 5 : plancher caché (write-only) — n'envoie que si saisi.
+  const reserveRawV = ((document.getElementById('dashVisualAdnReserve')||{}).value || '').trim();
+  if (reserveRawV !== '') {
+    const rv = parseInt(reserveRawV, 10);
+    if (!isNaN(rv) && rv >= 0) payload.adn_reserve_credits = rv;
+  }
 
   const isCreate = !_visualAdnState.adn;
   const method   = isCreate ? 'POST' : 'PATCH';

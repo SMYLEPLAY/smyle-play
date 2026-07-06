@@ -329,6 +329,37 @@ async def test_profile_adn_offer_flow(client):
         await _cleanup([], [seller, buyer])
 
 
+async def test_reserve_via_patch_and_no_leak(client):
+    """
+    Étape 5 : l'artiste règle son plancher via PATCH /playlists/{id}.
+    Le champ est WRITE-ONLY : jamais présent dans la réponse (PlaylistRead
+    sert aussi les routes publiques). Une offre sous le plancher → 422.
+    """
+    seller, seller_email = await _make_user(name="SellerPatchRes")
+    buyer, buyer_email = await _make_user(name="BuyerPatchRes")
+    pl = await _make_adn_playlist(seller, reserve=None)
+    try:
+        sh = await _login(client, seller_email)
+        r = await client.patch(f"/playlists/{pl}", headers=sh, json={
+            "adn_reserve_credits": 200,
+        })
+        assert r.status_code == 200, r.text
+        # Non-fuite : le plancher n'apparaît dans AUCUNE réponse de lecture.
+        assert "adn_reserve_credits" not in r.json(), (
+            "Le plancher caché ne doit JAMAIS être exposé en lecture"
+        )
+
+        bh = await _login(client, buyer_email)
+        r2 = await client.post("/adn-offers", headers=bh, json={
+            "target_type": "playlist_adn",
+            "target_id": str(pl),
+            "amount_credits": 150,
+        })
+        assert r2.status_code == 422, r2.text
+    finally:
+        await _cleanup([pl], [seller, buyer])
+
+
 async def test_offer_permissions(client):
     seller, seller_email = await _make_user(name="SellerPerm")
     buyer, buyer_email = await _make_user(name="BuyerPerm")

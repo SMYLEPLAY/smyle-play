@@ -84,6 +84,8 @@ class VisualAdnCreate(BaseModel):
             f"({VISUAL_ADN_PRICE_MIN}..{VISUAL_ADN_PRICE_MAX})."
         ),
     )
+    # OFFRES-ADN étape 5 : plancher CACHÉ posable dès la création. WRITE-ONLY.
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
     ai_reference: AiReference | None = None
     max_supply: int | None = Field(
         default=None,
@@ -130,6 +132,9 @@ class VisualAdnUpdate(BaseModel):
     palette: str | None = Field(
         default=None, max_length=VISUAL_ADN_PALETTE_MAX
     )
+    # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY —
+    # jamais exposé en lecture. 0 = pas de plancher.
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
 
 
 class VisualAdnRead(BaseModel):
