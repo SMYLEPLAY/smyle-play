@@ -974,6 +974,8 @@
       }
 
       // SOCLE BINAIRE — click « Image · N S » → fiche image liée (œuvre).
+      // T6 : on fetch la FICHE COMPLÈTE (/images/fiche/{id} — badges, rareté,
+      // galerie, son lié) ; repli sur l'objet minimal du payload si erreur.
       const socleImgEl = ev.target.closest('.mp-socle-img');
       if (socleImgEl) {
         ev.preventDefault();
@@ -982,14 +984,17 @@
         const track   = _state.tracks.find(x => String(x.id) === String(trackId));
         const li      = track && track.linkedImage;
         if (li) {
-          _openImageDetailDrawer({
-            id:           li.id,
-            priceCredits: li.priceCredits,
-            previewKey:   li.previewKey,
+          const fallback = {
+            id:            li.id,
+            priceCredits:  li.priceCredits,
+            previewKey:    li.previewKey,
             imagePlatform: li.imagePlatform,
-            title:        (track.name || 'Image') + ' — visuel',
-            linkedSound:  { id: track.promptId, title: track.name, priceCredits: track.promptPriceCredits },
-          });
+            title:         (track.name || 'Image') + ' — visuel',
+            linkedSound:   { id: track.promptId, title: track.name, priceCredits: track.promptPriceCredits },
+          };
+          apiFetch('/images/fiche/' + encodeURIComponent(li.id))
+            .then(full => _openImageDetailDrawer(full || fallback))
+            .catch(() => _openImageDetailDrawer(fallback));
         }
         return;
       }

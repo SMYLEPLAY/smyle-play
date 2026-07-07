@@ -122,6 +122,18 @@ async def unlock_prompt(
 
         # Notif 💸 au vendeur (fire-and-forget)
         if result.unlocked_prompt.original_artist_id:
+            # T5 (binarité, 07/07) — notif DIFFÉRENCIÉE : une image achetée
+            # dit « image », pas le libellé générique prompt. product_type
+            # relu sur la ligne prompt (image | beat | recipe).
+            from sqlalchemy import select as _select_pt
+            from app.models.prompt import Prompt as _PromptNotif
+            _ptype = (await db.execute(
+                _select_pt(_PromptNotif.product_type)
+                .where(_PromptNotif.id == prompt_id)
+            )).scalar_one_or_none()
+            _item_type = "image" if _ptype == "image" else (
+                "beat" if _ptype == "beat" else "prompt"
+            )
             await create_notification(
                 db,
                 user_id=result.unlocked_prompt.original_artist_id,
@@ -132,7 +144,7 @@ async def unlock_prompt(
                 metadata={
                     "amount": result.paid,
                     "buyer_name": current_user.artist_name or "Artiste",
-                    "item_type": "prompt",
+                    "item_type": _item_type,
                 },
             )
             await db.commit()

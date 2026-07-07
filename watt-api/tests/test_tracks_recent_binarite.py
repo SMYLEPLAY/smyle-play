@@ -101,6 +101,28 @@ async def test_tracks_recent_linked_image(client):
         await _cleanup(artist, [tr_id])
 
 
+async def test_image_fiche_publique(client):
+    """T6 — GET /images/fiche/{id} : fiche riche publique, 404 si dépubliée."""
+    artist = await _mk_artist()
+    _son_id, img_id, tr_id = await _mk_son_image_track(artist)
+    try:
+        r = await client.get(f"/images/fiche/{img_id}")
+        assert r.status_code == 200, r.text
+        fiche = r.json()
+        assert fiche["id"] == str(img_id)
+        assert fiche["priceCredits"] == 40
+        assert fiche.get("imagePlatform") == "chatgpt"
+        # Anti-fuite : jamais la recette ni la clé HD dans la fiche publique.
+        raw = r.text
+        assert "prompt_text" not in raw and "image_r2_key" not in raw
+
+        # Image inexistante → 404 propre.
+        r2 = await client.get(f"/images/fiche/{uuid.uuid4()}")
+        assert r2.status_code == 404
+    finally:
+        await _cleanup(artist, [tr_id])
+
+
 async def test_tracks_recent_no_leak_unpublished_image(client):
     artist = await _mk_artist()
     son_id, _img_id, tr_id = await _mk_son_image_track(
