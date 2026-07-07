@@ -19,6 +19,74 @@
   let _dismissed = false;
   let _raf       = null;
   let _barEl     = null;
+  let _lastMeta  = null;   // dernière meta appliquée (persistance inter-pages)
+  let _lastSave  = 0;      // throttle du save
+
+  // ── PLAYER CONTINU V1 (07/07) — persistance inter-pages ────────────────────
+  // Le site est multi-pages : chaque navigation tue l'audio. On persiste
+  // l'état d'écoute (src + position + meta) dans localStorage et on REPREND
+  // sur la page suivante. Si le navigateur bloque l'autoplay (pas de geste
+  // utilisateur), la barre s'affiche en pause à la bonne position — un clic
+  // sur ▶ relance. Fermer la barre (×) efface l'état : la musique ne te
+  // « suit » plus.
+  const _PERSIST_KEY = 'smyle_player_state';
+  const _PERSIST_TTL = 30 * 60 * 1000; // 30 min
+
+  function _persist(force) {
+    try {
+      if (!_audio || !_audio.currentSrc) return;
+      const now = Date.now();
+      if (!force && now - _lastSave < 1000) return;
+      _lastSave = now;
+      localStorage.setItem(_PERSIST_KEY, JSON.stringify({
+        src:     _audio.currentSrc,
+        pos:     _audio.currentTime || 0,
+        playing: !_audio.paused,
+        meta:    _lastMeta || null,
+        ts:      now,
+      }));
+    } catch (_) {}
+  }
+  function _persistThrottled() { _persist(false); }
+  function _clearPersist() {
+    try { localStorage.removeItem(_PERSIST_KEY); } catch (_) {}
+  }
+
+  function _restore() {
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem(_PERSIST_KEY) || 'null'); } catch (_) {}
+    if (!st || !st.src) return;
+    if (Date.now() - (st.ts || 0) > _PERSIST_TTL) { _clearPersist(); return; }
+    // Si un player de la page a déjà pris la main, on ne restaure pas.
+    if (_audio && !_audio.paused) return;
+
+    const a = new Audio(st.src);
+    a.preload = 'auto';
+    _unbind();
+    _audio = a;
+    _dismissed = false;
+    a.addEventListener('pause', _onPause);
+    a.addEventListener('ended', _onEnded);
+    a.addEventListener('timeupdate', _persistThrottled);
+    a.addEventListener('loadedmetadata', function () {
+      try { a.currentTime = st.pos || 0; } catch (_) {}
+    });
+
+    if (st.meta) _applyMeta(st.meta);
+    _show();
+
+    if (st.playing) {
+      a.play().then(function () {
+        _updatePlayBtn(true);
+        _startProgress();
+      }).catch(function () {
+        // Autoplay bloqué → barre visible en pause, prête à reprendre.
+        _updatePlayBtn(false);
+      });
+    } else {
+      _updatePlayBtn(false);
+    }
+  }
 
   // ── Build DOM ──────────────────────────────────────────────────────────────
   function _build() {
@@ -141,6 +209,7 @@
       _dismissed = true;
       _hide();
       if (_audio && !_audio.paused) _audio.pause();
+      _clearPersist();  // player continu : × = la musique ne suit plus
     });
   }
 
@@ -233,6 +302,7 @@
 
   // ── Mise à jour de l'affichage ─────────────────────────────────────────────
   function _applyMeta(info) {
+    _lastMeta = info || null;
     const titleEl  = document.getElementById('smb-title');
     const artistEl = document.getElementById('smb-artist');
     const coverImg = document.getElementById('smb-cover-img');
@@ -287,6 +357,7 @@
       // Pause / ended listeners
       target.addEventListener('pause',  _onPause);
       target.addEventListener('ended',  _onEnded);
+      target.addEventListener('timeupdate', _persistThrottled);
     }
 
     // Lire la meta IMMÉDIATEMENT (le play event est déjà là)
@@ -297,13 +368,14 @@
     _startProgress();
   }
 
-  function _onPause() { _updatePlayBtn(false); _stopProgress(); }
+  function _onPause() { _updatePlayBtn(false); _stopProgress(); _persist(true); }
   function _onEnded() { _updatePlayBtn(false); _stopProgress(); }
 
   function _unbind() {
     if (!_audio) return;
     _audio.removeEventListener('pause', _onPause);
     _audio.removeEventListener('ended', _onEnded);
+    _audio.removeEventListener('timeupdate', _persistThrottled);
     _stopProgress();
     _audio = null;
   }
@@ -316,6 +388,7 @@
       _dismissed = false;
       window.smyleAudio.addEventListener('pause', _onPause);
       window.smyleAudio.addEventListener('ended', _onEnded);
+      window.smyleAudio.addEventListener('timeupdate', _persistThrottled);
     }
     // Meta sera lue sur le prochain 'play' event via _onAnyPlay
   }
@@ -324,6 +397,9 @@
   function _init() {
     _build();
     document.addEventListener('play', _onAnyPlay, true);
+    // Player continu : sauvegarde ultime au départ de la page + reprise.
+    window.addEventListener('pagehide', function () { _persist(true); });
+    _restore();
     if (typeof SmyleEvents !== 'undefined') {
       SmyleEvents.on('smyle:track-loaded', _onTrackLoaded);
     }
@@ -334,6 +410,7 @@
         window.smyleAudio._smb_bound = true;
         window.smyleAudio.addEventListener('pause', _onPause);
         window.smyleAudio.addEventListener('ended', _onEnded);
+        window.smyleAudio.addEventListener('timeupdate', _persistThrottled);
       }
       if (++n > 20) clearInterval(p);
     }, 300);
@@ -355,6 +432,7 @@
       _audio = window.smyleAudio;
       window.smyleAudio.addEventListener('pause', _onPause);
       window.smyleAudio.addEventListener('ended', _onEnded);
+      window.smyleAudio.addEventListener('timeupdate', _persistThrottled);
     }
   }
 

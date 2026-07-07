@@ -362,14 +362,30 @@
   flex-wrap: wrap;
 }
 
+/* ── TEINTE PAR MONDE (07/07) — accent bleu électrique en mode musique,
+   mauve en mode visuel. Couleurs canoniques ui/core/tokens.css. Seuls les
+   ACCENTS changent : fond pétrole, cartes et socle binaire inchangés. */
+body {
+  --mp-accent: var(--sp-monde-audio, #0055ff);
+  --mp-accent-txt: #7da2ff;
+  --mp-accent-soft: rgba(0, 85, 255, 0.14);
+  --mp-accent-on: #fff;
+}
+body.mp-mode-image {
+  --mp-accent: var(--sp-monde-visuel, #cc88ff);
+  --mp-accent-txt: #d9b0ff;
+  --mp-accent-soft: rgba(204, 136, 255, 0.14);
+  --mp-accent-on: #1a0030;
+}
+
 .mp-section-kicker {
   font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(200, 163, 255, 0.75);
+  color: var(--mp-accent-txt, rgba(200, 163, 255, 0.75));
   font-weight: 700;
   padding: 3px 9px;
-  background: rgba(124, 58, 237, 0.14);
+  background: var(--mp-accent-soft, rgba(124, 58, 237, 0.14));
   border-radius: 6px;
 }
 
