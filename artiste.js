@@ -934,7 +934,11 @@ function openBoutiqueDrawer(type, dataStr) {
     if (data.linkedImage && data.linkedImage.id) {
       const li = data.linkedImage;
       const prevU = li.previewKey ? `/watt/images/${(li.previewKey + '').replace(/"/g,'&quot;')}` : '';
-      const priceTxt = (li.priceCredits != null) ? `${li.priceCredits} Smyles` : '';
+      const _BD_IMG_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', autre: 'Autre' };
+      const liProv = li.imagePlatform
+        ? ' · ⚡ ' + (_BD_IMG_LABELS[String(li.imagePlatform).toLowerCase()] || li.imagePlatform)
+        : '';
+      const priceTxt = ((li.priceCredits != null) ? `${li.priceCredits} Smyles` : '') + liProv;
       html += `<div class="bd-linked-image" data-linked-image-id="${(li.id + '').replace(/"/g,'&quot;')}"
                     data-linked-image-price="${li.priceCredits != null ? li.priceCredits : ''}"
                     style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 10px;border:1px solid rgba(0,85,255,.4);border-radius:12px;background:rgba(0,85,255,.08);cursor:pointer">

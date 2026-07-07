@@ -866,6 +866,8 @@ async def build_artist_detail_payload(
             "id":           str(img.id),
             "previewKey":   img.preview_r2_key or "",
             "priceCredits": img.price_credits,
+            # Carte ID binaire (07/07) : provenance de la face visuelle.
+            "imagePlatform": img.image_platform,
         }
 
     # Map son_prompt_id -> linkedImage, pour injecter aussi dans les cards
