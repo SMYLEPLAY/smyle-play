@@ -87,6 +87,10 @@ class AlbumRead(BaseModel):
         default=None, serialization_alias="coverPreviewKey"
     )
     image_count: int = Field(default=0, serialization_alias="imageCount")
+    # Collections Phase A (07/07) : slug d'appariement Œuvre — camelCase front.
+    oeuvre_slug: str | None = Field(
+        default=None, serialization_alias="oeuvreSlug"
+    )
     created_at: datetime = Field(serialization_alias="createdAt")
 
 

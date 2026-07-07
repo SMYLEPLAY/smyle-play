@@ -68,6 +68,9 @@ class PlaylistRead(BaseModel):
     color: str | None
     cover_video_url: str | None
     adn_for_sale: bool
+    # Collections Phase A (07/07) : slug d'appariement Œuvre (playlist+album
+    # sœurs). Public — sert au front à dériver le TYPE de la collection.
+    oeuvre_slug: str | None = None
     adn_price: int | None
     created_at: datetime
     # Fix QA C3 ② (2026-06-12) — nb de tracks SANS charger les tracks
