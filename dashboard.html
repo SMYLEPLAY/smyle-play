@@ -1638,6 +1638,16 @@
       <div class="dash-help" id="advAlbumHint">Choisis l'album dont tu veux vendre le génome de style.</div>
     </div>
 
+    <!-- Collections Phase B (amorce, 07/07) : lier playlist + album = ŒUVRE.
+         Le composant oeuvre-compose existait mais n'était branché nulle part. -->
+    <div class="dash-field-col" style="margin-top:6px;">
+      <button type="button" class="dash-btn-secondary" id="advLinkOeuvreBtn"
+              onclick="if(window.OeuvreCompose){OeuvreCompose.open({onSuccess:function(){ try{ if(window.AdnVisuel) AdnVisuel.init(); }catch(_){} }});}">
+        💠 Lier une playlist + un album en Œuvre
+      </button>
+      <div class="dash-help">Une œuvre réunit une face musique (playlist) et une face visuelle (album) — elle s'affiche en une seule carte bicolore sur ton profil et sa page /oeuvre s'allume.</div>
+    </div>
+
     <!-- Avertissement visibilité (album privé) -->
     <div class="dash-adn-lock-note" id="advPrivateNotice" style="display:none;margin-top:8px;">
       <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -2587,6 +2597,7 @@
 <script src="/ui/modals/purchase-drawer.js?v=20260703offres3"></script>
 <script src="/ui/modals/offer-modal.js?v=20260703offres3"></script>
 <script src="/ui/modals/report-modal.js?v=20260707dsa"></script>
+<script src="/ui/modals/oeuvre-compose.js?v=20260707oc" defer></script>
 <script src="/ui/playlists.js?v=20260707fixqa" defer></script>
 <script src="dashboard.js?v=20260703offres3"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
