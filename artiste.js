@@ -3044,6 +3044,20 @@ function renderSocials(artist, isSelf) {
   if (!wrap) return;
   wrap.innerHTML = '';
 
+  // D3 Confiance — signalement de profil (DSA) : visible pour les visiteurs.
+  if (!isSelf && artist && artist.id) {
+    const rep = document.createElement('button');
+    rep.type = 'button';
+    rep.className = 'mp-report-btn';
+    rep.setAttribute('data-report-type', 'profil');
+    rep.setAttribute('data-report-id', String(artist.id));
+    rep.setAttribute('data-report-title', artist.artistName || 'Profil');
+    rep.title = 'Signaler ce profil';
+    rep.style.cssText = 'background:none;border:none;color:#8b86a3;font-size:12px;cursor:pointer;float:right';
+    rep.textContent = '⚑ Signaler';
+    wrap.appendChild(rep);
+  }
+
   let hasAny = false;
   SOCIAL_FIELDS.forEach(s => {
     const val = (artist[s.key] || '').trim();
