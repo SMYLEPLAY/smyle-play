@@ -805,7 +805,7 @@ function renderPlaylistsAdn(artist) {
   list.innerHTML = playlists.map(pl => {
     const safeTitle = (pl.title || '').replace(/</g, '&lt;');
     const color     = pl.color || brandColor;
-    const price     = formatCount(pl.adnPrice || 0);
+    const price     = 'Sur proposition';
     // Lien vers la page playlist (unlock se fait depuis le slug playlist)
     const href = `/@${encodeURIComponent(slug)}`;
     return `
@@ -813,7 +813,7 @@ function renderPlaylistsAdn(artist) {
         <summary class="ap-pl-adn-summary">
           <span class="ap-pl-adn-icon">🎚</span>
           <span class="ap-pl-adn-name">${safeTitle}</span>
-          <span class="ap-pl-adn-badge">🧬 ADN · ${price} crédits</span>
+          <span class="ap-pl-adn-badge">🧬 ADN · ${price}</span>
           <span class="ap-pl-adn-chevron">▾</span>
         </summary>
         <div class="ap-pl-adn-body">
@@ -888,7 +888,10 @@ function openBoutiqueDrawer(type, dataStr) {
     : type === 'son'      ? (data.title || '')
     : type === 'voix'     ? (data.name  || '')
     : (data.title || '');
-  const price = type === 'playlist' ? data.adnPrice : data.priceCredits;
+  // OFFRES-ADN : les ADN (playlist / profil / visuel) n'affichent plus de
+  // prix fixe — la vente se fait sur proposition.
+  const isAdnType = (type === 'playlist' || type === 'adn-artist' || type === 'visual-adn');
+  const price = isAdnType ? null : data.priceCredits;
 
   // Cover image en haut du drawer (son uniquement, si disponible)
   if (type === 'son' && data.coverUrl) {
@@ -963,13 +966,17 @@ function openBoutiqueDrawer(type, dataStr) {
     html += `<p class="bd-desc">Accède au code génératif de cette playlist — reproduis son univers musical avec les mêmes outils IA.</p>`;
   }
 
-  // ── Prix + unlock — masqués si pas d'id (track sans recette) ──────────────
-  const hasPurchasable = data.id && (price !== null && price !== undefined);
+  // ── Prix + CTA. OFFRES-ADN : les ADN n'affichent PLUS de prix fixe —
+  // « Sur proposition » + CTA « Faire une offre » (boutiqueDrawerUnlock
+  // route déjà les types ADN vers AdnOfferModal). ──────────────────────────
+  const hasPurchasable = data.id && (isAdnType || (price !== null && price !== undefined));
   if (hasPurchasable) {
     html += `<div class="bd-price-row">
       <div>
-        <span class="bd-price-amount">${formatCount(price)}</span>
-        <span class="bd-price-unit">crédits</span>
+        ${isAdnType
+          ? '<span class="bd-price-amount" style="font-size:.95rem">🤝 Sur proposition</span>'
+          : `<span class="bd-price-amount">${formatCount(price)}</span>
+             <span class="bd-price-unit">crédits</span>`}
       </div>
       ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur toutes les recettes</span>' : ''}
     </div>`;
@@ -977,10 +984,9 @@ function openBoutiqueDrawer(type, dataStr) {
     if (isSelf) {
       html += `<p class="bd-self-note">C'est ton contenu — tu ne peux pas l'acheter.</p>`;
     } else {
-      const unlockLabel = type === 'adn-artist' ? '🧬 Débloquer l\'ADN'
+      const unlockLabel = isAdnType ? '🤝 Faire une offre'
         : type === 'son'      ? '🧬 Débloquer la recette'
-        : type === 'voix'     ? '🎙 Débloquer la voix'
-        : '🎚 Débloquer l\'ADN Playlist';
+        : '🎙 Débloquer la voix';
       html += `<button type="button" class="bd-unlock-btn"
                        id="boutique-drawer-unlock-btn"
                        onclick="boutiqueDrawerUnlock('${type}','${data.id}')">${unlockLabel}</button>`;
@@ -1219,7 +1225,7 @@ function renderAdnChip(artist) {
   const adn = artist && artist.adn;
   if (!adn || artist.isSelf) { chip.style.display = 'none'; return; }
   chip.style.display = '';
-  if (priceEl) priceEl.textContent = formatCount(adn.priceCredits) + ' cr.';
+  if (priceEl) priceEl.textContent = 'sur proposition';
 }
 
 window.scrollToAdnCard = function() {
@@ -1272,7 +1278,8 @@ function renderDna(artist) {
 
   card.style.display = '';
   setText('ap-relic-artist', artist.artistName || '');
-  setText('ap-dna-price', formatCount(adn.priceCredits));
+  // OFFRES-ADN : plus de prix fixe — vente sur proposition uniquement.
+  setText('ap-dna-price', 'Sur proposition');
 
   // Édition #X/N en évidence si édition limitée (le prochain exemplaire minté).
   const editionEl = $('ap-relic-edition');
@@ -1429,7 +1436,7 @@ function renderVisualDna(artist) {
 
   card.style.display = '';
   setText('ap-vdna-artist', artist.artistName || '');
-  setText('ap-vdna-price', formatCount(adn.priceCredits));
+  setText('ap-vdna-price', 'Sur proposition');
 
   const editionEl = $('ap-vdna-edition');
   if (editionEl) {

@@ -1787,7 +1787,7 @@
         desc +
         '<div class="mp-adn-card-foot">' +
           '<span class="mp-adn-card-owner">' + _esc(ownerName) + '</span>' +
-          '<span class="mp-adn-card-price">' + _esc(a.adn_price) + ' <span>Smyles</span></span>' +
+          '<span class="mp-adn-card-price">🤝 Sur proposition</span>' +
         '</div>' +
       '</article>';
   }
