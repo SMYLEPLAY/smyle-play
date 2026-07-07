@@ -199,9 +199,19 @@
     const actor = _esc(n.actor_name || 'Quelqu\'un');
     switch (n.type) {
       case 'purchase': {
+        // T5 (binarité, 07/07) — libellés différenciés par nature de produit.
         const item = (n.metadata_json && n.metadata_json.item_type) || 'item';
         const amt  = (n.metadata_json && n.metadata_json.amount)    || '';
-        return `${actor} a acheté votre ${item === 'prompt' ? 'prompt' : item === 'adn' ? 'ADN' : 'voix'}${amt ? ' · <strong>' + amt + ' Smyles</strong>' : ''}`;
+        const ITEM_LABELS = {
+          prompt:     'recette 🧬',
+          image:      'image 🖼️',
+          beat:       'beat 🥁',
+          adn:        'ADN 🧬',
+          visual_adn: 'ADN visuel 🎨',
+          voice:      'voix 🎙',
+        };
+        const lbl = ITEM_LABELS[item] || 'création';
+        return `${actor} a acheté votre ${lbl}${amt ? ' · <strong>' + amt + ' Smyles</strong>' : ''}`;
       }
       case 'like':    return `${actor} a liké votre son`;
       case 'follow':  return `${actor} vous suit`;

@@ -743,6 +743,50 @@ async def _like_counts_for(db: AsyncSession, image_ids: list[UUID]) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# GET /images/fiche/{image_id} — fiche publique d'UNE image (T6 binarité)
+# ──────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/images/fiche/{image_id}")
+async def image_public_fiche(
+    image_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    T6 (binarité, 07/07) — fiche publique complète d'une image, par id.
+    Destination du clic « Image · N S » du socle binaire des cards son : le
+    front n'a alors qu'un id + un aperçu, cette route fournit le payload
+    riche (badges, rareté #X/N, galerie, son lié) déjà servi par /images.
+
+    Mêmes gates que le catalogue (publiée, non supprimée, artiste public),
+    SAUF bundle_exclusive : une image « née ensemble » a une fiche accessible
+    DEPUIS l'œuvre (achat séparé autorisé partout) — elle reste simplement
+    absente des catalogues. Payload identique à /images : JAMAIS
+    image_r2_key / prompt_text / negative_prompt.
+    """
+    row = (await db.execute(
+        select(Prompt, User)
+        .join(User, Prompt.artist_id == User.id)
+        .where(
+            Prompt.id == image_id,
+            Prompt.product_type == "image",
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            User.profile_public.is_(True),
+        )
+    )).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            detail="Image introuvable")
+    prompt, artist = row
+    sold = await _sold_counts_for(db, [prompt.id])
+    img = _image_public_dict(prompt, sold.get(prompt.id), artist)
+    await _enrich_linked_sounds(db, [prompt], [img])
+    await _enrich_galleries(db, [prompt], [img])
+    return img
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # GET /images/top — Top Images (miroir public de « Top Sons »)
 # ──────────────────────────────────────────────────────────────────────────
 
