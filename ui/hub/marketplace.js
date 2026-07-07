@@ -148,7 +148,7 @@
       '.mp-mode-switch{display:flex;gap:6px;justify-content:center;margin:0 auto 18px;padding:5px;width:max-content;border-radius:999px;border:1px solid rgba(124,58,237,.35);background:rgba(255,255,255,.03)}' +
       '.mp-mode-btn{cursor:pointer;border:0;background:transparent;color:rgba(255,255,255,.6);font-family:inherit;font-size:.92rem;font-weight:700;padding:9px 22px;border-radius:999px;transition:all .15s}' +
       '.mp-mode-btn:hover{color:#fff}' +
-      '.mp-mode-btn.is-active{background:linear-gradient(90deg,#7C3AED,#a855f7);color:#fff;box-shadow:0 4px 16px rgba(124,58,237,.35)}' +
+      '.mp-mode-btn.is-active{background:var(--mp-accent,#7C3AED);color:var(--mp-accent-on,#fff);box-shadow:0 4px 16px var(--mp-accent-soft,rgba(124,58,237,.35))}' +
       // Le commutateur n'a de sens que sur la home : on le masque ailleurs.
       'body:not(.mp-view-home) .mp-mode-switch{display:none}' +
       // Section Œuvre complète (les deux modes) — grille de cartes œuvre.
@@ -174,8 +174,8 @@
       // montre que SA grille ; le texte libre montre les deux).
       '.mp-hide-sons .mp-section-sons{display:none!important}' +
       '.mp-hide-artists .mp-section-artists{display:none!important}' +
-      '.mp-voir-tout{display:block;text-align:center;margin:12px auto 0;padding:9px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.4);color:#c4b5fd;font-size:.82rem;font-weight:600;text-decoration:none;width:max-content;cursor:pointer}' +
-      '.mp-voir-tout:hover{background:rgba(124,58,237,.12)}' +
+      '.mp-voir-tout{display:block;text-align:center;margin:12px auto 0;padding:9px 18px;border-radius:999px;border:1px solid var(--mp-accent,rgba(124,58,237,.4));color:var(--mp-accent-txt,#c4b5fd);font-size:.82rem;font-weight:600;text-decoration:none;width:max-content;cursor:pointer}' +
+      '.mp-voir-tout:hover{background:var(--mp-accent-soft,rgba(124,58,237,.12))}' +
       // C4 — barre de catégories (étagères) en HAUT, sous le commutateur de mode.
       // Réutilise le look pilule des .mp-voir-tout. Contextuelle au mode via les
       // classes body mp-mode-musique / mp-mode-image, et home-only.
