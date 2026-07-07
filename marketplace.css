@@ -1664,3 +1664,61 @@
 .mp-son-card-permalink:hover {
   color: rgba(255,255,255,.75);
 }
+
+/* ── SOCLE BINAIRE des cards son (plan binarité parfaite, 07/07) ─────────
+   Deux demi-colonnes MUSIQUE (bleu électrique) | VISUEL (mauve) sous le
+   titre, couture centrale, pont « Œuvre complète » si image liée.
+   Couleurs canoniques : var(--sp-monde-audio) / var(--sp-monde-visuel). */
+.mp-socle {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  margin: 6px 0 8px;
+  border: 0.5px solid rgba(255,255,255,.10);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.mp-socle.has-pont { border-radius: 9px 9px 0 0; margin-bottom: 0; }
+.mp-socle-seam { background: rgba(255,255,255,.14); }
+.mp-socle-half { padding: 7px 8px; min-width: 0; }
+.mp-socle-half--music  { background: rgba(0,85,255,.10); }
+.mp-socle-half--visual { background: rgba(204,136,255,.09); }
+.mp-socle-face {
+  font-size: .64rem; font-weight: 700; letter-spacing: .4px;
+  margin-bottom: 5px; text-transform: uppercase;
+}
+.mp-socle-half--music  .mp-socle-face,
+.mp-socle-half--music  .mp-socle-line { color: #7da2ff; }
+.mp-socle-half--visual .mp-socle-face,
+.mp-socle-half--visual .mp-socle-line { color: #d9b0ff; }
+.mp-socle-line {
+  font-size: .68rem; margin: 0 0 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mp-socle-price {
+  display: block; width: 100%; margin-top: 4px; padding: 4px 6px;
+  border: 0.5px solid rgba(255,255,255,.18); border-radius: 7px;
+  background: rgba(0,0,0,.25); color: #eee;
+  font-size: .7rem; font-weight: 600; cursor: pointer; text-align: center;
+}
+.mp-socle-price:hover { border-color: rgba(255,255,255,.4); }
+.mp-socle-half--visual.is-invitation {
+  background: transparent;
+  border: 1px dashed rgba(204,136,255,.45);
+  border-radius: 0 8px 8px 0;
+  margin: -0.5px;
+}
+.mp-socle-invit-txt { font-size: .66rem; line-height: 1.4; color: #b9a3cf; margin-bottom: 5px; }
+.mp-socle-invit-cta { font-size: .66rem; color: #d9b0ff; }
+.mp-socle-pont {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; width: 100%;
+  border: 0.5px solid rgba(255,255,255,.16); border-top: none;
+  border-radius: 0 0 9px 9px;
+  background: #181322; color: #eee;
+  padding: 6px 8px; margin: 0 0 8px; cursor: pointer;
+}
+.mp-socle-pont:hover { background: #1f1830; }
+.mp-socle-pont-lbl { padding: 0 8px; font-size: .7rem; font-weight: 600; white-space: nowrap; }
+.mp-socle-pont-rail { height: 2px; border-radius: 1px; }
+.mp-socle-pont-rail--m { background: var(--sp-monde-audio, #0055ff); }
+.mp-socle-pont-rail--v { background: var(--sp-monde-visuel, #cc88ff); }

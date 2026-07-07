@@ -1147,6 +1147,51 @@ async def tracks_recent(
             if td.get("promptId"):
                 td["promptPriceCredits"] = price_by_id.get(td["promptId"])
 
+    # BINARITÉ CARTES (1.2, 2026-07-07) — image liée (œuvre) + provenance
+    # visuelle pour le socle binaire des cards son. Aperçu only (anti-fuite) :
+    # image publiée et non supprimée uniquement. 2 requêtes batch.
+    if prompt_ids:
+        from app.models.prompt import Prompt as _Prompt
+        link_rows = (await db.execute(
+            select(_Prompt.id, _Prompt.linked_prompt_id, _Prompt.bundle_exclusive)
+            .where(
+                _Prompt.id.in_(prompt_ids),
+                _Prompt.linked_prompt_id.isnot(None),
+            )
+        )).all()
+        linked_ids = [r.linked_prompt_id for r in link_rows]
+        imgs_by_id = {}
+        if linked_ids:
+            img_rows = (await db.execute(
+                select(
+                    _Prompt.id, _Prompt.price_credits,
+                    _Prompt.preview_r2_key, _Prompt.image_platform,
+                )
+                .where(
+                    _Prompt.id.in_(linked_ids),
+                    _Prompt.product_type == "image",
+                    _Prompt.is_published.is_(True),
+                    _Prompt.is_deleted.is_(False),
+                )
+            )).all()
+            imgs_by_id = {r.id: r for r in img_rows}
+        linked_by_son_id = {}
+        for r in link_rows:
+            img = imgs_by_id.get(r.linked_prompt_id)
+            if img is None:
+                continue
+            linked_by_son_id[str(r.id)] = {
+                "id":              str(img.id),
+                "previewKey":      img.preview_r2_key or "",
+                "priceCredits":    img.price_credits,
+                "imagePlatform":   img.image_platform,
+                "bundleExclusive": bool(r.bundle_exclusive),
+            }
+        for td in tracks_out:
+            li = linked_by_son_id.get(td.get("promptId") or "")
+            td["linkedImage"] = li
+            td["isOeuvreComplete"] = li is not None
+
     # DUALITÉ ADN (B) — badges musique/visuel + tag playlist par son.
     await _enrich_tracks_dualite(db, tracks_out, rows)
 

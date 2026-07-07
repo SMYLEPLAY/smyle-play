@@ -613,31 +613,16 @@
       // Badge Recette si le track a un prompt achetable
       const promptId    = t.promptId    || null;
       const promptPrice = t.promptPriceCredits != null ? t.promptPriceCredits : null;
-      // Badge 🧬 si le track a un prompt achetable — bouton cliquable direct
-      // ⚠️ BUG FIXÉ (2026-06-13) : l'inline onclick="event.stopPropagation()"
-      // empêchait l'événement d'atteindre le délégué document (phase bulle)
-      // qui ouvre le drawer → badge mort sur les cards. Le délégué fait déjà
-      // son propre stopPropagation dans la branche badge.
-      const recipeBtn   = (promptId && promptPrice != null)
-        ? `<button type="button" class="mp-recipe-badge"
-                   data-prompt-id="${_esc(String(promptId))}"
-                   data-prompt-price="${promptPrice}"
-                   data-track-name="${_esc(title)}"
-                   title="D\u00e9bloquer la recette \u00b7 ${promptPrice} Smyles">
-            \uD83E\uDDEC <span class="mp-recipe-badge-price">${promptPrice} Smyles</span>
-           </button>`
-        : '';
+      // (Badge recette : rendu déplacé dans le SOCLE BINAIRE ci-dessous.)
       // Lien perma vers le profil artiste
       const permalinkBtn = artistSlug
         ? `<a class="mp-son-card-permalink" href="/@${_esc(artistSlug)}" onclick="event.stopPropagation();" title="Voir le profil artiste" aria-label="Voir le profil artiste">\u2197</a>`
         : '';
-      // Carte ID enrichie (avant achat) : badge plateforme/IA + chips mood.
+      // Carte ID enrichie (avant achat) : chips mood + beat. La plateforme
+      // audio migre dans le SOCLE BINAIRE ci-dessous.
       const _PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
       const platformKey   = (t.platform || '').trim().toLowerCase();
       const platformLabel = _PLATFORM_LABELS[platformKey] || (platformKey ? platformKey : '');
-      const platformBadge = platformLabel
-        ? `<span class="mp-son-card-platform" title="Son g\u00e9n\u00e9r\u00e9 avec ${_esc(platformLabel)}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(124,58,237,.16);color:#c4b5fd;font-size:.68rem;font-weight:600;">\u26a1 ${_esc(platformLabel)}</span>`
-        : '';
       const moods = (t.tags || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 4);
       const moodChips = moods
         .map(m => `<span class="mp-son-card-mood" style="display:inline-block;padding:2px 7px;border-radius:9px;background:rgba(255,255,255,.07);color:#b9b3c8;font-size:.68rem;">${_esc(m)}</span>`)
@@ -646,9 +631,66 @@
       const beatChip = t.isBeat
         ? `<span class="mp-son-card-beat" title="Proposé comme beat" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(34,197,94,.14);color:#86efac;font-size:.68rem;font-weight:600;">🥁 Beat${t.bpm ? ' · ' + t.bpm + ' BPM' : ''}</span>`
         : '';
-      const tagsRow = (platformBadge || moodChips || beatChip)
-        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${platformBadge}${beatChip}${moodChips}</div>`
+      const tagsRow = (moodChips || beatChip)
+        ? `<div class="mp-son-card-tags-row" style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 2px;">${beatChip}${moodChips}</div>`
         : '';
+
+      // ── SOCLE BINAIRE (plan binarité parfaite, design validé Tom 07/07) ──
+      // Cover intacte ; sous le titre, deux demi-colonnes MUSIQUE (bleu
+      // électrique --sp-monde-audio) | VISUEL (mauve --sp-monde-visuel)
+      // reliées par une couture. Face visuelle absente → invitation
+      // pointillée CONTRASTÉE (fini le fantôme invisible du chantier B).
+      // Image liée (œuvre, flux B) → PONT pleine largeur « Œuvre complète ».
+      const _IMG_PLATFORM_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', autre: 'Autre' };
+      const adnM = t.adnMusique || null;
+      const adnV = t.adnVisuel || null;
+      const li   = t.linkedImage || null;
+      const imgPlatformLabel = (li && li.imagePlatform)
+        ? (_IMG_PLATFORM_LABELS[String(li.imagePlatform).toLowerCase()] || li.imagePlatform)
+        : '';
+
+      const musicLines =
+        `<div class="mp-socle-face">🎧 Musique</div>` +
+        (platformLabel ? `<div class="mp-socle-line" title="Son généré avec ${_esc(platformLabel)}">⚡ ${_esc(platformLabel)}</div>` : '') +
+        ((adnM && adnM.has) ? `<div class="mp-socle-line" title="ADN musical de l'artiste — vente sur proposition">🧬 ADN musical</div>` : '') +
+        ((promptId && promptPrice != null)
+          ? `<button type="button" class="mp-recipe-badge mp-socle-price" data-prompt-id="${_esc(String(promptId))}" data-prompt-price="${promptPrice}" data-track-name="${_esc(title)}" title="Débloquer la recette · ${promptPrice} Smyles">Recette · ${promptPrice} S</button>`
+          : '');
+
+      let visualLines;
+      let visualInvitation = false;
+      if (li || (adnV && adnV.has)) {
+        visualLines =
+          `<div class="mp-socle-face">🎨 Visuel</div>` +
+          (imgPlatformLabel ? `<div class="mp-socle-line" title="Image générée avec ${_esc(imgPlatformLabel)}">⚡ ${_esc(imgPlatformLabel)}</div>` : '') +
+          ((adnV && adnV.has) ? `<div class="mp-socle-line" title="ADN visuel de l'artiste — vente sur proposition">🎨 ADN visuel</div>` : '') +
+          (li
+            ? `<button type="button" class="mp-socle-price mp-socle-img" data-image-id="${_esc(li.id)}" title="Voir l'image liée${li.priceCredits != null ? ' · ' + li.priceCredits + ' Smyles' : ''}">Image${li.priceCredits != null ? ' · ' + li.priceCredits + ' S' : ''}</button>`
+            : '');
+      } else {
+        visualInvitation = true;
+        visualLines =
+          `<div class="mp-socle-face">🎨 Visuel</div>` +
+          `<div class="mp-socle-invit-txt">Pas encore de face visuelle</div>` +
+          `<div class="mp-socle-invit-cta">✨ Inviter à créer</div>`;
+      }
+
+      const pontTotal = (li && li.priceCredits != null && promptPrice != null)
+        ? (promptPrice + li.priceCredits) : null;
+      const pontHtml = li
+        ? `<button type="button" class="mp-socle-pont" title="Voir l'œuvre complète (son + image)">` +
+            `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
+            `<span class="mp-socle-pont-lbl">💠 Œuvre complète${pontTotal != null ? ' · ' + pontTotal + ' S' : ''}</span>` +
+            `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
+          `</button>` 
+        : '';
+
+      const socleHtml =
+        `<div class="mp-socle${li ? ' has-pont' : ''}">` +
+          `<div class="mp-socle-half mp-socle-half--music">${musicLines}</div>` +
+          `<div class="mp-socle-seam"></div>` +
+          `<div class="mp-socle-half mp-socle-half--visual${visualInvitation ? ' is-invitation' : ''}">${visualLines}</div>` +
+        `</div>` + pontHtml;
       return (
         `<div class="mp-son-card" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
           `<div class="mp-son-card-cover">` +
@@ -663,7 +705,7 @@
             permalinkBtn +
           `</div>` +
           tagsRow +
-          (recipeBtn ? `<div class="mp-son-card-recipe-row">${recipeBtn}</div>` : '') +
+          socleHtml +
           `<div class="mp-son-card-meta">` +
             `<span class="mp-son-card-meta-plays">${plays} \u00e9coutes</span>` +
             `<div class="mp-son-card-meta-actions">` +
@@ -928,6 +970,39 @@
         console.log('[marketplace] fallback audio inline card');
         if (audio.paused) audio.play().catch(e => console.error('audio inline card:', e));
         else audio.pause();
+        return;
+      }
+
+      // SOCLE BINAIRE — click « Image · N S » → fiche image liée (œuvre).
+      const socleImgEl = ev.target.closest('.mp-socle-img');
+      if (socleImgEl) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const trackId = card.dataset.trackId;
+        const track   = _state.tracks.find(x => String(x.id) === String(trackId));
+        const li      = track && track.linkedImage;
+        if (li) {
+          _openImageDetailDrawer({
+            id:           li.id,
+            priceCredits: li.priceCredits,
+            previewKey:   li.previewKey,
+            imagePlatform: li.imagePlatform,
+            title:        (track.name || 'Image') + ' — visuel',
+            linkedSound:  { id: track.promptId, title: track.name, priceCredits: track.promptPriceCredits },
+          });
+        }
+        return;
+      }
+
+      // SOCLE BINAIRE — click sur le PONT → fiche œuvre (drawer track :
+      // il présente les deux faces + achats séparés).
+      const pontEl = ev.target.closest('.mp-socle-pont');
+      if (pontEl) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const trackId = card.dataset.trackId;
+        const track   = _state.tracks.find(x => String(x.id) === String(trackId));
+        if (track) _openTrackDetailDrawer(track);
         return;
       }
 
