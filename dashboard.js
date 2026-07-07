@@ -4925,8 +4925,8 @@ async function saveAdn() {
     _dashToast(`Description trop courte (${description.length}/200 chars min).`);
     return;
   }
-  if (description.length > 5000) {
-    _dashToast('Description trop longue (5000 chars max).');
+  if (description.length > 10000) {
+    _dashToast('Description trop longue (10000 chars max).');
     return;
   }
   // OFFRES-ADN : l'ADN se vend sur offre — plus de prix fixe obligatoire.
@@ -5250,8 +5250,8 @@ async function saveVisualAdn() {
     _dashToast(`Description trop courte (${description.length}/200 chars min).`);
     return;
   }
-  if (description.length > 5000) {
-    _dashToast('Description trop longue (5000 chars max).');
+  if (description.length > 10000) {
+    _dashToast('Description trop longue (10000 chars max).');
     return;
   }
   // OFFRES-ADN : ADN visuel vendu sur offre — prix fixe non obligatoire.

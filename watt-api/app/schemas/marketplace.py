@@ -30,7 +30,7 @@ AiReference = Literal[
 ADN_PRICE_MIN = 30
 ADN_PRICE_MAX = 2147483647  # INT32 max — pas de plafond ressenti (Tom 2026-05-13)
 ADN_DESCRIPTION_MIN = 200       # Cohérent avec ck_adns_description_min_length
-ADN_DESCRIPTION_MAX = 5000      # Plafond applicatif (DB n'a pas de max)
+ADN_DESCRIPTION_MAX = 10000     # Plafond applicatif (DB n'a pas de max) — ADN complet
 ADN_USAGE_GUIDE_MAX = 3000
 ADN_EXAMPLE_OUTPUTS_MAX = 5000
 # 2026-05-13 — Rareté ADN : min 1 (exclusif), max 1000 (édition limitée).
