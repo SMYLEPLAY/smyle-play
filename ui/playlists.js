@@ -219,11 +219,9 @@
         return;
       }
       try {
-        if (adnForSale && !adnPrice) {
-          errBox.textContent = 'Indique un prix en Smyles pour l\'ADN.';
-          errBox.style.display = 'block';
-          return;
-        }
+        // OFFRES-ADN : l'ADN playlist se vend sur offre — plus de prix fixe requis.
+        // adn_price est nullable côté backend ; sans prix, l'ADN reste en vente
+        // sur proposition (reserve + offres).
         const created = await createPlaylist(name, vis, color, seed || null, adnForSale, adnPrice);
         close();
         if (typeof onCreated === 'function') onCreated(created);
@@ -1220,10 +1218,7 @@
         const adnPrice = adnSale ? (parseInt(document.getElementById('pl-edit-price').value, 10) || null) : null;
         const adnSeed  = (document.getElementById('pl-edit-seed')?.value || '').trim();
 
-        if (adnSale && !adnPrice) {
-          if (errEl) { errEl.textContent = 'Fixe un prix en Smyles pour activer la vente d\'ADN.'; errEl.style.display = 'block'; }
-          return;
-        }
+        // OFFRES-ADN : vente sur offre — plus de prix fixe requis (adn_price nullable).
         if (adnSale && !adnSeed) {
           if (errEl) { errEl.textContent = 'Écris le contenu de l\'ADN — on ne vend pas un document vide.'; errEl.style.display = 'block'; }
           return;

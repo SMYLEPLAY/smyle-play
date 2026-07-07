@@ -486,10 +486,8 @@
       const desc    = (content.querySelector('#al-adn-desc') ? content.querySelector('#al-adn-desc').value : '').trim();
       const seed    = (content.querySelector('#al-adn-seed') ? content.querySelector('#al-adn-seed').value : '').trim();
 
-      if (sale && !price) {
-        if (errEl) { errEl.textContent = 'Fixe un prix en Smyles pour activer la vente de l\'ADN.'; errEl.style.display = 'block'; }
-        return;
-      }
+      // OFFRES-ADN : l'ADN album se vend sur offre — plus de prix fixe requis.
+      // adn_price est nullable ; sans prix, l'ADN reste vendable sur proposition.
       if (sale && !seed) {
         if (errEl) { errEl.textContent = 'Écris le génome — on ne vend pas une recette vide.'; errEl.style.display = 'block'; }
         return;

@@ -4929,10 +4929,10 @@ async function saveAdn() {
     _dashToast('Description trop longue (5000 chars max).');
     return;
   }
-  if (!Number.isInteger(priceCredits) || priceCredits < 30) {
-    _dashToast('Prix invalide — minimum 30 crédits.');
-    return;
-  }
+  // OFFRES-ADN : l'ADN se vend sur offre — plus de prix fixe obligatoire.
+  // Si aucun prix valide n'est saisi, on envoie un prix vestigial (min légal) ;
+  // la vente réelle passe par le reserve + les offres ("Sur proposition").
+  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30) ? priceCredits : 30;
 
   // 2026-05-13 v2 — Rareté simplifiée : 1 seul input libre, tier auto.
   const aiRef = (document.getElementById('dashAdnAiReference')||{}).value || '';
@@ -4949,7 +4949,7 @@ async function saveAdn() {
 
   const payload = {
     description,
-    price_credits: priceCredits,
+    price_credits: priceForApi,
   };
   // On n'envoie usage_guide/example_outputs que si remplis
   // (évite d'effacer par inadvertance côté PATCH partiel).
@@ -5254,10 +5254,9 @@ async function saveVisualAdn() {
     _dashToast('Description trop longue (5000 chars max).');
     return;
   }
-  if (!Number.isInteger(priceCredits) || priceCredits < 30 || priceCredits > 500) {
-    _dashToast('Prix invalide — entre 30 et 500 crédits.');
-    return;
-  }
+  // OFFRES-ADN : ADN visuel vendu sur offre — prix fixe non obligatoire.
+  // Prix vestigial (min légal) si non saisi ; vente réelle via reserve + offres.
+  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30 && priceCredits <= 500) ? priceCredits : 30;
 
   const aiRef  = (document.getElementById('dashVisualAdnAiReference')||{}).value || '';
   const supRaw = (document.getElementById('dashVisualAdnMaxSupply')||{}).value || '';
@@ -5273,7 +5272,7 @@ async function saveVisualAdn() {
 
   const payload = {
     description,
-    price_credits: priceCredits,
+    price_credits: priceForApi,
   };
   if (usageGuide)     payload.usage_guide     = usageGuide;
   if (exampleOutputs) payload.example_outputs = exampleOutputs;
