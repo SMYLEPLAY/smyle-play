@@ -1123,6 +1123,10 @@
       <div class="mp-td-social-row">
         <button class="like-btn mp-td-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist"></button>
         <button class="add-to-pl-btn mp-td-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">+</button>
+        <button class="mp-report-btn" type="button" data-report-type="track" data-report-id="${_esc(t.trackUuid || t.id || '')}"
+                data-report-title="${_esc(title)}"
+                title="Signaler ce contenu" aria-label="Signaler ce contenu"
+                style="margin-left:auto;background:none;border:none;color:#8b86a3;font-size:12px;cursor:pointer">⚑ Signaler</button>
       </div>` : '';
     overlay.innerHTML = `
       <aside class="mp-td-drawer" style="--td-color:${_esc(color)}"
@@ -2051,6 +2055,10 @@
                 title="Ajouter à ma Wishlist" aria-label="Ajouter à ma Wishlist"></button>
         <button class="add-to-pl-btn mp-id-album-btn" type="button" data-add-to-album="${_esc(im.id)}"
                 title="Ajouter à un album" aria-label="Ajouter à un album">+ Album</button>
+        <button class="mp-report-btn" type="button" data-report-type="image" data-report-id="${_esc(im.id)}"
+                data-report-title="${_esc(title)}"
+                title="Signaler ce contenu" aria-label="Signaler ce contenu"
+                style="margin-left:auto;background:none;border:none;color:#8b86a3;font-size:12px;cursor:pointer">⚑ Signaler</button>
       </div>`;
 
     // CTA achat / état possession. On GARDE PurchaseDrawer pour la confirmation
