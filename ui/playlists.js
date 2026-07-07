@@ -590,7 +590,7 @@
             ? '<span class="pl-badge pl-badge-public">Publique</span>'
             : '<span class="pl-badge pl-badge-private">Privée</span>';
           const adnBadge = p.adn_for_sale
-            ? '<span class="pl-badge" style="background:rgba(111,255,176,.12);color:#6fffb0;border:1px solid rgba(111,255,176,.35)">🧬 ' + (p.adn_price || '?') + ' Smyles</span>'
+            ? '<span class="pl-badge" style="background:rgba(111,255,176,.12);color:#6fffb0;border:1px solid rgba(111,255,176,.35)">🧬 ADN · sur proposition</span>'
             : '';
           const thumb = p.cover_video_url
             ? '<video class="pl-row-cover" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" /></video>'
@@ -804,7 +804,7 @@
           : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
         const qpId = 'ap-qp-' + p.id;
         const adnBadge = p.adn_for_sale
-          ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
+          ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · sur proposition</div>'
           : '';
         const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
         const plActionsHtml = firstTrackId

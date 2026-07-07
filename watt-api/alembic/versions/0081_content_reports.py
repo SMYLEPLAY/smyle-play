@@ -25,10 +25,19 @@ _STATUSES = ("new", "reviewed", "actioned", "rejected")
 
 
 def upgrade() -> None:
-    report_reason = sa.Enum(*_REASONS, name="report_reason")
-    report_status = sa.Enum(*_STATUSES, name="report_status")
-    report_reason.create(op.get_bind(), checkfirst=True)
-    report_status.create(op.get_bind(), checkfirst=True)
+    # FIX déploiement 07/07 : on crée les types UNE seule fois (checkfirst),
+    # puis create_type=False dans les colonnes — sinon create_table ré-émet
+    # CREATE TYPE sans checkfirst → DuplicateObjectError (deploy KO en boucle).
+    from sqlalchemy.dialects import postgresql as pg
+
+    pg.ENUM(*_REASONS, name="report_reason").create(
+        op.get_bind(), checkfirst=True
+    )
+    pg.ENUM(*_STATUSES, name="report_status").create(
+        op.get_bind(), checkfirst=True
+    )
+    report_reason = pg.ENUM(*_REASONS, name="report_reason", create_type=False)
+    report_status = pg.ENUM(*_STATUSES, name="report_status", create_type=False)
 
     op.create_table(
         "content_reports",
