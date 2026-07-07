@@ -1738,3 +1738,15 @@ body.mp-mode-image {
 .mp-socle-pont-rail { height: 2px; border-radius: 1px; }
 .mp-socle-pont-rail--m { background: var(--sp-monde-audio, #0055ff); }
 .mp-socle-pont-rail--v { background: var(--sp-monde-visuel, #cc88ff); }
+
+/* ── Carte ID binaire (drawer détail son, 07/07) — grand socle ─────────── */
+.mp-socle--td { margin: 12px 0 4px; }
+.mp-socle-half--td { padding: 10px 11px; }
+.mp-socle-half--td .mp-socle-face { font-size: .7rem; }
+.mp-socle-half--td .mp-socle-line { font-size: .74rem; white-space: normal; }
+.mp-td-socle-thumb {
+  width: 100%; aspect-ratio: 1/1; object-fit: cover;
+  border-radius: 8px; margin: 2px 0 6px; cursor: pointer;
+  border: 0.5px solid rgba(255,255,255,.14);
+}
+.mp-socle--td + .mp-socle-pont { margin-bottom: 4px; }

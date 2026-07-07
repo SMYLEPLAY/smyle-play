@@ -1082,38 +1082,77 @@
          </div>`
       : '';
 
-    const recipeHTML = (promptId && promptPrice != null)
-      ? `<div class="mp-td-recipe">
-           <div class="mp-td-recipe-row">
-             <div>
-               <div class="mp-td-recipe-label">Recette Suno</div>
-               <div class="mp-td-recipe-teaser" id="mp-td-recipe-teaser" style="font-size:.72rem;color:#a79fc0;margin:2px 0 4px;line-height:1.5;"></div>
-               <div class="mp-td-recipe-price">${promptPrice} <span class="mp-td-recipe-unit">Smyles</span></div>
-             </div>
-             <button class="mp-td-recipe-btn" id="mp-td-recipe-btn"
-                     data-prompt-id="${_esc(promptId)}"
-                     data-prompt-price="${promptPrice}"
-                     data-track-name="${_esc(title)}">
-               🧬 Débloquer
-             </button>
-           </div>
-         </div>`
-      : '';
-
-    // Carte ID enrichie (drawer détail) : badge plateforme/IA + chips mood.
+    // ── CARTE ID BINAIRE (demande Tom 07/07) — grand socle MUSIQUE | VISUEL
+    // avec toutes les infos : provenance des deux faces, moods, ADN (sur
+    // proposition), recette + prix, image liée (aperçu + fiche), pont œuvre.
     const _TD_PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
+    const _TD_IMG_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', autre: 'Autre' };
     const tdPlatformKey   = (t.platform || '').trim().toLowerCase();
     const tdPlatformLabel = _TD_PLATFORM_LABELS[tdPlatformKey] || (tdPlatformKey ? tdPlatformKey : '');
-    const tdPlatformBadge = tdPlatformLabel
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;background:rgba(124,58,237,.16);color:#c4b5fd;font-size:.75rem;font-weight:600;">⚡ ${_esc(tdPlatformLabel)}</span>`
-      : '';
     const tdMoods = (t.tags || '').split(',').map(s => s.trim()).filter(Boolean);
     const tdMoodChips = tdMoods
-      .map(m => `<span style="display:inline-block;padding:3px 9px;border-radius:10px;background:rgba(255,255,255,.07);color:#cfc9db;font-size:.75rem;">${_esc(m)}</span>`)
+      .map(m => `<span style="display:inline-block;padding:2px 8px;border-radius:9px;background:rgba(255,255,255,.07);color:#cfc9db;font-size:.7rem;">${_esc(m)}</span>`)
       .join('');
-    const tagsMetaHTML = (tdPlatformBadge || tdMoodChips)
-      ? `<div class="mp-td-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 2px;">${tdPlatformBadge}${tdMoodChips}</div>`
+    const tdAdnM = t.adnMusique || null;
+    const tdAdnV = t.adnVisuel || null;
+    const tdLi   = t.linkedImage || null;
+    const tdImgLabel = (tdLi && tdLi.imagePlatform)
+      ? (_TD_IMG_LABELS[String(tdLi.imagePlatform).toLowerCase()] || tdLi.imagePlatform)
       : '';
+
+    const tdMusicHalf =
+      `<div class="mp-socle-half mp-socle-half--music mp-socle-half--td">` +
+        `<div class="mp-socle-face">🎧 Musique</div>` +
+        (tdPlatformLabel ? `<div class="mp-socle-line">⚡ ${_esc(tdPlatformLabel)}${t.bpm ? ' · ' + _esc(t.bpm) + ' BPM' : ''}</div>` : '') +
+        (tdMoodChips ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px;">${tdMoodChips}</div>` : '') +
+        ((tdAdnM && tdAdnM.has) ? `<div class="mp-socle-line" title="ADN musical de l'artiste — vente sur proposition">🧬 ADN musical · sur proposition</div>` : '') +
+        ((promptId && promptPrice != null)
+          ? `<div class="mp-td-recipe-teaser" id="mp-td-recipe-teaser" style="font-size:.7rem;color:#a79fc0;margin:4px 0;line-height:1.5;"></div>` +
+            `<button type="button" class="mp-td-recipe-btn mp-socle-price" id="mp-td-recipe-btn"
+                     data-prompt-id="${_esc(promptId)}"
+                     data-prompt-price="${promptPrice}"
+                     data-track-name="${_esc(title)}">🧬 Recette · ${promptPrice} Smyles</button>`
+          : `<div class="mp-socle-line" style="opacity:.7">Recette non vendue</div>`) +
+      `</div>`;
+
+    let tdVisualHalf;
+    if (tdLi || (tdAdnV && tdAdnV.has)) {
+      const thumbUrl = tdLi ? _imgPreviewUrl(tdLi.previewKey) : '';
+      tdVisualHalf =
+        `<div class="mp-socle-half mp-socle-half--visual mp-socle-half--td">` +
+          `<div class="mp-socle-face">🎨 Visuel</div>` +
+          (thumbUrl ? `<img src="${_esc(thumbUrl)}" alt="" class="mp-td-socle-thumb" id="mp-td-linked-thumb" loading="lazy" oncontextmenu="return false" draggable="false" />` : '') +
+          (tdImgLabel ? `<div class="mp-socle-line">⚡ ${_esc(tdImgLabel)}</div>` : '') +
+          ((tdAdnV && tdAdnV.has) ? `<div class="mp-socle-line" title="ADN visuel de l'artiste — vente sur proposition">🎨 ADN visuel · sur proposition</div>` : '') +
+          (tdLi
+            ? `<button type="button" class="mp-socle-price" id="mp-td-linked-btn" data-image-id="${_esc(tdLi.id)}">🖼️ Image${tdLi.priceCredits != null ? ' · ' + tdLi.priceCredits + ' Smyles' : ''}</button>`
+            : '') +
+        `</div>`;
+    } else {
+      tdVisualHalf =
+        `<div class="mp-socle-half mp-socle-half--visual mp-socle-half--td is-invitation">` +
+          `<div class="mp-socle-face">🎨 Visuel</div>` +
+          `<div class="mp-socle-invit-txt">Pas encore de face visuelle</div>` +
+          `<div class="mp-socle-invit-cta">✨ Inviter à créer</div>` +
+        `</div>`;
+    }
+
+    const tdPontTotal = (tdLi && tdLi.priceCredits != null && promptPrice != null)
+      ? (promptPrice + tdLi.priceCredits) : null;
+    const tdPontHtml = tdLi
+      ? `<button type="button" class="mp-socle-pont" id="mp-td-pont" data-image-id="${_esc(tdLi.id)}" title="Voir l'image liée de l'œuvre">` +
+          `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
+          `<span class="mp-socle-pont-lbl">💠 Œuvre complète${tdPontTotal != null ? ' · ' + tdPontTotal + ' Smyles' : ''}</span>` +
+          `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
+        `</button>`
+      : '';
+
+    const socleTdHTML =
+      `<div class="mp-socle mp-socle--td${tdLi ? ' has-pont' : ''}">` +
+        tdMusicHalf +
+        `<div class="mp-socle-seam"></div>` +
+        tdVisualHalf +
+      `</div>` + tdPontHtml;
 
     const overlay = document.createElement('div');
     overlay.id        = 'mp-track-detail-drawer';
@@ -1139,10 +1178,9 @@
           <h2 class="mp-td-title">${_esc(title)}</h2>
           <a class="mp-td-artist" href="/@${_esc(artistSlug)}">${_esc(artistName)}</a>
           <div class="mp-td-plays">${plays} écoutes</div>
-          ${tagsMetaHTML}
           ${audioHTML}
+          ${socleTdHTML}
           ${socialHTML}
-          ${recipeHTML}
         </div>
       </aside>`;
 
@@ -1185,6 +1223,26 @@
     overlay.querySelector('.mp-td-close').addEventListener('click', _close);
     document.addEventListener('keydown', function onEsc(e) {
       if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', onEsc); }
+    });
+
+    // Carte ID binaire — face visuelle : aperçu / bouton / pont → fiche image
+    // complète (fetch /images/fiche, repli minimal).
+    const _tdOpenImage = () => {
+      const li2 = t.linkedImage;
+      if (!li2) return;
+      const fallback = {
+        id: li2.id, priceCredits: li2.priceCredits, previewKey: li2.previewKey,
+        imagePlatform: li2.imagePlatform,
+        title: (t.name || 'Image') + ' — visuel',
+        linkedSound: { id: t.promptId, title: t.name, priceCredits: t.promptPriceCredits },
+      };
+      apiFetch('/images/fiche/' + encodeURIComponent(li2.id))
+        .then(full => _openImageDetailDrawer(full || fallback))
+        .catch(() => _openImageDetailDrawer(fallback));
+    };
+    ['#mp-td-linked-thumb', '#mp-td-linked-btn', '#mp-td-pont'].forEach(sel => {
+      const el = overlay.querySelector(sel);
+      if (el) el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _tdOpenImage(); });
     });
 
     const recipeBtn = overlay.querySelector('#mp-td-recipe-btn');
