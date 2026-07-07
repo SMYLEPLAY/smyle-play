@@ -742,76 +742,167 @@
     const root = document.getElementById(containerId);
     if (!root) return;
     _injectModalStyles();
+    _injectCollectionsStyles();
     try {
-      const all = await loadArtistPublicPlaylists(slug);
-      if (!all || all.length === 0) { root.style.display = 'none'; return; }
-      const playlists = all.slice(0, 12);
+      // ── COLLECTIONS Phase A (07/07) — le TYPE découle du CONTENU ─────────
+      // musique seule = PLAYLIST (bleu) · images seules = ALBUM (mauve) ·
+      // playlist + album appariés par oeuvre_slug = ŒUVRE (bicolore).
+      const [allPl, allAlb] = await Promise.all([
+        loadArtistPublicPlaylists(slug).then(r => r || []).catch(() => []),
+        (typeof apiFetch === 'function'
+          ? apiFetch('/watt/users/' + encodeURIComponent(slug) + '/albums', { auth: false }).catch(() => [])
+          : Promise.resolve([])),
+      ]);
+      const playlists = (allPl || []).slice(0, 12);
+      const albums    = Array.isArray(allAlb) ? allAlb.slice(0, 12) : [];
+      if (playlists.length === 0 && albums.length === 0) {
+        root.style.display = 'none';
+        return;
+      }
       root.style.display = '';
 
-      // C3 ② — tuiles-mondes : rangée horizontale scrollable (scroll-snap
-      // mobile), toujours visible (fini l'accordéon fermé par défaut).
-      const FALLBACK_EMOJIS = ['🎵','🎶','🔥','✨','🎸','🎹','🌙','⚡'];
-      const countLabel = playlists.length + ' playlist' + (playlists.length > 1 ? 's' : '');
+      const albumBySlug = {};
+      albums.forEach(function(a) {
+        const sl = a.oeuvreSlug || a.oeuvre_slug || null;
+        if (sl) albumBySlug[sl] = a;
+      });
+      const usedAlbums = {};
+      const items = [];
+      playlists.forEach(function(p) {
+        const sl = p.oeuvre_slug || null;
+        const sister = sl ? albumBySlug[sl] : null;
+        if (sister) {
+          usedAlbums[String(sister.id)] = true;
+          items.push({ kind: 'oeuvre', p: p, a: sister, slug: sl });
+        } else {
+          items.push({ kind: 'playlist', p: p });
+        }
+      });
+      albums.forEach(function(a) {
+        if (!usedAlbums[String(a.id)]) items.push({ kind: 'album', a: a });
+      });
 
+      const nOeuvre = items.filter(i => i.kind === 'oeuvre').length;
+      const nPl     = items.filter(i => i.kind === 'playlist').length;
+      const nAlb    = items.filter(i => i.kind === 'album').length;
+      const parts = [];
+      if (nOeuvre) parts.push(nOeuvre + ' œuvre' + (nOeuvre > 1 ? 's' : ''));
+      if (nPl)     parts.push(nPl + ' playlist' + (nPl > 1 ? 's' : ''));
+      if (nAlb)    parts.push(nAlb + ' album' + (nAlb > 1 ? 's' : ''));
+      const countLabel = parts.join(' · ');
+
+      const FALLBACK_EMOJIS = ['🎵','🎶','🔥','✨','🎸','🎹','🌙','⚡'];
+
+      function _plTileHtml(p, i, kind, slugOeuvre) {
+        const nc     = p.color || '#cc88ff';
+        const ncRgb  = _hexToRgb(nc);
+        const nbTracks = (p.track_count != null)
+          ? p.track_count
+          : ((p.tracks && p.tracks.length) || 0);
+        const mediaBg = p.cover_video_url
+          ? '<video class="ap-pl-world-media" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
+          : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
+        const qpId = 'ap-qp-' + p.id;
+        const adnBadge = p.adn_for_sale
+          ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
+          : '';
+        const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
+        const plActionsHtml = firstTrackId
+          ? '<div class="ap-pl-card-actions" onclick="event.stopPropagation()">' +
+              '<button type="button" class="like-btn ap-pl-like" data-like-btn="' + firstTrackId + '" title="J\'aime"></button>' +
+              '<button type="button" class="add-to-pl-btn ap-pl-addpl" data-add-to-playlist="' + firstTrackId + '" title="+">+</button>' +
+            '</div>'
+          : '';
+        const typeBadge = (kind === 'oeuvre')
+          ? '<div class="ap-col-type ap-col-type--oeuvre">💠 Œuvre</div>'
+          : '<div class="ap-col-type ap-col-type--music">🎧 Playlist</div>';
+        const oeuvreAttr = (kind === 'oeuvre' && slugOeuvre)
+          ? ' data-oeuvre-slug="' + _esc(slugOeuvre) + '"'
+          : '';
+        const meta = (kind === 'oeuvre')
+          ? nbTracks + ' son' + (nbTracks > 1 ? 's' : '') + ' + images'
+          : nbTracks + ' son' + (nbTracks > 1 ? 's' : '');
+        return (
+          '<li class="ap-pl-world' + (kind === 'oeuvre' ? ' ap-col-oeuvre' : '') + '" data-pl-id="' + p.id + '"' + oeuvreAttr + ' style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
+            mediaBg +
+            '<div class="ap-pl-world-scrim"></div>' +
+            typeBadge +
+            '<button class="ap-pl-qp" id="' + qpId + '" title="Lancer">' +
+              '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' +
+            '</button>' +
+            adnBadge +
+            plActionsHtml +
+            '<div class="ap-pl-world-info">' +
+              '<div class="ap-pl-world-name">' + _esc(p.title) + '</div>' +
+              '<div class="ap-pl-world-meta">' + meta + '</div>' +
+            '</div>' +
+          '</li>'
+        );
+      }
+
+      function _albumTileHtml(a) {
+        const key = a.coverPreviewKey || a.cover_preview_key || '';
+        const url = key ? ('/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/')) : '';
+        const media = url
+          ? '<img class="ap-pl-world-media ap-col-album-img" src="' + _esc(url) + '" alt="" loading="lazy" />'
+          : '<div class="ap-pl-world-media ap-pl-world-fallback">🎨</div>';
+        const n = a.imageCount != null ? a.imageCount : (a.image_count || 0);
+        return (
+          '<li class="ap-pl-world ap-col-albumtile" data-album-id="' + _esc(a.id) + '" style="--nc:#cc88ff;--nc-rgb:204,136,255">' +
+            media +
+            '<div class="ap-pl-world-scrim"></div>' +
+            '<div class="ap-col-type ap-col-type--visual">🎨 Album</div>' +
+            '<div class="ap-pl-world-info">' +
+              '<div class="ap-pl-world-name">' + _esc(a.title) + '</div>' +
+              '<div class="ap-pl-world-meta">' + n + ' image' + (n > 1 ? 's' : '') + '</div>' +
+            '</div>' +
+          '</li>'
+        );
+      }
+
+      let tileIdx = 0;
       root.innerHTML = (
-        '<section class="ap-pl-worlds" aria-label="Playlists publiques">' +
+        '<section class="ap-pl-worlds" aria-label="Collections publiques">' +
           '<div class="ap-pl-worlds-hdr">' +
-            '<h2 class="ap-playlists-title">Playlists</h2>' +
-            '<span class="ap-playlists-count">' + countLabel + '</span>' +
-            '<button type="button" class="ap-pl-view-toggle" id="ap-pl-view-toggle" aria-label="Changer l\'affichage des playlists"></button>' +
+            '<h2 class="ap-playlists-title">Collections</h2>' +
+            '<span class="ap-playlists-count">' + _esc(countLabel) + '</span>' +
+            '<button type="button" class="ap-pl-view-toggle" id="ap-pl-view-toggle" aria-label="Changer l\'affichage des collections"></button>' +
           '</div>' +
           '<ul class="ap-pl-worlds-row" id="ap-pl-worlds-row">' +
-            playlists.map(function(p, i) {
-              const nc     = p.color || '#cc88ff';
-              const ncRgb  = _hexToRgb(nc);
-              // Fix QA C3 ② — le endpoint liste renvoie track_count (les
-              // tracks ne sont pas chargées dans cette projection compacte).
-              const nbTracks = (p.track_count != null)
-                ? p.track_count
-                : ((p.tracks && p.tracks.length) || 0);
-              const mediaBg = p.cover_video_url
-                ? '<video class="ap-pl-world-media" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
-                : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
-              const qpId = 'ap-qp-' + p.id;
-              const adnBadge = p.adn_for_sale
-                ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · ' + (p.adn_price ? p.adn_price + ' Smyles' : 'free') + '</div>'
-                : '';
-              // Tracks de la playlist pour les boutons like/add
-              const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
-              const plActionsHtml = firstTrackId
-                ? '<div class="ap-pl-card-actions" onclick="event.stopPropagation()">' +
-                    '<button type="button" class="like-btn ap-pl-like" data-like-btn="' + firstTrackId + '" title="J\'aime"></button>' +
-                    '<button type="button" class="add-to-pl-btn ap-pl-addpl" data-add-to-playlist="' + firstTrackId + '" title="+">+</button>' +
-                  '</div>'
-                : '';
-              return (
-                '<li class="ap-pl-world" data-pl-id="' + p.id + '" style="--nc:' + nc + ';--nc-rgb:' + ncRgb + '">' +
-                  mediaBg +
-                  '<div class="ap-pl-world-scrim"></div>' +
-                  '<button class="ap-pl-qp" id="' + qpId + '" title="Lancer">' +
-                    '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>' +
-                  '</button>' +
-                  adnBadge +
-                  plActionsHtml +
-                  '<div class="ap-pl-world-info">' +
-                    '<div class="ap-pl-world-name">' + _esc(p.title) + '</div>' +
-                    '<div class="ap-pl-world-meta">' + nbTracks + ' son' + (nbTracks > 1 ? 's' : '') + '</div>' +
-                  '</div>' +
-                '</li>'
-              );
+            items.map(function(it) {
+              if (it.kind === 'album') return _albumTileHtml(it.a);
+              return _plTileHtml(it.p, tileIdx++, it.kind, it.slug || null);
             }).join('') +
           '</ul>' +
         '</section>'
       );
 
-      // Brancher quick-play buttons
-      playlists.forEach(function(p) {
-        const btn = document.getElementById('ap-qp-' + p.id);
-        if (btn) btn.addEventListener('click', function(e) { _quickPlayUserPlaylist(e, p.id); });
+      // Quick-play (playlists + œuvres — la face musique se lance pareil)
+      items.forEach(function(it) {
+        if (it.kind === 'album') return;
+        const btn = document.getElementById('ap-qp-' + it.p.id);
+        if (btn) btn.addEventListener('click', function(e) { _quickPlayUserPlaylist(e, it.p.id); });
+      });
+
+      // Œuvre → page binaire /oeuvre/<slug> (capture : prioritaire sur le
+      // clic playlist historique). Album → visionneuse légère.
+      root.querySelectorAll('.ap-col-oeuvre[data-oeuvre-slug]').forEach(function(tile) {
+        tile.addEventListener('click', function(e) {
+          if (e.target.closest('.ap-pl-qp, .ap-pl-card-actions, .ap-pl-adn-badge')) return;
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = '/oeuvre/' + encodeURIComponent(tile.dataset.oeuvreSlug);
+        }, true);
+      });
+      root.querySelectorAll('.ap-col-albumtile[data-album-id]').forEach(function(tile) {
+        tile.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          _openAlbumLiteModal(tile.dataset.albumId);
+        }, true);
       });
 
       // C3 ② bis — bascule rangée ↔ grille carrée, mémorisée par navigateur.
-      // 'grid' = format historique 1:1 (cover vidéo non recadrée en hauteur).
       (function wireViewToggle() {
         const tog = document.getElementById('ap-pl-view-toggle');
         const row = document.getElementById('ap-pl-worlds-row');
@@ -820,7 +911,6 @@
         try { mode = localStorage.getItem('sp-pl-view') === 'grid' ? 'grid' : 'row'; } catch (_) {}
         function apply() {
           row.classList.toggle('is-grid', mode === 'grid');
-          // L'icône montre la vue CIBLE (celle qu'on obtient en cliquant)
           tog.textContent = mode === 'grid' ? '☰' : '⊞';
           tog.title = mode === 'grid'
             ? 'Affichage compact (rangée)'
@@ -836,8 +926,62 @@
 
     } catch (e) {
       root.style.display = 'none';
-      console.warn('[playlists] artist load failed:', e);
+      console.warn('[playlists] collections load failed:', e);
     }
+  }
+
+  // ── Collections Phase A — styles + visionneuse album légère ──────────────
+  function _injectCollectionsStyles() {
+    if (document.getElementById('ap-collections-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'ap-collections-styles';
+    st.textContent =
+      '.ap-col-type{position:absolute;top:8px;left:8px;z-index:3;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.3px;backdrop-filter:blur(4px)}' +
+      '.ap-col-type--music{background:rgba(0,85,255,.75);color:#fff}' +
+      '.ap-col-type--visual{background:rgba(204,136,255,.85);color:#1a0030}' +
+      '.ap-col-type--oeuvre{background:linear-gradient(90deg,rgba(0,85,255,.85),rgba(204,136,255,.85));color:#fff}' +
+      '.ap-col-album-img{object-fit:cover;width:100%;height:100%}' +
+      '#ap-album-lite{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}' +
+      '.ap-album-lite-box{background:#15151c;border:1px solid rgba(255,255,255,.12);border-radius:14px;max-width:560px;width:100%;max-height:80vh;overflow:auto;padding:18px;color:#eee}' +
+      '.ap-album-lite-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}' +
+      '.ap-album-lite-title{font-size:16px;font-weight:700;margin:0}' +
+      '.ap-album-lite-close{background:none;border:none;color:#aaa;font-size:18px;cursor:pointer}' +
+      '.ap-album-lite-meta{font-size:12px;color:#a09cb8;margin:0 0 12px}' +
+      '.ap-album-lite-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}' +
+      '.ap-album-lite-grid img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;cursor:default}';
+    document.head.appendChild(st);
+  }
+
+  async function _openAlbumLiteModal(albumId) {
+    if (!albumId || document.getElementById('ap-album-lite')) return;
+    let album = null;
+    try {
+      album = await apiFetch('/watt/albums/' + encodeURIComponent(albumId), { auth: false });
+    } catch (_) { return; }
+    if (!album) return;
+    const imgs = Array.isArray(album.images) ? album.images : [];
+    const overlay = document.createElement('div');
+    overlay.id = 'ap-album-lite';
+    const n = imgs.length;
+    overlay.innerHTML =
+      '<div class="ap-album-lite-box" role="dialog" aria-modal="true">' +
+        '<div class="ap-album-lite-hdr">' +
+          '<h3 class="ap-album-lite-title">🎨 ' + _esc(album.title || 'Album') + '</h3>' +
+          '<button class="ap-album-lite-close" aria-label="Fermer">✕</button>' +
+        '</div>' +
+        '<p class="ap-album-lite-meta">' + n + ' image' + (n > 1 ? 's' : '') + ' · aperçus publics — les originaux HD se débloquent à l\'achat</p>' +
+        '<div class="ap-album-lite-grid">' +
+          imgs.map(function(im) {
+            const k = im.previewKey || im.preview_r2_key || '';
+            if (!k) return '';
+            const u = '/watt/images/' + String(k).split('/').map(encodeURIComponent).join('/');
+            return '<img src="' + _esc(u) + '" alt="" loading="lazy" oncontextmenu="return false" draggable="false" />';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('.ap-album-lite-close').addEventListener('click', function() { overlay.remove(); });
   }
 
   // ── 5. QUICK-PLAY playlists utilisateur ───────────────────────────────────
