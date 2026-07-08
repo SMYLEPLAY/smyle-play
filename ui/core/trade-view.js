@@ -43,19 +43,21 @@
     if (!offerId) return;
     // On tente d'abord les trocs classiques ; si l'id n'y est pas, on regarde
     // les offres ADN (mêmes ids TradeOffer, mais deux endpoints distincts).
+    // DISSOCIATION ADN : on regarde d'ABORD les offres d'achat ADN. Une offre
+    // ADN vit dans la même table que les trocs, donc on la teste en priorité
+    // pour ne jamais la rendre via le gabarit « échange » (0 crédits).
     let o = null;
+    try {
+      const adn = (await apiFetch('/adn-offers/me')) || [];
+      o = adn.find((x) => String(x.id) === String(offerId)) || null;
+    } catch (_) {}
+    const myId = await _getMyId();
+    if (o) { _renderAdn(o, myId); return; }
     try {
       const trades = (await apiFetch('/trades/offers/me')) || [];
       o = trades.find((x) => String(x.id) === String(offerId)) || null;
     } catch (_) {}
-    if (!o) {
-      try {
-        const adn = (await apiFetch('/adn-offers/me')) || [];
-        o = adn.find((x) => String(x.id) === String(offerId)) || null;
-      } catch (_) {}
-    }
     if (!o) { alert("Cette proposition n'est plus disponible."); return; }
-    const myId = await _getMyId();
     if (_isAdnOffer(o)) { _renderAdn(o, myId); return; }
     _render(o, myId);
   }

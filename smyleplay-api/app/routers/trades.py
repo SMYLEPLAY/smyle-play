@@ -251,14 +251,21 @@ async def list_my_offers(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[TradeOfferRead]:
-    """Retourne toutes les offres envoyées ET reçues, triées par date."""
+    """Retourne toutes les offres de TROC envoyées ET reçues, triées par date.
+
+    DISSOCIATION ADN : les offres d'achat ADN vivent dans la même table
+    (`trade_offers.target_type IS NOT NULL`) mais NE SONT PAS des trocs.
+    Elles sont servies exclusivement par GET /adn-offers/me. On les EXCLUT ici
+    pour qu'elles ne s'affichent jamais via le gabarit « Proposition d'échange »
+    (qui montrerait « Tu recevrais — 0 crédits »)."""
     offers = (await db.execute(
         select(TradeOffer)
         .where(
             or_(
                 TradeOffer.sender_id == current_user.id,
                 TradeOffer.receiver_id == current_user.id,
-            )
+            ),
+            TradeOffer.target_type.is_(None),
         )
         .order_by(TradeOffer.created_at.desc())
         .limit(50)
@@ -287,6 +294,15 @@ async def accept_trade(
     )).scalar_one_or_none()
     if not offer:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Offre introuvable")
+
+    # DISSOCIATION ADN : une offre d'achat ADN ne s'accepte JAMAIS via la route
+    # troc (logique money/unlock différente). On la refuse ici → passer par
+    # PATCH /adn-offers/{id}/accept.
+    if offer.target_type is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Offre d'achat ADN : utiliser /adn-offers/{id}/accept",
+        )
 
     if offer.receiver_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
@@ -432,6 +448,11 @@ async def reject_trade(
     """Rejette une offre (receiver uniquement)."""
     offer = await _get_offer_or_404(offer_id, db)
 
+    if offer.target_type is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Offre d'achat ADN : utiliser /adn-offers/{id}/reject",
+        )
     if offer.receiver_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Seul le receiver peut rejeter")
@@ -466,6 +487,11 @@ async def cancel_trade(
     """Annule une offre (sender uniquement, avant acceptation)."""
     offer = await _get_offer_or_404(offer_id, db)
 
+    if offer.target_type is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Offre d'achat ADN : utiliser /adn-offers/{id}/cancel",
+        )
     if offer.sender_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Seul le sender peut annuler")
