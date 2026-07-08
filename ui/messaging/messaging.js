@@ -288,7 +288,7 @@
           <div class="msg-bubble ${mine ? 'msg-bubble-me' : 'msg-bubble-other'}">
             <button type="button" onclick="if(window.SmyleTradeView){SmyleTradeView.open('${offerId}');}"
                     style="display:block;text-align:left;background:rgba(124,58,237,.16);border:1px solid rgba(124,58,237,.55);color:#cdb4ff;border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px;line-height:1.4">
-              🔄 <strong>Proposition d'échange</strong><br>
+              🔄 <strong>Offre / proposition</strong><br>
               <span style="opacity:.75;font-size:12px">Cliquer pour voir et répondre</span>
             </button>
             <span class="msg-bubble-time">${_timeAgo(m.created_at)}</span>

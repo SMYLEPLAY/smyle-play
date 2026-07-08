@@ -914,10 +914,10 @@
   // Offre CASH sur un ADN : le vendeur accepte/refuse, l'acheteur annule.
   // Ouvert via SmyleTopbar.openAdnOfferView(offerId) (clic notification).
   const _ADN_TYPE_LABELS = {
-    playlist_adn: '🎚 ADN de playlist',
-    album_adn:    '🎨 ADN d\'album',
-    visual_adn:   '🎨 ADN visuel',
-    profile_adn:  '🧬 ADN d\'artiste',
+    playlist_adn: 'ADN playlist',
+    album_adn:    'ADN album',
+    visual_adn:   'ADN visuel',
+    profile_adn:  'ADN sonore',
   };
 
   async function _openAdnOfferView(offerId) {
@@ -945,6 +945,13 @@
       const lbl = { accepted: '✅ Offre acceptée — ADN livré', rejected: '❌ Refusée', cancelled: 'Annulée', expired: '⏳ Expirée' }[o.status] || o.status;
       actions = `<div style="flex:1;text-align:center;opacity:.7;padding:8px">${lbl}</div>`;
     }
+
+    // Négocier : ouvre un fil de messagerie avec l'autre partie (si dispo sur
+    // la page) pour discuter avant d'accepter / refuser.
+    const otherId   = isSeller ? o.buyer_id : o.seller_id;
+    const negotiate = otherId
+      ? `<button onclick="if(window.SmyleMessaging){document.getElementById('smyle-adnofferview').remove();SmyleMessaging.open('${esc(otherId)}');}" style="width:100%;margin-top:8px;padding:9px;border:1px solid rgba(204,136,255,.4);border-radius:8px;background:rgba(204,136,255,.1);color:#cdb4ff;cursor:pointer;font-size:13px">💬 Négocier</button>`
+      : '';
 
     const card = 'background:#0e0e14;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;margin-bottom:10px';
     const prev = document.getElementById('smyle-adnofferview'); if (prev) prev.remove();
