@@ -117,6 +117,11 @@ class Album(Base):
     )
     # Prix en Smyles (NULL = pas de prix fixé → non vendable même si flag on).
     adn_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # OFFRES-ADN (migration 0080) : plancher caché sous lequel une offre est
+    # rejetée automatiquement. NULL = pas de plancher.
+    adn_reserve_credits: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
