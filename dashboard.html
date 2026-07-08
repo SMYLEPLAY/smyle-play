@@ -1341,14 +1341,10 @@
           <textarea class="dash-textarea" id="dashAdnExampleOutputs" rows="4"
             placeholder="Liens / titres / références d'œuvres qui incarnent bien ton ADN. Peut être tes propres morceaux ou des références externes."></textarea>
 
-          <label class="dash-label">
-            Prix en crédits <span class="dash-req">*</span>
-          </label>
-          <input type="number" class="dash-input" id="dashAdnPrice"
-                 min="30" value="80"
-                 oninput="dashUpdateEurPreview('dashAdnPrice','dashAdnPriceEur')" />
-          <div class="dash-help" id="dashAdnPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
-          <div class="dash-help">Min 30 crédits. Plus le prix est élevé, plus la rareté doit le justifier.</div>
+          <!-- OFFRES-ADN : plus de prix fixe. L'ADN se vend UNIQUEMENT sur offre.
+               L'input reste caché (le JS le lit → prix fantôme ignoré côté vente). -->
+          <input type="hidden" id="dashAdnPrice" value="30" />
+          <div class="dash-help" id="dashAdnPriceEur" style="display:none"></div>
 
           <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
           <label class="dash-label">Plancher caché des offres (optionnel)</label>
@@ -1544,14 +1540,10 @@
           <textarea class="dash-textarea" id="dashVisualAdnExampleOutputs" rows="4"
             placeholder="Liens / titres / références d'images qui incarnent bien ton ADN visuel."></textarea>
 
-          <label class="dash-label">
-            Prix en crédits <span class="dash-req">*</span>
-          </label>
-          <input type="number" class="dash-input" id="dashVisualAdnPrice"
-                 min="30" max="500" value="80"
-                 oninput="dashUpdateEurPreview('dashVisualAdnPrice','dashVisualAdnPriceEur')" />
-          <div class="dash-help" id="dashVisualAdnPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
-          <div class="dash-help">Entre 30 et 500 crédits. Plus le prix est élevé, plus la rareté doit le justifier.</div>
+          <!-- OFFRES-ADN : plus de prix fixe. L'ADN se vend UNIQUEMENT sur offre.
+               L'input reste caché (le JS le lit → prix fantôme ignoré côté vente). -->
+          <input type="hidden" id="dashVisualAdnPrice" value="30" />
+          <div class="dash-help" id="dashVisualAdnPriceEur" style="display:none"></div>
 
           <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
           <label class="dash-label">Plancher caché des offres (optionnel)</label>
