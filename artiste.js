@@ -884,7 +884,7 @@ function openBoutiqueDrawer(type, dataStr) {
     : type === 'son' ? 'Son · Recette Suno'
     : type === 'voix' ? 'Voix'
     : 'ADN Playlist';
-  const nameLabel = type === 'adn-artist' ? 'Signature créative'
+  const nameLabel = type === 'adn-artist' ? 'Signature sonore'
     : type === 'son'      ? (data.title || '')
     : type === 'voix'     ? (data.name  || '')
     : (data.title || '');
@@ -908,7 +908,7 @@ function openBoutiqueDrawer(type, dataStr) {
     const chips = [];
     if (data.hasUsageGuide)     chips.push('📘 Guide d\'usage');
     if (data.hasExampleOutputs) chips.push('🎧 Exemples sonores');
-    chips.push('−30 % sur toutes les recettes de cet artiste');
+    chips.push('−30 % sur tout le catalogue sonore de l\'artiste');
     html += `<div class="bd-chips">${chips.map(c => `<span class="bd-chip">${c}</span>`).join('')}</div>`;
 
   } else if (type === 'son') {
@@ -982,7 +982,7 @@ function openBoutiqueDrawer(type, dataStr) {
           : `<span class="bd-price-amount">${formatCount(price)}</span>
              <span class="bd-price-unit">crédits</span>`}
       </div>
-      ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur toutes les recettes</span>' : ''}
+      ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur tout le catalogue sonore</span>' : ''}
     </div>`;
 
     if (isSelf) {
@@ -2302,7 +2302,7 @@ async function unlockDnaFromProfile() {
     await apiFetch(`/unlocks/adns/${encodeURIComponent(adn.id)}`, {
       method: 'POST',
     });
-    toast('ADN débloqué · -30 % sur toutes les recettes 🎉');
+    toast('ADN débloqué · -30 % sur tout le catalogue sonore 🎉');
     // On rafraîchit le profil pour que l'état du bouton reflète le owned
     state.ownedAdnIds = undefined;
     setTimeout(() => loadArtist(), 400);
@@ -2359,7 +2359,7 @@ async function unlockVisualDnaFromProfile() {
     await apiFetch(`/unlocks/visual-adns/${encodeURIComponent(adn.id)}`, {
       method: 'POST',
     });
-    toast('ADN visuel débloqué · -30 % sur les images 🎨');
+    toast('ADN visuel débloqué · -30 % sur tout le catalogue visuel 🎨');
     state.ownedVisualAdnIds = undefined;
     setTimeout(() => loadArtist(), 400);
   } catch (err) {
