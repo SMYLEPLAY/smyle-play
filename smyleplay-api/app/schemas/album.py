@@ -56,8 +56,8 @@ class AlbumUpdate(BaseModel):
     # un champ absent = inchangé. RAPPEL : l'ADN ne se vend QUE si l'album est
     # public ET adn_for_sale=True ET adn_price IS NOT NULL (le front doit
     # exposer ces réglages explicitement).
-    seed_prompt: str | None = Field(default=None, max_length=10000)
-    dna_description: str | None = Field(default=None, max_length=2000)
+    seed_prompt: str | None = Field(default=None, max_length=20000)
+    dna_description: str | None = Field(default=None, max_length=20000)
     adn_style: str | None = Field(default=None, max_length=40)
     adn_palette: str | None = Field(default=None, max_length=255)
     adn_for_sale: bool | None = None

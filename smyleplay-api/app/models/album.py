@@ -123,6 +123,12 @@ class Album(Base):
         Integer, nullable=True
     )
 
+    # ŒUVRE (migration 0076) : slug partagé avec la playlist sœur (MÊME owner) →
+    # lie la face VISUEL (album) et la face SON (playlist). NULL = non liée.
+    oeuvre_slug: Mapped[str | None] = mapped_column(
+        String(80), nullable=True, index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

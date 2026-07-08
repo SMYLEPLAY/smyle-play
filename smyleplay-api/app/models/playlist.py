@@ -99,6 +99,13 @@ class Playlist(Base):
         Integer, nullable=True
     )
 
+    # ŒUVRE (migration 0076) : slug partagé avec l'album sœur (MÊME owner) →
+    # lie la face SON (playlist) et la face VISUEL (album) en une œuvre binaire.
+    # NULL = playlist non liée à une œuvre.
+    oeuvre_slug: Mapped[str | None] = mapped_column(
+        String(80), nullable=True, index=True
+    )
+
     # Forward-compat V2 — non exposé à l'API V1 (feature flag côté routeur).
     dna_description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
