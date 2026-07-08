@@ -311,6 +311,7 @@
       '.adn-buy-eyebrow { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#cc88ff; font-weight:700; margin:0 0 8px; }' +
       '.adn-buy-title { font-size:20px; font-weight:700; color:#fff; margin:0 0 14px; line-height:1.25; }' +
       '.adn-buy-desc { font-size:13px; color:#a09cb8; line-height:1.6; margin:0 0 18px; border-left:2px solid rgba(204,136,255,.3); padding-left:12px; }' +
+      '.adn-buy-honest { font-size:11.5px; color:#b9b3d0; line-height:1.5; margin:0 0 12px; border-left:2px solid rgba(204,136,255,.4); padding-left:10px; }' +
       '.adn-buy-perks { list-style:none; padding:0; margin:0 0 22px; display:flex; flex-direction:column; gap:6px; }' +
       '.adn-buy-perks li { font-size:12px; color:#c8c4e0; display:flex; gap:8px; align-items:flex-start; }' +
       '.adn-buy-price-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }' +
@@ -1069,6 +1070,7 @@
         '<button class="adn-buy-close" id="adn-buy-close" aria-label="Fermer">✕</button>' +
         '<p class="adn-buy-eyebrow">ADN Playlist</p>' +
         '<h3 class="adn-buy-title">' + _esc(adnTitle) + '</h3>' +
+        '<p class="adn-buy-honest">Un ADN donne des résultats dans le même esprit, jamais identiques. Tu achètes la recette de style, pas une copie de l\'univers sonore.</p>' +
         (seedPrompt
           ? '<p class="adn-buy-desc">' + _esc(seedPrompt) + '</p>'
           : '<p class="adn-buy-desc">La synthèse créative de tous les sons de cette playlist — ton blueprint pour reproduire cet univers.</p>') +
@@ -1996,7 +1998,7 @@
           if (pl) parts.push('⚡ ' + _e(pl.charAt(0).toUpperCase() + pl.slice(1)));
           if (d.model_version) parts.push(_e(d.model_version));
           if (d.has_lyrics) parts.push('🎤 paroles incluses');
-          parts.push('🔒 prompt + réglages débloqués à l’achat');
+          parts.push('🔒 recette débloquée à l’achat');
           el.innerHTML = parts.join(' · ');
         } catch (_) { /* silencieux */ }
       })();

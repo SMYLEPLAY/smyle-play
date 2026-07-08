@@ -182,7 +182,7 @@
       // provenance, + règle d'honnêteté (résultats similaires, jamais identiques).
       reperes =
         '<li>👁️ <span>L’aperçu reste <strong>public pour tout le monde</strong> — tu achètes la possession, pas la vue.</span></li>' +
-        '<li>🔓 <span>Achat = <strong>recette (prompt + réglages) + image originale</strong>, téléchargeable depuis ta bibliothèque.</span></li>' +
+        '<li>🔓 <span>Achat = <strong>recette + image originale</strong>, téléchargeable depuis ta bibliothèque.</span></li>' +
         '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
         '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>';
     } else {

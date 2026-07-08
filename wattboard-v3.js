@@ -326,7 +326,7 @@
       // (écran #sec-visual-adn). « ADN Album » = génome de style d'un album
       // (écran #sec-adn-visuel) — les deux restent accessibles.
       return '' +
-        '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette (prompt + réglages) + le fichier original</em></span></button>' +
+        '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette + le fichier original</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="avatar">🧑‍🎤 <span>Avatar<em>Même écran que « Image » avec le tag « avatar » déjà coché</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="adn-visuel">🎨 <span>ADN visuel<em>Ta signature visuelle vendable — l\'achat débloque le génome de style</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="adn-album">🎨 <span>ADN Album<em>Le génome de style d\'un album — l\'achat débloque la recette de style</em></span></button>';
@@ -334,7 +334,7 @@
     return '' +
       '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature créative vendable</em></span></button>' +
+      '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature sonore vendable</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="adn-playlist">🧬 <span>ADN Playlist<em>Le génome d\'une playlist — l\'achat débloque la recette + le seed prompt</em></span></button>';
   }

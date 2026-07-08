@@ -881,10 +881,12 @@ function openBoutiqueDrawer(type, dataStr) {
   // ── Barre de couleur + type + nom ────────────────────────────────────────
   const color = data.color || (artist.brandColor) || '#cc88ff';
   const typeLabel = type === 'adn-artist' ? 'ADN Artiste'
+    : type === 'visual-adn' ? 'ADN Visuel'
     : type === 'son' ? 'Son · Recette Suno'
     : type === 'voix' ? 'Voix'
     : 'ADN Playlist';
   const nameLabel = type === 'adn-artist' ? 'Signature sonore'
+    : type === 'visual-adn' ? 'Signature visuelle'
     : type === 'son'      ? (data.title || '')
     : type === 'voix'     ? (data.name  || '')
     : (data.title || '');
@@ -909,6 +911,18 @@ function openBoutiqueDrawer(type, dataStr) {
     if (data.hasUsageGuide)     chips.push('📘 Guide d\'usage');
     if (data.hasExampleOutputs) chips.push('🎧 Exemples sonores');
     chips.push('−30 % sur tout le catalogue sonore de l\'artiste');
+    html += `<div class="bd-chips">${chips.map(c => `<span class="bd-chip">${c}</span>`).join('')}</div>`;
+
+  } else if (type === 'visual-adn') {
+    // Miroir de adn-artist côté visuel. Le génome (descriptionTeaser) n'est
+    // pas toujours exposé pour l'ADN visuel → affichage conditionnel.
+    if (data.descriptionTeaser) {
+      html += `<p class="bd-desc">${(data.descriptionTeaser + '').replace(/</g,'&lt;')}</p>`;
+    }
+    const chips = [];
+    if (data.hasUsageGuide)     chips.push('📘 Guide d\'usage');
+    if (data.hasExampleOutputs) chips.push('🖼️ Exemples visuels');
+    chips.push('−30 % sur tout le catalogue visuel de l\'artiste');
     html += `<div class="bd-chips">${chips.map(c => `<span class="bd-chip">${c}</span>`).join('')}</div>`;
 
   } else if (type === 'son') {
@@ -983,6 +997,7 @@ function openBoutiqueDrawer(type, dataStr) {
              <span class="bd-price-unit">crédits</span>`}
       </div>
       ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur tout le catalogue sonore</span>' : ''}
+      ${type === 'visual-adn' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur tout le catalogue visuel</span>' : ''}
     </div>`;
 
     if (isSelf) {
