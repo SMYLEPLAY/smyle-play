@@ -82,6 +82,11 @@ class Adn(Base):
         default=False,
         server_default="false",
     )
+    # OFFRES-ADN (migration 0080) : plancher caché sous lequel une offre est
+    # rejetée automatiquement. NULL = pas de plancher.
+    adn_reserve_credits: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
