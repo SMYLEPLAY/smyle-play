@@ -372,6 +372,214 @@ async def unlock_prompt_atomic(
 
 
 # -----------------------------------------------------------------------------
+# ACHAT ŒUVRE (PAIRE track+cover) — pack à prix = somme des 2 faces − remise
+# -----------------------------------------------------------------------------
+
+# « Légère remise » si on achète l'œuvre entière (les DEUX faces liées) plutôt
+# qu'une seule. Appliquée sur la SOMME des prix effectifs des deux faces (perks
+# unitaires inclus, donc l'acheteur n'est jamais perdant vs achat séparé).
+OEUVRE_PACK_DISCOUNT_PCT = 10
+
+
+async def _effective_price_for_prompt(db, buyer_id, prompt_row) -> int:
+    """Prix effectif d'UNE face, perks unitaires inclus (calque exact du flux
+    unlock_prompt_atomic) : perk profil -30% selon le médium (ADN musical vs
+    ADN visuel) + perk playlist -20%."""
+    is_image = getattr(prompt_row, "product_type", "recipe") == "image"
+    if is_image:
+        from app.services.visual_adn import user_owns_artist_visual_adn
+        perk = await user_owns_artist_visual_adn(
+            db, user_id=buyer_id, artist_id=prompt_row.artist_id
+        )
+    else:
+        from app.services.marketplace import user_owns_artist_adn
+        perk = await user_owns_artist_adn(
+            db, user_id=buyer_id, artist_id=prompt_row.artist_id
+        )
+    from app.services.marketplace import user_owns_playlist_adn_for_prompt
+    playlist_perk = await user_owns_playlist_adn_for_prompt(
+        db, user_id=buyer_id, prompt_id=prompt_row.id
+    )
+    return compute_effective_price(
+        prompt_row.price_credits, perk, playlist_perk
+    )
+
+
+class _BuyOeuvrePairResult:
+    __slots__ = ("paid", "base_sum", "prompt_a_id", "prompt_b_id", "transaction")
+
+    def __init__(self, paid, base_sum, prompt_a_id, prompt_b_id, transaction):
+        self.paid = paid
+        self.base_sum = base_sum
+        self.prompt_a_id = prompt_a_id
+        self.prompt_b_id = prompt_b_id
+        self.transaction = transaction
+
+
+async def buy_oeuvre_pair_atomic(
+    db: AsyncSession, *, buyer_id: UUID, prompt_id: UUID
+) -> _BuyOeuvrePairResult:
+    """
+    Achète une ŒUVRE au niveau UNITÉ : une face (`prompt_id`) + sa face jumelle
+    liée (`linked_prompt_id`), en UNE transaction, au prix = somme des deux prix
+    effectifs − remise pack. Calque STRICT du flux unlock unitaire (modèle
+    crédits simple : credits_balance / credits_earned_total).
+
+      - 404/non-achetable si une face manque, n'est pas publiée, ou l'unité
+        n'est pas liée à une œuvre.
+      - Refus self-purchase. Exige les DEUX faces non déjà possédées (sinon
+        AlreadyUnlocked → acheter l'autre à l'unité).
+      - Un seul owner (définition d'une œuvre) → tout le revenu va à l'artiste.
+    """
+    a = (await db.execute(
+        select(Prompt).where(Prompt.id == prompt_id)
+    )).scalar_one_or_none()
+    if a is None or not a.is_published:
+        raise PromptNotPurchasable("Face d'œuvre introuvable ou non publiée")
+    if a.linked_prompt_id is None:
+        raise PromptNotPurchasable(
+            "Cette unité n'est pas liée à une œuvre (aucune face jumelle)."
+        )
+    b = (await db.execute(
+        select(Prompt).where(Prompt.id == a.linked_prompt_id)
+    )).scalar_one_or_none()
+    if b is None or not b.is_published:
+        raise PromptNotPurchasable(
+            "La face jumelle de l'œuvre est introuvable ou non publiée."
+        )
+    if a.artist_id != b.artist_id:
+        raise PromptNotPurchasable(
+            "Œuvre à deux propriétaires — non achetable en pack."
+        )
+
+    artist_id = a.artist_id
+    if buyer_id == artist_id:
+        raise SelfPurchaseForbidden("Tu ne peux pas acheter ta propre œuvre.")
+
+    async with db.begin_nested():
+        await _acquire_user_locks(db, [buyer_id, artist_id])
+
+        # Possession préalable : le pack exige les DEUX faces non possédées.
+        already = (await db.execute(
+            select(UnlockedPrompt.prompt_id).where(
+                UnlockedPrompt.current_owner_id == buyer_id,
+                UnlockedPrompt.prompt_id.in_([a.id, b.id]),
+            )
+        )).all()
+        if already:
+            raise AlreadyUnlocked(
+                "Tu possèdes déjà une face de l'œuvre — achète l'autre à l'unité."
+            )
+
+        # Stock-out par face (éditions limitées).
+        for p in (a, b):
+            if p.max_supply is not None:
+                sold = (await db.execute(
+                    select(func.count(UnlockedPrompt.id)).where(
+                        UnlockedPrompt.prompt_id == p.id
+                    )
+                )).scalar_one()
+                if int(sold) >= int(p.max_supply):
+                    raise PromptNotPurchasable(
+                        f"Une face de l'œuvre est épuisée ({sold}/{p.max_supply})."
+                    )
+
+        # Prix par face (perks unitaires) puis remise pack sur la somme.
+        price_a = await _effective_price_for_prompt(db, buyer_id, a)
+        price_b = await _effective_price_for_prompt(db, buyer_id, b)
+        base_sum = price_a + price_b
+        paid = max(2, (base_sum * (100 - OEUVRE_PACK_DISCOUNT_PCT)) // 100)
+
+        artist_pct = await artist_pct_for_user(db, artist_id)
+        artist_revenue, platform_fee = compute_split(paid, artist_pct)
+        assert artist_revenue + platform_fee == paid
+
+        buyer_row = (await db.execute(
+            text("SELECT credits_balance FROM users WHERE id = :uid"),
+            {"uid": buyer_id},
+        )).first()
+        if buyer_row is None:
+            raise PromptNotPurchasable("Acheteur introuvable")
+        if int(buyer_row.credits_balance) < paid:
+            raise InsufficientCredits(
+                required=paid, available=int(buyer_row.credits_balance)
+            )
+
+        tx = Transaction(
+            type=TransactionType.UNLOCK,
+            status=TransactionStatus.PENDING,
+            buyer_id=buyer_id,
+            seller_id=artist_id,
+            credits_amount=paid,
+            artist_revenue=artist_revenue,
+            platform_fee=platform_fee,
+            metadata_json={
+                "kind": "oeuvre_pair",
+                "prompt_a_id": str(a.id),
+                "prompt_b_id": str(b.id),
+                "artist_id": str(artist_id),
+                "base_sum": base_sum,
+                "discount_pct": OEUVRE_PACK_DISCOUNT_PCT,
+            },
+        )
+        db.add(tx)
+        await db.flush()
+
+        # Débit acheteur (la CHECK >= 0 en base fait filet).
+        await db.execute(
+            text(
+                "UPDATE users SET credits_balance = credits_balance - :paid "
+                "WHERE id = :uid"
+            ),
+            {"paid": paid, "uid": buyer_id},
+        )
+        # Crédit artiste (revenu + earned_total).
+        await db.execute(
+            text(
+                "UPDATE users SET credits_balance = credits_balance + :rev, "
+                "    credits_earned_total = credits_earned_total + :rev "
+                "WHERE id = :uid"
+            ),
+            {"rev": artist_revenue, "uid": artist_id},
+        )
+
+        # Déblocage des DEUX faces (#édition si limitée). UNIQUE dédoublonne.
+        for p in (a, b):
+            edition_number = None
+            if p.max_supply is not None:
+                minted = (await db.execute(
+                    select(func.count(UnlockedPrompt.id)).where(
+                        UnlockedPrompt.prompt_id == p.id
+                    )
+                )).scalar_one()
+                edition_number = int(minted) + 1
+            db.add(UnlockedPrompt(
+                current_owner_id=buyer_id,
+                prompt_id=p.id,
+                original_artist_id=artist_id,
+                edition_number=edition_number,
+            ))
+        try:
+            await db.flush()
+        except IntegrityError as e:
+            raise AlreadyUnlocked(
+                "Tu possèdes déjà une face de l'œuvre."
+            ) from e
+
+        tx.status = TransactionStatus.COMPLETED
+        tx.completed_at = func.now()
+        await db.flush()
+
+    return _BuyOeuvrePairResult(
+        paid=paid,
+        base_sum=base_sum,
+        prompt_a_id=a.id,
+        prompt_b_id=b.id,
+        transaction=tx,
+    )
+
+
+# -----------------------------------------------------------------------------
 # UNLOCK ADN
 # -----------------------------------------------------------------------------
 
