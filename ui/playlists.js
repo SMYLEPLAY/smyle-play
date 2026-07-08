@@ -136,10 +136,7 @@
           '</label>' +
           '<p class="pl-adn-hint" style="margin:6px 0 0;padding:0">La playlist reste écoutable librement. L\'ADN (synthèse des prompts) est un produit séparé que les fans peuvent acheter pour recréer l\'univers.</p>' +
           '<div class="pl-adn-price-wrap" id="pl-adn-price-wrap" style="display:none">' +
-            '<label class="pl-modal-label" style="margin-bottom:0">Prix en Smyles' +
-              '<input type="number" id="pl-modal-adn-price" min="1" max="100000" placeholder="ex : 50" />' +
-            '</label>' +
-            '<p class="pl-adn-hint">⚠️ Recommandé si tous les morceaux partagent le même univers créatif</p>' +
+            '<p class="pl-adn-hint" style="margin:0;padding:0">🤝 L\'ADN se vend <b>sur offre</b> : les acheteurs te proposent un montant, tu acceptes ou refuses. Pas de prix fixe.</p>' +
           '</div>' +
         '</div>' +
 
@@ -210,7 +207,7 @@
       const color      = colorInput.value || DEFAULT_COLOR;
       const seed       = overlay.querySelector('#pl-modal-seed').value.trim();
       const adnForSale = adnCheckbox.checked;
-      const adnPrice   = adnForSale ? parseInt(overlay.querySelector('#pl-modal-adn-price').value, 10) || null : null;
+      const adnPrice   = null; // OFFRES-ADN : offre-only, plus de prix fixe.
       const errBox = overlay.querySelector('#pl-modal-err');
       errBox.style.display = 'none';
       if (!name) {
@@ -1179,14 +1176,13 @@
           '<label class="pl-edit-check-label" for="pl-edit-adn">🧬 Vendre l\'ADN de cette playlist</label>' +
         '</div>' +
         '<div class="pl-edit-price-wrap" id="pl-edit-price-wrap" style="display:' + (playlistData.adn_for_sale ? '' : 'none') + '">' +
-          '<label class="pl-edit-label" for="pl-edit-price">Prix en Smyles (1 – 100 000)</label>' +
-          '<input type="number" id="pl-edit-price" class="pl-edit-input" min="1" max="100000" placeholder="ex : 50" value="' + (playlistData.adn_price || '') + '" />' +
+          '<p class="pl-adn-hint" style="margin:0 0 6px;padding:0">🤝 L\'ADN se vend <b>sur offre</b> : les acheteurs proposent un montant, tu acceptes ou refuses. Pas de prix fixe.</p>' +
           // ADN playlist (marathon 2026-06-12) — le CONTENU vendu est éditable
           // ici (avant, il ne pouvait être posé qu’à la création). Verrouillé
           // publiquement tant que la vente est active (le backend masque
           // seed_prompt si adn_for_sale).
           '<label class="pl-edit-label" for="pl-edit-seed" style="margin-top:10px">Contenu de l\'ADN — la tranche d\'identité vendue</label>' +
-          '<textarea id="pl-edit-seed" class="pl-edit-input" rows="4" placeholder="Prompt / recette d\'identité de cette playlist (ce que l\'acheteur reçoit)…">' + _esc(playlistData.seed_prompt || '') + '</textarea>' +
+          '<textarea id="pl-edit-seed" class="pl-edit-input" rows="4" maxlength="20000" placeholder="Prompt / recette d\'identité de cette playlist (ce que l\'acheteur reçoit)…">' + _esc(playlistData.seed_prompt || '') + '</textarea>' +
           // OFFRES-ADN étape 5 : plancher CACHÉ. Write-only (jamais relu par
           // l'API) → champ toujours vide, ne modifie que si rempli.
           '<label class="pl-edit-label" for="pl-edit-reserve" style="margin-top:10px">Plancher caché des offres <span class="pl-optional">(optionnel)</span></label>' +
@@ -1217,7 +1213,7 @@
       saveBtn.addEventListener('click', async function() {
         const vis      = document.getElementById('pl-edit-vis').value;
         const adnSale  = adnChk && adnChk.checked;
-        const adnPrice = adnSale ? (parseInt(document.getElementById('pl-edit-price').value, 10) || null) : null;
+        const adnPrice = null; // OFFRES-ADN : offre-only, plus de prix fixe.
         const adnSeed  = (document.getElementById('pl-edit-seed')?.value || '').trim();
 
         // OFFRES-ADN : vente sur offre — plus de prix fixe requis (adn_price nullable).

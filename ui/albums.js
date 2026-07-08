@@ -441,8 +441,7 @@
           '<span>🎨 Vendre l\'ADN de cet album</span>' +
         '</label>' +
         '<div class="al-adn-fields" id="al-adn-fields" style="display:' + (forSale && isPublic ? '' : 'none') + '">' +
-          '<label class="al-adn-lbl" for="al-adn-price">Prix en Smyles (1 – 100 000)</label>' +
-          '<input type="number" id="al-adn-price" class="dash-input" min="1" max="100000" placeholder="ex : 50" value="' + _esc(price) + '" />' +
+          '<p class="al-adn-hint" style="margin:0 0 8px">🤝 L\'ADN se vend <b>sur offre</b> : les acheteurs proposent un montant, tu acceptes ou refuses. Pas de prix fixe.</p>' +
 
           // OFFRES-ADN étape 5 : plancher CACHÉ (write-only → toujours vide).
           '<label class="al-adn-lbl" for="al-adn-reserve">Plancher caché des offres <span class="al-adn-opt">(optionnel)</span></label>' +
@@ -456,10 +455,10 @@
           '<input type="text" id="al-adn-palette" class="dash-input" maxlength="255" placeholder="ex : néon mauve, chrome, brouillard nocturne" value="' + _esc(palette) + '" />' +
 
           '<label class="al-adn-lbl" for="al-adn-desc">Description publique <span class="al-adn-opt">(teaser court — visible avant achat)</span></label>' +
-          '<textarea id="al-adn-desc" class="dash-input" rows="2" maxlength="2000" placeholder="Décris l\'esprit de cet ADN sans révéler la recette…">' + _esc(teaser) + '</textarea>' +
+          '<textarea id="al-adn-desc" class="dash-input" rows="2" maxlength="20000" placeholder="Décris l\'esprit de cet ADN sans révéler la recette…">' + _esc(teaser) + '</textarea>' +
 
           '<label class="al-adn-lbl" for="al-adn-seed">Génome — la recette de style vendue <span class="al-adn-opt">(verrouillé publiquement)</span></label>' +
-          '<textarea id="al-adn-seed" class="dash-input" rows="4" maxlength="10000" placeholder="Le prompt / la recette de style que l\'acheteur reçoit…">' + _esc(seed) + '</textarea>' +
+          '<textarea id="al-adn-seed" class="dash-input" rows="4" maxlength="20000" placeholder="Le prompt / la recette de style que l\'acheteur reçoit…">' + _esc(seed) + '</textarea>' +
           '<p class="al-adn-hint">🔒 Le génome (recette + palette détaillée) reste masqué tant que la vente est active — révélé seulement à l\'acheteur.</p>' +
         '</div>' +
         '<button type="button" class="pl-btn pl-btn-primary al-adn-save" id="al-adn-save">Enregistrer l\'ADN</button>' +
@@ -480,7 +479,7 @@
     if (!saveBtn) return;
     saveBtn.addEventListener('click', async () => {
       const sale    = !!(chk && chk.checked && isPublic);
-      const price   = sale ? (parseInt(content.querySelector('#al-adn-price').value, 10) || null) : null;
+      const price   = null; // OFFRES-ADN : offre-only, plus de prix fixe.
       const style   = (content.querySelector('#al-adn-style') ? content.querySelector('#al-adn-style').value : '') || '';
       const palette = (content.querySelector('#al-adn-palette') ? content.querySelector('#al-adn-palette').value : '').trim();
       const desc    = (content.querySelector('#al-adn-desc') ? content.querySelector('#al-adn-desc').value : '').trim();
