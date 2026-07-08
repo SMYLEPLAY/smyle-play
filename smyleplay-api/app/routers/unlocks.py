@@ -44,6 +44,7 @@ from app.services.unlocks import (
     InsufficientCredits,
     PromptNotPurchasable,
     SelfPurchaseForbidden,
+    buy_oeuvre_pair_atomic,
     unlock_adn_atomic,
     unlock_album_adn_atomic,
     unlock_playlist_adn_atomic,
@@ -189,6 +190,79 @@ async def unlock_prompt(
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to unlock prompt",
+        )
+
+
+# -----------------------------------------------------------------------------
+# POST /unlocks/oeuvre/{prompt_id} — achat ŒUVRE (paire track+cover, prix pack)
+# -----------------------------------------------------------------------------
+
+@router.post(
+    "/oeuvre/{prompt_id}",
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit(LIMIT_PURCHASE)
+async def unlock_oeuvre_pair(
+    prompt_id: UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Achète une ŒUVRE au niveau unité : une face (`prompt_id`) + sa face jumelle
+    liée, en UNE transaction, au prix = somme des deux prix effectifs − remise
+    pack. Débloque les DEUX faces. 404 si l'unité n'est pas liée à une œuvre ;
+    409 si une face est déjà possédée (→ acheter l'autre à l'unité).
+    """
+    try:
+        result = await buy_oeuvre_pair_atomic(
+            db=db,
+            buyer_id=current_user.id,
+            prompt_id=prompt_id,
+        )
+        await db.commit()
+
+        # Notif 💸 au vendeur (best-effort).
+        try:
+            await create_notification(
+                db,
+                user_id=result.transaction.seller_id,
+                type=NotificationType.PURCHASE,
+                actor_id=current_user.id,
+                target_type="oeuvre",
+                target_id=prompt_id,
+                metadata={
+                    "amount": result.paid,
+                    "buyer_name": current_user.artist_name or "Artiste",
+                    "item_type": "oeuvre",
+                },
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+
+        return {
+            "ok": True,
+            "paid": result.paid,
+            "baseSum": result.base_sum,
+            "promptAId": str(result.prompt_a_id),
+            "promptBId": str(result.prompt_b_id),
+            "message": "Œuvre débloquée — les deux faces sont dans ta bibliothèque 🔗",
+        }
+    except ValueError as e:
+        await db.rollback()
+        _raise_unlock_error(e)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Concurrent unlock conflict, please retry",
+        )
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unlock oeuvre",
         )
 
 

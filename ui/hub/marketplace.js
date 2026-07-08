@@ -677,12 +677,22 @@
 
       const pontTotal = (li && li.priceCredits != null && promptPrice != null)
         ? (promptPrice + li.priceCredits) : null;
+      // ŒUVRE (achat unité) : prix pack = somme des deux faces − 10 % (miroir du
+      // backend OEUVRE_PACK_DISCOUNT_PCT). Bouton d'ACHAT direct si le son a une
+      // recette vendable ET une cover liée ; sinon simple lien vers la fiche.
+      const pontPack = pontTotal != null ? Math.max(2, Math.floor(pontTotal * 0.9)) : null;
       const pontHtml = li
-        ? `<button type="button" class="mp-socle-pont" title="Voir l'œuvre complète (son + image)">` +
-            `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
-            `<span class="mp-socle-pont-lbl">💠 Œuvre complète${pontTotal != null ? ' · ' + pontTotal + ' S' : ''}</span>` +
-            `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
-          `</button>` 
+        ? ((pontPack != null && promptId)
+            ? `<button type="button" class="mp-socle-pont mp-socle-pont-buy" data-oeuvre-prompt-id="${_esc(String(promptId))}" data-oeuvre-price="${pontPack}" data-track-name="${_esc(title)}" title="Acheter l'œuvre complète (son + image) · ${pontPack} Smyles — remise 10%">` +
+                `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
+                `<span class="mp-socle-pont-lbl">💠 Œuvre · ${pontPack} S <span style="opacity:.75;font-weight:600">−10%</span></span>` +
+                `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
+              `</button>`
+            : `<button type="button" class="mp-socle-pont" title="Voir l'œuvre complète (son + image)">` +
+                `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
+                `<span class="mp-socle-pont-lbl">💠 Œuvre complète${pontTotal != null ? ' · ' + pontTotal + ' S' : ''}</span>` +
+                `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
+              `</button>`)
         : '';
 
       const socleHtml =
@@ -996,6 +1006,36 @@
             .then(full => _openImageDetailDrawer(full || fallback))
             .catch(() => _openImageDetailDrawer(fallback));
         }
+        return;
+      }
+
+      // ŒUVRE — achat direct du pack (son + image liée) au prix remisé −10 %.
+      const pontBuyEl = ev.target.closest('.mp-socle-pont-buy');
+      if (pontBuyEl) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const pid   = pontBuyEl.dataset.oeuvrePromptId;
+        const price = pontBuyEl.dataset.oeuvrePrice;
+        const tname = pontBuyEl.dataset.trackName || 'cette œuvre';
+        if (!pid) return;
+        if (typeof getAuthToken === 'function' && !getAuthToken()) {
+          if (typeof window.openAuthModal === 'function') window.openAuthModal();
+          else if (window.showToast) window.showToast('Connecte-toi pour acheter.');
+          return;
+        }
+        if (!window.confirm('Acheter l\'œuvre « ' + tname + ' » (son + image) pour ' + price + ' Smyles ?\nRemise de 10% déjà incluse.')) return;
+        pontBuyEl.disabled = true;
+        apiFetch('/unlocks/oeuvre/' + encodeURIComponent(pid), { method: 'POST' })
+          .then(() => {
+            if (window.showToast) window.showToast('Œuvre débloquée 🔗 — les deux faces sont dans ta bibliothèque.');
+            try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
+          })
+          .catch((err) => {
+            pontBuyEl.disabled = false;
+            const d = err && err.body && err.body.detail;
+            const msg = (d && (d.message || (typeof d === 'string' ? d : null))) || 'Achat de l\'œuvre impossible.';
+            if (window.showToast) window.showToast(msg); else alert(msg);
+          });
         return;
       }
 
