@@ -4934,8 +4934,12 @@ async function saveAdn() {
   // la vente réelle passe par le reserve + les offres ("Sur proposition").
   const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30) ? priceCredits : 30;
 
-  // 2026-05-13 v2 — Rareté simplifiée : 1 seul input libre, tier auto.
+  // IA utilisée : OBLIGATOIRE — l'acheteur doit savoir avec quelle IA exploiter l'ADN.
   const aiRef = (document.getElementById('dashAdnAiReference')||{}).value || '';
+  if (!aiRef) {
+    _dashToast('Choisis l\'IA utilisée — l\'acheteur doit savoir quelle IA est optimale pour ton ADN.');
+    return;
+  }
   const supRaw = (document.getElementById('dashAdnMaxSupply')||{}).value || '';
   let maxSupplyVal = null;
   if (supRaw.trim() !== '') {
@@ -5259,6 +5263,10 @@ async function saveVisualAdn() {
   const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30 && priceCredits <= 500) ? priceCredits : 30;
 
   const aiRef  = (document.getElementById('dashVisualAdnAiReference')||{}).value || '';
+  if (!aiRef) {
+    _dashToast('Choisis l\'IA utilisée — l\'acheteur doit savoir quelle IA est optimale pour ton ADN.');
+    return;
+  }
   const supRaw = (document.getElementById('dashVisualAdnMaxSupply')||{}).value || '';
   let maxSupplyVal = null;
   if (supRaw.trim() !== '') {
