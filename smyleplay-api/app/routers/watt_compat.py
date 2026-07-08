@@ -1047,13 +1047,44 @@ async def tracks_recent(
     if prompt_ids:
         from app.models.prompt import Prompt as _Prompt
         price_rows = (await db.execute(
-            select(_Prompt.id, _Prompt.price_credits)
+            select(_Prompt.id, _Prompt.price_credits, _Prompt.linked_prompt_id)
             .where(_Prompt.id.in_(prompt_ids))
         )).all()
         price_by_id = {str(r.id): r.price_credits for r in price_rows}
+
+        # C4 ŒUVRE — image liée par son (aperçu public only : id/previewKey/prix).
+        # MÊME shape que build_artist_detail_payload → la carte du board affiche
+        # la face « 🎨 Visuel » ET le bouton « 💠 Œuvre » (avant : absent car
+        # tracks-recent n'injectait pas linkedImage). Batch, pas de N+1.
+        linked_by_son = {
+            str(r.id): r.linked_prompt_id
+            for r in price_rows if r.linked_prompt_id is not None
+        }
+        linked_imgs: dict = {}
+        img_ids = list(linked_by_son.values())
+        if img_ids:
+            img_rows = (await db.execute(
+                select(_Prompt).where(
+                    _Prompt.id.in_(img_ids),
+                    _Prompt.is_deleted.is_(False),
+                    _Prompt.product_type == "image",
+                )
+            )).scalars().all()
+            linked_imgs = {img.id: img for img in img_rows}
+
         for td in tracks_out:
-            if td.get("promptId"):
-                td["promptPriceCredits"] = price_by_id.get(td["promptId"])
+            pid = td.get("promptId")
+            if not pid:
+                continue
+            td["promptPriceCredits"] = price_by_id.get(pid)
+            img = linked_imgs.get(linked_by_son.get(pid))
+            if img is not None:
+                td["linkedImage"] = {
+                    "id":           str(img.id),
+                    "previewKey":   img.preview_r2_key or "",
+                    "priceCredits": img.price_credits,
+                }
+                td["isOeuvreComplete"] = True
 
     return {"tracks": tracks_out}
 

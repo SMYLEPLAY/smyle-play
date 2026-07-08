@@ -2110,6 +2110,15 @@ function renderTracks(artist) {
       unlockBlock = '<span class="ap-prompt-owner-note">Recette en vente</span>';
     }
 
+    // C4 Œuvre complète — bouton PACK (son + image, prix = somme − 10 %),
+    // cohérent avec le board. Visible seulement si les DEUX faces existent.
+    let oeuvrePackBtn = '';
+    if (linkedPrompt && linkedImage && !artist.isSelf &&
+        linkedPrompt.priceCredits != null && linkedImage.priceCredits != null) {
+      const _packP = Math.max(2, Math.floor((linkedPrompt.priceCredits + linkedImage.priceCredits) * 0.9));
+      oeuvrePackBtn = `<button type="button" class="ap-track-oeuvre-btn" data-oeuvre-prompt-id="${linkedPrompt.id}" data-oeuvre-price="${_packP}" data-track-name="${(t.name || '').replace(/"/g, '&quot;')}" title="Acheter l'œuvre complète (son + image) · ${_packP} crédits — remise 10%">💠 ${_packP}</button>`;
+    }
+
     // Bouton supprimer — owner uniquement (le backend re-vérifie : 403 sinon).
     const deleteBtn = artist.isSelf
       ? `<button type="button" class="ap-track-delete-btn"
@@ -2148,6 +2157,7 @@ function renderTracks(artist) {
       <div class="ap-track-row-actions">
         ${linkedImgChip}
         ${unlockBlock}
+        ${oeuvrePackBtn}
         <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
         <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
         ${deleteBtn}
@@ -2233,6 +2243,34 @@ function renderTracks(artist) {
     if (unlockBtn) {
       const id = unlockBtn.dataset.promptId;
       if (id) unlockPromptFromProfile(id, unlockBtn);
+      return;
+    }
+    // Cas 2ter : bouton PACK œuvre → achat groupé son+image (−10 %), miroir board.
+    const oeuvreBtn = ev.target.closest('.ap-track-oeuvre-btn');
+    if (oeuvreBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const pid = oeuvreBtn.dataset.oeuvrePromptId;
+      const price = oeuvreBtn.dataset.oeuvrePrice;
+      const tname = oeuvreBtn.dataset.trackName || 'cette œuvre';
+      if (!pid) return;
+      if (typeof getAuthToken === 'function' && !getAuthToken()) {
+        if (typeof window.openAuthModal === 'function') window.openAuthModal();
+        return;
+      }
+      if (!window.confirm('Acheter l\'œuvre « ' + tname + ' » (son + image) pour ' + price + ' crédits ?\nRemise de 10% déjà incluse.')) return;
+      oeuvreBtn.disabled = true;
+      apiFetch('/unlocks/oeuvre/' + encodeURIComponent(pid), { method: 'POST' })
+        .then(function () {
+          if (window.showToast) window.showToast('Œuvre débloquée 🔗 — les deux faces sont dans ta bibliothèque.');
+          try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
+        })
+        .catch(function (err) {
+          oeuvreBtn.disabled = false;
+          const d = err && err.body && err.body.detail;
+          const msg = (d && (d.message || (typeof d === 'string' ? d : null))) || 'Achat de l\'œuvre impossible.';
+          if (window.showToast) window.showToast(msg); else alert(msg);
+        });
       return;
     }
     // Cas 2bis : chip « visuel lié » (œuvre complète) → drawer image (achat séparé)
