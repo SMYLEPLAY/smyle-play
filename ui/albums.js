@@ -558,6 +558,11 @@
           '<h4 class="al-adn-title">ADN de l\'album ' + style + '</h4></div>' +
         '<p class="al-adn-honest">' + _esc(ADN_HONEST) + '</p>' +
         (album.dnaDescription ? '<p class="al-adn-desc">' + _esc(album.dnaDescription) + '</p>' : '') +
+        '<ul class="al-adn-perks">' +
+          '<li>🎨 Accès à l\'ADN visuel complet de l\'album</li>' +
+          '<li>💎 Réduction <strong>-20%</strong> sur tous les ADN Image de cet album</li>' +
+          '<li>🖼️ L\'album reste consultable librement — tu achètes la recette de style</li>' +
+        '</ul>' +
         '<div class="al-adn-offer-info">🤝 Cet ADN se vend sur proposition — ' +
           'offre libre, l\'artiste accepte ou refuse.</div>' +
         '<div class="al-adn-buy-row">' +
@@ -822,6 +827,9 @@
       .al-adn-chip { font-size:11px; font-weight:700; color:#cc88ff; background:rgba(204,136,255,.14); border:1px solid rgba(204,136,255,.3); border-radius:999px; padding:2px 9px; margin-left:6px; }
       .al-adn-honest { font-size:11.5px; color:#b9b3d0; line-height:1.5; margin:0 0 10px; border-left:2px solid rgba(204,136,255,.4); padding-left:10px; }
       .al-adn-desc { font-size:12.5px; color:#cdc7e2; line-height:1.55; margin:0 0 10px; }
+      .al-adn-perks { list-style:none; margin:0 0 12px; padding:0; display:flex; flex-direction:column; gap:6px; }
+      .al-adn-perks li { font-size:12.5px; color:#cdc7e2; line-height:1.45; }
+      .al-adn-perks strong { color:#cc88ff; }
       .al-adn-lock { font-size:12px; color:#ffce8a; background:rgba(255,184,0,.08); border:1px solid rgba(255,184,0,.25); border-radius:9px; padding:9px 11px; margin:0 0 12px; line-height:1.5; }
       .al-adn-toggle-label { display:flex; align-items:center; gap:9px; cursor:pointer; font-size:13.5px; font-weight:600; color:#e8e6f5; }
       .al-adn-toggle-label input[type=checkbox] { width:16px; height:16px; accent-color:#cc88ff; cursor:pointer; }

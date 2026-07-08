@@ -665,7 +665,7 @@
           (imgPlatformLabel ? `<div class="mp-socle-line" title="Image générée avec ${_esc(imgPlatformLabel)}">⚡ ${_esc(imgPlatformLabel)}</div>` : '') +
           ((adnV && adnV.has) ? `<div class="mp-socle-line" title="ADN visuel de l'artiste — vente sur proposition">🎨 ADN visuel</div>` : '') +
           (li
-            ? `<button type="button" class="mp-socle-price mp-socle-img" data-image-id="${_esc(li.id)}" title="Voir l'image liée${li.priceCredits != null ? ' · ' + li.priceCredits + ' Smyles' : ''}">Image${li.priceCredits != null ? ' · ' + li.priceCredits + ' S' : ''}</button>`
+            ? `<button type="button" class="mp-recipe-badge mp-socle-price mp-socle-img" data-image-id="${_esc(li.id)}" title="Débloquer la recette visuelle${li.priceCredits != null ? ' · ' + li.priceCredits + ' Smyles' : ''}">Recette${li.priceCredits != null ? ' · ' + li.priceCredits + ' S' : ''}</button>`
             : '');
       } else {
         visualInvitation = true;
@@ -1198,7 +1198,7 @@
           if (plat) parts.push('⚡ ' + _esc(plat.charAt(0).toUpperCase() + plat.slice(1)));
           if (d.model_version) parts.push(_esc(d.model_version));
           if (d.has_lyrics) parts.push('🎤 paroles incluses');
-          parts.push('🔒 prompt + réglages débloqués à l’achat');
+          parts.push('🔒 recette débloquée à l’achat');
           el.innerHTML = parts.join(' · ');
         } catch (_) { /* silencieux */ }
       })();
@@ -1442,7 +1442,7 @@
     } else if (owned) {
       priceOrState = '<div class="mp-img-card-state owned">✓ À toi</div>';
     } else {
-      priceOrState = '<div class="mp-img-card-price">' + _esc(img.priceCredits) + ' <span>Smyles</span></div>';
+      priceOrState = '<div class="mp-img-card-price"><span class="mp-img-card-recipe-tag">Recette</span> ' + _esc(img.priceCredits) + ' <span>Smyles</span></div>';
     }
     // C4 ④ #4 — bouton ❤️ wishlist (UUID du prompt image). Pas d'ajout playlist.
     var likeBtn = '<button type="button" class="like-btn mp-img-card-like" data-img-like-btn="' + _esc(img.id) + '" title="Wishlist" aria-label="Ajouter à ma Wishlist" onclick="event.stopPropagation()"></button>';
@@ -1499,8 +1499,9 @@
       '.mp-img-card-body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:6px}' +
       '.mp-img-card-title{font-weight:700;color:#f3f0ff;font-size:.95rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
       '.mp-img-card-badges{display:flex;flex-wrap:wrap;gap:5px;align-items:center}' +
-      '.mp-img-card-price{margin-top:2px;font-size:.86rem;color:#cbb3ff;font-weight:700}' +
+      '.mp-img-card-price{margin-top:2px;font-size:.86rem;color:#cbb3ff;font-weight:700;display:inline-flex;align-items:center;gap:5px}' +
       '.mp-img-card-price span{font-size:.7rem;color:#8b7bd8;font-weight:600}' +
+      '.mp-img-card-recipe-tag{font-size:.62rem;letter-spacing:.03em;text-transform:uppercase;color:#cbb3ff;background:rgba(124,58,237,.16);border:1px solid rgba(124,58,237,.4);border-radius:999px;padding:1px 7px;font-weight:700}' +
       '.mp-img-card-foot{margin-top:2px;display:flex;align-items:center;justify-content:space-between;gap:8px}' +
       '.mp-img-card-state{font-weight:700;font-size:.82rem}' +
       '.mp-img-card-state.owned{color:#4ADE80}' +
@@ -1563,7 +1564,7 @@
       '<div class="mp-section-head">' +
         '<span class="mp-section-kicker">Catalogue</span>' +
         '<h2 class="mp-section-title">' + (_isAvatarView ? '🧑‍🎤 Avatars' : '🖼️ Images IA') + '</h2>' +
-        '<span class="mp-section-sub">L\'aperçu est public — l\'achat débloque la recette (prompt + réglages) + l\'image originale</span>' +
+        '<span class="mp-section-sub">L\'aperçu est public — l\'achat débloque la recette + l\'image originale</span>' +
       '</div>' +
       '<div class="mp-img-facets">' +
         '<input type="search" class="mp-img-q" placeholder="Titre, artiste…" autocomplete="off">' +
