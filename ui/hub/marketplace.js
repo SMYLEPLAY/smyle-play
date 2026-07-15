@@ -1110,6 +1110,52 @@
       }
     });
 
+    // TAXONOMIE 2026-07-15 — SYMÉTRIE ŒUVRE côté IMAGE : handler dédié pour le
+    // socle affiché sur les cartes image liées à un son (achat œuvre −10% +
+    // recette du son). Phase CAPTURE → passe AVANT le clic carte→drawer, et
+    // n'agit QUE dans .mp-img-card (les sons restent gérés par le handler
+    // .mp-son-card existant).
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest('.mp-img-card')) return;
+      // Achat direct de l'œuvre (son + image, −10 %).
+      const pontBuy = ev.target.closest('.mp-socle-pont-buy');
+      if (pontBuy) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const pid   = pontBuy.dataset.oeuvrePromptId;
+        const price = pontBuy.dataset.oeuvrePrice;
+        const tname = pontBuy.dataset.trackName || 'cette œuvre';
+        if (!pid) return;
+        if (typeof getAuthToken === 'function' && !getAuthToken()) {
+          if (typeof window.openAuthModal === 'function') window.openAuthModal();
+          else if (window.showToast) window.showToast('Connecte-toi pour acheter.');
+          return;
+        }
+        if (!window.confirm('Acheter l\'œuvre « ' + tname + ' » (son + image) pour ' + price + ' Smyles ?\nRemise de 10% déjà incluse.')) return;
+        pontBuy.disabled = true;
+        apiFetch('/unlocks/oeuvre/' + encodeURIComponent(pid), { method: 'POST' })
+          .then(() => {
+            if (window.showToast) window.showToast('Œuvre débloquée 🔗 — les deux faces sont dans ta bibliothèque.');
+            try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
+          })
+          .catch((err) => {
+            pontBuy.disabled = false;
+            const d = err && err.body && err.body.detail;
+            const msg = (d && (d.message || (typeof d === 'string' ? d : null))) || 'Achat de l\'œuvre impossible.';
+            if (window.showToast) window.showToast(msg); else alert(msg);
+          });
+        return;
+      }
+      // Recette du SON lié (modale unlock directe).
+      const sonRecipe = ev.target.closest('.mp-recipe-badge[data-prompt-id]');
+      if (sonRecipe) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        _openRecipeUnlockModal(sonRecipe);
+        return;
+      }
+    }, true);
+
     // Quand un audio se termine, on retire l'état playing visuel
     // (autant pour les cards de la grille que pour les rows Top Sons)
     document.addEventListener('ended', (ev) => {
@@ -1562,13 +1608,46 @@
     var likeBtn = '<button type="button" class="like-btn mp-img-card-like" data-img-like-btn="' + _esc(img.id) + '" title="Wishlist" aria-label="Ajouter à ma Wishlist" onclick="event.stopPropagation()"></button>';
     // C4 My Mix — bouton « Ajouter à un album » (calque add-to-playlist).
     var albumBtn = '<button type="button" class="add-to-pl-btn mp-img-card-album" data-add-to-album="' + _esc(img.id) + '" title="Ajouter à un album" aria-label="Ajouter à un album" onclick="event.stopPropagation()">+</button>';
+    // TAXONOMIE 2026-07-15 — SYMÉTRIE ŒUVRE : si l'image est liée à un son
+    // vendable, on affiche le MÊME socle binaire que les cartes son
+    // (Musique · Visuel · Œuvre −10%). Clics gérés par un handler dédié en
+    // phase capture (_bindImgSocleClicks) pour passer avant le drawer image.
+    var _ls = img.linkedSound;
+    var socleHtml = '';
+    if (_ls && _ls.id && !mine && !owned && _ls.priceCredits != null && img.priceCredits != null) {
+      var _sonP = _ls.priceCredits, _imgP = img.priceCredits;
+      var _pack = Math.max(2, Math.floor((_sonP + _imgP) * 0.9));
+      socleHtml =
+        '<div class="mp-socle has-pont">' +
+          '<div class="mp-socle-half mp-socle-half--music">' +
+            '<div class="mp-socle-face">🎧 Musique</div>' +
+            '<button type="button" class="mp-recipe-badge mp-socle-price" data-prompt-id="' + _esc(String(_ls.id)) + '" data-prompt-price="' + _esc(_sonP) + '" data-track-name="' + _esc(_ls.title || '') + '" title="Débloquer la recette du son · ' + _esc(_sonP) + ' Smyles">🎧 Recette · ' + _esc(_sonP) + ' S</button>' +
+          '</div>' +
+          '<div class="mp-socle-seam"></div>' +
+          '<div class="mp-socle-half mp-socle-half--visual">' +
+            '<div class="mp-socle-face">🎨 Visuel</div>' +
+            '<div class="mp-socle-price" title="Recette visuelle · ' + _esc(_imgP) + ' Smyles">🎨 Recette · ' + _esc(_imgP) + ' S</div>' +
+          '</div>' +
+        '</div>' +
+        '<button type="button" class="mp-socle-pont mp-socle-pont-buy" data-oeuvre-prompt-id="' + _esc(String(_ls.id)) + '" data-oeuvre-price="' + _esc(_pack) + '" data-track-name="' + _esc(_ls.title || img.title || '') + '" title="Acheter l\'œuvre complète (son + image) · ' + _esc(_pack) + ' Smyles — remise 10%">' +
+          '<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>' +
+          '<span class="mp-socle-pont-lbl">💠 Œuvre · ' + _esc(_pack) + ' S <span style="opacity:.75;font-weight:600">−10%</span></span>' +
+          '<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>' +
+        '</button>';
+    }
+    // Quand le socle porte déjà le prix image (face Visuel), on retire le prix
+    // du pied pour ne pas le dupliquer ; on garde album + wishlist.
+    var footHtml = socleHtml
+      ? '<div class="mp-img-card-foot">' + albumBtn + likeBtn + '</div>'
+      : '<div class="mp-img-card-foot">' + priceOrState + albumBtn + likeBtn + '</div>';
     return '' +
       '<article class="mp-img-card" data-image-id="' + _esc(img.id) + '" data-owned="' + ((owned || mine) ? '1' : '0') + '" tabindex="0" role="button" title="' + ((owned || mine) ? 'Image possédée' : 'Voir la fiche') + '">' +
         '<div class="mp-img-card-cover">' + cover + ratioChip + '</div>' +
         '<div class="mp-img-card-body">' +
           '<div class="mp-img-card-title">' + _esc(img.title || 'Sans titre') + '</div>' +
           '<div class="mp-img-card-badges">' + nature + palier + rar + prov + oeuvre + '</div>' +
-          '<div class="mp-img-card-foot">' + priceOrState + albumBtn + likeBtn + '</div>' +
+          socleHtml +
+          footHtml +
         '</div>' +
       '</article>';
   }
