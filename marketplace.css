@@ -1631,25 +1631,23 @@ body.mp-mode-image {
    le COIN haut-droit de la card — elle ne mange plus la cover — fond quasi
    opaque pour rester lisible sur n'importe quelle pochette. */
 .mp-recipe-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  left: auto;
-  width: auto;
-  display: inline-flex;
-  align-items: center;
+  /* 2026-07-15 — le prix recette revient DANS le socle (colonne Musique /
+     Visuel) au lieu de recouvrir la cover. Trois choix d'achat lisibles :
+     Musique · Visuel · Œuvre. Cover libérée. */
+  position: static;
+  width: 100%;
+  display: block;
   gap: 5px;
   background: rgba(12, 9, 20, .92);
   border: 1px solid rgba(204, 136, 255, .65);
-  border-radius: 999px;
-  padding: 4px 10px;
+  border-radius: 8px;
+  padding: 5px 8px;
   font-size: 11px;
   color: #e7d9ff;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  z-index: 8;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+  text-align: center;
   transition: background .15s, border-color .15s, transform .15s;
 }
 .mp-recipe-badge:hover {
