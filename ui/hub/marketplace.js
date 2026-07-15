@@ -725,7 +725,7 @@
               `</button>`
             : `<button type="button" class="mp-socle-pont" title="Voir l'œuvre complète (son + image)">` +
                 `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
-                `<span class="mp-socle-pont-lbl">💠 Œuvre complète${pontTotal != null ? ' · ' + pontTotal + ' S' : ''}</span>` +
+                `<span class="mp-socle-pont-lbl">💠 Œuvre${pontTotal != null ? ' · ' + pontTotal + ' S' : ''}</span>` +
                 `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
               `</button>`)
         : '';
@@ -1220,14 +1220,14 @@
       // Les deux faces sont vendables → VRAI bouton d'achat œuvre (−10 %).
       ? `<button type="button" class="mp-socle-pont mp-socle-pont-buy" id="mp-td-oeuvre-buy" data-oeuvre-prompt-id="${_esc(String(promptId))}" data-oeuvre-price="${tdPontPack}" data-track-name="${_esc(title)}" title="Acheter l'œuvre complète (son + image) · ${tdPontPack} Smyles — remise 10%">` +
           `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
-          `<span class="mp-socle-pont-lbl">💠 Œuvre complète · ${tdPontPack} S <span style="opacity:.75;font-weight:600">−10%</span></span>` +
+          `<span class="mp-socle-pont-lbl">💠 Œuvre · ${tdPontPack} S <span style="opacity:.75;font-weight:600">−10%</span></span>` +
           `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
         `</button>`
       // Sinon (recette pas en vente) : simple lien vers l'image liée.
       : (tdLi
         ? `<button type="button" class="mp-socle-pont" id="mp-td-pont" data-image-id="${_esc(tdLi.id)}" title="Voir l'image liée de l'œuvre">` +
             `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
-            `<span class="mp-socle-pont-lbl">💠 Œuvre complète</span>` +
+            `<span class="mp-socle-pont-lbl">💠 Œuvre</span>` +
             `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
           `</button>`
         : '');
@@ -2037,7 +2037,7 @@
             '<div class="mp-oeuvre-card-cover">' + cover + '</div>' +
           '</div>' +
           '<div class="mp-oeuvre-card-body">' +
-            '<div class="mp-oeuvre-card-title">' + _esc(son.title || 'Œuvre complète') + '</div>' +
+            '<div class="mp-oeuvre-card-title">' + _esc(son.title || 'Œuvre') + '</div>' +
             '<div class="mp-img-card-badges">' + oeuvreBadge + '</div>' +
             '<div class="mp-oeuvre-card-prices">' +
               '<span>🎵 ' + _esc(son.priceCredits) + ' Smyles</span>' +
@@ -2205,7 +2205,7 @@
     const ls = im.linkedSound || null;
     const oeuvreBlockHTML = ls
       ? `<div class="mp-id-linked">
-           <div class="mp-id-linked-label">Œuvre complète</div>
+           <div class="mp-id-linked-label">Œuvre</div>
            <div class="mp-id-linked-row">
              ${ls.coverUrl
                ? `<img src="${_esc(ls.coverUrl)}" alt="" class="mp-id-linked-cover" loading="lazy" />`

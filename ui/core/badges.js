@@ -92,10 +92,11 @@
              txt + '</span>';
     },
 
-    /** Œuvre complète (C4) — son + image liés. Pilule discrète tokenisée. */
+    /** Œuvre (taxonomie 2026-07-15) — plus de label spécial « Œuvre complète » :
+     *  la présence de la cover suffit à reconnaître une œuvre (son + image).
+     *  Conservé comme no-op pour ne pas casser les appels existants. */
     oeuvre: function () {
-      return '<span class="sp-pill sp-pill--oeuvre" title="Œuvre complète : un son et une image liés">' +
-             '🎨 Œuvre complète</span>';
+      return '';
     },
 
     /** Provenance IA discrète : provenance('suno', 'V5.5') → ⚡ Suno · V5.5 */

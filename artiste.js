@@ -958,7 +958,7 @@ function openBoutiqueDrawer(type, dataStr) {
                     style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:8px 10px;border:1px solid rgba(0,85,255,.4);border-radius:12px;background:rgba(0,85,255,.08);cursor:pointer">
         ${prevU ? `<img src="${prevU}" alt="" loading="lazy" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex:0 0 auto" />` : '<span style="font-size:18px">🖼</span>'}
         <div style="flex:1;min-width:0">
-          <div style="font-size:.66rem;font-weight:700;letter-spacing:.04em;color:#6da4ff;text-transform:uppercase">🖼 Visuel lié · œuvre complète</div>
+          <div style="font-size:.66rem;font-weight:700;letter-spacing:.04em;color:#6da4ff;text-transform:uppercase">🖼 Visuel lié</div>
           <div style="font-size:.78rem;color:#a09cb8">${priceTxt}</div>
         </div>
         <span style="font-size:.74rem;color:#9dc0ff;font-weight:600">Voir l'image →</span>
