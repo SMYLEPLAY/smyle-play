@@ -2515,8 +2515,10 @@
       // flash « Acheter » sur une image possédée). Dégrade en public si non co.
       await _loadOwnedImages();
       _bindModeSwitch();
-      // Œuvre complète — affichée dans les deux modes (fetch indépendant).
-      _fetchOeuvres(12).then(_renderOeuvres);
+      // TAXONOMIE 2026-07-15 — section « Œuvres » séparée SUPPRIMÉE : une œuvre
+      // est un son avec cover, elle vit déjà dans la liste des sons (carte) et
+      // dans la liste des images. Plus de bloc dédié qui la duplique.
+      // _fetchOeuvres(12).then(_renderOeuvres);
     }
     // 2026-06-11 — la barre de recherche vit aussi sur la HOME (dépliant
     // combiné moods DNA + rôles CONNECT), même process que /sons et
