@@ -595,6 +595,11 @@
         + '</div>';
     }
 
+    // TAXONOMIE son/image/œuvre (2026-07-15) — œuvres (avec image vendable
+    // liée) d'abord, rendues en CARTES avec cover ; puis les sons seuls,
+    // rendus en BARRES musicales sans cover (branche plus bas dans le map).
+    items = items.filter(x => x.linkedImage && x.linkedImage.id)
+      .concat(items.filter(x => !(x.linkedImage && x.linkedImage.id)));
     el.innerHTML = items.map(t => {
       const color = t.color || '#7C3AED';
       const title = t.name || 'Sans titre';
@@ -645,6 +650,36 @@
       const adnM = t.adnMusique || null;
       const adnV = t.adnVisuel || null;
       const li   = t.linkedImage || null;
+      // TAXONOMIE — SON SEUL (pas d'image vendable liée) → BARRE musicale sans
+      // cover. La cover réapparaît dès que l'artiste ajoute une image vendable
+      // (le son repasse alors en carte œuvre). On réutilise .mp-son-card pour
+      // hériter de toute la mécanique (play, drawer, recette, like, playlist).
+      if (!li) {
+        const _recipeBar = (promptId && promptPrice != null)
+          ? `<button type="button" class="mp-recipe-badge mp-socle-price mp-son-bar-recipe" data-prompt-id="${_esc(String(promptId))}" data-prompt-price="${promptPrice}" data-track-name="${_esc(title)}" title="Débloquer la recette · ${promptPrice} Smyles">🎧 Recette · ${promptPrice} S</button>`
+          : '';
+        return (
+          `<div class="mp-son-card mp-son-card--bar" data-track-id="${_esc(t.id || '')}" data-stream-url="${_esc(streamUrl)}" data-artist-slug="${_esc(artistSlug)}" style="--son-color:${_esc(color)}">` +
+            `<button class="mp-son-card-play" type="button" aria-label="Lire / Pause">` +
+              `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>` +
+            `</button>` +
+            `<div class="mp-son-bar-main">` +
+              `<div class="mp-son-card-title">${_esc(title)}</div>` +
+              `<div class="mp-son-card-artist">` +
+                `<a class="mp-son-card-artist-name" href="/@${_esc(artistSlug)}" onclick="event.stopPropagation();">${_esc(name)}</a>` +
+                permalinkBtn +
+              `</div>` +
+            `</div>` +
+            `<div class="mp-son-bar-actions">` +
+              _recipeBar +
+              `<span class="mp-son-card-meta-plays">${plays} écoutes</span>` +
+              `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.trackUuid || t.id || '')}" title="J'aime / retirer" aria-label="Liker"></button>` +
+              `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
+            `</div>` +
+            (streamUrl ? `<audio preload="none" class="mp-son-card-audio" src="${_esc(streamUrl)}"></audio>` : '') +
+          `</div>`
+        );
+      }
       const imgPlatformLabel = (li && li.imagePlatform)
         ? (_IMG_PLATFORM_LABELS[String(li.imagePlatform).toLowerCase()] || li.imagePlatform)
         : '';
