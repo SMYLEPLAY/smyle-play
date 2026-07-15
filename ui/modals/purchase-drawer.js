@@ -76,7 +76,7 @@
         : '<span class="pd-linked-thumb pd-linked-thumb--ph">🎵</span>';
       return '<div class="pd-linked" data-link-kind="son" data-link-id="' + _esc(ls.id) + '">' +
         cover +
-        '<div class="pd-linked-meta"><span class="pd-linked-kicker">🎵 Son lié · œuvre complète</span>' +
+        '<div class="pd-linked-meta"><span class="pd-linked-kicker">🎵 Son lié</span>' +
         '<span class="pd-linked-title">' + _esc(ls.title || 'Son lié') + '</span>' +
         (ls.priceCredits != null ? '<span class="pd-linked-price">' + _esc(ls.priceCredits) + ' Smyles</span>' : '') +
         '</div><button type="button" class="pd-linked-go">Écouter / voir</button></div>';
@@ -87,7 +87,7 @@
         : '<span class="pd-linked-thumb pd-linked-thumb--ph">🖼</span>';
       return '<div class="pd-linked" data-link-kind="image" data-link-id="' + _esc(li.id) + '">' +
         prev +
-        '<div class="pd-linked-meta"><span class="pd-linked-kicker">🖼 Visuel lié · œuvre complète</span>' +
+        '<div class="pd-linked-meta"><span class="pd-linked-kicker">🖼 Visuel lié</span>' +
         '<span class="pd-linked-title">Image liée</span>' +
         (li.priceCredits != null ? '<span class="pd-linked-price">' + _esc(li.priceCredits) + ' Smyles</span>' : '') +
         '</div><button type="button" class="pd-linked-go">Voir l\'image</button></div>';
