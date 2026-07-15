@@ -527,6 +527,51 @@ body.mp-mode-image {
   background: rgba(124, 58, 237, 0.05);
 }
 
+/* TAXONOMIE 2026-07-15 — variante BARRE : un SON SEUL (sans image vendable
+   liée) s'affiche en ligne, sans cover ni socle. Occupe toute la largeur de
+   la grille pour ne pas casser la grille de cartes-œuvres. */
+.mp-son-card--bar {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.mp-son-card--bar:hover { transform: none; }
+.mp-son-card--bar .mp-son-card-play {
+  position: static;
+  inset: auto;
+  margin: 0;
+  width: 40px;
+  height: 40px;
+  opacity: 1;
+  flex: 0 0 auto;
+}
+.mp-son-bar-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mp-son-card--bar .mp-son-card-title,
+.mp-son-card--bar .mp-son-card-artist {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mp-son-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.mp-son-bar-recipe {
+  width: auto !important;
+  margin-top: 0 !important;
+}
+
 .mp-adn-badge {
   position: absolute;
   top: 6px;
