@@ -2068,7 +2068,7 @@
     const el = document.getElementById('mp-grid-albums-adn');
     if (!el) return;
     if (!items.length) {
-      el.innerHTML = '<div class="mp-grid-empty">Aucun ADN Album en vente pour le moment. Les artistes les mettent en vente depuis leurs albums (My Mix, monde Image).</div>';
+      el.innerHTML = '';
       return;
     }
     _injectAlbumAdnStyles();
@@ -2163,16 +2163,17 @@
   async function _loadImageWorld() {
     if (_imageWorldLoaded) return;
     _imageWorldLoaded = true;
-    const [topImgs, topArts, homeImgs, albumAdns] = await Promise.all([
+    const [topImgs, topArts, homeImgs] = await Promise.all([
       _fetchTopImages(10),
       _fetchTopImageArtists(10),
       _fetchHomeImages(),
-      _fetchAlbumAdns(),
     ]);
     _renderTopImages(topImgs);
     _renderTopImageArtists(topArts);
     _renderHomeImagesGrid(homeImgs);
-    _renderAlbumAdnCatalog(albumAdns);
+    // TAXONOMIE 2026-07-15 — section « ADN Album » retirée de la home (symétrie
+    // ADN : plus de vitrine ADN dédiée d'un seul côté). L'ADN Album reste
+    // vendable depuis la vue album.
   }
 
   // Applique un mode (musique|image) : pose la classe body, met à jour les
