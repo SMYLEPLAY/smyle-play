@@ -2724,37 +2724,38 @@ function renderArtistImages(images) {
   }).join('');
 
   section.innerHTML =
-    '<div style="margin-bottom:10px"><h2 class="ap-section-title" style="margin:0">🖼️ Images IA</h2>' +
-      '<span style="font-size:.8rem;color:#a09cb8">L\'aperçu est public — l\'achat débloque la recette + l\'image originale</span></div>' +
-    '<div class="ap-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">' + cards + '</div>';
+    '<div class="ap-img-hdr" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">' +
+      '<h2 class="ap-section-title" style="margin:0">🖼️ Images IA</h2>' +
+      '<span class="ap-section-arrow ap-img-arrow" style="margin-left:auto;transition:transform .2s">▼</span>' +
+    '</div>' +
+    '<div class="ap-img-body">' +
+      '<div style="font-size:.8rem;color:#a09cb8;margin:0 0 10px">L\'aperçu est public — l\'achat débloque la recette + l\'image originale</div>' +
+      '<div class="ap-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">' + cards + '</div>' +
+    '</div>';
+
+  // Accordéon — plier / déplier la section Images (ouverte par défaut).
+  {
+    const hdr   = section.querySelector('.ap-img-hdr');
+    const body  = section.querySelector('.ap-img-body');
+    const arrow = section.querySelector('.ap-img-arrow');
+    if (hdr && body) {
+      hdr.addEventListener('click', () => {
+        const isOpen = body.style.display !== 'none';
+        body.style.display = isOpen ? 'none' : '';
+        if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : '';
+      });
+    }
+  }
 
   // Hydrate l'état liked (cœur plein) via le système wishlist partagé.
   if (window.SmylePlaylists && typeof window.SmylePlaylists.hydrateImgLikes === 'function') {
     window.SmylePlaylists.hydrateImgLikes();
   }
 
-  // Clic carte → drawer d'achat unifié (recette gatée). On NE rouvre PAS le
-  // drawer d'achat pour une image déjà possédée / dont on est l'auteur.
+  // Clic carte → VISIONNEUSE (voir l'image en grand). L'achat se fait depuis
+  // la visionneuse (bouton Débloquer) — l'owner/acheteur peut aussi juste voir.
   section.querySelectorAll('.ap-img-card').forEach(card => {
-    card.addEventListener('click', () => {
-      if (card.dataset.owned === '1') return; // possédé / auteur → état neutre
-      const id = card.dataset.imageId;
-      if (id && window.PurchaseDrawer) {
-        // C4 Œuvre complète — son lié (depuis data-linked-sound).
-        let linkedSound = null;
-        try {
-          if (card.dataset.linkedSound) linkedSound = JSON.parse(card.dataset.linkedSound);
-        } catch (_) {}
-        window.PurchaseDrawer.open({
-          type: 'image',
-          id: id,
-          price: parseInt(card.dataset.price, 10) || null,
-          title: card.dataset.title || 'Image IA',
-          platform: card.dataset.platform || '',
-          linkedSound: linkedSound,
-        });
-      }
-    });
+    card.addEventListener('click', () => { _apOpenImageLightbox(card); });
   });
 
   // Owner — bouton Supprimer sur chaque carte (soft-delete ; les acheteurs
@@ -2777,6 +2778,59 @@ function renderArtistImages(images) {
       }
     });
   });
+}
+
+// ── Visionneuse image (lightbox) — voir l'aperçu en grand depuis le profil ───
+// Clic sur une carte image → overlay plein écran avec l'aperçu agrandi, un
+// bouton de fermeture (✕ / clic hors image / Échap) et, si l'image n'est pas
+// possédée, un bouton « Débloquer » qui ouvre le drawer d'achat existant.
+function _apOpenImageLightbox(card) {
+  if (!card) return;
+  const imgEl = card.querySelector('img');
+  const src   = imgEl ? imgEl.getAttribute('src') : '';
+  if (!src) return;
+  const title = card.dataset.title || 'Image';
+  const owned = card.dataset.owned === '1';
+  const price = parseInt(card.dataset.price, 10);
+  const id    = card.dataset.imageId;
+  let linkedSound = null;
+  try { if (card.dataset.linkedSound) linkedSound = JSON.parse(card.dataset.linkedSound); } catch (_) {}
+
+  const ov = document.createElement('div');
+  ov.className = 'ap-img-lightbox';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(6,4,12,.92);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px';
+
+  const buyBtn = (!owned && !isNaN(price) && id && window.PurchaseDrawer)
+    ? '<button type="button" class="ap-lb-buy" style="border:0;border-radius:12px;padding:12px 22px;font-weight:700;font-size:.95rem;cursor:pointer;background:linear-gradient(135deg,#7c5cff,#9d4dff);color:#fff">🔓 Débloquer · ' + price + ' Smyles</button>'
+    : '';
+
+  ov.innerHTML =
+    '<button type="button" class="ap-lb-close" aria-label="Fermer" style="position:absolute;top:16px;right:20px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer">✕</button>' +
+    '<img src="' + _apImgEsc(src) + '" alt="' + _apImgEsc(title) + '" style="max-width:min(92vw,900px);max-height:74vh;object-fit:contain;border-radius:14px;box-shadow:0 10px 44px rgba(0,0,0,.6)" />' +
+    '<div style="color:#f3f0ff;font-weight:700;font-size:1rem;text-align:center;max-width:90vw">' + _apImgEsc(title) + '</div>' +
+    buyBtn;
+
+  const close = () => {
+    ov.remove();
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKey);
+  };
+  function onKey(e) { if (e.key === 'Escape') close(); }
+
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  ov.querySelector('.ap-lb-close').addEventListener('click', close);
+  const bb = ov.querySelector('.ap-lb-buy');
+  if (bb) bb.addEventListener('click', () => {
+    close();
+    window.PurchaseDrawer.open({
+      type: 'image', id: id, price: isNaN(price) ? null : price,
+      title: title, platform: card.dataset.platform || '', linkedSound: linkedSound,
+    });
+  });
+
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('keydown', onKey);
 }
 
 // C3 ② — VOICE_LICENSE_LBL supprimé : le vocabulaire « licence » a disparu
