@@ -197,6 +197,40 @@
     }
     .credits-modal__disclaimer strong { color: #d4e4ff; }
 
+    /* LANCEMENT 2026-07-20 — bloc « gagner des Smyles » (remplace la grille
+       de packs payants, retirée tant que Stripe n'est pas branché). */
+    .credits-modal__earn {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    @media (min-width: 480px) {
+      .credits-modal__earn { grid-template-columns: 1fr 1fr; }
+    }
+    .credits-earn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      background: rgba(255, 215, 0, 0.05);
+      border: 1px solid rgba(255, 215, 0, 0.22);
+      border-radius: 12px;
+      padding: 14px;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .credits-earn:hover {
+      border-color: rgba(255, 215, 0, 0.55);
+      background: rgba(255, 215, 0, 0.10);
+      transform: translateY(-2px);
+    }
+    .credits-earn__ico { font-size: 26px; line-height: 1; }
+    .credits-earn__txt { display: flex; flex-direction: column; gap: 3px; }
+    .credits-earn__txt strong { font-size: 14px; color: #fff; font-weight: 700; }
+    .credits-earn__txt em { font-style: normal; font-size: 11px; color: #a098b8; }
+
     .credits-modal__loading,
     .credits-modal__error {
       text-align: center;
@@ -236,20 +270,28 @@
 
         <h2 class="credits-modal__title" id="creditsBuyTitle">
           <span class="credits-modal__title-icon" aria-hidden="true"></span>
-          Acheter des Smyles
+          Tes Smyles
         </h2>
         <p class="credits-modal__sub">
-          Les Smyles te permettent de débloquer des prompts, des ADN et des voix
-          d'artistes. Choisis ton pack.
+          Les Smyles te permettent de débloquer des recettes, des ADN et des voix
+          d'artistes. Tu en gagnes en explorant, en publiant et en revenant.
         </p>
 
-        <div class="credits-modal__packs" id="creditsPacks">
-          <div class="credits-modal__loading">Chargement des packs…</div>
-        </div>
-
-        <div class="credits-modal__disclaimer">
-          <strong>Beta :</strong> les Smyles sont offerts — tu en gagnes en
-          explorant, en publiant et en jouant.
+        <div class="credits-modal__earn">
+          <button type="button" class="credits-earn" id="creditsEarnStreak">
+            <span class="credits-earn__ico" aria-hidden="true">🔥</span>
+            <span class="credits-earn__txt">
+              <strong>Récompense du jour</strong>
+              <em>Reviens chaque jour pour en gagner</em>
+            </span>
+          </button>
+          <button type="button" class="credits-earn" id="creditsEarnRef">
+            <span class="credits-earn__ico" aria-hidden="true">🤝</span>
+            <span class="credits-earn__txt">
+              <strong>Parrainage</strong>
+              <em>Invite un ami, vous gagnez tous les deux</em>
+            </span>
+          </button>
         </div>
       </div>
     `;
@@ -264,6 +306,19 @@
       if (ev.key === 'Escape' && modal.classList.contains('is-open')) {
         closeCreditsBuyModal();
       }
+    });
+
+    // LANCEMENT 2026-07-20 — les deux raccourcis « gagner des Smyles » pointent
+    // vers les panneaux existants (streak / parrainage), comme dans la boutique.
+    const _earnStreak = modal.querySelector('#creditsEarnStreak');
+    const _earnRef    = modal.querySelector('#creditsEarnRef');
+    if (_earnStreak) _earnStreak.addEventListener('click', () => {
+      closeCreditsBuyModal();
+      if (typeof window.openStreakPanel === 'function') window.openStreakPanel();
+    });
+    if (_earnRef) _earnRef.addEventListener('click', () => {
+      closeCreditsBuyModal();
+      if (typeof window.openReferralPanel === 'function') window.openReferralPanel();
     });
 
     document.body.appendChild(modal);
