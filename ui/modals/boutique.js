@@ -9,7 +9,8 @@
    Identifiants DOM préfixés "bq" pour ne jamais entrer en collision avec les
    modals de auth.js sur l'accueil.
 
-   Sections : Dépenser (Pack Mystère, actif) · Recharger (bientôt) · Abonnement.
+   Sections : Dépenser (Pack Mystère, actif). Recharger/Abonnement retirés au
+   lancement (reviendront avec Stripe).
    ───────────────────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
@@ -68,7 +69,7 @@
       <div style="position:relative;max-width:600px;width:100%;max-height:90vh;overflow:auto;background:#14101f;border:1px solid #2c2440;border-radius:18px;padding:26px;color:#eee;font-family:inherit;">
         <button id="bqBoutiqueClose" aria-label="Fermer" style="position:absolute;top:16px;right:20px;background:none;border:none;color:#aaa;font-size:24px;cursor:pointer;line-height:1;">×</button>
         <h2 style="margin:0 0 4px;font-size:22px;">Boutique</h2>
-        <p style="margin:0 0 22px;font-size:13px;color:#9990ad;">Dépense tes Smyles. D'autres produits arrivent bientôt.</p>
+        <p style="margin:0 0 22px;font-size:13px;color:#9990ad;">Dépense tes Smyles.</p>
         <div id="bqBody"></div>
       </div>`;
     document.body.appendChild(m);
@@ -131,28 +132,11 @@
         <div style="color:#6c4cf0;font-size:20px;">›</div>
       </div>`;
 
-    html += _sectionTitle('Recharger tes Smyles');
-    html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">`;
-    html += SMYLE_PACKS.map(p => `
-      <div class="bqSoon" style="cursor:default;position:relative;background:#0d0a16;border:1px solid ${p.best ? '#6c4cf0' : '#2c2440'};border-radius:14px;padding:16px 12px;text-align:center;opacity:.85;">
-        ${p.best ? '<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;text-transform:uppercase;background:#6c4cf0;color:#fff;padding:2px 8px;border-radius:999px;white-space:nowrap;">Meilleur rapport</div>' : ''}
-        <div style="font-size:24px;font-weight:800;">${p.credits}</div>
-        <div style="font-size:11px;color:#9990ad;margin-bottom:8px;">Smyles</div>
-        <div style="font-size:15px;font-weight:700;color:#cfc6e6;">${p.eur} €</div>
-      </div>`).join('');
-    html += `</div>`;
-    html += `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${_soonBadge('Bientôt')}<span style="font-size:12px;color:#9990ad;">Le paiement arrive prochainement.</span></div>`;
-
-    html += _sectionTitle('Abonnement');
-    html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">`;
-    html += SUB_TIERS.map(t => `
-      <div class="bqSoon" style="cursor:default;background:#0d0a16;border:1px solid ${t.accent};border-radius:14px;padding:16px 12px;text-align:center;opacity:.85;">
-        <div style="font-size:28px;line-height:1;margin-bottom:6px;">${t.icon}</div>
-        <div style="font-size:15px;font-weight:800;color:${t.accent};">${t.name}</div>
-        <div style="font-size:11px;color:#9990ad;margin-top:4px;">Avantages à venir</div>
-      </div>`).join('');
-    html += `</div>`;
-    html += `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;">${_soonBadge('Bientôt')}<span style="font-size:12px;color:#9990ad;">Trois formules — détails en préparation.</span></div>`;
+    // LANCEMENT 2026-07-20 — sections « Recharger tes Smyles » (packs €) et
+    // « Abonnement » RETIRÉES de l'UI : pas de mur de paiement ni de promesse
+    // « Bientôt » tant que Stripe n'est pas branché. Elles reviendront telles
+    // quelles avec le paiement réel (les constantes SMYLE_PACKS / SUB_TIERS
+    // sont conservées pour ce retour).
 
     body.innerHTML = html;
     const earnStreak = body.querySelector('#bqEarnStreak');
@@ -168,9 +152,6 @@
     body.querySelector('#bqPackCard').addEventListener('click', _onPackCardClick);
     const marketCard = body.querySelector('#bqMarketCard');
     if (marketCard) marketCard.addEventListener('click', _openMarket);
-    body.querySelectorAll('.bqSoon').forEach(el => el.addEventListener('click', () => {
-      _toast('Bientôt disponible — on y travaille 🛠️', { type: 'info', duration: 2600 });
-    }));
   }
 
   function _onPackCardClick() {

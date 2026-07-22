@@ -1468,7 +1468,7 @@
         : '';
       const preview = v.preview_url
         ? '<audio controls preload="none" controlsList="nodownload noremoteplayback" oncontextmenu="return false" style="width:100%;height:32px;margin:8px 0 4px" src="' + _esc(v.preview_url) + '"></audio><div style="font-size:10px;color:#8b84a3">🎧 Pré-écoute 30 s</div>'
-        : '<div style="font-size:11px;color:#8b84a3;margin:10px 0 4px">🔒 Pré-écoute bientôt disponible</div>';
+        : '<div style="font-size:11px;color:#8b84a3;margin:10px 0 4px">🔒 Pré-écoute non disponible</div>';
       const btn = soldOut
         ? '<button type="button" disabled style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:none;background:rgba(255,255,255,.08);color:#8b84a3;font-weight:700;cursor:default">Épuisé</button>'
         : '<button type="button" class="mp-voix-buy" data-voice-id="' + _esc(String(v.id)) + '" data-voice-price="' + price + '" data-voice-name="' + name + '" data-artist-name="' + aName + '" style="width:100%;margin-top:10px;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,#7c5cff,#9d4dff);color:#fff;font-weight:700;cursor:pointer">Débloquer · ' + price + ' Smyles ⚡</button>';
