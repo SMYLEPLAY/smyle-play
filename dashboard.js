@@ -2201,7 +2201,7 @@ async function uploadTrack() {
   // ── Vérification limite freemium (comptes officiels exemptés) ───────────
   const _existing = getMyTracks();
   if (_existing.length >= FREE_LIMIT && !_isOfficialAccount()) {
-    dashToast('Ta playlist gratuite est complète (6 / 6). PLUG WATT illimité arrive bientôt !');
+    dashToast('Ta playlist est complète (6 / 6) pour le moment.');
     renderUploadState();
     cancelUpload();
     return;

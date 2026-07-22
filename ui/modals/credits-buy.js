@@ -17,7 +17,7 @@
  *     ne change pas — seul le handler du click pack bascule sur l'URL Stripe.
  *
  * Disclaimer affiché à l'utilisateur pour rester honnête (règle Tom) :
- *   « Version test : crédits accordés gratuitement. Le paiement réel arrive bientôt. »
+ *   « Beta : les Smyles sont offerts — tu en gagnes en explorant et en jouant. »
  *
  * Dépendances globales attendues :
  *   - apiFetch  (ui/core/api.js) — fetch authentifié
@@ -248,9 +248,8 @@
         </div>
 
         <div class="credits-modal__disclaimer">
-          <strong>Version test :</strong> les crédits sont actuellement
-          accordés gratuitement pour valider la mécanique. Le paiement réel
-          (Stripe) arrive bientôt.
+          <strong>Beta :</strong> les Smyles sont offerts — tu en gagnes en
+          explorant, en publiant et en jouant.
         </div>
       </div>
     `;

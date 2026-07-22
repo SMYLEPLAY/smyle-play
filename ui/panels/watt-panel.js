@@ -543,14 +543,14 @@ function _wattCellLoad(key, content) {
 
   if (key === 'upload') {
     content.innerHTML = `
-      <div style="opacity:.8;margin-bottom:8px">Poster un son directement ici arrive bientôt.</div>
+      <div style="opacity:.8;margin-bottom:8px">Publie ton son depuis le WATT BOARD.</div>
       <button onclick='window.location.href="/dashboard#sec-upload"' style="background:#FFD700;color:#000;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Ouvrir l'upload →</button>`;
     return;
   }
 
   if (key === 'profil') {
     content.innerHTML = `
-      <div style="opacity:.8;margin-bottom:8px">Éditer ton profil directement ici arrive bientôt.</div>
+      <div style="opacity:.8;margin-bottom:8px">Édite ton profil depuis le WATT BOARD.</div>
       <button onclick='window.location.href="/dashboard#sec-identity"' style="background:#FFD700;color:#000;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Éditer le profil →</button>`;
     return;
   }

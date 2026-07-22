@@ -294,7 +294,7 @@
     `;
     container.title = state.stale
       ? `${state.balance} ${label} — dernier solde connu. Reconnecte-toi pour utiliser tes Smyles.`
-      : `${state.balance} ${label} — clique pour recharger ou voir l'historique`;
+      : `${state.balance} ${label} — clique pour voir tes Smyles`;
     // Rend le container cliquable. La page /smyles arrive au Chantier 2 — en
     // attendant, on affiche un toast "bientôt disponible" pour éviter un 404.
     container.onclick = (ev) => {
@@ -320,9 +320,9 @@
       if (typeof window.openCreditsBuyModal === 'function') {
         window.openCreditsBuyModal();
       } else if (typeof window.smyleToast === 'function') {
-        window.smyleToast('Page d\'achat de Smyles — bientôt disponible', { type: 'info', duration: 2800 });
+        window.smyleToast('Tes Smyles se gagnent en explorant, en publiant et en jouant.', { type: 'info', duration: 2800 });
       } else {
-        alert('Page d\'achat de Smyles — bientôt disponible');
+        alert('Tes Smyles se gagnent en explorant, en publiant et en jouant.');
       }
     };
 
