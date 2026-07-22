@@ -2143,26 +2143,62 @@ function renderTracks(artist) {
       linkedImage:  linkedImage || null,
     };
 
-    row.innerHTML = `
-      <button type="button" class="ap-track-play-btn" data-play-track="${t.id}"
-              aria-label="Écouter"${t.streamUrl ? '' : ' disabled title="Audio en cours de traitement…"'}>${_AP_PLAY_SVG}</button>
-      <div class="ap-track-mini-cover">${coverHTML}</div>
-      <div class="ap-track-row-main">
-        <div class="ap-track-row-title">${safeName}</div>
-        <div class="ap-track-row-badges">
-          ${natureBadge}${palierBadge}${rareteBadge}${provenance}${oeuvreBadge}
-          <span class="ap-track-row-plays">▶ ${plays}</span>
+    // TAXONOMIE son/image/œuvre — même règle que la marketplace :
+    //   • ŒUVRE (image vendable liée) → CARTE avec grande cover + socle
+    //     binaire (Musique | Visuel) + pont d'achat de l'œuvre.
+    //   • SON SEUL → BARRE musicale SANS cover. La cover réapparaît dès que
+    //     l'artiste ajoute une image vendable (le son repasse en carte).
+    // On garde la classe .ap-track-row sur les deux : toute la délégation de
+    // clics existante (play, fiche, recette, like, playlist) continue de marcher.
+    const _playBtn = `<button type="button" class="ap-track-play-btn" data-play-track="${t.id}"
+              aria-label="Écouter"${t.streamUrl ? '' : ' disabled title="Audio en cours de traitement…"'}>${_AP_PLAY_SVG}</button>`;
+    const _commonActions =
+      `<button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>` +
+      `<button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>` +
+      deleteBtn;
+
+    if (linkedImage) {
+      row.classList.add('ap-oeuvre-card');
+      row.innerHTML = `
+        <div class="ap-oeuvre-cover">${coverHTML}${_playBtn}</div>
+        <div class="ap-oeuvre-body">
+          <div class="ap-track-row-title">${safeName}</div>
+          <div class="ap-track-row-badges">
+            ${natureBadge}${palierBadge}${rareteBadge}${provenance}
+            <span class="ap-track-row-plays">▶ ${plays}</span>
+          </div>
+          <div class="ap-oeuvre-socle">
+            <div class="ap-socle-half ap-socle-half--music">
+              <div class="ap-socle-face">🎧 Musique</div>
+              ${unlockBlock || '<div class="ap-socle-empty">Recette non vendue</div>'}
+            </div>
+            <div class="ap-socle-seam"></div>
+            <div class="ap-socle-half ap-socle-half--visual">
+              <div class="ap-socle-face">🎨 Visuel</div>
+              ${linkedImgChip}
+            </div>
+          </div>
+          ${oeuvrePackBtn}
+          <div class="ap-track-row-actions">${_commonActions}</div>
         </div>
-      </div>
-      <div class="ap-track-row-actions">
-        ${linkedImgChip}
-        ${unlockBlock}
-        ${oeuvrePackBtn}
-        <button class="like-btn ap-track-like" type="button" data-like-btn="${t.trackUuid || t.id}" title="J&#39;aime / retirer" aria-label="Liker"></button>
-        <button class="add-to-pl-btn ap-track-add-pl" type="button" data-add-to-playlist="${t.trackUuid || t.id}" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>
-        ${deleteBtn}
-      </div>
-    `;
+      `;
+    } else {
+      row.classList.add('ap-son-bar');
+      row.innerHTML = `
+        ${_playBtn}
+        <div class="ap-track-row-main">
+          <div class="ap-track-row-title">${safeName}</div>
+          <div class="ap-track-row-badges">
+            ${natureBadge}${palierBadge}${rareteBadge}${provenance}
+            <span class="ap-track-row-plays">▶ ${plays}</span>
+          </div>
+        </div>
+        <div class="ap-track-row-actions">
+          ${unlockBlock}
+          ${_commonActions}
+        </div>
+      `;
+    }
     list.appendChild(row);
   });
 
