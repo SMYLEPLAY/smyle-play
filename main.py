@@ -17,22 +17,37 @@ Lancement :
   uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
 
 IMPORTANT : l'ordre du sys.path est critique.
-  - smyleplay-api/ DOIT être avant le root pour que `from app.main`
+  - le dossier de l'API DOIT être avant le root pour que `from app.main`
     résolve le package FastAPI et non le module renommé flask_app.
+
+UNIFICATION BACKEND (2026-07-20)
+  Jusqu'ici le point d'entrée importait `smyleplay-api/`, alors que les
+  migrations Alembic tournaient depuis `watt-api/` (cf. railway.toml). Deux
+  backends divergeaient (47 fichiers), et tout le travail fait dans watt-api/
+  n'avait AUCUN effet en production.
+
+  On bascule sur `watt-api/`, qui est la version complète et celle que les
+  migrations alimentent — les modèles correspondent enfin au schéma réel.
+
+  Vérifié avant bascule : les deux apps s'importent sans erreur · aucun router
+  perdu (33 → 36) · 3 routers gagnés (reports/DSA, telemetry, the_plan) ·
+  aucune variable de configuration supplémentaire requise.
+
+  ROLLBACK : remettre "smyleplay-api" dans _API_DIR ci-dessous.
 """
 
 import os
 import sys
 
-# 1) Prioriser smyleplay-api/ dans sys.path pour l'import du package FastAPI
+# 1) Prioriser le dossier de l'API dans sys.path pour l'import du package FastAPI
 _ROOT = os.path.dirname(os.path.abspath(__file__))
-_API_DIR = os.path.join(_ROOT, "smyleplay-api")
+_API_DIR = os.path.join(_ROOT, "watt-api")
 if _API_DIR not in sys.path:
     sys.path.insert(0, _API_DIR)
 if _ROOT not in sys.path:
     sys.path.insert(1, _ROOT)  # pour `import flask_app`, `import config`, etc.
 
-# 2) Import FastAPI app (package `app` = smyleplay-api/app/)
+# 2) Import FastAPI app (package `app` = watt-api/app/)
 from app.main import app as fastapi_app  # noqa: E402
 
 # 3) Import Flask app (module `flask_app` = ./flask_app.py)
