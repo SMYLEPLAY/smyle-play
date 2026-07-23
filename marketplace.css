@@ -538,6 +538,49 @@ body.mp-mode-image {
   padding: 10px 14px;
 }
 .mp-son-card--bar:hover { transform: none; }
+
+/* CARTE DÉPLIABLE 2026-07-20 — flèche ▾ + panneau de détail inline.
+   Évite d'ouvrir la fiche latérale pour un simple coup d'œil. */
+.mp-card-expand {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #cfc6e6;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.15s, border-color 0.15s;
+}
+.mp-card-expand:hover {
+  background: rgba(124, 58, 237, 0.18);
+  border-color: rgba(124, 58, 237, 0.6);
+}
+.mp-card-details {
+  margin: 8px 0 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mp-card-details[hidden] { display: none; }
+.mp-card-teaser {
+  font-size: 0.7rem;
+  color: #a79fc0;
+  line-height: 1.5;
+}
+.mp-card-linked-thumb {
+  width: 100%;
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 7px;
+  display: block;
+}
 .mp-son-card--bar .mp-son-card-play {
   position: static;
   inset: auto;
