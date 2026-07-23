@@ -751,9 +751,19 @@
           `</div>` +
           tagsRow +
           socleHtml +
+          // CARTE DEPLIABLE (2026-07-20) \u2014 la fleche revele le detail sans
+          // ouvrir la fiche laterale : teaser de recette (charge a la demande)
+          // + apercu du visuel lie. Les achats restent dans le socle.
+          `<div class="mp-card-details" hidden>` +
+            (promptId ? `<div class="mp-card-teaser">\u2026</div>` : '') +
+            ((li && li.previewKey)
+              ? `<img class="mp-card-linked-thumb" src="${_esc(_imgPreviewUrl(li.previewKey))}" alt="" loading="lazy" oncontextmenu="return false" draggable="false" />`
+              : '') +
+          `</div>` +
           `<div class="mp-son-card-meta">` +
             `<span class="mp-son-card-meta-plays">${plays} \u00e9coutes</span>` +
             `<div class="mp-son-card-meta-actions">` +
+              `<button class="mp-card-expand" type="button" aria-expanded="false" title="Voir le d\u00e9tail" aria-label="Voir le d\u00e9tail"${promptId ? ` data-prompt-id="${_esc(String(promptId))}"` : ''}>\u25be</button>` +
               `<button class="like-btn mp-son-card-like" type="button" data-like-btn="${_esc(t.trackUuid || t.id || '')}" title="J\u0027aime / retirer" aria-label="Liker"></button>` +
               `<button class="add-to-pl-btn mp-son-card-add" type="button" data-add-to-playlist="${_esc(t.trackUuid || t.id || '')}" title="Ajouter \u00e0 une playlist" aria-label="Ajouter \u00e0 une playlist">+</button>` +
             `</div>` +
@@ -982,6 +992,41 @@
 
       const card = ev.target.closest('.mp-son-card');
       if (!card) return;
+
+      // CARTE DEPLIABLE (2026-07-20) — la fleche ouvre/ferme le detail inline.
+      // Traite AVANT les autres cas pour ne pas declencher lecture/fiche.
+      const expandBtn = ev.target.closest('.mp-card-expand');
+      if (expandBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const details = card.querySelector('.mp-card-details');
+        if (!details) return;
+        const willOpen = details.hasAttribute('hidden');
+        if (willOpen) details.removeAttribute('hidden');
+        else details.setAttribute('hidden', '');
+        expandBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        expandBtn.textContent = willOpen ? '▴' : '▾';
+        // Teaser recette : un seul appel, uniquement a la premiere ouverture.
+        const pid    = expandBtn.dataset.promptId;
+        const teaser = details.querySelector('.mp-card-teaser');
+        if (willOpen && pid && teaser && !teaser.dataset.loaded) {
+          teaser.dataset.loaded = '1';
+          (async () => {
+            try {
+              const d = await window.apiFetch('/catalog/prompts/' + encodeURIComponent(pid));
+              if (!d) { teaser.textContent = ''; return; }
+              const parts = [];
+              const plat = (d.platform || '').trim();
+              if (plat) parts.push('⚡ ' + _esc(plat.charAt(0).toUpperCase() + plat.slice(1)));
+              if (d.model_version) parts.push(_esc(d.model_version));
+              if (d.has_lyrics) parts.push('🎤 paroles incluses');
+              parts.push('🔒 recette débloquée à l’achat');
+              teaser.innerHTML = parts.join(' · ');
+            } catch (_) { teaser.textContent = ''; }
+          })();
+        }
+        return;
+      }
 
       // Click play button → joue dans le player principal (queue auto)
       const playBtn = ev.target.closest('.mp-son-card-play');
