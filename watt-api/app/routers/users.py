@@ -27,6 +27,29 @@ async def delete_me(
     await delete_account(db, current_user)
 
 
+@router.get("/me/export")
+async def export_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export des données personnelles (RGPD art. 15/20 — accès/portabilité).
+    Renvoie un JSON téléchargeable de tout ce que le compte possède.
+    Lecture seule.
+    """
+    from fastapi.responses import JSONResponse
+
+    from app.services.account_export import export_account_data
+
+    data = await export_account_data(db, current_user)
+    return JSONResponse(
+        content=data,
+        headers={
+            "Content-Disposition": 'attachment; filename="mes-donnees-watt.json"'
+        },
+    )
+
+
 @router.get("/me", response_model=UserRead)
 async def read_me(current_user: User = Depends(get_current_user)):
     return current_user
