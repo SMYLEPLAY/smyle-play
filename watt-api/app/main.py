@@ -209,6 +209,9 @@ def create_app() -> FastAPI:
     app.include_router(oeuvre_router)
     app.include_router(oeuvre_owner_router)
 
+    from app.routers.creator_stats import router as creator_stats_router
+    app.include_router(creator_stats_router)
+
     return app
 
 

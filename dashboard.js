@@ -4548,6 +4548,38 @@ function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── 15. INITIALISATION ────────────────────────────────────────────────────────
 
+// Section 3 — stats créateur (écoutes / ventes / Smyles gagnés).
+// Lecture seule via GET /me/creator-stats ; échec silencieux (strip masquée).
+async function loadCreatorStats() {
+  const el = document.getElementById('creatorStatsStrip');
+  if (!el || typeof apiFetch !== 'function') return;
+  const tok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!tok) return;
+  const fmt = (n) => {
+    n = Number(n) || 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'k';
+    return String(n);
+  };
+  const tile = (ico, label, val) =>
+    '<div style="flex:1;min-width:120px;background:rgba(255,255,255,.04);' +
+    'border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px">' +
+    '<div style="font-size:20px;line-height:1">' + ico + '</div>' +
+    '<div style="font-size:22px;font-weight:800;margin-top:6px">' + fmt(val) + '</div>' +
+    '<div style="font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px">' + label + '</div>' +
+    '</div>';
+  try {
+    const s = await apiFetch('/me/creator-stats');
+    el.innerHTML =
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px">' +
+      tile('🎧', 'Écoutes', s.plays) +
+      tile('🛒', 'Ventes', s.sales) +
+      tile('💠', 'Smyles gagnés', s.revenue_smyles) +
+      '</div>';
+    el.style.display = 'block';
+  } catch (_) { /* non connecté / erreur → strip masquée */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Guard d'accès
   if (!checkAccess()) return;
@@ -4571,6 +4603,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderProfileView();
   renderStats();
   renderRanking();
+  loadCreatorStats();   // Section 3 — écoutes / ventes / revenus
   renderMyTracks();   // initialise compteur freemium + état zone upload
   initTrackEditor();  // cellule édition catalogue (section 1a)
 
