@@ -1,46 +1,51 @@
 # SMYLE PLAY — Dépendances Python (process unifié FastAPI + Flask via ASGI)
 # Installation : pip3 install -r requirements.txt
+#
+# Durcissement 2026-07-24 : bornes SUPÉRIEURES (< majeure suivante) pour
+# empêcher un bump majeur amont de casser la prod sans changement de code.
+# Les bornes sont posées juste au-dessus des versions actuellement installées
+# et testées (aucun downgrade). Un vrai lockfile viendra plus tard.
 
 # ── ASGI / FastAPI (stack moderne) ────────────────────────────────────────────
-fastapi>=0.110.0
-uvicorn[standard]>=0.27.0
-a2wsgi>=1.10.0                # bridge ASGI↔WSGI pour mount Flask
+fastapi>=0.110.0,<1.0
+uvicorn[standard]>=0.27.0,<1.0
+a2wsgi>=1.10.0,<2.0            # bridge ASGI↔WSGI pour mount Flask
 
 # ── DB async (FastAPI) ────────────────────────────────────────────────────────
-sqlalchemy[asyncio]>=2.0
-asyncpg>=0.29.0
-alembic>=1.13.0
+sqlalchemy[asyncio]>=2.0,<3.0
+asyncpg>=0.29.0,<1.0
+alembic>=1.13.0,<2.0
 
 # ── Pydantic / config ─────────────────────────────────────────────────────────
-pydantic[email]>=2.0
-pydantic-settings>=2.0
+pydantic[email]>=2.0,<3.0
+pydantic-settings>=2.0,<3.0
 
 # ── Auth / crypto ─────────────────────────────────────────────────────────────
-PyJWT>=2.8.0
-bcrypt>=4.0.0
+PyJWT>=2.8.0,<3.0
+bcrypt>=4.0.0,<6.0
 
 # ── HTTP / utils ──────────────────────────────────────────────────────────────
-httpx>=0.26.0
-python-multipart>=0.0.9
-structlog>=24.1.0
-sentry-sdk[fastapi]>=1.40.0
-slowapi>=0.1.9                 # rate-limiting auth + achats (Tier 1 sécurité)
+httpx>=0.26.0,<1.0
+python-multipart>=0.0.9,<1.0
+structlog>=24.1.0,<27.0
+sentry-sdk[fastapi]>=1.40.0,<3.0
+slowapi>=0.1.9,<1.0            # rate-limiting auth + achats (Tier 1 sécurité)
 
 # ── WSGI / Flask (legacy, monté dans FastAPI) ─────────────────────────────────
-flask>=3.0.0
-flask-sqlalchemy>=3.1.1
-psycopg2-binary>=2.9.9         # driver sync pour Flask-SQLAlchemy
+flask>=3.0.0,<4.0
+flask-sqlalchemy>=3.1.1,<4.0
+psycopg2-binary>=2.9.9,<3.0   # driver sync pour Flask-SQLAlchemy
 
 # ── Config / env ──────────────────────────────────────────────────────────────
-python-dotenv>=1.0.1
+python-dotenv>=1.0.1,<2.0
 
 # ── Cloudflare R2 ─────────────────────────────────────────────────────────────
-boto3>=1.34.0
+boto3>=1.34.0,<2.0
 
 # ── Audio processing (preview 30s voix) ───────────────────────────────────
-pydub>=0.25.1
+pydub>=0.25.1,<1.0
 
 # ── Images (C4 Monde Visuel) ────────────────────────────────────────────────
 # Génération d'aperçu réduit (≤1024px, JPEG q80) à l'upload d'une image IA.
 # NB : surveiller mémoire/timeout sur Railway pour les gros PNG.
-Pillow>=10.4.0
+Pillow>=10.4.0,<13.0

@@ -1282,7 +1282,7 @@ async def stream_image_preview(key: str):
     except Exception as e:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"R2 object not found: {type(e).__name__}",
+            detail="Ressource introuvable.",
         )
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
@@ -1378,7 +1378,7 @@ async def download_image(
     except Exception as e:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"R2 object not found: {type(e).__name__}",
+            detail="Ressource introuvable.",
         )
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
@@ -1653,7 +1653,7 @@ async def download_image_gallery_item(
     except Exception as e:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"R2 object not found: {type(e).__name__}",
+            detail="Ressource introuvable.",
         )
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""

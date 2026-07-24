@@ -157,6 +157,12 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Révocation des JWT (migration 0084) : recopié dans le claim `tv` du jeton.
+    # Un reset de mot de passe l'incrémente → invalide tous les jetons antérieurs.
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+
     # C6 paliers créateur (migration 0069). 'standard' (gratuit, défaut) /
     # 'premium' / 'mythique'. Détermine la COMMISSION de vente (20/12/5 → part
     # artiste 80/88/95, cf. app/services/tiers.py), le nombre d'EMPLACEMENTS
