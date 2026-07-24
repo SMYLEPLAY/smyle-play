@@ -41,12 +41,17 @@ async function _fetchMeAndSync() {
   }
 }
 
-async function doSignup(email, password, { onAttempt, referralCode } = {}) {
+async function doSignup(email, password, { onAttempt, referralCode, acceptTerms, ageConfirmed } = {}) {
   try {
     // Signup minimal : email + password (+ code de parrainage optionnel).
     // Le profil artiste (artist_name, bio, slug) se crée via le WATT board
     // après connexion (voir /dashboard#profile).
-    const payload = { email, password };
+    // Inscription encadrée (Phase 3) : CGU + âge obligatoires côté API.
+    const payload = {
+      email, password,
+      accept_terms: !!acceptTerms,
+      age_confirmed: !!ageConfirmed,
+    };
     const ref = (referralCode || '').trim();
     if (ref) payload.referral_code = ref;   // mécanique 1 — best-effort côté API
     await apiFetch('/auth/register', {
@@ -401,16 +406,25 @@ async function submitSignup() {
   const password = document.getElementById('signup-password').value;
   const refEl    = document.getElementById('signup-referral');
   const referralCode = refEl ? refEl.value.trim() : '';
+  const termsEl  = document.getElementById('signup-terms');
+  const ageEl    = document.getElementById('signup-age');
+  const acceptTerms  = !!(termsEl && termsEl.checked);
+  const ageConfirmed = !!(ageEl && ageEl.checked);
   const msg      = document.getElementById('authMsg');
   if (!email || !password) {
     msg.textContent = 'Email et mot de passe requis.';
+    return;
+  }
+  // Inscription encadrée (Phase 3) : CGU + âge avant tout appel réseau.
+  if (!acceptTerms || !ageConfirmed) {
+    msg.textContent = 'Accepte les CGU et confirme avoir 15 ans ou plus.';
     return;
   }
   msg.textContent = 'Création du compte…';
   const onAttempt = ({ willRetry }) => {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
-  const result = await doSignup(email, password, { onAttempt, referralCode });
+  const result = await doSignup(email, password, { onAttempt, referralCode, acceptTerms, ageConfirmed });
   if (result.ok) {
     closeAuthModal();
     renderAuthArea();

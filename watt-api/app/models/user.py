@@ -151,6 +151,12 @@ class User(Base):
     )
     ban_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # Inscription encadrée (migration 0083) : instant d'acceptation des CGU +
+    # confirmation d'âge (15 ans). NULL = compte legacy antérieur à l'exigence.
+    accepted_terms_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # C6 paliers créateur (migration 0069). 'standard' (gratuit, défaut) /
     # 'premium' / 'mythique'. Détermine la COMMISSION de vente (20/12/5 → part
     # artiste 80/88/95, cf. app/services/tiers.py), le nombre d'EMPLACEMENTS

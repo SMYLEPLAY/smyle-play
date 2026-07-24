@@ -591,6 +591,15 @@
       <!-- Parrainage (mécanique 1) : code optionnel. Pré-rempli si l'URL
            contient ?ref=CODE (lien de parrainage partagé). -->
       <input class="modal-input" id="signup-referral" type="text" placeholder="Code de parrainage (optionnel)" autocomplete="off" autocapitalize="characters" />
+      <!-- Inscription encadrée (Phase 3) : CGU + âge obligatoires (exigés aussi côté API). -->
+      <label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#b8b0cc;margin:4px 2px 0;line-height:1.4;cursor:pointer">
+        <input type="checkbox" id="signup-terms" style="margin-top:2px;flex:none" />
+        <span>J'accepte les <a href="/legal" target="_blank" rel="noopener" style="color:#8ab4ff">CGU et la politique de confidentialité</a>.</span>
+      </label>
+      <label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#b8b0cc;margin:6px 2px 2px;line-height:1.4;cursor:pointer">
+        <input type="checkbox" id="signup-age" style="margin-top:2px;flex:none" />
+        <span>Je confirme avoir 15 ans ou plus.</span>
+      </label>
       <button type="submit" class="modal-submit">Créer mon compte</button>
     </form>
 
