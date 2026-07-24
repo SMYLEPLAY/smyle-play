@@ -21,6 +21,16 @@
   var dnt = (navigator.doNotTrack === '1' || window.doNotTrack === '1' ||
              navigator.msDoNotTrack === '1');
 
+  // Consentement (RGPD/ePrivacy) — OPT-IN : on n'émet RIEN tant que
+  // l'utilisateur n'a pas explicitement accepté la mesure d'audience via la
+  // bannière (ui/core/consent.js pose la clé). Découplé : on lit le localStorage
+  // partagé, donc la télémétrie respecte le choix même sur une page qui ne
+  // charge pas consent.js. Défaut (aucun choix) = pas de mesure.
+  function _consented() {
+    try { return localStorage.getItem('smyle_consent') === 'granted'; }
+    catch (_) { return false; }
+  }
+
   var API_BASE = (window.SMYLE_API_BASE ? String(window.SMYLE_API_BASE).replace(/\/+$/, '') : '');
   var ALLOWED = ['visit', 'page_view', 'signup', 'profile_complete', 'product_view',
                  'drawer_open', 'purchase', 'purchase_failed', 'boutique_open',
@@ -48,7 +58,7 @@
   // ── Buffer + flush ────────────────────────────────────────────────────────
   var buf = [];
   function _enqueue(name, props) {
-    if (dnt) return;
+    if (dnt || !_consented()) return;
     if (ALLOWED.indexOf(name) === -1) return;
     buf.push({
       name: name,
@@ -60,7 +70,7 @@
   }
 
   function flush(useBeacon) {
-    if (dnt || !buf.length) return;
+    if (dnt || !_consented() || !buf.length) return;
     var batch = { session_id: SID, events: buf.splice(0, 50) };
     var url = API_BASE + '/events';
     var body = JSON.stringify(batch);
