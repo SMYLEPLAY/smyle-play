@@ -107,26 +107,48 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── En-têtes de sécurité HTTP (durcissement Phase 1, 2026-07-24) ─────
-    # S'applique à TOUTES les réponses, y compris les pages front servies par
-    # Flask (monté sous "/"), car ce middleware est le plus externe.
-    # Volontairement SANS Content-Security-Policy pour l'instant : le front
-    # utilise beaucoup d'inline scripts/styles, une CSP stricte casserait des
-    # pages — à ajouter plus tard, testée page par page.
-    @app.middleware("http")
-    async def _security_headers(request: Request, call_next):
-        response = await call_next(request)
-        response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
-        response.headers.setdefault(
-            "Referrer-Policy", "strict-origin-when-cross-origin"
-        )
-        # HSTS : Railway sert en HTTPS. 2 ans + sous-domaines.
-        response.headers.setdefault(
-            "Strict-Transport-Security",
-            "max-age=63072000; includeSubDomains",
-        )
-        return response
+    # ── En-têtes de sécurité HTTP (durcissement, 2026-07-24 — RÉVISÉ) ────
+    # IMPORTANT : middleware ASGI PUR (et non @app.middleware("http") =
+    # BaseHTTPMiddleware). BaseHTTPMiddleware bufferise le corps des réponses,
+    # ce qui casse les réponses en STREAMING (proxy R2 des covers et de l'audio)
+    # en prod réelle — c'est ce qui avait fait disparaître toutes les pochettes.
+    # Ici on n'ajoute que des en-têtes dans http.response.start, sans jamais
+    # toucher au corps. Et on SAUTE explicitement les routes de proxy binaire
+    # pour ne rien changer à leur réponse.
+    # Pas de Content-Security-Policy pour l'instant (le front a beaucoup
+    # d'inline scripts/styles — une CSP stricte casserait des pages).
+    from starlette.datastructures import MutableHeaders
+
+    _SEC_SKIP_PREFIXES = ("/watt/images", "/watt/stream", "/images")
+
+    class _SecurityHeadersMiddleware:
+        def __init__(self, asgi_app):
+            self.asgi_app = asgi_app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] != "http" or any(
+                scope.get("path", "").startswith(p) for p in _SEC_SKIP_PREFIXES
+            ):
+                await self.asgi_app(scope, receive, send)
+                return
+
+            async def _send(message):
+                if message["type"] == "http.response.start":
+                    headers = MutableHeaders(scope=message)
+                    headers.setdefault("X-Content-Type-Options", "nosniff")
+                    headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+                    headers.setdefault(
+                        "Referrer-Policy", "strict-origin-when-cross-origin"
+                    )
+                    headers.setdefault(
+                        "Strict-Transport-Security",
+                        "max-age=63072000; includeSubDomains",
+                    )
+                await send(message)
+
+            await self.asgi_app(scope, receive, _send)
+
+    app.add_middleware(_SecurityHeadersMiddleware)
 
     @app.get("/health")
     async def health():
