@@ -36,18 +36,29 @@ LIMIT_PURCHASE = "30/minute"
 
 
 def client_ip(request: Request) -> str:
-    """IP réelle du client derrière l'edge Railway (sinon fallback direct)."""
-    real = (
-        request.headers.get("x-real-ip")
-        or request.headers.get("x-envoy-external-address")
-    )
+    """
+    IP réelle du client derrière l'edge Railway — robuste au spoofing.
+
+    Durcissement (2026-07-24) : l'ancienne version prenait `x-real-ip` ou la
+    PREMIÈRE entrée de X-Forwarded-For, toutes deux fournissables par le client
+    → un attaquant faisait tourner cet en-tête pour obtenir un compteur de
+    rate-limit neuf à chaque requête (contournement du brute-force login/reset).
+
+    Sur Railway, X-Forwarded-For observé = "…entrées client (spoofables)…,
+    VRAI_CLIENT, proxy_railway" : l'edge AJOUTE le vrai client puis son propre
+    proxy. Le vrai client est donc l'AVANT-DERNIÈRE entrée — un client peut
+    préfixer des IP bidon à gauche mais ne peut pas altérer ce que l'edge ajoute
+    à droite. On la prend comme clé de confiance.
+    """
+    xff = request.headers.get("x-forwarded-for", "")
+    parts = [p.strip() for p in xff.split(",") if p.strip()]
+    if len(parts) >= 2:
+        return parts[-2]           # vrai client, juste avant le proxy Railway
+    if len(parts) == 1:
+        return parts[0]
+    real = request.headers.get("x-real-ip")
     if real and real.strip():
         return real.strip()
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        first = xff.split(",")[0].strip()
-        if first:
-            return first
     return get_remote_address(request)
 
 

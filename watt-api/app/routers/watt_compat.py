@@ -108,7 +108,7 @@ async def stream_r2_audio(key: str):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"R2 object not found: {type(e).__name__}",
+            detail="Ressource introuvable.",
         )
 
     # Détection MIME via extension. Le content-type R2 lui-même est
@@ -1744,6 +1744,19 @@ _IMAGE_MIME: dict[str, str] = {
 _IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 Mo (aligné avec la validation client)
 
 
+def _looks_like_image(data: bytes) -> bool:
+    """Valide la SIGNATURE réelle du fichier (magic bytes), pas seulement le
+    content-type déclaré (spoofable). Accepte JPEG / PNG / GIF / WEBP."""
+    if len(data) < 12:
+        return False
+    return (
+        data[:3] == b"\xff\xd8\xff"                          # JPEG
+        or data[:8] == b"\x89PNG\r\n\x1a\n"                  # PNG
+        or data[:4] == b"GIF8"                               # GIF
+        or (data[:4] == b"RIFF" and data[8:12] == b"WEBP")   # WEBP
+    )
+
+
 @router.post("/upload-image")
 async def upload_image(
     file: UploadFile = File(...),
@@ -1785,6 +1798,12 @@ async def upload_image(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"Image trop lourde ({len(data) // 1024} KB) — max 5 Mo.",
         )
+    # Durcissement : valider les octets réels, pas seulement le content-type.
+    if not _looks_like_image(data):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier n'est pas une image valide (JPEG, PNG, WEBP ou GIF).",
+        )
 
     # ── Extension / MIME ──────────────────────────────────────────────────────
     filename = file.filename or "image.jpg"
@@ -1816,7 +1835,7 @@ async def upload_image(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload R2 échoué : {type(exc).__name__}: {str(exc)[:200]}",
+            detail="Échec de l'envoi du fichier. Réessaie.",
         )
 
     return {"url": f"/watt/images/{r2_key}", "key": r2_key}
@@ -1905,7 +1924,7 @@ async def upload_playlist_cover(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload R2 échoué : {type(exc).__name__}: {str(exc)[:200]}",
+            detail="Échec de l'envoi du fichier. Réessaie.",
         )
 
     return {"ok": True, "cover_url": f"/watt/stream/{r2_key}", "r2_key": r2_key}
@@ -1958,7 +1977,7 @@ async def serve_image(key: str):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Image non trouvée : {type(exc).__name__}",
+            detail="Image non trouvée.",
         )
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
@@ -2068,7 +2087,7 @@ async def _upload_audio_to_r2(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload R2 échoué : {type(exc).__name__}: {str(exc)[:200]}",
+            detail="Échec de l'envoi du fichier. Réessaie.",
         )
 
     stream_url = f"/watt/stream/{r2_key}"
