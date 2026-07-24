@@ -94,6 +94,12 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+    # Modération DSA (Phase 3) : un compte banni ne peut pas se reconnecter.
+    if user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Compte suspendu.",
+        )
     token = create_access_token(subject=user.email)
     return {
         "access_token": token,

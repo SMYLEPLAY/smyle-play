@@ -51,4 +51,11 @@ async def get_current_user(
     user = await get_user_by_email(db, email)
     if user is None:
         raise credentials_exception
+    # Modération DSA (Phase 3) : un compte banni ne peut plus rien faire
+    # d'authentifié, même avec un jeton encore valide.
+    if user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Compte suspendu.",
+        )
     return user
