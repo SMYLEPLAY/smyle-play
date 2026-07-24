@@ -64,6 +64,23 @@ from app.routers.oeuvre import (
 
 
 def create_app() -> FastAPI:
+    # ── Blindage clé secrète (Phase 0.3 lancement, 2026-07-24) ───────────
+    # Le JWT est signé HS256 avec SECRET_KEY. Si la variable d'env n'est pas
+    # posée, la config retombe sur une valeur PAR DÉFAUT PUBLIQUE — n'importe
+    # qui pourrait alors forger un jeton pour n'importe quel compte (y compris
+    # le compte officiel). On refuse de démarrer le serveur dans ce cas.
+    # Ne se déclenche qu'au boot du serveur (create_app) : les migrations
+    # Alembic importent app.config mais PAS app.main → la CI migrations n'est
+    # pas affectée. Prod + smoke-test posent une vraie clé → démarrage normal.
+    _DEFAULT_SECRET = "dev-secret-change-in-production"
+    if settings.SECRET_KEY == _DEFAULT_SECRET or not settings.SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY absente ou égale à la valeur par défaut publique. "
+            "Définis une SECRET_KEY forte et aléatoire dans les variables "
+            "d'environnement avant de démarrer le serveur (génère-la p. ex. "
+            "avec: python -c \"import secrets; print(secrets.token_urlsafe(48))\")."
+        )
+
     app = FastAPI(title="Smyle Play API", version="1.0.0")
 
     # ── Rate-limiting (Tier 1 sécurité) ──────────────────────────────────
