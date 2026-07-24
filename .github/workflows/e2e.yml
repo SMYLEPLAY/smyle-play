@@ -67,7 +67,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Apply migrations
-        working-directory: smyleplay-api
+        # Phase 2 lancement (2026-07-24) : l'E2E migrait depuis smyleplay-api
+        # (schéma figé à 0070) puis démarrait main:app = watt-api (attend 0081)
+        # → l'app bootait sur un schéma périmé. On rebranche sur watt-api, ce
+        # qui aligne l'E2E sur la prod et permet de supprimer smyleplay-api.
+        working-directory: watt-api
         run: alembic upgrade head
 
       - name: Start unified app (FastAPI + Flask front)
