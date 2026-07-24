@@ -67,11 +67,15 @@ jobs:
           echo "Postgres not ready"; exit 1
 
       - name: Alembic upgrade head
-        working-directory: smyleplay-api
+        # Phase 1 lancement (2026-07-24) : la prod est servie par watt-api/ et
+        # ses migrations vont jusqu'à 0081. La CI testait smyleplay-api (arrêt à
+        # 0070) → les 11 révisions réellement déployées n'étaient JAMAIS rejouées
+        # sur une base vierge (angle mort de l'incident enum 0081). On rebranche.
+        working-directory: watt-api
         run: alembic upgrade head
 
       - name: Dump final schema state
-        working-directory: smyleplay-api
+        working-directory: watt-api
         run: |
           alembic current
           alembic history | head -40
@@ -131,7 +135,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run migrations
-        working-directory: smyleplay-api
+        working-directory: watt-api
         run: alembic upgrade head
 
       - name: Start API
@@ -176,6 +180,11 @@ jobs:
   tests:
     name: Pytest (Postgres réel)
     needs: migrations
+    # Phase 1 lancement (2026-07-24) : la CI exécutait tests/ de smyleplay-api
+    # (backend débranché). On rebranche sur watt-api/tests = le code servi, dont
+    # TOUTE l'économie (escrow, réserve, ledger, offres ADN) jamais couverte.
+    # BLOQUANT : suite vérifiée sur Postgres vierge avant bascule = 469 tests
+    # passés, 0 échec. C'est désormais un vrai filet — un test rouge bloque.
     runs-on: ubuntu-latest
 
     services:
@@ -224,11 +233,11 @@ jobs:
           echo "Postgres not ready"; exit 1
 
       - name: Apply migrations
-        working-directory: smyleplay-api
+        working-directory: watt-api
         run: alembic upgrade head
 
       - name: Run pytest suite
-        working-directory: smyleplay-api
+        working-directory: watt-api
         run: |
           set -o pipefail
           # -rf : liste les tests FAILED en fin de sortie. On copie le tout
@@ -282,6 +291,10 @@ jobs:
           exit $rc
 
       - name: bandit (défauts de code medium+)
+        # Phase 1 lancement (2026-07-24) : bandit scannait smyleplay-api/app
+        # (débranché). On scanne watt-api/app = le code réellement servi.
+        # BLOQUANT : scan vérifié avant bascule = 0 défaut medium+/confiance
+        # medium+ (« No issues identified »). Tout défaut medium+ introduit bloque.
         run: |
           set -o pipefail
           {
@@ -290,7 +303,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           # -ll : seuil de sévérité medium+ ; -ii : confiance medium+.
           # Bloque (exit ≠ 0) seulement sur un défaut medium+/medium+.
-          bandit -r smyleplay-api/app -ll -ii 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          bandit -r watt-api/app -ll -ii 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
           rc=${PIPESTATUS[0]}
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           exit $rc
