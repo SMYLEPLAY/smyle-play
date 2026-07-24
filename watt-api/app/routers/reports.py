@@ -206,3 +206,144 @@ async def patch_report(
     await db.commit()
     await db.refresh(report)
     return ReportRead.model_validate(report)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Modération ACTIONNABLE (Phase 3 lancement, 2026-07-24)
+# Le PATCH ci-dessus ne fait que changer un libellé. Le DSA exige une capacité
+# d'ACTION : retirer le contenu signalé et/ou suspendre un compte. Ces routes
+# le permettent, réservées au compte officiel (is_official).
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class TakedownRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Suspendre aussi le compte auteur du contenu retiré.
+    ban_owner: bool = False
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class BanRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class ModerationResult(BaseModel):
+    ok: bool
+    detail: str
+
+
+def _require_official(current_user: User) -> None:
+    if not current_user.is_official:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            detail="Réservé à l'administration")
+
+
+@router.post("/admin/reports/{report_id}/takedown",
+             response_model=ModerationResult)
+async def takedown_reported_content(
+    report_id: UUID,
+    payload: TakedownRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ModerationResult:
+    """
+    Retire le contenu ciblé par un signalement (le rend invisible sans
+    supprimer la ligne = preuve conservée), passe le signalement à `actioned`,
+    et suspend optionnellement le compte auteur.
+    """
+    _require_official(current_user)
+    from app.services.moderation import ban_user, takedown_content
+
+    report = (await db.execute(
+        select(ContentReport).where(ContentReport.id == report_id)
+    )).scalar_one_or_none()
+    if report is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            detail="Signalement introuvable")
+
+    result = await takedown_content(
+        db, report.target_type, report.target_id, payload.reason
+    )
+    if not result["ok"]:
+        await db.rollback()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=result["detail"])
+
+    if payload.ban_owner:
+        owner_id = await _resolve_owner_id(db, report.target_type, report.target_id)
+        if owner_id is not None:
+            await ban_user(db, owner_id, payload.reason)
+
+    report.status = ReportStatus.ACTIONED
+    report.resolved_at = datetime.now(timezone.utc)
+    await db.commit()
+    return ModerationResult(ok=True, detail=result["detail"])
+
+
+@router.post("/admin/users/{user_id}/ban", response_model=ModerationResult)
+async def ban_account(
+    user_id: UUID,
+    payload: BanRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ModerationResult:
+    """Suspend un compte (login + accès authentifié bloqués)."""
+    _require_official(current_user)
+    if user_id == current_user.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="Impossible de se suspendre soi-même.")
+    from app.services.moderation import ban_user
+
+    user = await ban_user(db, user_id, payload.reason)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Compte introuvable")
+    await db.commit()
+    return ModerationResult(ok=True, detail="Compte suspendu.")
+
+
+@router.post("/admin/users/{user_id}/unban", response_model=ModerationResult)
+async def unban_account(
+    user_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ModerationResult:
+    """Rétablit un compte suspendu."""
+    _require_official(current_user)
+    from app.services.moderation import unban_user
+
+    user = await unban_user(db, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Compte introuvable")
+    await db.commit()
+    return ModerationResult(ok=True, detail="Compte rétabli.")
+
+
+async def _resolve_owner_id(db: AsyncSession, target_type: str, target_id: str):
+    """Retrouve le compte propriétaire d'un contenu (pour ban_owner)."""
+    import uuid as _uuid
+
+    from app.models.album import Album
+    from app.models.playlist import Playlist
+    from app.models.prompt import Prompt
+    from app.models.track import Track
+
+    ttype = (target_type or "").strip().lower()
+    try:
+        tid = _uuid.UUID(str(target_id))
+    except (ValueError, TypeError):
+        return None
+    if ttype == "profil":
+        return tid
+    model = {
+        "prompt": Prompt, "image": Prompt, "track": Track,
+        "playlist": Playlist, "album": Album,
+    }.get(ttype)
+    if model is None:
+        return None
+    obj = (await db.execute(select(model).where(model.id == tid))).scalar_one_or_none()
+    if obj is None:
+        return None
+    for attr in ("artist_id", "owner_id", "user_id", "creator_id"):
+        if hasattr(obj, attr):
+            return getattr(obj, attr)
+    return None

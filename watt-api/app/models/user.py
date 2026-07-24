@@ -136,6 +136,21 @@ class User(Base):
         server_default="false",
     )
 
+    # Modération DSA (migration 0082) — bannissement de compte. TRUE = compte
+    # suspendu : login refusé + tout accès authentifié rejeté (403) via
+    # get_current_user. banned_at / ban_reason tracent la décision (exigence DSA).
+    # Écrit uniquement par un compte officiel via les endpoints /admin/*.
+    is_banned: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    banned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ban_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # C6 paliers créateur (migration 0069). 'standard' (gratuit, défaut) /
     # 'premium' / 'mythique'. Détermine la COMMISSION de vente (20/12/5 → part
     # artiste 80/88/95, cf. app/services/tiers.py), le nombre d'EMPLACEMENTS
