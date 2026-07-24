@@ -49,6 +49,27 @@ async def test_export_me_requires_auth_and_returns_profile(
     assert j["profile"]["email"] == test_user["email"]
 
 
+async def test_token_revoked_when_version_bumps(
+    client: AsyncClient, test_user: dict, auth_headers: dict
+):
+    """Durcissement : un jeton devient invalide dès que token_version change
+    (mécanisme utilisé par le reset de mot de passe)."""
+    from sqlalchemy import update
+
+    # Le jeton courant marche.
+    r = await client.get("/users/me", headers=auth_headers)
+    assert r.status_code == 200, r.text
+    # On incrémente token_version en base (comme le fait un reset).
+    async with SessionLocal() as db:
+        await db.execute(
+            update(User).where(User.id == test_user["id"]).values(token_version=1)
+        )
+        await db.commit()
+    # Le même jeton (tv=0) est désormais rejeté.
+    r2 = await client.get("/users/me", headers=auth_headers)
+    assert r2.status_code == 401, r2.text
+
+
 async def test_register_requires_terms_and_age(client: AsyncClient):
     """Inscription encadrée (Phase 3) : refus si CGU/âge non acceptés."""
     email = f"pytest-noterms-{uuid.uuid4().hex[:10]}@smyleplay.example"

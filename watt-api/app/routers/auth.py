@@ -107,7 +107,9 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Compte suspendu.",
         )
-    token = create_access_token(subject=user.email)
+    token = create_access_token(
+        subject=user.email, token_version=user.token_version or 0
+    )
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -213,6 +215,8 @@ async def reset_password(
         )
 
     user.password_hash = hash_password(payload.new_password)
+    # Révocation : invalide tous les jetons émis avant ce reset.
+    user.token_version = (user.token_version or 0) + 1
     prt.used_at = now
     await db.commit()
     return {"ok": True}
