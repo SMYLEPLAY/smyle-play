@@ -27,7 +27,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.jwt import decode_access_token
+from app.auth.jwt import decode_access_token, get_current_user
 from app.config import settings
 from app.database import get_db
 from app.models.adn import Adn
@@ -1749,6 +1749,7 @@ async def upload_image(
     file: UploadFile = File(...),
     userId: str = Form(default=""),
     kind: str = Form(default="image"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload d'image vers R2 (avatar, cover, track-cover).
@@ -1826,6 +1827,7 @@ async def upload_playlist_cover(
     file: UploadFile = File(...),
     userId: str = Form(default=""),
     name: str = Form(default="cover"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload d'une vidéo de cover de playlist vers R2 (max 25 Mo).
@@ -1918,8 +1920,24 @@ async def upload_playlist_cover(
 @router.get("/images/{key:path}")
 async def serve_image(key: str):
     """
-    Proxy une image R2 par sa clé (ex. 'images/avatar/abc123.webp').
+    Proxy une image R2 PUBLIQUE par sa clé (ex. 'images/avatar/abc123.webp').
+
+    SÉCURITÉ (Phase 0 lancement, 2026-07-23) : ce proxy servait N'IMPORTE quelle
+    clé du bucket. Comme l'original d'une image payante (`images/originals/{uid}`)
+    partage l'UUID de son aperçu public (`images/previews/{uid}`), la clé de
+    l'original se déduisait de l'aperçu → l'original se téléchargeait sans achat.
+    On borne désormais ce proxy aux objets images PUBLICS uniquement :
+      - autorisé : préfixe `images/` (aperçus, avatars, covers, track-covers…)
+      - BLOQUÉ  : `images/originals/` (payant → passe par /images/{id}/download,
+                  gaté sur la possession) et toute clé hors `images/`.
     """
+    # Gate dur : seuls les objets images publics sont servables ici.
+    if not key.startswith("images/") or key.startswith("images/originals/"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+
     from app.services.r2 import get_r2_client, is_configured
 
     if not is_configured():
@@ -2062,6 +2080,7 @@ async def upload_audio(
     file: UploadFile = File(...),
     name: str = Form(default="track"),
     userId: str = Form(default=""),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload d'un fichier audio de track vers R2.
@@ -2077,6 +2096,7 @@ async def upload_voice_sample(
     file: UploadFile = File(...),
     name: str = Form(default="voice"),
     userId: str = Form(default=""),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload d'un sample voix vers R2.
