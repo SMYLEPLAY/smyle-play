@@ -34,6 +34,21 @@ async def test_register_grants_welcome_bonus(client: AsyncClient):
             await db.commit()
 
 
+async def test_export_me_requires_auth_and_returns_profile(
+    client: AsyncClient, test_user: dict, auth_headers: dict
+):
+    """RGPD export (Phase 3) : refus sans auth, JSON complet avec auth."""
+    r0 = await client.get("/users/me/export")
+    assert r0.status_code == 401, r0.text
+    r = await client.get("/users/me/export", headers=auth_headers)
+    assert r.status_code == 200, r.text
+    assert "attachment" in (r.headers.get("content-disposition") or "")
+    j = r.json()
+    for key in ("profile", "tracks", "prompts", "playlists", "transactions"):
+        assert key in j, j.keys()
+    assert j["profile"]["email"] == test_user["email"]
+
+
 async def test_register_requires_terms_and_age(client: AsyncClient):
     """Inscription encadrée (Phase 3) : refus si CGU/âge non acceptés."""
     email = f"pytest-noterms-{uuid.uuid4().hex[:10]}@smyleplay.example"

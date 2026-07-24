@@ -597,7 +597,21 @@
     </div>
 
     <!-- ═══ Zone danger — suppression de compte RGPD (pack légal v1) ═══ -->
-    <div style="margin-top:28px;padding:16px 18px;border:1px solid rgba(255,85,119,.35);
+    <div style="margin-top:22px;padding:16px 18px;border:1px solid rgba(255,255,255,.14);
+                border-radius:10px;">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:6px;">
+        Mes données
+      </div>
+      <div style="font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:12px;">
+        Télécharge une copie de toutes les données de ton compte (profil,
+        contenus, achats, transactions) au format JSON — droit d'accès RGPD.
+      </div>
+      <button type="button" class="dash-btn-ghost" onclick="dashExportData(this)">
+        Exporter mes données
+      </button>
+    </div>
+
+    <div style="margin-top:22px;padding:16px 18px;border:1px solid rgba(255,85,119,.35);
                 border-radius:10px;">
       <div style="font-size:.85rem;font-weight:700;color:var(--sp-danger,#ff5577);margin-bottom:6px;">
         Zone danger

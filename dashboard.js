@@ -4392,6 +4392,32 @@ function initSectionNav() {
    Double confirmation : l'utilisateur doit taper SUPPRIMER. Appelle
    DELETE /users/me (anonymisation backend), puis purge la session locale
    et renvoie à l'accueil. */
+// Export RGPD (droit d'accès) — télécharge le JSON du compte via le token.
+async function dashExportData(btn) {
+  const tok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!tok) { if (typeof dashToast === 'function') dashToast('Connecte-toi d\'abord.'); return; }
+  const _label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Préparation…'; }
+  try {
+    const resp = await fetch('/users/me/export', { headers: { Authorization: 'Bearer ' + tok } });
+    if (!resp.ok) throw new Error('export ' + resp.status);
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mes-donnees-watt.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    if (typeof dashToast === 'function') dashToast('Export téléchargé ✓');
+  } catch (e) {
+    if (typeof dashToast === 'function') dashToast('Export impossible pour le moment.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = _label; }
+  }
+}
+
 async function dashDeleteAccount() {
   const typed = window.prompt(
     'Cette action est DÉFINITIVE.\n\n' +
