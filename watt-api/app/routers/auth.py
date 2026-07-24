@@ -37,6 +37,13 @@ async def register(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    # Inscription encadrée (Phase 3) : acceptation CGU + confirmation d'âge
+    # obligatoires. On refuse tôt, avant toute écriture.
+    if not (user.accept_terms and user.age_confirmed):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tu dois accepter les CGU et confirmer avoir 15 ans ou plus.",
+        )
     existing = await get_user_by_email(db, user.email)
     if existing is not None:
         raise HTTPException(

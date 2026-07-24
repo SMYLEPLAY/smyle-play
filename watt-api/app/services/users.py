@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +35,9 @@ async def create_user(
         password_hash=hash_password(user.password),
         referral_code=await generate_referral_code(db),
         signup_ip=signup_ip,  # anti-abus H0.4 (None si indéterminé)
+        # Inscription encadrée (Phase 3) : register() a déjà exigé l'acceptation
+        # CGU + âge avant d'appeler create_user → on trace l'instant (preuve).
+        accepted_terms_at=datetime.now(timezone.utc),
     )
     db.add(db_user)
     # flush → refresh DANS la transaction (asyncpg : un refresh APRÈS commit

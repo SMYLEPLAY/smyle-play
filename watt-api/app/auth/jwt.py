@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
+import jwt  # PyJWT (remplace python-jose, CVE-2024-33663/33664, non maintenue)
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -29,7 +29,7 @@ def decode_access_token(token: str) -> str | None:
             token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
         )
         return payload.get("sub")
-    except JWTError:
+    except jwt.PyJWTError:
         return None
 
 

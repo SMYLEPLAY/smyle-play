@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>WATT · Modération (admin)</title>
+<style>
+  :root { --bg:#0a0712; --card:#0d0a16; --line:#2c2440; --vio:#6c4cf0; --gold:#ffb627;
+          --mut:#9990ad; --mut2:#6f6885; --red:#ff5470; --green:#37d39b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:#eee; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding:28px 18px; }
+  .wrap { max-width:820px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 2px; }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 20px; }
+  .row { display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
+  select, button, input { background:var(--card); color:#eee; border:1px solid var(--line); border-radius:9px; padding:8px 12px; font-size:13px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--vio); }
+  button.danger:hover { border-color:var(--red); }
+  button.danger { color:#ffb8c4; }
+  button.ok:hover { border-color:var(--green); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .rep-head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .reason { font-weight:800; font-size:14px; }
+  .reason.contenu_illegal, .reason.haine_violence { color:var(--red); }
+  .reason.contrefacon, .reason.nudite { color:var(--gold); }
+  .reason.spam_arnaque, .reason.autre { color:var(--mut); }
+  .meta { color:var(--mut); font-size:12px; }
+  .target { font-size:13px; margin:8px 0 4px; }
+  .target b { color:#cdbcff; }
+  .detail { font-size:13px; color:#d7d2e6; background:#0a0712; border:1px solid var(--line); border-radius:9px; padding:8px 10px; margin:8px 0; white-space:pre-wrap; }
+  .status { font-size:11px; text-transform:uppercase; letter-spacing:.6px; padding:3px 8px; border-radius:999px; border:1px solid var(--line); }
+  .status.new { color:var(--gold); border-color:var(--gold); }
+  .status.actioned { color:var(--green); border-color:var(--green); }
+  .status.rejected, .status.reviewed { color:var(--mut); }
+  .acts { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .msg { color:var(--mut); font-size:14px; padding:30px 0; text-align:center; }
+  .err { color:var(--red); }
+  .flash { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#151024; border:1px solid var(--line); border-radius:10px; padding:10px 16px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:50; }
+  .flash.show { opacity:1; }
+  .flash.ok { border-color:var(--green); }
+  .flash.ko { border-color:var(--red); }
+  .tools { border-top:1px dashed var(--line); margin-top:24px; padding-top:16px; }
+  .tools h2 { font-size:14px; margin:0 0 10px; color:var(--mut); text-transform:uppercase; letter-spacing:1px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Modération</h1>
+  <p class="sub">Signalements DSA · retirer un contenu ou suspendre un compte · réservé au compte officiel</p>
+  <div class="row">
+    <label style="font-size:13px;color:var(--mut)">Afficher</label>
+    <select id="filter">
+      <option value="new" selected>Nouveaux seulement</option>
+      <option value="all">Tous</option>
+    </select>
+    <button id="reload">Rafraîchir</button>
+  </div>
+  <div id="out"><p class="msg">Chargement…</p></div>
+
+  <div class="tools">
+    <h2>Suspendre / rétablir un compte par identifiant</h2>
+    <div class="row">
+      <input id="uid" placeholder="ID du compte (UUID)" style="min-width:280px" />
+      <input id="ureason" placeholder="Motif (optionnel)" style="min-width:180px" />
+      <button class="danger" id="banBtn">Suspendre</button>
+      <button class="ok" id="unbanBtn">Rétablir</button>
+    </div>
+  </div>
+</div>
+<div class="flash" id="flash"></div>
+
+<script src="ui/core/api.js"></script>
+<script>
+(function () {
+  var out = document.getElementById('out');
+  var flashEl = document.getElementById('flash');
+  var _t;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function flash(msg, ok){
+    flashEl.textContent = msg;
+    flashEl.className = 'flash show ' + (ok ? 'ok' : 'ko');
+    clearTimeout(_t); _t = setTimeout(function(){ flashEl.className = 'flash'; }, 3200);
+  }
+
+  var REASONS = {
+    contenu_illegal:'Contenu illégal', contrefacon:'Contrefaçon',
+    haine_violence:'Haine / violence', nudite:'Nudité',
+    spam_arnaque:'Spam / arnaque', autre:'Autre'
+  };
+  var TYPES = {
+    track:'Morceau', prompt:'Recette', image:'Image',
+    profil:'Profil', playlist:'Playlist', album:'Album'
+  };
+
+  function card(r){
+    var reason = REASONS[r.reason] || r.reason;
+    var type = TYPES[r.target_type] || r.target_type;
+    var when = r.created_at ? new Date(r.created_at).toLocaleString('fr-FR') : '';
+    var isNew = r.status === 'new';
+    var acts = '';
+    if (isNew) {
+      acts =
+        '<button class="danger" data-act="takedown" data-id="' + esc(r.id) + '">Retirer le contenu</button>' +
+        '<button class="danger" data-act="takedown_ban" data-id="' + esc(r.id) + '">Retirer + suspendre l\'auteur</button>' +
+        '<button data-act="reject" data-id="' + esc(r.id) + '">Rejeter</button>';
+    }
+    return '<div class="card">' +
+      '<div class="rep-head">' +
+        '<span class="reason ' + esc(r.reason) + '">⚑ ' + esc(reason) + '</span>' +
+        '<span class="status ' + esc(r.status) + '">' + esc(r.status) + '</span>' +
+      '</div>' +
+      '<div class="target">Cible : <b>' + esc(type) + '</b> · <span class="meta">' + esc(r.target_id) + '</span></div>' +
+      (r.detail ? '<div class="detail">' + esc(r.detail) + '</div>' : '') +
+      '<div class="meta">' + esc(when) + (r.reporter_email ? ' · signalé par ' + esc(r.reporter_email) : ' · signalement anonyme') + '</div>' +
+      (acts ? '<div class="acts">' + acts + '</div>' : '') +
+    '</div>';
+  }
+
+  function render(list){
+    if (!list || !list.length){ out.innerHTML = '<p class="msg">Aucun signalement.</p>'; return; }
+    out.innerHTML = list.map(card).join('');
+  }
+
+  function load(){
+    var f = document.getElementById('filter').value;
+    out.innerHTML = '<p class="msg">Chargement…</p>';
+    if (typeof apiFetch !== 'function'){ out.innerHTML = '<p class="msg err">API indisponible.</p>'; return; }
+    apiFetch('/admin/reports' + (f === 'new' ? '?only_new=true' : ''))
+      .then(render)
+      .catch(function(e){
+        var s = e && e.status;
+        var m = (s === 403) ? 'Réservé à l\'administration — connecte-toi avec le compte officiel.'
+              : (s === 401) ? 'Connecte-toi avec le compte admin.'
+              : 'Impossible de charger les signalements.';
+        out.innerHTML = '<p class="msg err">' + m + '</p>';
+      });
+  }
+
+  // Délégation des actions sur les signalements.
+  out.addEventListener('click', function(ev){
+    var b = ev.target.closest('button[data-act]');
+    if (!b) return;
+    var act = b.getAttribute('data-act');
+    var id = b.getAttribute('data-id');
+    b.disabled = true;
+    var p;
+    if (act === 'takedown' || act === 'takedown_ban') {
+      var ban = act === 'takedown_ban';
+      if (ban && !confirm('Retirer le contenu ET suspendre le compte de l\'auteur ?')) { b.disabled = false; return; }
+      p = apiFetch('/admin/reports/' + id + '/takedown', { method:'POST', json:{ ban_owner: ban } })
+            .then(function(res){ flash((res && res.detail) || 'Contenu retiré.', true); });
+    } else if (act === 'reject') {
+      p = apiFetch('/admin/reports/' + id, { method:'PATCH', json:{ status:'rejected' } })
+            .then(function(){ flash('Signalement rejeté.', true); });
+    }
+    p.then(load).catch(function(e){
+      b.disabled = false;
+      flash((e && e.detail) || 'Échec de l\'action.', false);
+    });
+  });
+
+  // Suspendre / rétablir par ID.
+  document.getElementById('banBtn').addEventListener('click', function(){
+    var id = document.getElementById('uid').value.trim();
+    if (!id) { flash('Renseigne l\'ID du compte.', false); return; }
+    var reason = document.getElementById('ureason').value.trim();
+    if (!confirm('Suspendre ce compte ? Il ne pourra plus se connecter.')) return;
+    apiFetch('/admin/users/' + id + '/ban', { method:'POST', json:{ reason: reason || null } })
+      .then(function(res){ flash((res && res.detail) || 'Compte suspendu.', true); })
+      .catch(function(e){ flash((e && e.detail) || 'Échec.', false); });
+  });
+  document.getElementById('unbanBtn').addEventListener('click', function(){
+    var id = document.getElementById('uid').value.trim();
+    if (!id) { flash('Renseigne l\'ID du compte.', false); return; }
+    apiFetch('/admin/users/' + id + '/unban', { method:'POST' })
+      .then(function(res){ flash((res && res.detail) || 'Compte rétabli.', true); })
+      .catch(function(e){ flash((e && e.detail) || 'Échec.', false); });
+  });
+
+  document.getElementById('reload').addEventListener('click', load);
+  document.getElementById('filter').addEventListener('change', load);
+  load();
+})();
+</script>
+</body>
+</html>

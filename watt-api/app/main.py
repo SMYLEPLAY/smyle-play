@@ -107,6 +107,27 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # ── En-têtes de sécurité HTTP (durcissement Phase 1, 2026-07-24) ─────
+    # S'applique à TOUTES les réponses, y compris les pages front servies par
+    # Flask (monté sous "/"), car ce middleware est le plus externe.
+    # Volontairement SANS Content-Security-Policy pour l'instant : le front
+    # utilise beaucoup d'inline scripts/styles, une CSP stricte casserait des
+    # pages — à ajouter plus tard, testée page par page.
+    @app.middleware("http")
+    async def _security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault(
+            "Referrer-Policy", "strict-origin-when-cross-origin"
+        )
+        # HSTS : Railway sert en HTTPS. 2 ans + sous-domaines.
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=63072000; includeSubDomains",
+        )
+        return response
+
     @app.get("/health")
     async def health():
         """Healthcheck Railway — NE PAS renommer ni monter Flask au-dessus."""

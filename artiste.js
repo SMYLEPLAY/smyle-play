@@ -2193,8 +2193,14 @@ function renderTracks(artist) {
       `;
     } else {
       row.classList.add('ap-son-bar');
+      // Correctif covers (2026-07-24) : un SON SEUL peut avoir une pochette
+      // uploadée (cover_url) sans image vendable liée — cas des morceaux SMYLE
+      // (Night City…) posés par script cover_url sans linked_prompt. La
+      // taxonomie #448 jetait cette cover (barre nue). On la restitue en
+      // mini-vignette dans la barre ; seul un son SANS cover reste sans image.
+      if (_coverU) row.classList.add('ap-son-bar--has-cover');
       row.innerHTML = `
-        ${_playBtn}
+        ${_coverU ? `<div class="ap-son-bar-cover">${coverHTML}${_playBtn}</div>` : _playBtn}
         <div class="ap-track-row-main">
           <div class="ap-track-row-title">${safeName}</div>
           <div class="ap-track-row-badges">

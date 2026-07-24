@@ -68,6 +68,11 @@ class UserCreate(BaseModel):
     # Code de parrainage optionnel saisi à l'inscription (mécanique 1).
     # Best-effort : un code invalide n'empêche pas l'inscription.
     referral_code: str | None = Field(default=None, max_length=16)
+    # Inscription encadrée (Phase 3) : l'utilisateur DOIT accepter les CGU et
+    # confirmer avoir l'âge minimum. Défaut False → un front qui ne les envoie
+    # pas est refusé (validation dans le endpoint register).
+    accept_terms: bool = False
+    age_confirmed: bool = False
 
 
 class UserLogin(BaseModel):
