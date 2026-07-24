@@ -41,9 +41,20 @@ async def grant_credits(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    STUB V1 : ajoute manuellement des crédits au user connecté.
-    À remplacer par Stripe checkout en Phase 11.
+    Attribution manuelle de crédits — RÉSERVÉE au compte officiel (is_official).
+
+    SÉCURITÉ (Phase 0 lancement, 2026-07-23) : cet endpoint créditait librement
+    le compte connecté (stub « en attendant Stripe »). Ouvert au public, il
+    permettait à n'importe qui de se fabriquer des Smyles à volonté et de
+    détruire l'économie. Il est désormais gaté sur is_official ; les Smyles des
+    utilisateurs se gagnent (streak, parrainage) ou, plus tard, s'achètent via
+    un webhook Stripe signé et vérifié côté serveur — jamais par appel direct.
     """
+    if not current_user.is_official:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Réservé. Les Smyles se gagnent en explorant, en publiant et en jouant.",
+        )
     try:
         tx = await grant_credits_atomic(
             db=db,

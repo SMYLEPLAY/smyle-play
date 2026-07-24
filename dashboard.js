@@ -2055,7 +2055,8 @@ async function _uploadTrackCover(file, trackName) {
     fd.append('file', file);
     fd.append('userId', (window.getCurrentUser && window.getCurrentUser() && window.getCurrentUser().id) || 'guest');
     fd.append('kind', 'track-cover');  // namespace R2 distinct de avatar/banner
-    const res = await fetch('/watt/upload-image', { method: 'POST', body: fd });
+    const _upTok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    const res = await fetch('/watt/upload-image', { method: 'POST', body: fd, headers: _upTok ? { Authorization: 'Bearer ' + _upTok } : {} });
     if (!res.ok) return null;
     const data = await res.json();
     return data.url || null;
@@ -2243,7 +2244,8 @@ async function uploadTrack() {
     fd.append('name',   name);
     fd.append('userId', user ? String(user.id) : 'guest');
 
-    const res  = await fetch('/watt/upload', { method: 'POST', body: fd });
+    const _upTok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    const res  = await fetch('/watt/upload', { method: 'POST', body: fd, headers: _upTok ? { Authorization: 'Bearer ' + _upTok } : {} });
     if (res.ok) {
       const data = await res.json();
       uploaded  = !data.mock;
@@ -3428,7 +3430,8 @@ async function _uploadVoiceSample(file, voiceName) {
     // dans le bucket (debug / cleanup batch plus facile).
     fd.append('name', `VOICE-${voiceName || 'sample'}`);
     fd.append('userId', (window.getCurrentUser && window.getCurrentUser() && window.getCurrentUser().id) || 'guest');
-    const res = await fetch('/watt/upload-voice', { method: 'POST', body: fd });
+    const _upTok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    const res = await fetch('/watt/upload-voice', { method: 'POST', body: fd, headers: _upTok ? { Authorization: 'Bearer ' + _upTok } : {} });
     if (!res.ok) return null;
     const data = await res.json();
     // Le mode dev sans R2 renvoie { mock: true, url: null, key }.
@@ -3927,7 +3930,8 @@ async function _uploadDashIdImage(file, kind) {
 
   let uploadJson;
   try {
-    const resp = await fetch('/watt/upload-image', { method: 'POST', body: fd });
+    const _upTok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    const resp = await fetch('/watt/upload-image', { method: 'POST', body: fd, headers: _upTok ? { Authorization: 'Bearer ' + _upTok } : {} });
     uploadJson = await resp.json().catch(() => ({}));
     if (!resp.ok || !uploadJson.url) {
       throw new Error(uploadJson.error || `Upload impossible (HTTP ${resp.status}).`);

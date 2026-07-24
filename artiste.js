@@ -1778,9 +1778,18 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
     myPrompts = myPrompts.concat(imgs.filter(p => p.is_published).map(p => ({ id: p.id, title: p.title, price_credits: p.price_credits, kind: 'image' })));
   } catch (_) {}
 
+  // SÉCURITÉ (Phase 0 lancement, 2026-07-23) — échappement HTML obligatoire :
+  // promptTitle / receiverName / p.title viennent d'un AUTRE utilisateur (nom
+  // d'artiste, titre de recette). Sans échappement, un titre piégé du type
+  // <img src=x onerror=...> s'exécutait chez celui qui ouvre la modale et
+  // volait son jeton de session (localStorage). On échappe toute donnée serveur.
+  const escH = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
   const _tradeIc = (k) => k === 'image' ? '🖼 ' : '🎵 ';
   const promptOptions = myPrompts.length
-    ? myPrompts.map(p => `<option value="${p.id}">${_tradeIc(p.kind)}${p.title || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+    ? myPrompts.map(p => `<option value="${escH(p.id)}">${_tradeIc(p.kind)}${escH(p.title || 'Sans titre')} · ${escH(p.price_credits || 0)} crédits</option>`).join('')
     : '<option value="" disabled>Aucun produit à proposer</option>';
 
   const el = document.createElement('div');
@@ -1796,10 +1805,10 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
         <div class="trade-field">
           <label class="trade-label">Tu demandes</label>
           <div class="trade-target-info">
-            <strong>${promptTitle || 'Prompt sans titre'}</strong>
-            <span class="trade-price-tag">${promptPrice} crédits</span>
+            <strong>${escH(promptTitle || 'Prompt sans titre')}</strong>
+            <span class="trade-price-tag">${escH(promptPrice)} crédits</span>
           </div>
-          <span class="trade-from">de <strong>${receiverName || 'l\'artiste'}</strong></span>
+          <span class="trade-from">de <strong>${escH(receiverName || 'l\'artiste')}</strong></span>
         </div>
         <div class="trade-field">
           <label class="trade-label">Tu proposes</label>
@@ -1821,7 +1830,7 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
           ⚠️ Les échanges sont limités à tes propres créations. L'offre expire sous 7 jours.
         </p>
         <button class="trade-submit-btn" id="trade-submit-btn"
-                onclick="submitTradeOffer('${promptId}', '${receiverId}')">
+                onclick="submitTradeOffer('${escH(promptId)}', '${escH(receiverId)}')">
           Envoyer la proposition
         </button>
       </div>
@@ -3550,7 +3559,8 @@ async function handleImageFileUpload(file) {
 
   let uploadJson;
   try {
-    const resp = await fetch('/watt/upload-image', { method: 'POST', body: fd });
+    const _upTok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    const resp = await fetch('/watt/upload-image', { method: 'POST', body: fd, headers: _upTok ? { Authorization: 'Bearer ' + _upTok } : {} });
     uploadJson = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       const msg = uploadJson.error || `Upload impossible (HTTP ${resp.status}).`;
