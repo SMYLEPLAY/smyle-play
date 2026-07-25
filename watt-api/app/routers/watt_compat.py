@@ -22,7 +22,7 @@ import re as _re_slug
 import uuid as _uuid_module
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1957,6 +1957,22 @@ async def serve_image(key: str):
             detail="Not found",
         )
 
+    # HOTFIX covers (2026-07-25) : rediriger vers l'objet R2 PUBLIC directement
+    # plutôt que de le streamer via le client boto3 backend. Ce proxy dépendait
+    # des secrets R2 + du middleware ASGI et a fait disparaître les covers à
+    # plusieurs reprises (get_object échoue → 404, alors que l'objet public
+    # existe et se sert parfaitement — c'est déjà comme ça que marchent les
+    # audio_url). La gate ci-dessus continue de bloquer images/originals/.
+    public_base = settings.effective_r2_public_base_url
+    if public_base:
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            url=f"{public_base}/{quote(key, safe='/')}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    # Fallback (dev/local sans domaine public configuré) : ancien proxy boto3.
     from app.services.r2 import get_r2_client, is_configured
 
     if not is_configured():
