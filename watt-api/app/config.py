@@ -55,6 +55,17 @@ class Settings(BaseSettings):
     R2_ENDPOINT_URL: str | None = None       # URL complète (prioritaire)
     R2_ACCOUNT_ID: str | None = None         # alias legacy → construit l'URL
     R2_BUCKET: str = "smyle-play-audio"
+    # Domaine PUBLIC r2.dev du bucket (le même que celui des audio_url stockés,
+    # ex. https://pub-XXXX.r2.dev). Sert à rediriger le proxy d'images publiques
+    # vers l'objet R2 public directement, au lieu de le streamer via le client
+    # boto3 backend (fragile : dépend des secrets R2 + du middleware ASGI, a
+    # déjà cassé les covers 2 fois). Surchargeable par variable d'env.
+    R2_PUBLIC_BASE_URL: str = "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev"
+
+    @property
+    def effective_r2_public_base_url(self) -> str | None:
+        base = (self.R2_PUBLIC_BASE_URL or "").strip().rstrip("/")
+        return base or None
 
     @property
     def effective_r2_access_key_id(self) -> str | None:
