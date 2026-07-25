@@ -2,6 +2,11 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8" />
+<!-- MODE LANCEMENT — drapeaux de masquage, chargés EN PREMIER (synchro) pour
+     que window.WATT_LAUNCH existe avant tout script de gating. Flask sert la
+     version DYNAMIQUE (source de vérité backend) ; le fichier statique du même
+     chemin sert de filet. -->
+<script src="/ui/core/launch-flags.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>WATT · Comment ça marche</title>
 <meta name="description" content="WATT en 30 secondes : la marketplace d'ADN créatif. Comprends les Smyles, les ADN, les recettes et comment acheter ou vendre." />
@@ -54,17 +59,24 @@
     <div class="term"><b><span class="e">ADN</span> 🧬 — la signature reproductible</b><p>L'empreinte d'une œuvre : ses ingrédients (style, sons, ambiance) figés et réutilisables. Posséder un ADN, c'est pouvoir recréer dans le même esprit, pas juste écouter.</p></div>
     <div class="term"><b><span class="e">Recette</span> — le « comment c'est fait »</b><p>Le détail concret derrière une œuvre (prompts, réglages). C'est ce qui rend l'ADN reproductible. Inclus quand tu débloques.</p></div>
     <div class="term"><b><span class="e">ADN visuel</span> 🎨 — la signature image</b><p>Le pendant visuel de l'ADN musical : la signature graphique d'un artiste (covers, ambiance), elle aussi à débloquer et décliner.</p></div>
-    <div class="term"><b><span class="e">Voix</span> 🎙 — un timbre à réutiliser</b><p>Une voix d'artiste disponible comme brique créative, débloquable pour tes propres œuvres.</p></div>
-    <div class="term"><b><span class="e">Pack mystère</span> 🎁 — le tirage</b><p>Un pack qui tire un son au hasard pour un petit prix : tu peux décrocher une pépite bien plus chère que le coût du tirage.</p></div>
-    <div class="term"><b><span class="e">Marché secondaire</span> 💱 — la revente</b><p>Achète des œuvres revendues par d'autres. L'artiste d'origine touche une royaltie à chaque revente.</p></div>
+    <div class="term" id="term-voix"><b><span class="e">Voix</span> 🎙 — un timbre à réutiliser</b><p>Une voix d'artiste disponible comme brique créative, débloquable pour tes propres œuvres.</p></div>
+    <div class="term" id="term-packs"><b><span class="e">Pack mystère</span> 🎁 — le tirage</b><p>Un pack qui tire un son au hasard pour un petit prix : tu peux décrocher une pépite bien plus chère que le coût du tirage.</p></div>
+    <div class="term" id="term-resale"><b><span class="e">Marché secondaire</span> 💱 — la revente</b><p>Achète des œuvres revendues par d'autres. L'artiste d'origine touche une royaltie à chaque revente.</p></div>
     <div class="term"><b><span class="e">WATT Board</span> — ton QG d'artiste</b><p>Le tableau de bord où tu poses ton profil, ton ADN, tes sorties et tes stats quand tu crées sur WATT.</p></div>
-    <div class="term"><b><span class="e">Paliers</span> — Free / Standard / Premium / Studio</b><p>Les formules créateur : plus le palier est élevé, plus la commission baisse et plus tu débloques d'avantages. Détails sur la page Offres.</p></div>
+    <div class="term" id="term-paliers"><b><span class="e">Paliers</span> — Free / Standard / Premium / Studio</b><p>Les formules créateur : plus le palier est élevé, plus la commission baisse et plus tu débloques d'avantages. Détails sur la page Offres.</p></div>
   </div>
 
   <div class="cta">
     <a class="btn p" href="/">Explorer WATT</a>
-    <a class="btn s" href="/offres">Voir les paliers</a>
+    <a class="btn s" href="/offres" id="cta-voir-paliers">Voir les paliers</a>
   </div>
+  <!-- MODE LANCEMENT — PALIERS masqués : retire le CTA « Voir les paliers » si
+       l'item n'est pas VISIBLE. Défensif : window.WATT_LAUNCH absent → masqué. -->
+  <script>(function(){var f=window.WATT_LAUNCH||{};if(!f.paliers){var e=document.getElementById('cta-voir-paliers');if(e&&e.parentNode)e.parentNode.removeChild(e);}})();</script>
+  <!-- MODE LANCEMENT — GLOSSAIRE : masque les termes décrivant des mécaniques
+       masquées (Voix, Pack mystère, Marché secondaire, Paliers). Défensif :
+       window.WATT_LAUNCH absent → tout masqué. Réversible (display seul). -->
+  <script>(function(){var f=window.WATT_LAUNCH||{};var map={'term-voix':'voix','term-packs':'packs','term-resale':'resale','term-paliers':'paliers'};Object.keys(map).forEach(function(id){if(!f[map[id]]){var e=document.getElementById(id);if(e)e.style.display='none';}});})();</script>
 </div>
 <script src="ui/core/api.js"></script>
 <script src="ui/core/telemetry.js"></script>

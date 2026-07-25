@@ -5604,26 +5604,26 @@ function renderTrades(root, trades) {
     return `
       <div class="trade-card">
         <div class="trade-card-header">
-          <span class="trade-direction">${direction} <strong>${otherName}</strong></span>
+          <span class="trade-direction">${direction} <strong>${htmlEscape(otherName)}</strong></span>
           <span class="trade-status ${statusCls}">${statusLabel}</span>
         </div>
         <div class="trade-card-body">
           <div class="trade-prompt-box">
             <span class="trade-prompt-lbl">${isSender ? 'Tu proposes' : 'Il/elle propose'}</span>
-            <span class="trade-prompt-name">${offered.title || '—'}</span>
+            <span class="trade-prompt-name">${htmlEscape(offered.title || '—')}</span>
             <span class="trade-prompt-price">${offered.price_credits || 0} crédits</span>
-            ${offered.audio_url ? `<audio controls preload="none" src="${offered.audio_url}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
+            ${offered.audio_url ? `<audio controls preload="none" src="${htmlEscape(offered.audio_url)}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           <span class="trade-arrow">⇄</span>
           <div class="trade-prompt-box">
             <span class="trade-prompt-lbl">${isSender ? 'Tu demandes' : 'Tu recevrais'}</span>
-            <span class="trade-prompt-name">${requested.title || '—'}</span>
+            <span class="trade-prompt-name">${htmlEscape(requested.title || '—')}</span>
             <span class="trade-prompt-price">${requested.price_credits || 0} crédits</span>
-            ${requested.audio_url ? `<audio controls preload="none" src="${requested.audio_url}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
+            ${requested.audio_url ? `<audio controls preload="none" src="${htmlEscape(requested.audio_url)}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           ${supplement}
         </div>
-        ${t.message ? `<p class="trade-message">"${t.message}"</p>` : ''}
+        ${t.message ? `<p class="trade-message">"${htmlEscape(t.message)}"</p>` : ''}
         ${timeLeft   ? `<p class="trade-expires">${timeLeft}</p>` : ''}
         ${actions    ? `<div class="trade-actions">${actions}</div>` : ''}
       </div>`;

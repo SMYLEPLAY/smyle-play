@@ -1306,6 +1306,31 @@ async def stream_image_preview(key: str):
     return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
 
 
+def _get_original_r2_object(client, key: str):
+    """
+    Récupère un ORIGINAL payant (`images/originals/...`) depuis R2.
+
+    Sécurité : les originaux sont écrits dans le bucket PRIVÉ
+    (settings.effective_private_bucket). On tente donc le privé en premier ;
+    si l'objet n'y est pas encore (pas encore migré depuis le public) ET que le
+    bucket privé est réellement distinct du public, on RÉESSAYE sur le public
+    (transition). Si les deux échouent, on relève l'exception → le caller
+    renvoie un 404 indistinct, comme aujourd'hui.
+
+    N'expose JAMAIS la clé ni le bucket : usage interne au streaming gaté.
+    """
+    private_bucket = settings.effective_private_bucket
+    public_bucket = settings.R2_BUCKET
+    try:
+        return client.get_object(Bucket=private_bucket, Key=key)
+    except Exception:  # noqa: BLE001
+        # Fallback public UNIQUEMENT si le privé est distinct (sinon on a déjà
+        # interrogé le seul bucket possible → inutile de retenter).
+        if private_bucket == public_bucket:
+            raise
+        return client.get_object(Bucket=public_bucket, Key=key)
+
+
 @router.get("/images/{image_id}/download")
 async def download_image(
     image_id: UUID,
@@ -1374,7 +1399,7 @@ async def download_image(
         )
 
     try:
-        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+        obj = _get_original_r2_object(client, key)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1649,7 +1674,7 @@ async def download_image_gallery_item(
         )
 
     try:
-        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+        obj = _get_original_r2_object(client, key)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -224,6 +224,23 @@ async def search_tracks(
 
     rows = (await db.execute(stmt)).all()
 
+    # Fallback proxy same-origin pour les sons n'ayant qu'une r2_key (pas
+    # d'audio_url) — même stratégie que _build_stream_url (watt_compat).
+    # Sans ça, un son valide sort avec audioUrl="" et son overlay ▶ est mort
+    # dans les résultats de recherche. is_configured() évalué UNE fois.
+    try:
+        from app.services.r2 import is_configured
+        _r2_ok = is_configured()
+    except Exception:
+        _r2_ok = False
+
+    def _audio_url(t: Track) -> str:
+        if t.audio_url:
+            return t.audio_url
+        if t.r2_key and _r2_ok:
+            return f"/watt/stream/{t.r2_key}"
+        return ""
+
     tracks = []
     for track, user in rows:
         tracks.append({
@@ -234,7 +251,7 @@ async def search_tracks(
             "tags":        track.tags or "",
             "platform":    track.platform or "",
             "color":       track.color or user.brand_color or "",
-            "audioUrl":    track.audio_url or "",
+            "audioUrl":    _audio_url(track),
             "plays":       int(track.plays or 0),
             "artistId":    str(user.id),
             "artistSlug":  _derive_artist_slug(user),

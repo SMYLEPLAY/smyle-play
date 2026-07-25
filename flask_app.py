@@ -34,6 +34,41 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ── MODE LANCEMENT (masquage réversible des points d'entrée) ────────────────
+# Source unique de vérité = le backend (watt-api/app/config.py : Settings).
+# Le front Flask legacy n'importe pas les settings FastAPI (Settings exige
+# DATABASE_URL et un contexte différent) ; on relit donc LES MÊMES variables
+# d'environnement avec LES MÊMES défauts, pour rester cohérent bit à bit :
+#   MODE_LANCEMENT=True (défaut) + tous les SHOW_* = False (défaut) → tout masqué.
+# Un item est VISIBLE si : (not MODE_LANCEMENT) or SHOW_<ITEM>.
+_LAUNCH_TRUE = ('1', 'true', 'yes', 'on', 't', 'y')
+
+
+def _launch_env_bool(name, default):
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in _LAUNCH_TRUE
+
+
+def compute_launch_flags():
+    """Dict des booléens VISIBLE finaux, calculé depuis l'environnement.
+    Identique à Settings.launch_flags_dict() côté FastAPI."""
+    mode_lancement = _launch_env_bool('MODE_LANCEMENT', True)
+
+    def _visible(item):
+        return (not mode_lancement) or _launch_env_bool('SHOW_' + item, False)
+
+    return {
+        'paliers': _visible('PALIERS'),
+        'resale': _visible('RESALE'),
+        'packs': _visible('PACKS'),
+        'voix': _visible('VOIX'),
+        'troc': _visible('TROC'),
+        'thePlan': _visible('THE_PLAN'),
+    }
+
+
 def create_app(config_class=None):
     app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
     app.config.from_object(config_class or get_config())
@@ -95,6 +130,57 @@ def create_app(config_class=None):
             resp.headers['Expires'] = '0'
         return resp
 
+    # ── SÉCURITÉ (Phase 0 lancement, 2026-07-25) — fermeture du legacy Flask ──
+    # Le backend RÉEL est FastAPI (watt-api). Ces routes Flask historiques sont
+    # soit des DOUBLONS morts (le front appelle les équivalents FastAPI
+    # authentifiés /watt/upload*, /auth/*), soit NON opérationnelles, mais elles
+    # restaient JOIGNABLES via le fallback a2wsgi et exposaient des trous
+    # critiques :
+    #   - /api/watt/upload*      : upload R2 ANONYME (userId pris dans le form)
+    #   - /api/credits/grant     : octroi de crédits hors contrôle FastAPI
+    #   - /api/agents/process-*  : déclencheur de compute non authentifié
+    #   - /api/auth/register|login : inscription/login parallèle qui contourne
+    #                                la porte CGU + âge de FastAPI
+    # On les neutralise d'un seul garde centralisé (410 Gone), réversible.
+    # Vérifié : aucun de ces chemins n'est appelé par le front (les uploads
+    # passent par /watt/upload* FastAPI avec Bearer, l'auth par /auth/* FastAPI).
+    _LEGACY_BLOCKED_PREFIXES = (
+        '/api/watt/upload',        # couvre upload, upload-image, upload-voice
+        '/api/credits/grant',
+        '/api/agents/process-track',
+        '/api/auth/register',
+        '/api/auth/login',
+    )
+
+    @app.before_request
+    def _block_legacy_flask_routes():
+        path = (request.path or '').rstrip('/')
+        for pref in _LEGACY_BLOCKED_PREFIXES:
+            if path == pref or path.startswith(pref + '/'):
+                return jsonify({
+                    'error': 'endpoint_retired',
+                    'detail': "Cet endpoint hérité n'est plus disponible.",
+                }), 410
+        return None
+
+    # ── MODE LANCEMENT — drapeaux front (source de vérité) ─────────────────
+    # Endpoint DYNAMIQUE prioritaire, servi AVANT le catch-all statique
+    # (static_url_path='' expose ui/core/launch-flags.js depuis le disque en
+    # fallback). La règle explicite gagne le routage werkzeug sur le
+    # convertisseur <path:filename> du dossier statique. Génère le JS qui pose
+    # window.WATT_LAUNCH depuis l'environnement. no-cache : les drapeaux
+    # doivent pouvoir changer sans purge de cache navigateur.
+    @app.route('/ui/core/launch-flags.js')
+    def launch_flags_js():
+        import json
+        flags = compute_launch_flags()
+        body = 'window.WATT_LAUNCH = ' + json.dumps(flags) + ';\n'
+        resp = app.response_class(body, mimetype='application/javascript')
+        resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        resp.headers['Pragma'] = 'no-cache'
+        resp.headers['Expires'] = '0'
+        return resp
+
     # ── Routes statiques ──────────────────────────────────────────────────
 
     @app.route('/')
@@ -128,6 +214,10 @@ def create_app(config_class=None):
         # Surligne le palier courant via /users/me. Activation Premium/Mythique
         # = post-Stripe (CTA désactivé pour l'instant). Distincte de /tarifs
         # (packs de crédits).
+        # MODE LANCEMENT — PALIERS masqués : la page n'est pas servie tant que
+        # l'item n'est pas VISIBLE (redirige vers l'accueil, 302).
+        if not compute_launch_flags()['paliers']:
+            return redirect(url_for('index'), code=302)
         return send_from_directory(BASE_DIR, 'offres.html')
 
     @app.route('/u/<slug>')
@@ -190,6 +280,10 @@ def create_app(config_class=None):
     # Chantier Voix (2026-06-12) — catalogue public des voix, même shell.
     @app.route('/voix')
     def voix_page():
+        # MODE LANCEMENT — VOIX masquée : redirige vers l'accueil (302) tant
+        # que l'item n'est pas VISIBLE.
+        if not compute_launch_flags()['voix']:
+            return redirect(url_for('index'), code=302)
         return send_from_directory(BASE_DIR, 'index.html')
 
     # C4 ③ (2026-06-15) — vitrine publique des images IA, même shell index.html,

@@ -106,8 +106,19 @@
       </div>
     </div>`;
 
-    html += _sectionTitle('Dépenser tes Smyles');
-    html += `
+    // MODE LANCEMENT — PACKS (Pack Mystère) et RESALE (Marché secondaire) sont
+    // masqués par défaut. Défensif : window.WATT_LAUNCH absent → tout masqué.
+    // Si les DEUX cartes sont masquées, la section « Dépenser tes Smyles »
+    // deviendrait vide : on omet alors aussi son titre pour ne pas laisser un
+    // titre orphelin.
+    const _lf = window.WATT_LAUNCH || {};
+    const _showPacks = !!_lf.packs;
+    const _showResale = !!_lf.resale;
+    if (_showPacks || _showResale) {
+      html += _sectionTitle('Dépenser tes Smyles');
+    }
+    if (_showPacks) {
+      html += `
       <div id="bqPackCard" style="cursor:pointer;background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:18px;display:flex;gap:14px;align-items:center;transition:border-color .15s;"
            onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='#2c2440'">
         <div style="font-size:38px;line-height:1;">🎁</div>
@@ -120,8 +131,10 @@
         </div>
         <div style="color:#6c4cf0;font-size:20px;">›</div>
       </div>`;
+    }
     // Marché secondaire — acheter des prompts revendus par d'autres.
-    html += `
+    if (_showResale) {
+      html += `
       <div id="bqMarketCard" style="cursor:pointer;background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:18px;display:flex;gap:14px;align-items:center;margin-top:10px;transition:border-color .15s;"
            onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='#2c2440'">
         <div style="font-size:38px;line-height:1;">💱</div>
@@ -131,6 +144,7 @@
         </div>
         <div style="color:#6c4cf0;font-size:20px;">›</div>
       </div>`;
+    }
 
     // LANCEMENT 2026-07-20 — sections « Recharger tes Smyles » (packs €) et
     // « Abonnement » RETIRÉES de l'UI : pas de mur de paiement ni de promesse
@@ -149,7 +163,10 @@
       _closeBoutique();
       if (typeof window.openReferralPanel === 'function') window.openReferralPanel();
     });
-    body.querySelector('#bqPackCard').addEventListener('click', _onPackCardClick);
+    // Défensif : ces cartes peuvent être masquées (MODE LANCEMENT) → on ne
+    // branche l'écouteur que si l'élément a été rendu.
+    const packCard = body.querySelector('#bqPackCard');
+    if (packCard) packCard.addEventListener('click', _onPackCardClick);
     const marketCard = body.querySelector('#bqMarketCard');
     if (marketCard) marketCard.addEventListener('click', _openMarket);
   }

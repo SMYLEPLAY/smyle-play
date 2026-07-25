@@ -229,17 +229,24 @@
       return;
     }
 
+    // MODE LANCEMENT — TROC masqué : l'option « Proposer un échange » n'est pas
+    // rendue tant que l'item n'est pas VISIBLE. Défensif : window.WATT_LAUNCH
+    // absent → masqué. Le menu ⋮ ne contenant que cette action, on masque le
+    // bouton ⋮ et son conteneur ensemble pour ne pas laisser un menu vide.
+    const _trocMenu = (window.WATT_LAUNCH && window.WATT_LAUNCH.troc) ? `
+        <button class="msg-menu-btn" type="button" title="Actions sur cette conversation" onclick="SmyleMessaging._toggleConvMenu(event)"
+                style="background:none;border:none;color:rgba(255,255,255,.8);font-size:22px;font-weight:700;cursor:pointer;padding:2px 8px;line-height:1">⋮</button>
+        <div id="msg-conv-menu" style="display:none;position:absolute;top:100%;right:8px;z-index:100;min-width:190px;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px;box-shadow:0 6px 20px rgba(0,0,0,.45)">
+          <button type="button" onclick="SmyleMessaging._openTradeFromConv()"
+                  style="display:block;width:100%;text-align:left;background:none;border:none;color:#eee;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px">🔄 Proposer un échange</button>
+        </div>` : '';
+
     pane.innerHTML = `
       <div class="msg-header" style="position:relative">
         <button class="msg-back-btn" type="button" onclick="SmyleMessaging._backToInbox()">←</button>
         <span class="msg-title">${_esc(_s.activeThread.other_user_name)}</span>
-        <button class="msg-menu-btn" type="button" title="Actions sur cette conversation" onclick="SmyleMessaging._toggleConvMenu(event)"
-                style="background:none;border:none;color:rgba(255,255,255,.8);font-size:22px;font-weight:700;cursor:pointer;padding:2px 8px;line-height:1">⋮</button>
+        ${_trocMenu}
         <button class="msg-close-btn" onclick="SmyleMessaging.close()">✕</button>
-        <div id="msg-conv-menu" style="display:none;position:absolute;top:100%;right:8px;z-index:100;min-width:190px;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px;box-shadow:0 6px 20px rgba(0,0,0,.45)">
-          <button type="button" onclick="SmyleMessaging._openTradeFromConv()"
-                  style="display:block;width:100%;text-align:left;background:none;border:none;color:#eee;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px">🔄 Proposer un échange</button>
-        </div>
       </div>
       <div class="msg-messages" id="msg-messages"></div>
       <div class="msg-composer">

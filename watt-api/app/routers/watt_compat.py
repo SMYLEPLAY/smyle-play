@@ -83,6 +83,20 @@ async def stream_r2_audio(key: str):
     quelques Mo. Si seek nécessaire (samples >10 Mo), ajouter Range
     plus tard.
     """
+    # SÉCURITÉ (Phase 0 lancement, 2026-07-25) : ce proxy audio streamait
+    # N'IMPORTE quelle clé du bucket → il servait aussi les IMAGES ORIGINALES
+    # payantes (`images/originals/…`) sans achat (contournement du paywall).
+    # Un proxy AUDIO n'a jamais de raison légitime de servir des objets image :
+    # on refuse toute clé du domaine image. Les images publiques passent par
+    # /watt/images (serve_image, gaté + redirigé vers l'objet public) ; les
+    # originales payantes par /images/{id}/download (gaté sur la possession).
+    _k = key.lstrip("/").lower()
+    if _k.startswith("images/"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ressource introuvable.",
+        )
+
     # Import local pour éviter de tirer boto3 dans tous les imports.
     from app.services.r2 import get_r2_client, is_configured
 
@@ -457,7 +471,7 @@ async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
             "file":      (t.r2_key or "").split("/", 1)[-1] if t.r2_key else "",
             "name":      t.title,
             "duration":  t.duration_seconds,
-            "url":       t.audio_url or "",
+            "url":       _build_stream_url(t),
             # 2026-07-01 — pochette du son (posée via /tracks PATCH cover_url).
             # Sans ce champ, les playlists officielles n'affichaient jamais les
             # covers (le front lit track.cover_url dans loadTrack / mini-bar).

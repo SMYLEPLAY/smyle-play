@@ -114,7 +114,12 @@ async def upload_image_assets(
     uid = _uuid.uuid4().hex
     image_r2_key = f"images/originals/{uid}.{ext}"
     preview_r2_key = f"images/previews/{uid}.jpg"
-    bucket = settings.R2_BUCKET
+    # L'ORIGINAL payant part dans le bucket PRIVÉ (sécurité : clé devinable →
+    # jamais servable publiquement). L'APERÇU reste dans le bucket PUBLIC, servi
+    # tel quel par le proxy /watt/images. Tant que R2_PRIVATE_BUCKET n'est pas
+    # défini, effective_private_bucket == R2_BUCKET → comportement identique.
+    private_bucket = settings.effective_private_bucket
+    public_bucket = settings.R2_BUCKET
 
     loop = asyncio.get_event_loop()
 
@@ -127,11 +132,15 @@ async def upload_image_assets(
         ) from exc
 
     def _sync_put_original() -> None:
-        client.put_object(Bucket=bucket, Key=image_r2_key, Body=data, ContentType=mime)
+        # ORIGINAL → bucket PRIVÉ (jamais public).
+        client.put_object(
+            Bucket=private_bucket, Key=image_r2_key, Body=data, ContentType=mime
+        )
 
     def _sync_put_preview() -> None:
+        # APERÇU → bucket PUBLIC (inchangé).
         client.put_object(
-            Bucket=bucket, Key=preview_r2_key, Body=preview_bytes, ContentType="image/jpeg"
+            Bucket=public_bucket, Key=preview_r2_key, Body=preview_bytes, ContentType="image/jpeg"
         )
 
     try:

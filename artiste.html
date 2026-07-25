@@ -2,6 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
+  <!-- MODE LANCEMENT — drapeaux de masquage, chargés EN PREMIER (synchro) pour
+       que window.WATT_LAUNCH existe avant topbar.js / boutique.js /
+       messaging.js. Flask sert la version DYNAMIQUE (source de vérité
+       backend) ; le fichier statique du même chemin sert de filet. -->
+  <script src="/ui/core/launch-flags.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#070608" />
 
@@ -197,6 +202,14 @@
             <span id="ap-palier-pill" class="ap-palier-pill" style="display:none"></span>
             <!-- 2026-07-15 — chip ADN à côté du nom RETIRÉ : l'ADN est déjà
                  débloquable depuis la page profil (card ADN + accordéon). -->
+            <!-- Profil public partageable : « Copier le lien » VISIBLE POUR TOUS
+                 (y compris anonymes). Hors du bloc auth-gaté #ap-social-actions
+                 pour ne jamais être masqué aux visiteurs non connectés. -->
+            <button id="ap-copy-link" type="button" class="ap-copy-link-btn"
+                    title="Copier le lien du profil"
+                    style="background:none;border:1px solid rgba(139,134,163,.35);color:#8b86a3;font-size:12px;padding:2px 8px;border-radius:999px;cursor:pointer;">
+              🔗 Copier le lien
+            </button>
           </div>
 
           <!-- Casquettes + genre + ville (déclaratif — carte d'identité réseau).

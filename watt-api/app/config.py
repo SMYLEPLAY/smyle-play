@@ -55,12 +55,35 @@ class Settings(BaseSettings):
     R2_ENDPOINT_URL: str | None = None       # URL complète (prioritaire)
     R2_ACCOUNT_ID: str | None = None         # alias legacy → construit l'URL
     R2_BUCKET: str = "smyle-play-audio"
+    # --- Bucket PRIVÉ pour les IMAGES ORIGINALES payantes ------------------
+    # Sécurité (2026-07-25) : l'original d'une image (`images/originals/{uid}`)
+    # partage l'UUID de son aperçu public → sa clé est DEVINABLE. Tant qu'il vit
+    # dans le bucket PUBLIC, il est atteignable sans achat via l'URL r2.dev.
+    # On l'isole donc dans un bucket PRIVÉ dédié. Le service public
+    # (audio/covers/aperçus) reste sur R2_BUCKET, inchangé.
+    #   • Non défini → effective_private_bucket retombe sur R2_BUCKET : AUCUNE
+    #     rupture avant que Tom crée le bucket privé + lance la migration.
+    #   • Défini → les originaux sont écrits/lus dans ce bucket privé (lecture
+    #     avec fallback public le temps de la migration).
+    R2_PRIVATE_BUCKET: str | None = None
     # Domaine PUBLIC r2.dev du bucket (le même que celui des audio_url stockés,
     # ex. https://pub-XXXX.r2.dev). Sert à rediriger le proxy d'images publiques
     # vers l'objet R2 public directement, au lieu de le streamer via le client
     # boto3 backend (fragile : dépend des secrets R2 + du middleware ASGI, a
     # déjà cassé les covers 2 fois). Surchargeable par variable d'env.
     R2_PUBLIC_BASE_URL: str = "https://pub-5d7696b1acd74214b3314fdcab40121f.r2.dev"
+
+    @property
+    def effective_private_bucket(self) -> str:
+        """Bucket des IMAGES ORIGINALES payantes.
+
+        Retourne R2_PRIVATE_BUCKET s'il est défini, sinon retombe sur le bucket
+        public R2_BUCKET — transition sans rupture tant que Tom n'a pas créé le
+        bucket privé (les originaux restent alors dans le public, exactement
+        comme aujourd'hui). Une fois R2_PRIVATE_BUCKET défini + la migration
+        lancée, les originaux vivent dans le bucket privé.
+        """
+        return self.R2_PRIVATE_BUCKET or self.R2_BUCKET
 
     @property
     def effective_r2_public_base_url(self) -> str | None:
@@ -91,6 +114,40 @@ class Settings(BaseSettings):
             for origin in self.CORS_ALLOWED_ORIGINS.split(",")
             if origin.strip()
         ]
+
+    # --- MODE LANCEMENT (masquage RÉVERSIBLE des points d'entrée) ─────────
+    # Source unique de vérité pour masquer/rallumer des mécaniques encore
+    # vides ou trop avancées à l'ouverture publique. RIEN n'est supprimé : on
+    # masque seulement le point d'entrée. Réversibilité par item via env.
+    #   • MODE_LANCEMENT = True  → mode lancement actif = on masque par défaut.
+    #   • SHOW_<ITEM>    = True  → rallume l'item même en mode lancement.
+    #   • MODE_LANCEMENT = False → tout est rallumé (fin du lancement).
+    # Un item est VISIBLE si : (not MODE_LANCEMENT) or SHOW_<ITEM>.
+    # Défauts : tout masqué (MODE_LANCEMENT=True, tous les SHOW_* à False).
+    MODE_LANCEMENT: bool = True
+    SHOW_PALIERS: bool = False
+    SHOW_RESALE: bool = False
+    SHOW_PACKS: bool = False
+    SHOW_VOIX: bool = False
+    SHOW_TROC: bool = False
+    SHOW_THE_PLAN: bool = False
+
+    def _item_visible(self, show: bool) -> bool:
+        """VISIBLE si le mode lancement est désactivé, ou si l'item est
+        explicitement rallumé via son drapeau SHOW_*."""
+        return (not self.MODE_LANCEMENT) or show
+
+    def launch_flags_dict(self) -> dict[str, bool]:
+        """Dict des booléens VISIBLE finaux consommé par le front (et l'API).
+        True = l'item doit être affiché ; False = masqué."""
+        return {
+            "paliers": self._item_visible(self.SHOW_PALIERS),
+            "resale": self._item_visible(self.SHOW_RESALE),
+            "packs": self._item_visible(self.SHOW_PACKS),
+            "voix": self._item_visible(self.SHOW_VOIX),
+            "troc": self._item_visible(self.SHOW_TROC),
+            "thePlan": self._item_visible(self.SHOW_THE_PLAN),
+        }
 
 
 settings = Settings()

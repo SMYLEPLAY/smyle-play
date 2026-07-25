@@ -348,7 +348,9 @@ function renderLibraryImageCell(p, i, artistName, artistLink) {
     </div>` : '';
 
   // Revente — bloc générique inchangé (mécanique resale partagée).
-  const resaleBlock = `
+  // MODE LANCEMENT — RESALE masquée : bloc non rendu tant que l'item n'est pas
+  // VISIBLE. Défensif : window.WATT_LAUNCH absent → masqué.
+  const resaleBlock = (window.WATT_LAUNCH && window.WATT_LAUNCH.resale) ? `
     <div class="lib-content-block">
       <div class="lib-content-header"><span class="lib-content-label">💱 Revente</span></div>
       ${p.resale_price != null
@@ -360,7 +362,7 @@ function renderLibraryImageCell(p, i, artistName, artistLink) {
              <button class="lib-copy-btn" onclick="libListResale('${p.prompt_id}')">Mettre en vente</button>
              <span style="font-size:11px;color:#a09cb8;">Transfert : tu cèdes cette image. L'artiste d'origine touche une royaltie.</span>
            </div>`}
-    </div>`;
+    </div>` : '';
 
   return `
     <details class="lib-item-cell" style="border-left:3px solid #7c4dff">
@@ -593,7 +595,9 @@ function renderPrompts(items) {
       </div>` : '';
 
     // Marché secondaire — mettre en vente / retirer (transfert de propriété).
-    const resaleBlock = `
+    // MODE LANCEMENT — RESALE masquée : bloc non rendu tant que l'item n'est
+    // pas VISIBLE. Défensif : window.WATT_LAUNCH absent → masqué.
+    const resaleBlock = (window.WATT_LAUNCH && window.WATT_LAUNCH.resale) ? `
       <div class="lib-content-block">
         <div class="lib-content-header"><span class="lib-content-label">💱 Revente</span></div>
         ${p.resale_price != null
@@ -605,7 +609,7 @@ function renderPrompts(items) {
                <button class="lib-copy-btn" onclick="libListResale('${p.prompt_id}')">Mettre en vente</button>
                <span style="font-size:11px;color:#a09cb8;">Transfert : tu cèdes ce son. L'artiste d'origine touche une royaltie.</span>
              </div>`}
-      </div>`;
+      </div>` : '';
 
     // C2 — DOWNLOAD UNIVERSEL : tout exemplaire possédé donne droit au
     // fichier (« achat = fichier + recette »), plus seulement les beats.
