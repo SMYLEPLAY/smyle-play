@@ -4,6 +4,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
+  <!-- MODE LANCEMENT — drapeaux de masquage, chargés EN PREMIER (synchro) pour
+       que window.WATT_LAUNCH existe avant topbar.js / boutique.js /
+       messaging.js. Flask sert la version DYNAMIQUE (source de vérité
+       backend) ; le fichier statique du même chemin sert de filet. -->
+  <script src="/ui/core/launch-flags.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#070608" />
   <meta name="apple-mobile-web-app-capable" content="yes" />

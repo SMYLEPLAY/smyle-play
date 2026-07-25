@@ -626,6 +626,13 @@
 
     const profileHref = mySlug ? `/@${mySlug}` : '#';
 
+    // MODE LANCEMENT — PALIERS masqués : le lien « Offres créateur » n'est pas
+    // rendu tant que l'item n'est pas VISIBLE. Défensif : window.WATT_LAUNCH
+    // absent → traité comme masqué.
+    const _offresItem = (window.WATT_LAUNCH && window.WATT_LAUNCH.paliers)
+      ? `<a class="stb-drop-item" href="/offres">Offres créateur</a>`
+      : '';
+
     return `
       <div class="stb-user-wrap">
         <button class="stb-user-chip" type="button"
@@ -642,7 +649,7 @@
           <a class="stb-drop-item" href="${_esc(profileHref)}">Mon profil</a>
           <a class="stb-drop-item" href="/dashboard">WATT BOARD</a>
           <a class="stb-drop-item" href="/library">Bibliothèque</a>
-          <a class="stb-drop-item" href="/offres">Offres créateur</a>
+          ${_offresItem}
           <div class="stb-drop-sep" role="separator"></div>
           <button class="stb-drop-item stb-drop-logout" type="button"
                   onclick="window.SmyleTopbar.logout(event)">Déconnexion</button>

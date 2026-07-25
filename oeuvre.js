@@ -65,7 +65,13 @@
         if (s === 401) { _toast('Connecte-toi pour acheter l\'œuvre complète.', 'error'); }
         else if (s === 402) { _toast('Solde de Smyles insuffisant.', 'error'); }
         else if (s === 409) { _toast('Tu possèdes déjà cette œuvre.', 'info'); }
-        else { _toast('Le pack « œuvre complète » arrive bientôt.', 'info'); }
+        else if (s === 404) { _toast('Le pack « œuvre complète » arrive bientôt.', 'info'); }
+        else {
+          // Toute autre erreur (500, réseau…) : ne pas masquer en « arrive
+          // bientôt ». Surfacer le détail serveur si disponible.
+          var dd = err && err.body && err.body.detail;
+          _toast(typeof dd === 'string' ? dd : 'Achat impossible pour le moment. Réessaie.', 'error');
+        }
       });
   }
   // Exposé pour les onclick inline.
@@ -256,7 +262,15 @@
         _renderPack(data);
         _show('oeuvre-content');
       })
-      .catch(function () { _show('oeuvre-empty'); });
+      .catch(function (err) {
+        // On garde l'empty state, mais on ne masque plus les vraies pannes :
+        // si le serveur a répondu une erreur autre qu'un 404, on prévient.
+        _show('oeuvre-empty');
+        var s = err && err.status;
+        if (s && s !== 404) {
+          _toast('Chargement impossible pour le moment — réessaie.', 'error');
+        }
+      });
   }
 
   document.addEventListener('DOMContentLoaded', function () {

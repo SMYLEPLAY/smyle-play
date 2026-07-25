@@ -50,7 +50,10 @@ from app.services.discovery import (
     list_public_prompts,
     list_public_voices,
 )
-from app.services.marketplace import user_owns_artist_adn
+from app.services.marketplace import (
+    user_owns_artist_adn,
+    user_owns_playlist_adn_for_prompt,
+)
 
 # Router public — pas de Depends d'auth au niveau du router
 catalog_router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -254,7 +257,12 @@ async def get_effective_price_for_prompt(
     perk_applied = await user_owns_artist_adn(
         db, user_id=current_user.id, artist_id=artist_id
     )
-    paid = compute_effective_price(detail["price_credits"], perk_applied)
+    playlist_perk = await user_owns_playlist_adn_for_prompt(
+        db, user_id=current_user.id, prompt_id=prompt_id
+    )
+    paid = compute_effective_price(
+        detail["price_credits"], perk_applied, playlist_perk
+    )
     return EffectivePricePreview(
         base_price=detail["price_credits"],
         paid=paid,

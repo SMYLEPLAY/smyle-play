@@ -442,6 +442,41 @@ function renderHeader(artist) {
   fillEditable('ap-genre',       artist.genre);
   fillEditable('ap-city',        artist.city);
 
+  // Profil public partageable — « Copier le lien » VISIBLE POUR TOUS (y compris
+  // visiteurs anonymes). Copie l'URL canonique du profil (origin + pathname,
+  // sans query/hash). Défensif si l'API clipboard est indisponible : fallback
+  // textarea + execCommand.
+  const copyBtn = $('ap-copy-link');
+  if (copyBtn) {
+    copyBtn.style.display = '';
+    copyBtn.onclick = () => {
+      const link = window.location.origin + window.location.pathname;
+      const done = () => {
+        if (typeof showToast === 'function') showToast('✓ Lien copié !');
+        else toast('✓ Lien copié !');
+      };
+      const fallback = () => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = link;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'absolute';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          done();
+        } catch (e) { /* clipboard indisponible — silencieux */ }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(done).catch(fallback);
+      } else {
+        fallback();
+      }
+    };
+  }
+
   // C3 v3 — Pilule palier créateur (C0 badges.js). Le payload n'expose pas
   // encore de palier (abonnements post-Stripe) : rendu défensif, la pilule
   // s'allumera toute seule le jour où le champ arrivera côté backend.
@@ -520,8 +555,10 @@ async function _setupFollowButton(artist) {
   // Visible sur le profil d'un autre artiste connecté. Le clic ouvre le modal
   // à double sélection. Si l'artiste n'a aucun prompt échangeable, le modal
   // l'explique (au lieu de disparaître silencieusement).
+  // MODE LANCEMENT — TROC masqué : le point d'entrée reste caché tant que le
+  // troc n'est pas VISIBLE. Défensif : window.WATT_LAUNCH absent → masqué.
   const tradeBtn = document.getElementById('ap-trade-btn');
-  if (tradeBtn && artist.id) {
+  if (tradeBtn && artist.id && window.WATT_LAUNCH && window.WATT_LAUNCH.troc) {
     tradeBtn.style.display = '';
     tradeBtn.onclick = () => openTradeModalProfile();
   }
@@ -2574,6 +2611,13 @@ async function loadArtistVoices(artistId) {
 // son CRÉATEUR d'origine (lien vers son profil). Public.
 async function loadArtistResale(artistId) {
   if (!artistId || typeof apiFetch !== 'function') return;
+  // MODE LANCEMENT — RESALE masquée : on ne charge ni n'affiche la section
+  // revente tant que l'item n'est pas VISIBLE. Défensif : window.WATT_LAUNCH
+  // absent → masqué. renderResale([]) masque proprement la section.
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.resale)) {
+    renderResale([]);
+    return;
+  }
   let list = [];
   try {
     list = await apiFetch('/resale/by-seller/' + encodeURIComponent(artistId), { auth: false });
@@ -3252,8 +3296,12 @@ function renderSocials(artist, isSelf) {
     }
   });
 
-  // Masque la section pour les fans si aucun réseau n'est renseigné
-  wrap.style.display = (hasAny || isSelf) ? '' : 'none';
+  // Masque la section pour les fans si aucun réseau n'est renseigné — MAIS on
+  // garde la section visible dès qu'un visiteur non-owner peut signaler le
+  // profil (bouton DSA Signaler ajouté plus haut), sinon le masquage des
+  // réseaux emporterait aussi ce bouton de confiance.
+  const canReport = !isSelf && artist && !!artist.id;
+  wrap.style.display = (hasAny || isSelf || canReport) ? '' : 'none';
 }
 
 /* ── Stats publiques ─────────────────────────────────────────────────────── */

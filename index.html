@@ -2,6 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
+  <!-- MODE LANCEMENT — drapeaux de masquage, chargés EN PREMIER (synchro) pour
+       que window.WATT_LAUNCH existe avant topbar.js / boutique.js /
+       marketplace.js / messaging.js. Flask sert la version DYNAMIQUE (source
+       de vérité backend) ; le fichier statique du même chemin sert de filet. -->
+  <script src="/ui/core/launch-flags.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#050508" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -231,7 +236,10 @@
   <!-- Mode Musique (Tout = catalogue complet des sons ; Beats/Voix = sous-vues) -->
   <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/sons">🗂 Tout</a>
   <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/beats">🥁 Beats</a>
-  <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/voix">🎙 Voix</a>
+  <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/voix" id="mp-cat-voix">🎙 Voix</a>
+  <!-- MODE LANCEMENT — VOIX masquée : retire le lien si l'item n'est pas
+       VISIBLE. Défensif : window.WATT_LAUNCH absent → masqué. -->
+  <script>(function(){var f=window.WATT_LAUNCH||{};if(!f.voix){var e=document.getElementById('mp-cat-voix');if(e&&e.parentNode)e.parentNode.removeChild(e);}})();</script>
   <!-- Mode Image (étagères = sous-catégories par tag d'usage) -->
   <a class="mp-voir-tout mp-cat-link mp-cat-image" href="/images">🗂 Tout</a>
   <a class="mp-voir-tout mp-cat-link mp-cat-image" href="/images?tag=avatar">🧑‍🎤 Avatars</a>
