@@ -68,6 +68,15 @@
       <button class="ok" id="unbanBtn">Rétablir</button>
     </div>
   </div>
+
+  <div class="tools">
+    <h2>Sécurité</h2>
+    <p class="sub" style="margin:0 0 10px">Renomme les images originales à clé devinable vers une clé secrète aléatoire. Idempotent : relancer ne fait rien de plus.</p>
+    <div class="row">
+      <button id="secBtn">🔒 Sécuriser les images (renommer les originaux)</button>
+    </div>
+    <pre id="secOut" style="display:none;background:#0a0712;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:12px;color:#d7d2e6;white-space:pre-wrap;overflow:auto;max-height:280px;margin:6px 0 0"></pre>
+  </div>
 </div>
 <div class="flash" id="flash"></div>
 
@@ -177,6 +186,27 @@
     apiFetch('/admin/users/' + id + '/unban', { method:'POST' })
       .then(function(res){ flash((res && res.detail) || 'Compte rétabli.', true); })
       .catch(function(e){ flash((e && e.detail) || 'Échec.', false); });
+  });
+
+  // Sécurité : re-clé des originaux d'images (réutilise apiFetch → Bearer JWT).
+  document.getElementById('secBtn').addEventListener('click', function(){
+    var btn = this;
+    var secOut = document.getElementById('secOut');
+    if (!confirm('Sécuriser les images ? Les originaux à clé devinable seront renommés (copie puis suppression de l\'ancien). Idempotent.')) return;
+    btn.disabled = true;
+    secOut.style.display = 'block';
+    secOut.textContent = 'Migration en cours…';
+    apiFetch('/admin/migrate-image-originals', { method:'POST' })
+      .then(function(res){
+        secOut.textContent = JSON.stringify(res, null, 2);
+        flash('Migration terminée : ' + ((res && res.migrated) || 0) + ' migrée(s), ' + ((res && res.skipped) || 0) + ' ignorée(s).', true);
+      })
+      .catch(function(e){
+        var m = (e && e.detail) || (e && e.status === 403 ? 'Réservé à l\'administration.' : 'Échec de la migration.');
+        secOut.textContent = String(m);
+        flash(String(m), false);
+      })
+      .then(function(){ btn.disabled = false; });
   });
 
   document.getElementById('reload').addEventListener('click', load);

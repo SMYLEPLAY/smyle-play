@@ -111,14 +111,20 @@ async def upload_image_assets(
 
     ext = _ext_for(filename, content_type)
     mime = IMAGE_MIME_BY_EXT.get(ext, "image/jpeg")
-    uid = _uuid.uuid4().hex
-    image_r2_key = f"images/originals/{uid}.{ext}"
+    # Sécurité (2026-07-30) : l'uid de l'ORIGINAL est DÉCORRÉLÉ de celui de
+    # l'aperçu. Auparavant original et aperçu partageaient le même uid → la clé
+    # de l'original (`images/originals/{uid}.ext`) était DEVINABLE depuis
+    # l'aperçu public (`images/previews/{uid}.jpg`). On génère donc un uid
+    # aléatoire SÉPARÉ pour l'original ; cette clé n'est JAMAIS renvoyée par une
+    # réponse API → inatteignable sans achat, même dans un bucket public.
+    uid = _uuid.uuid4().hex           # aperçu (public, clé exposée)
+    orig_uid = _uuid.uuid4().hex      # original (secret, clé jamais exposée)
+    image_r2_key = f"images/originals/{orig_uid}.{ext}"
     preview_r2_key = f"images/previews/{uid}.jpg"
-    # L'ORIGINAL payant part dans le bucket PRIVÉ (sécurité : clé devinable →
-    # jamais servable publiquement). L'APERÇU reste dans le bucket PUBLIC, servi
-    # tel quel par le proxy /watt/images. Tant que R2_PRIVATE_BUCKET n'est pas
-    # défini, effective_private_bucket == R2_BUCKET → comportement identique.
-    private_bucket = settings.effective_private_bucket
+    # L'ORIGINAL comme l'APERÇU vivent dans le bucket PUBLIC (settings.R2_BUCKET) :
+    # le token R2 courant sait y écrire (le bucket privé n'est pas garanti
+    # accessible). La sécurité de l'original ne repose plus sur le bucket mais sur
+    # le caractère SECRET + aléatoire de sa clé (jamais transmise).
     public_bucket = settings.R2_BUCKET
 
     loop = asyncio.get_event_loop()
@@ -132,9 +138,10 @@ async def upload_image_assets(
         ) from exc
 
     def _sync_put_original() -> None:
-        # ORIGINAL → bucket PRIVÉ (jamais public).
+        # ORIGINAL → bucket PUBLIC, mais clé SECRÈTE (uid aléatoire séparé,
+        # jamais renvoyée par l'API) → inatteignable sans achat.
         client.put_object(
-            Bucket=private_bucket, Key=image_r2_key, Body=data, ContentType=mime
+            Bucket=public_bucket, Key=image_r2_key, Body=data, ContentType=mime
         )
 
     def _sync_put_preview() -> None:

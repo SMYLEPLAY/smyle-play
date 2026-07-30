@@ -318,6 +318,200 @@ async def unban_account(
     return ModerationResult(ok=True, detail="Compte rétabli.")
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Sécurité images — re-clé des ORIGINAUX à clé DEVINABLE (2026-07-30)
+#
+# Historique : original et aperçu d'une image partageaient le MÊME uid →
+# la clé de l'original (`images/originals/{uid}.ext`) était DEVINABLE depuis
+# l'aperçu public (`images/previews/{uid}.jpg`). Les nouvelles images ont
+# désormais un uid d'original SÉPARÉ (cf. services/images.py). Cet endpoint
+# migre les images DÉJÀ créées : il RENOMME (copie → vérifie → maj DB →
+# supprime l'ancien) chaque original à clé devinable vers une clé aléatoire
+# secrète, dans le MÊME bucket public. Idempotent : relancer = tout en skip.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _uid_of_key(key: str | None) -> str | None:
+    """
+    Extrait l'uid d'une clé R2 image = basename SANS extension.
+    Ex. 'images/originals/ab12.png' → 'ab12'. None/'' → None.
+    """
+    if not key:
+        return None
+    base = key.rsplit("/", 1)[-1]
+    uid = base.rsplit(".", 1)[0] if "." in base else base
+    return uid or None
+
+
+def _ext_of_key(key: str | None, default: str = "jpg") -> str:
+    """Extension d'une clé R2 image (basename après le dernier '.'), sinon défaut."""
+    if not key:
+        return default
+    base = key.rsplit("/", 1)[-1]
+    if "." in base:
+        ext = base.rsplit(".", 1)[-1].lower()
+        if ext:
+            return ext
+    return default
+
+
+def _is_guessable_original(image_r2_key: str | None, preview_r2_key: str | None) -> bool:
+    """
+    True si la clé de l'original est DEVINABLE : son uid == l'uid de l'aperçu
+    public. False si les uid diffèrent (déjà aléatoire → rien à migrer) ou si
+    l'une des clés est absente. Fonction PURE (pas de R2, testable seule).
+    """
+    oi = _uid_of_key(image_r2_key)
+    pi = _uid_of_key(preview_r2_key)
+    return oi is not None and pi is not None and oi == pi
+
+
+@router.post("/admin/migrate-image-originals")
+async def migrate_image_originals(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Re-clé les ORIGINAUX d'images à clé DEVINABLE (uid partagé avec l'aperçu)
+    vers une clé aléatoire secrète, dans le bucket PUBLIC (settings.R2_BUCKET).
+
+    Réservé au compte officiel (403 sinon). Idempotent : les originaux déjà à
+    clé aléatoire sont skippés → relancer ne fait rien. 503 si R2 non configuré.
+
+    Réponse : {migrated, skipped, errors:[...], gallery_migrated}.
+    """
+    import asyncio
+    from uuid import uuid4
+
+    from app.config import settings as _settings
+    from app.models.prompt import Prompt
+    from app.models.prompt_gallery_image import PromptGalleryImage
+    from app.services.r2 import get_r2_client, is_configured
+
+    _require_official(current_user)
+
+    if not is_configured():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+    client = get_r2_client()
+    if client is None:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 client unavailable",
+        )
+
+    bucket = _settings.R2_BUCKET
+    loop = asyncio.get_event_loop()
+
+    def _copy_and_verify(old_key: str, new_key: str) -> None:
+        # COPIE public/old → public/new puis VÉRIFIE la présence du nouveau
+        # (head_object lève si absent → l'item est compté en erreur, l'ancien
+        # n'est jamais supprimé).
+        client.copy_object(
+            Bucket=bucket,
+            CopySource={"Bucket": bucket, "Key": old_key},
+            Key=new_key,
+        )
+        client.head_object(Bucket=bucket, Key=new_key)
+
+    def _delete_old(old_key: str) -> None:
+        client.delete_object(Bucket=bucket, Key=old_key)
+
+    migrated = 0
+    skipped = 0
+    gallery_migrated = 0
+    errors: list[dict] = []
+
+    async def _migrate_one(kind: str, obj_id, old_key: str) -> bool:
+        """Copie → vérifie → maj DB (commit) → supprime l'ancien (best-effort).
+        Renvoie True si migré, False si une erreur a été collectée."""
+        new_key = f"images/originals/{uuid4().hex}.{_ext_of_key(old_key)}"
+        try:
+            await loop.run_in_executor(None, _copy_and_verify, old_key, new_key)
+        except Exception as exc:  # noqa: BLE001
+            errors.append({
+                "type": kind, "id": str(obj_id),
+                "error": f"{type(exc).__name__}: {str(exc)[:200]}",
+            })
+            return False
+        return new_key  # type: ignore[return-value]
+
+    # ── Images-produits (lignes prompts) ────────────────────────────────────
+    prompts = (await db.execute(
+        select(Prompt).where(
+            Prompt.product_type == "image",
+            Prompt.image_r2_key.isnot(None),
+            Prompt.preview_r2_key.isnot(None),
+        )
+    )).scalars().all()
+
+    for p in prompts:
+        if not _is_guessable_original(p.image_r2_key, p.preview_r2_key):
+            skipped += 1
+            continue
+        old_key = p.image_r2_key
+        res = await _migrate_one("image", p.id, old_key)
+        if not res:
+            continue
+        try:
+            p.image_r2_key = res
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001
+            await db.rollback()
+            errors.append({
+                "type": "image", "id": str(p.id),
+                "error": f"db: {type(exc).__name__}: {str(exc)[:200]}",
+            })
+            continue
+        # Suppression de l'ancien objet best-effort : un orphelin ne casse rien.
+        try:
+            await loop.run_in_executor(None, _delete_old, old_key)
+        except Exception:  # noqa: BLE001
+            pass
+        migrated += 1
+
+    # ── Galerie (PromptGalleryImage) — même schéma clé original/aperçu ───────
+    gallery = (await db.execute(
+        select(PromptGalleryImage).where(
+            PromptGalleryImage.image_r2_key.isnot(None),
+            PromptGalleryImage.preview_r2_key.isnot(None),
+        )
+    )).scalars().all()
+
+    for g in gallery:
+        if not _is_guessable_original(g.image_r2_key, g.preview_r2_key):
+            skipped += 1
+            continue
+        old_key = g.image_r2_key
+        res = await _migrate_one("gallery", g.id, old_key)
+        if not res:
+            continue
+        try:
+            g.image_r2_key = res
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001
+            await db.rollback()
+            errors.append({
+                "type": "gallery", "id": str(g.id),
+                "error": f"db: {type(exc).__name__}: {str(exc)[:200]}",
+            })
+            continue
+        try:
+            await loop.run_in_executor(None, _delete_old, old_key)
+        except Exception:  # noqa: BLE001
+            pass
+        gallery_migrated += 1
+
+    return {
+        "migrated": migrated,
+        "skipped": skipped,
+        "errors": errors,
+        "gallery_migrated": gallery_migrated,
+    }
+
+
 async def _resolve_owner_id(db: AsyncSession, target_type: str, target_id: str):
     """Retrouve le compte propriétaire d'un contenu (pour ban_owner)."""
     import uuid as _uuid
