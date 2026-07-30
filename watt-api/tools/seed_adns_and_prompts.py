@@ -10,7 +10,7 @@ Idempotent :
   - Adn match par artist_id (UNIQUE constraint)
   - Prompt match par (artist_id, title)
 
-Usage (depuis `smyleplay-api/`) :
+Usage (depuis `watt-api/`) :
 
     docker-compose run --rm api python tools/seed_adns_and_prompts.py
     # ou

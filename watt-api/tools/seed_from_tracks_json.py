@@ -8,7 +8,7 @@ Rien n'est modifié côté Flask. Ce script est idempotent : si tu le
 relances, il met à jour les tracks existantes (match par `r2_key`) au
 lieu de créer des doublons.
 
-Usage (depuis la racine `smyleplay-api/`) :
+Usage (depuis la racine `watt-api/`) :
 
     # 1. Démarrer Postgres + appliquer les migrations
     docker-compose up -d db
@@ -50,8 +50,8 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 # ── Bootstrap sys.path ────────────────────────────────────────────────────
-# Ce script vit dans `smyleplay-api/tools/` mais a besoin d'importer le
-# package `app.*` situé dans `smyleplay-api/app/`. Quand on lance
+# Ce script vit dans `watt-api/tools/` mais a besoin d'importer le
+# package `app.*` situé dans `watt-api/app/`. Quand on lance
 # `python tools/seed_from_tracks_json.py`, Python ajoute uniquement
 # `tools/` à sys.path. On remonte d'un cran pour que `import app` marche.
 _HERE = Path(__file__).resolve().parent

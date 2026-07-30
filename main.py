@@ -33,7 +33,8 @@ UNIFICATION BACKEND (2026-07-20)
   perdu (33 → 36) · 3 routers gagnés (reports/DSA, telemetry, the_plan) ·
   aucune variable de configuration supplémentaire requise.
 
-  ROLLBACK : remettre "smyleplay-api" dans _API_DIR ci-dessous.
+  NB (2026-07-30, Sprint 0) : smyleplay-api/ a été retiré du repo —
+  le rollback documenté ici n'est plus possible ; watt-api/ est le seul backend.
 """
 
 import os

@@ -113,3 +113,6 @@ node_modules/
 *.dump
 
 _d2wt/
+
+# ── Corbeille de session Cowork (suppression manuelle par Tom) ──────────
+_to_delete/

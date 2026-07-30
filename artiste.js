@@ -2510,8 +2510,8 @@ async function unlockVisualDnaFromProfile() {
 }
 
 // ── Suppression d'un track depuis le profil (owner uniquement) ────────
-// Utilise l'endpoint Flask DELETE /api/watt/tracks/{public_id} qui
-// purge aussi le fichier R2 + le row tracks FastAPI (CASCADE depuis la
+// Utilise l'endpoint FastAPI DELETE /watt/tracks/{public_id} (router
+// watt_compat) qui purge aussi le fichier R2 + le row tracks FastAPI (CASCADE depuis la
 // PR Sprint 1 PR3 R2 cleanup). Le backend vérifie l'owner — un visiteur
 // qui invoquerait l'endpoint reçoit 403, le bouton est juste caché côté
 // front pour ne pas exposer une action qui ne marcherait pas.
@@ -2520,10 +2520,9 @@ async function deleteTrackFromProfile(trackId, btn) {
   if (btn) btn.disabled = true;
   try {
     if (typeof apiFetch === 'function') {
-      // L'endpoint principal côté FastAPI ne fait PAS encore la suppression
-      // R2 via le path /watt/tracks/<id>. On passe par l'endpoint Flask
-      // qui supprime à la fois en DB et en R2 (cf flask_app.py
-      // /api/watt/tracks/<int:track_id>).
+      // Endpoint FastAPI DELETE /watt/tracks/<id> (router watt_compat) :
+      // supprime à la fois en DB et en R2. (Commentaire corrigé 2026-07-30 :
+      // il mentionnait à tort l'endpoint Flask legacy, mort depuis.)
       // Note : l'ID public peut être un UUID FastAPI ou un int legacy.
       // Le fetch direct gère les 2.
       const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
