@@ -406,13 +406,16 @@ async def migrate_image_originals(
     loop = asyncio.get_event_loop()
 
     def _copy_and_verify(old_key: str, new_key: str) -> None:
-        # COPIE public/old → public/new puis VÉRIFIE la présence du nouveau
-        # (head_object lève si absent → l'item est compté en erreur, l'ancien
-        # n'est jamais supprimé).
-        client.copy_object(
-            Bucket=bucket,
-            CopySource={"Bucket": bucket, "Key": old_key},
-            Key=new_key,
+        # Certains tokens R2 n'autorisent PAS CopyObject (copie serveur-à-serveur)
+        # → on fait un télécharger + ré-uploader avec les seules opérations que le
+        # token sait faire (get/put, prouvées par les uploads/lectures du backend).
+        # Puis on VÉRIFIE la présence du nouveau (head_object lève si absent →
+        # l'item est compté en erreur, l'ancien n'est JAMAIS supprimé).
+        src = client.get_object(Bucket=bucket, Key=old_key)
+        body = src["Body"].read()
+        content_type = src.get("ContentType") or "application/octet-stream"
+        client.put_object(
+            Bucket=bucket, Key=new_key, Body=body, ContentType=content_type
         )
         client.head_object(Bucket=bucket, Key=new_key)
 
