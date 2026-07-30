@@ -36,7 +36,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, StreamingResponse
 
-# index.html à la racine du repo (smyleplay-api/app/routers/images.py → parents[3]).
+# index.html à la racine du repo (watt-api/app/routers/images.py → parents[3]).
 # Sert à rendre la PAGE marketplace quand un navigateur ouvre /images en direct
 # (sinon l'API JSON ci-dessous masque la page HTML Flask — cf. content-nego).
 _INDEX_HTML = _Path(__file__).resolve().parents[3] / "index.html"

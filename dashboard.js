@@ -2284,9 +2284,8 @@ async function uploadTrack() {
   // et on STOPPE — pas de track fantôme en localStorage qui mentirait à
   // l'utilisateur sur l'état réel de son upload.
   //
-  // Le path Flask `/api/watt/tracks` reste vivant côté serveur pour ne pas
-  // casser d'éventuels autres consommateurs, mais le frontend dashboard
-  // ne le sollicite plus.
+  // Le path Flask `/api/watt/tracks` n'a plus aucun consommateur front et
+  // part avec le chantier « Sortie Flask » (cf. Dette_technique.md).
   let dbTrackId = null;
   let fastApiTrack = null;
 
