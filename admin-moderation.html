@@ -209,8 +209,10 @@
           + (totGal ? ' + ' + totGal + ' galerie' : '')
           + (allErr.length ? ' · ' + allErr.length + ' erreur(s)' : '')
           + ' (lot ' + rounds + ')';
-        if (res && res.more) return round();   // il en reste → on continue tout seul
-        return res;                            // terminé
+        // On continue seulement s'il en reste ET qu'on a progressé (sinon on
+        // boucle sur des images qui échouent → on s'arrête pour montrer l'erreur).
+        if (res && res.more && res.migrated > 0) return round();
+        return res;                            // terminé (ou bloqué sur erreurs)
       });
     }
     round()

@@ -422,11 +422,13 @@ async def migrate_image_originals(
     def _delete_old(old_key: str) -> None:
         client.delete_object(Bucket=bucket, Key=old_key)
 
-    # Traitement par PETITS PAQUETS : lire+réuploader une image (jusqu'à 5 Mo)
-    # prend du temps ; 180 d'un coup dépasse le timeout HTTP. On plafonne à
-    # _BATCH migrations par appel et on renvoie "more": true s'il en reste →
-    # le bouton relance en boucle (idempotent) jusqu'à ce qu'il n'en reste plus.
-    _BATCH = 8
+    # Traitement par PETITS PAQUETS : on n'ESSAIE qu'un nombre borné d'images
+    # par appel (_CAP), succès OU erreur. Ça garantit une requête courte (jamais
+    # de timeout muet, même si beaucoup d'images échouent) et on renvoie donc
+    # TOUJOURS le JSON avec l'erreur exacte. "more": true s'il en reste →
+    # le bouton relance en boucle (idempotent) tant qu'il progresse.
+    _CAP = 6
+    attempted = 0
     migrated = 0
     skipped = 0
     gallery_migrated = 0
@@ -456,11 +458,12 @@ async def migrate_image_originals(
     )).scalars().all()
 
     for p in prompts:
-        if migrated + gallery_migrated >= _BATCH:
+        if attempted >= _CAP:
             break
         if not _is_guessable_original(p.image_r2_key, p.preview_r2_key):
             skipped += 1
             continue
+        attempted += 1
         old_key = p.image_r2_key
         res = await _migrate_one("image", p.id, old_key)
         if not res:
@@ -491,11 +494,12 @@ async def migrate_image_originals(
     )).scalars().all()
 
     for g in gallery:
-        if migrated + gallery_migrated >= _BATCH:
+        if attempted >= _CAP:
             break
         if not _is_guessable_original(g.image_r2_key, g.preview_r2_key):
             skipped += 1
             continue
+        attempted += 1
         old_key = g.image_r2_key
         res = await _migrate_one("gallery", g.id, old_key)
         if not res:
@@ -521,9 +525,10 @@ async def migrate_image_originals(
         "skipped": skipped,
         "errors": errors,
         "gallery_migrated": gallery_migrated,
-        # true = on a atteint le plafond du paquet → il reste probablement des
-        # images à sécuriser ; le bouton relance automatiquement.
-        "more": (migrated + gallery_migrated) >= _BATCH,
+        "attempted": attempted,
+        # true = on a atteint le plafond d'essais → il reste probablement des
+        # images ; le bouton relance automatiquement (tant qu'il y a progrès).
+        "more": attempted >= _CAP,
     }
 
 
