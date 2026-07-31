@@ -1,4 +1,4 @@
-# SMYLE PLAY — Dépendances Python (process unifié FastAPI + Flask via ASGI)
+# SMYLE PLAY — Dépendances Python (FastAPI — Flask supprimé, P0-c 2026-07-30)
 # Installation : pip3 install -r requirements.txt
 #
 # Durcissement 2026-07-24 : bornes SUPÉRIEURES (< majeure suivante) pour
@@ -9,7 +9,6 @@
 # ── ASGI / FastAPI (stack moderne) ────────────────────────────────────────────
 fastapi>=0.110.0,<1.0
 uvicorn[standard]>=0.27.0,<1.0
-a2wsgi>=1.10.0,<2.0            # bridge ASGI↔WSGI pour mount Flask
 
 # ── DB async (FastAPI) ────────────────────────────────────────────────────────
 sqlalchemy[asyncio]>=2.0,<3.0
@@ -30,11 +29,6 @@ python-multipart>=0.0.9,<1.0
 structlog>=24.1.0,<27.0
 sentry-sdk[fastapi]>=1.40.0,<3.0
 slowapi>=0.1.9,<1.0            # rate-limiting auth + achats (Tier 1 sécurité)
-
-# ── WSGI / Flask (legacy, monté dans FastAPI) ─────────────────────────────────
-flask>=3.0.0,<4.0
-flask-sqlalchemy>=3.1.1,<4.0
-psycopg2-binary>=2.9.9,<3.0   # driver sync pour Flask-SQLAlchemy
 
 # ── Config / env ──────────────────────────────────────────────────────────────
 python-dotenv>=1.0.1,<2.0

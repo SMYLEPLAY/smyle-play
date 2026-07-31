@@ -217,16 +217,14 @@ def create_app() -> FastAPI:
     from app.routers.creator_stats import router as creator_stats_router
     app.include_router(creator_stats_router)
 
-    # ── P0-b « Sortie Flask » : pages + statiques servis par FastAPI ─────
+    # ── Pages + statiques (P0-c : Flask supprimé, plus de drapeau) ───────
     # Enregistrés en TOUT DERNIER : toutes les routes API ci-dessus gardent
     # la précédence, le mount "/" n'attrape que le reste (pages + assets).
-    # SERVE_STATIC_FROM_FASTAPI=False (défaut) → no-op total, Flask sert.
-    if settings.SERVE_STATIC_FROM_FASTAPI:
-        from app.routers.pages import mount_static
-        from app.routers.pages import router as pages_router
+    from app.routers.pages import mount_static
+    from app.routers.pages import router as pages_router
 
-        app.include_router(pages_router)
-        mount_static(app)
+    app.include_router(pages_router)
+    mount_static(app)
 
     return app
 
