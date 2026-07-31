@@ -125,6 +125,11 @@ class Settings(BaseSettings):
     # Un item est VISIBLE si : (not MODE_LANCEMENT) or SHOW_<ITEM>.
     # Défauts : tout masqué (MODE_LANCEMENT=True, tous les SHOW_* à False).
     MODE_LANCEMENT: bool = True
+    # --- P0-b « Sortie Flask » (2026-07-30) -------------------------------
+    # False (défaut) : Flask sert pages + statiques via le mount a2wsgi (rien
+    # ne change). True : FastAPI sert tout (app/routers/pages.py) et le mount
+    # Flask n'est plus posé (main.py racine). Réversible par variable d'env.
+    SERVE_STATIC_FROM_FASTAPI: bool = False
     SHOW_PALIERS: bool = False
     SHOW_RESALE: bool = False
     SHOW_PACKS: bool = False

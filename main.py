@@ -51,15 +51,22 @@ if _ROOT not in sys.path:
 # 2) Import FastAPI app (package `app` = watt-api/app/)
 from app.main import app as fastapi_app  # noqa: E402
 
-# 3) Import Flask app (module `flask_app` = ./flask_app.py)
-from flask_app import app as flask_app  # noqa: E402
+# 3) Mount Flask legacy — CONDITIONNEL depuis P0-b « Sortie Flask » (2026-07-30)
+#    SERVE_STATIC_FROM_FASTAPI=False (défaut) : comportement historique, Flask
+#    est monté en fallback universel sur "/" (statiques + pages + API legacy).
+#    SERVE_STATIC_FROM_FASTAPI=True : FastAPI sert pages + statiques
+#    (app/routers/pages.py) — Flask n'est PAS monté, plus aucun trafic ne
+#    l'atteint. Rollback : retirer la variable d'env (ou False) et redéployer.
+from app.config import settings as _settings  # noqa: E402
 
-# 4) Bridge ASGI↔WSGI — mount Flask comme fallback universel
-from a2wsgi import WSGIMiddleware  # noqa: E402
+if not _settings.SERVE_STATIC_FROM_FASTAPI:
+    from a2wsgi import WSGIMiddleware  # noqa: E402
 
-# Toutes les routes FastAPI (déjà enregistrées via create_app) prennent
-# précédence sur le mount. Le mount "/" attrape tout le reste → Flask.
-fastapi_app.mount("/", WSGIMiddleware(flask_app))
+    from flask_app import app as flask_app  # noqa: E402
+
+    # Toutes les routes FastAPI (déjà enregistrées via create_app) prennent
+    # précédence sur le mount. Le mount "/" attrape tout le reste → Flask.
+    fastapi_app.mount("/", WSGIMiddleware(flask_app))
 
 # Export uvicorn
 app = fastapi_app

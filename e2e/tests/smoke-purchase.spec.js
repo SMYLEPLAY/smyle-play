@@ -21,7 +21,7 @@ const FAKE_PROMPT_ID = '11111111-1111-1111-1111-111111111111';
 async function _authedToken(request) {
   const email = `e2e-buy-${Date.now()}-${Math.floor(Math.random() * 1e6)}@smyleplay.example`;
   const password = 'Test123456';
-  const reg = await request.post('/auth/register', { data: { email, password } });
+  const reg = await request.post('/auth/register', { data: { email, password, accept_terms: true, age_confirmed: true } });
   expect(reg.status(), `register: ${await reg.text()}`).toBe(201);
   const login = await request.post('/auth/login', { data: { email, password } });
   expect(login.status(), `login: ${await login.text()}`).toBe(200);
