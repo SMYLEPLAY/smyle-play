@@ -405,19 +405,32 @@ async def migrate_image_originals(
     bucket = _settings.R2_BUCKET
     loop = asyncio.get_event_loop()
 
+    import httpx as _httpx
+    from urllib.parse import quote as _quote
+
+    _pub_base = _settings.effective_r2_public_base_url
+
     def _copy_and_verify(old_key: str, new_key: str) -> None:
-        # Certains tokens R2 n'autorisent PAS CopyObject (copie serveur-à-serveur)
-        # → on fait un télécharger + ré-uploader avec les seules opérations que le
-        # token sait faire (get/put, prouvées par les uploads/lectures du backend).
-        # Puis on VÉRIFIE la présence du nouveau (head_object lève si absent →
-        # l'item est compté en erreur, l'ancien n'est JAMAIS supprimé).
-        src = client.get_object(Bucket=bucket, Key=old_key)
-        body = src["Body"].read()
-        content_type = src.get("ContentType") or "application/octet-stream"
-        client.put_object(
-            Bucket=bucket, Key=new_key, Body=body, ContentType=content_type
+        # Le token R2 peut ne PAS autoriser la LECTURE (get_object) ni la copie.
+        # Or le bucket est PUBLIC : on LIT donc l'original par son URL publique
+        # directe (httpx, comme le navigateur pour les covers) — aucune permission
+        # de lecture requise. On ÉCRIT ensuite la nouvelle clé via put_object (le
+        # token sait écrire : c'est exactement ce que font les uploads). put_object
+        # lève si l'écriture échoue → item compté en erreur, l'ancien non supprimé.
+        # Pas de head_object (le token n'a peut-être pas la lecture) : put_object
+        # confirme déjà l'écriture.
+        if not _pub_base:
+            raise RuntimeError("R2_PUBLIC_BASE_URL manquant")
+        url = f"{_pub_base}/{_quote(old_key, safe='/')}"
+        resp = _httpx.get(url, timeout=20.0, follow_redirects=True)
+        resp.raise_for_status()
+        content_type = (
+            resp.headers.get("content-type") or "application/octet-stream"
         )
-        client.head_object(Bucket=bucket, Key=new_key)
+        client.put_object(
+            Bucket=bucket, Key=new_key, Body=resp.content,
+            ContentType=content_type,
+        )
 
     def _delete_old(old_key: str) -> None:
         client.delete_object(Bucket=bucket, Key=old_key)
@@ -439,7 +452,12 @@ async def migrate_image_originals(
         Renvoie True si migré, False si une erreur a été collectée."""
         new_key = f"images/originals/{uuid4().hex}.{_ext_of_key(old_key)}"
         try:
-            await loop.run_in_executor(None, _copy_and_verify, old_key, new_key)
+            # wait_for : borne dure par image (jamais de requête qui pend →
+            # jamais de timeout muet de la passerelle).
+            await asyncio.wait_for(
+                loop.run_in_executor(None, _copy_and_verify, old_key, new_key),
+                timeout=25,
+            )
         except Exception as exc:  # noqa: BLE001
             errors.append({
                 "type": kind, "id": str(obj_id),
