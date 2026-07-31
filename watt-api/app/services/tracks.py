@@ -38,6 +38,7 @@ async def create_track_with_dna(
         color=data.color,
         # Sprint 1 PR2 — fields ajoutés pour la migration POST Flask→FastAPI
         audio_url=data.audio_url,
+        duration_seconds=data.duration_seconds,
         r2_key=data.r2_key,
         cover_url=data.cover_url,
         prompt_id=data.prompt_id,

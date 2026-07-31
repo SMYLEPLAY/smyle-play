@@ -2064,6 +2064,26 @@ def _slugify_name(name: str, max_len: int = 40) -> str:
     return s[:max_len] or "track"
 
 
+def _audio_duration_seconds(data: bytes) -> float | None:
+    """Durée du fichier audio en secondes (2 décimales), ou None.
+
+    P2 « durée audio » (2026-07-30) : en mode R2 le scanner ne peut pas
+    calculer la durée (fichier distant) → on la calcule ICI, à l'upload,
+    pendant qu'on tient les octets. Best-effort STRICT : toute erreur
+    (format exotique, ffmpeg absent en dev) → None, l'upload n'échoue
+    jamais pour ça. pydub s'appuie sur ffmpeg-headless (auto-installé par
+    nixpacks via la dep pydub, cf. nixpacks.toml).
+    """
+    try:
+        import io
+
+        from pydub import AudioSegment
+
+        return round(len(AudioSegment.from_file(io.BytesIO(data))) / 1000.0, 2)
+    except Exception:
+        return None
+
+
 async def _upload_audio_to_r2(
     file: UploadFile,
     name: str,
@@ -2072,7 +2092,7 @@ async def _upload_audio_to_r2(
 ) -> dict:
     """
     Logique commune d'upload audio vers R2.
-    Retourne { url, key } ou lève HTTPException.
+    Retourne { url, key, duration_seconds } ou lève HTTPException.
     """
     from app.services.r2 import get_r2_client, is_configured
 
@@ -2120,8 +2140,11 @@ async def _upload_audio_to_r2(
             detail="Échec de l'envoi du fichier. Réessaie.",
         )
 
+    # Durée calculée hors event-loop (décodage audio = CPU-bound).
+    duration = await loop.run_in_executor(None, _audio_duration_seconds, data)
+
     stream_url = f"/watt/stream/{r2_key}"
-    return {"url": stream_url, "key": r2_key, "mock": False}
+    return {"url": stream_url, "key": r2_key, "mock": False, "duration_seconds": duration}
 
 
 @router.post("/upload")
