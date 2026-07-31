@@ -25,7 +25,7 @@ test('connexion : un compte authentifié voit l’UI connectée', async ({ page,
   const password = 'Test123456';
 
   // 1. Inscription via l'API (201).
-  const reg = await request.post('/auth/register', { data: { email, password } });
+  const reg = await request.post('/auth/register', { data: { email, password, accept_terms: true, age_confirmed: true } });
   expect(reg.status(), `register: ${await reg.text()}`).toBe(201);
 
   // 2. Login → JWT.
