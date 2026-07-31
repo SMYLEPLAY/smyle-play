@@ -78,9 +78,9 @@ jobs:
         working-directory: watt-api
         run: alembic upgrade head
 
-      - name: Start unified app (FastAPI + Flask front)
+      - name: Start app (FastAPI — API + front)
         run: |
-          # Entrée prod : sert le front (Flask via a2wsgi) + l'API (FastAPI).
+          # Entrée prod : FastAPI sert l'API, les pages et les statiques.
           uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/uvicorn.log 2>&1 &
           echo $! > /tmp/uvicorn.pid
 
