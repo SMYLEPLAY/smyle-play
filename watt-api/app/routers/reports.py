@@ -466,78 +466,87 @@ async def migrate_image_originals(
             return False
         return new_key  # type: ignore[return-value]
 
-    # ── Images-produits (lignes prompts) ────────────────────────────────────
-    prompts = (await db.execute(
-        select(Prompt).where(
-            Prompt.product_type == "image",
-            Prompt.image_r2_key.isnot(None),
-            Prompt.preview_r2_key.isnot(None),
-        )
-    )).scalars().all()
+    # BOÎTE NOIRE : on capture TOUTE erreur inattendue (requête DB, R2, etc.)
+    # et on la renvoie en clair au lieu de faire planter la requête (500 muet).
+    try:
+        # ── Images-produits (lignes prompts) ────────────────────────────────────
+        prompts = (await db.execute(
+            select(Prompt).where(
+                Prompt.product_type == "image",
+                Prompt.image_r2_key.isnot(None),
+                Prompt.preview_r2_key.isnot(None),
+            )
+        )).scalars().all()
 
-    for p in prompts:
-        if attempted >= _CAP:
-            break
-        if not _is_guessable_original(p.image_r2_key, p.preview_r2_key):
-            skipped += 1
-            continue
-        attempted += 1
-        old_key = p.image_r2_key
-        res = await _migrate_one("image", p.id, old_key)
-        if not res:
-            continue
-        try:
-            p.image_r2_key = res
-            await db.commit()
-        except Exception as exc:  # noqa: BLE001
-            await db.rollback()
-            errors.append({
-                "type": "image", "id": str(p.id),
-                "error": f"db: {type(exc).__name__}: {str(exc)[:200]}",
-            })
-            continue
-        # Suppression de l'ancien objet best-effort : un orphelin ne casse rien.
-        try:
-            await loop.run_in_executor(None, _delete_old, old_key)
-        except Exception:  # noqa: BLE001
-            pass
-        migrated += 1
+        for p in prompts:
+            if attempted >= _CAP:
+                break
+            if not _is_guessable_original(p.image_r2_key, p.preview_r2_key):
+                skipped += 1
+                continue
+            attempted += 1
+            old_key = p.image_r2_key
+            res = await _migrate_one("image", p.id, old_key)
+            if not res:
+                continue
+            try:
+                p.image_r2_key = res
+                await db.commit()
+            except Exception as exc:  # noqa: BLE001
+                await db.rollback()
+                errors.append({
+                    "type": "image", "id": str(p.id),
+                    "error": f"db: {type(exc).__name__}: {str(exc)[:200]}",
+                })
+                continue
+            # Suppression de l'ancien objet best-effort : un orphelin ne casse rien.
+            try:
+                await loop.run_in_executor(None, _delete_old, old_key)
+            except Exception:  # noqa: BLE001
+                pass
+            migrated += 1
 
-    # ── Galerie (PromptGalleryImage) — même schéma clé original/aperçu ───────
-    gallery = (await db.execute(
-        select(PromptGalleryImage).where(
-            PromptGalleryImage.image_r2_key.isnot(None),
-            PromptGalleryImage.preview_r2_key.isnot(None),
-        )
-    )).scalars().all()
+        # ── Galerie (PromptGalleryImage) — même schéma clé original/aperçu ───────
+        gallery = (await db.execute(
+            select(PromptGalleryImage).where(
+                PromptGalleryImage.image_r2_key.isnot(None),
+                PromptGalleryImage.preview_r2_key.isnot(None),
+            )
+        )).scalars().all()
 
-    for g in gallery:
-        if attempted >= _CAP:
-            break
-        if not _is_guessable_original(g.image_r2_key, g.preview_r2_key):
-            skipped += 1
-            continue
-        attempted += 1
-        old_key = g.image_r2_key
-        res = await _migrate_one("gallery", g.id, old_key)
-        if not res:
-            continue
-        try:
-            g.image_r2_key = res
-            await db.commit()
-        except Exception as exc:  # noqa: BLE001
-            await db.rollback()
-            errors.append({
-                "type": "gallery", "id": str(g.id),
-                "error": f"db: {type(exc).__name__}: {str(exc)[:200]}",
-            })
-            continue
-        try:
-            await loop.run_in_executor(None, _delete_old, old_key)
-        except Exception:  # noqa: BLE001
-            pass
-        gallery_migrated += 1
+        for g in gallery:
+            if attempted >= _CAP:
+                break
+            if not _is_guessable_original(g.image_r2_key, g.preview_r2_key):
+                skipped += 1
+                continue
+            attempted += 1
+            old_key = g.image_r2_key
+            res = await _migrate_one("gallery", g.id, old_key)
+            if not res:
+                continue
+            try:
+                g.image_r2_key = res
+                await db.commit()
+            except Exception as exc:  # noqa: BLE001
+                await db.rollback()
+                errors.append({
+                    "type": "gallery", "id": str(g.id),
+                    "error": f"db: {type(exc).__name__}: {str(exc)[:200]}",
+                })
+                continue
+            try:
+                await loop.run_in_executor(None, _delete_old, old_key)
+            except Exception:  # noqa: BLE001
+                pass
+            gallery_migrated += 1
 
+    except Exception as _exc:  # noqa: BLE001
+        import traceback as _tb
+        errors.append({
+            "fatal": f"{type(_exc).__name__}: {str(_exc)[:300]}",
+            "trace": _tb.format_exc()[-1400:],
+        })
     return {
         "migrated": migrated,
         "skipped": skipped,
