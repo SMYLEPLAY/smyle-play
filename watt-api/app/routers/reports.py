@@ -422,6 +422,11 @@ async def migrate_image_originals(
     def _delete_old(old_key: str) -> None:
         client.delete_object(Bucket=bucket, Key=old_key)
 
+    # Traitement par PETITS PAQUETS : lire+réuploader une image (jusqu'à 5 Mo)
+    # prend du temps ; 180 d'un coup dépasse le timeout HTTP. On plafonne à
+    # _BATCH migrations par appel et on renvoie "more": true s'il en reste →
+    # le bouton relance en boucle (idempotent) jusqu'à ce qu'il n'en reste plus.
+    _BATCH = 8
     migrated = 0
     skipped = 0
     gallery_migrated = 0
@@ -451,6 +456,8 @@ async def migrate_image_originals(
     )).scalars().all()
 
     for p in prompts:
+        if migrated + gallery_migrated >= _BATCH:
+            break
         if not _is_guessable_original(p.image_r2_key, p.preview_r2_key):
             skipped += 1
             continue
@@ -484,6 +491,8 @@ async def migrate_image_originals(
     )).scalars().all()
 
     for g in gallery:
+        if migrated + gallery_migrated >= _BATCH:
+            break
         if not _is_guessable_original(g.image_r2_key, g.preview_r2_key):
             skipped += 1
             continue
@@ -512,6 +521,9 @@ async def migrate_image_originals(
         "skipped": skipped,
         "errors": errors,
         "gallery_migrated": gallery_migrated,
+        # true = on a atteint le plafond du paquet → il reste probablement des
+        # images à sécuriser ; le bouton relance automatiquement.
+        "more": (migrated + gallery_migrated) >= _BATCH,
     }
 
 

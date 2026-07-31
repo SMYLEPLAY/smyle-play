@@ -195,15 +195,32 @@
     if (!confirm('Sécuriser les images ? Les originaux à clé devinable seront renommés (copie puis suppression de l\'ancien). Idempotent.')) return;
     btn.disabled = true;
     secOut.style.display = 'block';
-    secOut.textContent = 'Migration en cours…';
-    apiFetch('/admin/migrate-image-originals', { method:'POST' })
-      .then(function(res){
-        secOut.textContent = JSON.stringify(res, null, 2);
-        flash('Migration terminée : ' + ((res && res.migrated) || 0) + ' migrée(s), ' + ((res && res.skipped) || 0) + ' ignorée(s).', true);
+    secOut.textContent = 'Sécurisation en cours…';
+    // Le serveur traite par petits paquets (anti-timeout) et renvoie "more":true
+    // s'il en reste. On relance automatiquement jusqu'à ce qu'il n'en reste plus.
+    var totMig = 0, totGal = 0, allErr = [], rounds = 0;
+    function round(){
+      rounds++;
+      return apiFetch('/admin/migrate-image-originals', { method:'POST' }).then(function(res){
+        totMig += (res && res.migrated) || 0;
+        totGal += (res && res.gallery_migrated) || 0;
+        if (res && res.errors && res.errors.length) allErr = allErr.concat(res.errors);
+        secOut.textContent = 'Sécurisation en cours… ' + totMig + ' image(s) sécurisée(s)'
+          + (totGal ? ' + ' + totGal + ' galerie' : '')
+          + (allErr.length ? ' · ' + allErr.length + ' erreur(s)' : '')
+          + ' (lot ' + rounds + ')';
+        if (res && res.more) return round();   // il en reste → on continue tout seul
+        return res;                            // terminé
+      });
+    }
+    round()
+      .then(function(){
+        secOut.textContent = JSON.stringify({ migrated: totMig, gallery_migrated: totGal, errors_count: allErr.length, errors: allErr.slice(0, 20) }, null, 2);
+        flash('Terminé : ' + totMig + ' image(s) sécurisée(s)' + (allErr.length ? ', ' + allErr.length + ' erreur(s)' : '') + '.', allErr.length === 0);
       })
       .catch(function(e){
         var m = (e && e.detail) || (e && e.status === 403 ? 'Réservé à l\'administration.' : 'Échec de la migration.');
-        secOut.textContent = String(m);
+        secOut.textContent = 'Interrompu après ' + totMig + ' image(s). ' + String(m) + ' — reclique pour reprendre (c\'est idempotent).';
         flash(String(m), false);
       })
       .then(function(){ btn.disabled = false; });
