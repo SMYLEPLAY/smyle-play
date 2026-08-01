@@ -596,7 +596,7 @@
             '<li class="pl-row" data-id="' + p.id + '" data-vis="' + p.visibility + '" ' +
                 'data-adn-for-sale="' + (p.adn_for_sale ? '1' : '0') + '" ' +
                 'data-adn-price="' + (p.adn_price || '') + '" ' +
-                'data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g, '&quot;') + '" ' +
+                'data-dna-desc="' + (p.dna_description || '').replace(/"/g, '&quot;') + '" ' +
                 'data-color="' + currentColor + '" ' +
                 'data-title="' + (p.title || '').replace(/"/g, '&quot;') + '">' +
               thumb +
@@ -655,7 +655,8 @@
           visibility: vis,
           adn_for_sale: row.dataset.adnForSale === '1',
           adn_price: parseInt(row.dataset.adnPrice, 10) || null,
-          seed_prompt: row.dataset.seedPrompt || ''
+          seed_prompt: row.dataset.seedPrompt || '',  // vide depuis le retrait API — prefill via detail uniquement
+          dna_description: row.dataset.dnaDesc || ''
         };
         openEditPlaylistAdnModal(plData, () => reload());
       } else if (ev.target.closest('.pl-act-vis')) {
@@ -800,7 +801,7 @@
           : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
         const qpId = 'ap-qp-' + p.id;
         const adnBadge = p.adn_for_sale
-          ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-seed-prompt="' + (p.seed_prompt || '').replace(/"/g,'&quot;') + '">🧬 ADN · sur proposition</div>'
+          ? '<div class="ap-pl-adn-badge" data-playlist-id="' + p.id + '" data-adn-price="' + (p.adn_price || 0) + '" data-adn-title="' + (p.title || '').replace(/"/g,'&quot;') + '" data-dna-desc="' + (p.dna_description || '').replace(/"/g,'&quot;') + '">🧬 ADN · sur proposition</div>'
           : '';
         const firstTrackId = (p.tracks && p.tracks.length) ? p.tracks[0].id : null;
         const plActionsHtml = firstTrackId
@@ -1040,7 +1041,8 @@
     const playlistId  = badgeEl.dataset.playlistId;
     const adnPrice    = parseInt(badgeEl.dataset.adnPrice, 10) || 0;
     const adnTitle    = badgeEl.dataset.adnTitle || 'cette playlist';
-    const seedPrompt  = badgeEl.dataset.seedPrompt || '';
+    // Le badge ne transporte plus JAMAIS le génome (teaser public only).
+    const dnaDesc     = badgeEl.dataset.dnaDesc || '';
 
     // C2/ADN playlist — drawer d'achat unifié (fallback : modale historique).
     if (window.PurchaseDrawer) {
@@ -1049,6 +1051,7 @@
         id: playlistId,
         price: adnPrice || null,
         title: 'ADN · ' + adnTitle,
+        desc: dnaDesc || null,
       });
       return;
     }
@@ -1068,8 +1071,8 @@
         '<p class="adn-buy-eyebrow">ADN Playlist</p>' +
         '<h3 class="adn-buy-title">' + _esc(adnTitle) + '</h3>' +
         '<p class="adn-buy-honest">Un ADN donne des résultats dans le même esprit, jamais identiques. Tu achètes la recette de style, pas une copie de l\'univers sonore.</p>' +
-        (seedPrompt
-          ? '<p class="adn-buy-desc">' + _esc(seedPrompt) + '</p>'
+        (dnaDesc
+          ? '<p class="adn-buy-desc">' + _esc(dnaDesc) + '</p>'
           : '<p class="adn-buy-desc">La synthèse créative de tous les sons de cette playlist — ton blueprint pour reproduire cet univers.</p>') +
         '<ul class="adn-buy-perks">' +
           '<li>🧬 Accès à l\'ADN créatif complet de la playlist</li>' +
@@ -1181,6 +1184,8 @@
           // ici (avant, il ne pouvait être posé qu’à la création). Verrouillé
           // publiquement tant que la vente est active (le backend masque
           // seed_prompt si adn_for_sale).
+          '<label class="pl-edit-label" for="pl-edit-desc" style="margin-top:10px">Description publique (teaser court — visible avant achat)</label>' +
+          '<textarea id="pl-edit-desc" class="pl-edit-input" rows="2" maxlength="2000" placeholder="Décris l\'esprit de cet ADN sans révéler la recette…">' + _esc(playlistData.dna_description || '') + '</textarea>' +
           '<label class="pl-edit-label" for="pl-edit-seed" style="margin-top:10px">Contenu de l\'ADN — la tranche d\'identité vendue</label>' +
           '<textarea id="pl-edit-seed" class="pl-edit-input" rows="4" maxlength="20000" placeholder="Prompt / recette d\'identité de cette playlist (ce que l\'acheteur reçoit)…">' + _esc(playlistData.seed_prompt || '') + '</textarea>' +
           // OFFRES-ADN étape 5 : plancher CACHÉ. Write-only (jamais relu par
@@ -1215,6 +1220,7 @@
         const adnSale  = adnChk && adnChk.checked;
         const adnPrice = null; // OFFRES-ADN : offre-only, plus de prix fixe.
         const adnSeed  = (document.getElementById('pl-edit-seed')?.value || '').trim();
+        const adnDesc  = (document.getElementById('pl-edit-desc')?.value || '').trim();
 
         // OFFRES-ADN : vente sur offre — plus de prix fixe requis (adn_price nullable).
         if (adnSale && !adnSeed) {
@@ -1230,6 +1236,7 @@
         if (adnSale && adnPrice) patch.adn_price = adnPrice;
         if (!adnSale) patch.adn_price = null;
         if (adnSeed) patch.seed_prompt = adnSeed;
+        patch.dna_description = adnDesc || null;
         // Plancher caché : n'envoie QUE si l'artiste a saisi une valeur.
         const reserveRaw = (document.getElementById('pl-edit-reserve')?.value || '').trim();
         if (reserveRaw !== '') {

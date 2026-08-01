@@ -25,6 +25,14 @@ from .suno_prompt_architect import generate_prompt
 logger = logging.getLogger(__name__)
 
 
+# ── Observabilité (P2, 2026-07-30) ────────────────────────────────────────
+# Les fallbacks silencieux masquaient des bugs : un classifieur cassé rangeait
+# TOUT en SUNSET_LOVER confidence 0.0 sans que personne ne le voie. On garde
+# les fallbacks (robustesse : jamais de crash pipeline) mais on les rend
+# BRUYANTS : exc_info complet, marqueur FALLBACK grep-able, compteur cumulé.
+FALLBACK_COUNTS = {'dna': 0, 'playlist': 0, 'suno': 0}
+
+
 # ── Types ─────────────────────────────────────────────────────────────────────
 
 class AgentResult(TypedDict):
@@ -81,8 +89,14 @@ def process_track(track: dict) -> AgentResult:
             f'confidence={dna_result["confidence"]:.2f} '
             f'method={dna_result["method"]}'
         )
-    except Exception as e:
-        logger.error(f'[WATT Agent] dna_classifier error: {e}')
+    except Exception:
+        FALLBACK_COUNTS['dna'] += 1
+        logger.error(
+            f'[WATT Agent] FALLBACK dna_classifier — track id={track_id} '
+            f'name="{track_name}" rangé en SUNSET_LOVER confidence=0.0 '
+            f'(cumul: {FALLBACK_COUNTS["dna"]})',
+            exc_info=True,
+        )
         dna_result = {
             'dna': 'SUNSET_LOVER', 'confidence': 0.0,
             'scores': {}, 'method': 'error',
@@ -94,8 +108,13 @@ def process_track(track: dict) -> AgentResult:
     try:
         playlist = assign_playlist(dna)
         logger.info(f'[WATT Agent] Playlist → {playlist["playlist_id"]}')
-    except Exception as e:
-        logger.error(f'[WATT Agent] playlist_manager error: {e}')
+    except Exception:
+        FALLBACK_COUNTS['playlist'] += 1
+        logger.error(
+            f'[WATT Agent] FALLBACK playlist_manager — track id={track_id} '
+            f'→ playlist_uncategorized (cumul: {FALLBACK_COUNTS["playlist"]})',
+            exc_info=True,
+        )
         playlist = {
             'playlist_id': 'playlist_uncategorized',
             'playlist_label': 'Non classifié',
@@ -107,8 +126,13 @@ def process_track(track: dict) -> AgentResult:
     try:
         suno = generate_prompt(dna, track_title=track_name)
         logger.info(f'[WATT Agent] Suno prompt generated ({len(suno["prompt"])} chars)')
-    except Exception as e:
-        logger.error(f'[WATT Agent] suno_prompt_architect error: {e}')
+    except Exception:
+        FALLBACK_COUNTS['suno'] += 1
+        logger.error(
+            f'[WATT Agent] FALLBACK suno_prompt_architect — track id={track_id} '
+            f'→ prompt générique (cumul: {FALLBACK_COUNTS["suno"]})',
+            exc_info=True,
+        )
         suno = {
             'prompt':     'cinematic music, emotional, high quality production',
             'style_tags': [],
@@ -118,6 +142,13 @@ def process_track(track: dict) -> AgentResult:
         }
 
     # ── Assemblage du résultat final ──────────────────────────────────────────
+    # Signal de synthèse : UNE ligne WARNING grep-able si le résultat est dégradé.
+    if dna_result.get('method') == 'error':
+        logger.warning(
+            f'[WATT Agent] RESULT DEGRADED track id={track_id} name="{track_name}" '
+            f'— classification en échec, ADN par défaut. Vérifier le classifieur.'
+        )
+
     return AgentResult(
         # ADN
         dna=dna_result['dna'],

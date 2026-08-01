@@ -2079,7 +2079,7 @@ async function _uploadTrackCover(file, trackName) {
 // associée. Le DNA per-track devient secondaire dans le nouveau
 // modèle (l'ADN par artiste reprend le rôle), mais le champ reste
 // obligatoire en DB tant qu'on n'a pas migré la contrainte.
-async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt, tags, platform, is_beat, bpm }) {
+async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cover_url, full_prompt, tags, platform, is_beat, bpm, duration_seconds }) {
   if (typeof apiFetch !== 'function') {
     throw new Error('apiFetch indisponible');
   }
@@ -2098,6 +2098,8 @@ async function _createFastApiTrackMirror({ title, audio_url, r2_key, color, cove
         // C2 — drapeau beat (étagère /beats) + BPM optionnel.
         is_beat: !!is_beat,
         bpm: bpm != null ? bpm : null,
+        // P2 — durée audio renvoyée par /watt/upload (peut être null).
+        duration_seconds: (typeof duration_seconds === 'number') ? duration_seconds : null,
       },
     });
     // result = TrackWithDNA { track: TrackRead, dna: DNARead }
@@ -2236,6 +2238,7 @@ async function uploadTrack() {
   let uploaded  = false;
   let streamUrl = null;
   let r2Key     = null;
+  let durationSecs = null;  // P2 — durée calculée serveur à l'upload
 
   // ── 1. Upload fichier audio vers R2 ─────────────────────────────────────
   try {
@@ -2251,6 +2254,7 @@ async function uploadTrack() {
       uploaded  = !data.mock;
       streamUrl = data.url  || null;
       r2Key     = data.key  || null;
+      durationSecs = (typeof data.duration_seconds === 'number') ? data.duration_seconds : null;
       setProgress(70, 'Enregistrement…');
     }
   } catch (_) { /* mode hors-ligne */ }
@@ -2314,6 +2318,7 @@ async function uploadTrack() {
       // C2 — placement beat (case à cocher) + BPM optionnel.
       is_beat:     _isBeatFlag,
       bpm:         _beatBpm,
+      duration_seconds: durationSecs,
     });
   } catch (e) {
     // PR A — gestion fine des erreurs FastAPI. Cas spéciaux :

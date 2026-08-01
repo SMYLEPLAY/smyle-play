@@ -9,9 +9,10 @@ Conventions :
   - `PlaylistRead` reste léger (métadonnées de la playlist sans ses tracks)
     pour couvrir "liste mes playlists" ; les tracks sont fournis en détail
     via `PlaylistWithTracks` au chargement d'un /playlists/{id}.
-  - Les champs forward-compat V2 (`dna_description`) sont volontairement
-    absents des schémas V1 : la colonne existe en base mais n'est ni lue
-    ni écrite par l'API tant que le feature flag V2 n'est pas activé.
+  - `dna_description` (teaser public de l'ADN, parité album) est branché
+    de bout en bout depuis le chantier teaser 2026-08-01 : create/update/
+    read/with-tracks. C'est la SEULE description exposée avant achat — le
+    génome (seed_prompt) reste gaté.
 """
 from __future__ import annotations
 
@@ -37,6 +38,9 @@ class PlaylistCreate(BaseModel):
     seed_prompt: str | None = None
     adn_for_sale: bool = False
     adn_price: int | None = Field(default=None, ge=1, le=100_000)
+    # Teaser PUBLIC de l'ADN — visible avant achat, par opposition au génome
+    # (seed_prompt) qui reste gaté. Miroir strict d'Album (max_length=2000).
+    dna_description: str | None = Field(default=None, max_length=2000)
 
 
 class PlaylistUpdate(BaseModel):
@@ -51,6 +55,7 @@ class PlaylistUpdate(BaseModel):
     seed_prompt: str | None = None
     adn_for_sale: bool | None = None
     adn_price: int | None = Field(default=None, ge=1, le=100_000)
+    dna_description: str | None = Field(default=None, max_length=2000)
     # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY — jamais
     # exposé dans PlaylistRead (servi aussi en public). 0 = pas de plancher.
     adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
@@ -68,6 +73,8 @@ class PlaylistRead(BaseModel):
     color: str | None
     cover_video_url: str | None
     adn_for_sale: bool
+    # Teaser public de l'ADN — seule description exposée avant achat.
+    dna_description: str | None = None
     # Collections Phase A (07/07) : slug d'appariement Œuvre (playlist+album
     # sœurs). Public — sert au front à dériver le TYPE de la collection.
     oeuvre_slug: str | None = None
@@ -93,6 +100,7 @@ class PlaylistWithTracks(BaseModel):
     seed_prompt: str | None
     adn_for_sale: bool
     adn_price: int | None
+    dna_description: str | None = None
     created_at: datetime
     tracks: list[TrackRead] = Field(default_factory=list)
 

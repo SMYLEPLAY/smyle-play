@@ -110,6 +110,7 @@
       '.pd-kicker{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b7bd8;margin:0 0 4px}' +
       '.pd-title{margin:0 0 2px;font-size:1.12rem;color:#f3f0ff;font-weight:700}' +
       '.pd-artist{margin:0 0 12px;font-size:.82rem;color:#a09cb8}' +
+      '.pd-desc{margin:0 0 12px;font-size:.86rem;line-height:1.45;color:#c9c5dd;font-style:italic}' +
       '.pd-reperes{list-style:none;margin:0 0 12px;padding:10px 12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.025);display:flex;flex-direction:column;gap:6px}' +
       '.pd-reperes li{font-size:.8rem;color:#cfc9e0;display:flex;gap:7px;align-items:baseline}' +
       '.pd-market{font-size:.78rem;color:#a79fc0;line-height:1.6;margin:0 0 12px;min-height:0}' +
@@ -203,6 +204,7 @@
         '<p class="pd-kicker">' + _esc(TYPE_LABELS[type]) + '</p>' +
         '<h3 class="pd-title">' + _esc(title) + '</h3>' +
         (opts.artistName ? '<p class="pd-artist">par ' + _esc(opts.artistName) + '</p>' : '<p class="pd-artist"></p>') +
+        (opts.desc ? '<p class="pd-desc">' + _esc(opts.desc) + '</p>' : '') +
         '<ul class="pd-reperes">' + reperes + '</ul>' +
         '<div class="pd-market" id="pd-market"></div>' +
         _linkedBlockHtml(type, opts) +
