@@ -1,45 +1,144 @@
-# SMYLE PLAY — Dépendances Python (FastAPI — Flask supprimé, P0-c 2026-07-30)
-# Installation : pip3 install -r requirements.txt
-#
-# Durcissement 2026-07-24 : bornes SUPÉRIEURES (< majeure suivante) pour
-# empêcher un bump majeur amont de casser la prod sans changement de code.
-# Les bornes sont posées juste au-dessus des versions actuellement installées
-# et testées (aucun downgrade). Un vrai lockfile viendra plus tard.
+# SMYLE PLAY — Dépendances ÉPINGLÉES (GÉNÉRÉ — ne pas éditer à la main).
+# Source des contraintes : requirements.in ; régénérer avec :
+#   uv pip compile requirements.in --python-version 3.11 -o requirements.txt
+# P3 lockfile 2026-07-30 — résolution py3.11 (version prod Railway/CI).
 
-# ── ASGI / FastAPI (stack moderne) ────────────────────────────────────────────
-fastapi>=0.110.0,<1.0
-uvicorn[standard]>=0.27.0,<1.0
-
-# ── DB async (FastAPI) ────────────────────────────────────────────────────────
-sqlalchemy[asyncio]>=2.0,<3.0
-asyncpg>=0.29.0,<1.0
-alembic>=1.13.0,<2.0
-
-# ── Pydantic / config ─────────────────────────────────────────────────────────
-pydantic[email]>=2.0,<3.0
-pydantic-settings>=2.0,<3.0
-
-# ── Auth / crypto ─────────────────────────────────────────────────────────────
-PyJWT>=2.8.0,<3.0
-bcrypt>=4.0.0,<6.0
-
-# ── HTTP / utils ──────────────────────────────────────────────────────────────
-httpx>=0.26.0,<1.0
-python-multipart>=0.0.9,<1.0
-structlog>=24.1.0,<27.0
-sentry-sdk[fastapi]>=1.40.0,<3.0
-slowapi>=0.1.9,<1.0            # rate-limiting auth + achats (Tier 1 sécurité)
-
-# ── Config / env ──────────────────────────────────────────────────────────────
-python-dotenv>=1.0.1,<2.0
-
-# ── Cloudflare R2 ─────────────────────────────────────────────────────────────
-boto3>=1.34.0,<2.0
-
-# ── Audio processing (preview 30s voix) ───────────────────────────────────
-pydub>=0.25.1,<1.0
-
-# ── Images (C4 Monde Visuel) ────────────────────────────────────────────────
-# Génération d'aperçu réduit (≤1024px, JPEG q80) à l'upload d'une image IA.
-# NB : surveiller mémoire/timeout sur Railway pour les gros PNG.
-Pillow>=10.4.0,<13.0
+alembic==1.18.5
+    # via -r requirements.in
+annotated-doc==0.0.5
+    # via fastapi
+annotated-types==0.8.0
+    # via pydantic
+anyio==4.14.2
+    # via
+    #   httpx
+    #   starlette
+    #   watchfiles
+asyncpg==0.31.0
+    # via -r requirements.in
+bcrypt==5.0.0
+    # via -r requirements.in
+boto3==1.43.62
+    # via -r requirements.in
+botocore==1.43.62
+    # via
+    #   boto3
+    #   s3transfer
+certifi==2026.7.22
+    # via
+    #   httpcore
+    #   httpx
+    #   sentry-sdk
+click==8.4.2
+    # via uvicorn
+deprecated==1.3.1
+    # via limits
+dnspython==2.8.0
+    # via email-validator
+email-validator==2.3.0
+    # via pydantic
+fastapi==0.141.1
+    # via
+    #   -r requirements.in
+    #   sentry-sdk
+greenlet==3.5.4
+    # via sqlalchemy
+h11==0.16.0
+    # via
+    #   httpcore
+    #   uvicorn
+httpcore==1.0.9
+    # via httpx
+httptools==0.8.0
+    # via uvicorn
+httpx==0.28.1
+    # via -r requirements.in
+idna==3.18
+    # via
+    #   anyio
+    #   email-validator
+    #   httpx
+jmespath==1.1.0
+    # via
+    #   boto3
+    #   botocore
+limits==5.8.0
+    # via slowapi
+mako==1.3.12
+    # via alembic
+markupsafe==3.0.3
+    # via mako
+packaging==26.2
+    # via limits
+pillow==12.3.0
+    # via -r requirements.in
+pydantic==2.13.4
+    # via
+    #   -r requirements.in
+    #   fastapi
+    #   pydantic-settings
+pydantic-core==2.46.4
+    # via pydantic
+pydantic-settings==2.14.2
+    # via -r requirements.in
+pydub==0.25.1
+    # via -r requirements.in
+pyjwt==2.13.0
+    # via -r requirements.in
+python-dateutil==2.9.0.post0
+    # via botocore
+python-dotenv==1.2.2
+    # via
+    #   -r requirements.in
+    #   pydantic-settings
+    #   uvicorn
+python-multipart==0.0.32
+    # via -r requirements.in
+pyyaml==6.0.3
+    # via uvicorn
+s3transfer==0.19.2
+    # via boto3
+sentry-sdk==2.66.1
+    # via -r requirements.in
+six==1.17.0
+    # via python-dateutil
+slowapi==0.1.10
+    # via -r requirements.in
+sqlalchemy==2.0.51
+    # via
+    #   -r requirements.in
+    #   alembic
+starlette==1.3.1
+    # via fastapi
+structlog==26.1.0
+    # via -r requirements.in
+typing-extensions==4.16.0
+    # via
+    #   alembic
+    #   anyio
+    #   fastapi
+    #   limits
+    #   pydantic
+    #   pydantic-core
+    #   sqlalchemy
+    #   starlette
+    #   typing-inspection
+typing-inspection==0.4.2
+    # via
+    #   fastapi
+    #   pydantic
+    #   pydantic-settings
+urllib3==2.7.0
+    # via
+    #   botocore
+    #   sentry-sdk
+uvicorn==0.52.0
+    # via -r requirements.in
+uvloop==0.22.1
+    # via uvicorn
+watchfiles==1.2.0
+    # via uvicorn
+websockets==17.0.1
+    # via uvicorn
+wrapt==2.3.0
+    # via deprecated
