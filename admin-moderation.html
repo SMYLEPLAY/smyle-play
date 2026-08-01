@@ -201,7 +201,7 @@
     var totMig = 0, totGal = 0, allErr = [], rounds = 0;
     function round(){
       rounds++;
-      return apiFetch('/admin/migrate-image-originals', { method:'POST' }).then(function(res){
+      return apiFetch('/admin/migrate-image-originals', { method:'POST', timeoutMs: 120000, retries: 0 }).then(function(res){
         totMig += (res && res.migrated) || 0;
         totGal += (res && res.gallery_migrated) || 0;
         if (res && res.errors && res.errors.length) allErr = allErr.concat(res.errors);
