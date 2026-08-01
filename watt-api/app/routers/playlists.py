@@ -175,6 +175,7 @@ async def get_playlist_endpoint(
         seed_prompt=playlist.seed_prompt if seed_visible else None,
         adn_for_sale=playlist.adn_for_sale,
         adn_price=playlist.adn_price,
+        dna_description=playlist.dna_description,
         created_at=playlist.created_at,
         tracks=await _tracks_with_prompt_prices(db, tracks),
     )
@@ -360,6 +361,7 @@ async def get_public_playlist_with_tracks(
         seed_prompt=playlist.seed_prompt if seed_visible else None,
         adn_for_sale=playlist.adn_for_sale,
         adn_price=playlist.adn_price,
+        dna_description=playlist.dna_description,
         created_at=playlist.created_at,
         tracks=await _tracks_with_prompt_prices(db, tracks),
     )
