@@ -23,6 +23,9 @@ class TrackCreate(BaseModel):
     # cover_url (endpoint Flask /api/watt/upload-image) pour la pochette,
     # et prompt_id pour lier à un prompt préexistant si dispo.
     audio_url: str | None = Field(default=None, max_length=2048)
+    # P2 durée audio (2026-07-30) — renvoyée par POST /watt/upload (calcul
+    # serveur pydub) et repostée telle quelle par le front. Borne 10 h.
+    duration_seconds: float | None = Field(default=None, ge=0, le=36000)
     r2_key: str | None = Field(default=None, max_length=500)
     cover_url: str | None = Field(default=None, max_length=2048)
     prompt_id: UUID | None = None
