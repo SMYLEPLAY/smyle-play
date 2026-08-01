@@ -77,3 +77,5 @@ Lancer la suite en local : `cd watt-api && pytest -q` (Postgres démarré + migr
 - **Cartographie produit/stratégie** : ouvrir `OBSIDIAN/` dans Obsidian (local, non versionné).
 - **Cartographie code** : `graphify-out/graph.html` (rebuild à la demande).
 - **Dette technique** : `OBSIDIAN/01_PRODUIT/Dette_technique.md` — chantier actif : **Sortie Flask** (plan P0 a/b/c).
+
+> Dernier déploiement forcé : 2026-08-01 (kick — webhook Railway muet après la rafale de merges #473-478).
