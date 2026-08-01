@@ -440,7 +440,7 @@ async def migrate_image_originals(
     # de timeout muet, même si beaucoup d'images échouent) et on renvoie donc
     # TOUJOURS le JSON avec l'erreur exacte. "more": true s'il en reste →
     # le bouton relance en boucle (idempotent) tant qu'il progresse.
-    _CAP = 6
+    _CAP = 3
     attempted = 0
     migrated = 0
     skipped = 0
