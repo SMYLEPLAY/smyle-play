@@ -411,26 +411,27 @@ async def migrate_image_originals(
     _pub_base = _settings.effective_r2_public_base_url
 
     def _copy_and_verify(old_key: str, new_key: str) -> None:
-        # Le token R2 peut ne PAS autoriser la LECTURE (get_object) ni la copie.
-        # Or le bucket est PUBLIC : on LIT donc l'original par son URL publique
-        # directe (httpx, comme le navigateur pour les covers) — aucune permission
-        # de lecture requise. On ÉCRIT ensuite la nouvelle clé via put_object (le
-        # token sait écrire : c'est exactement ce que font les uploads). put_object
-        # lève si l'écriture échoue → item compté en erreur, l'ancien non supprimé.
-        # Pas de head_object (le token n'a peut-être pas la lecture) : put_object
-        # confirme déjà l'écriture.
-        if not _pub_base:
-            raise RuntimeError("R2_PUBLIC_BASE_URL manquant")
-        url = f"{_pub_base}/{_quote(old_key, safe='/')}"
-        resp = _httpx.get(url, timeout=20.0, follow_redirects=True)
-        resp.raise_for_status()
-        content_type = (
-            resp.headers.get("content-type") or "application/octet-stream"
-        )
-        client.put_object(
-            Bucket=bucket, Key=new_key, Body=resp.content,
-            ContentType=content_type,
-        )
+        # Copie SERVER-SIDE via le client S3 authentifié (le même client réussit
+        # déjà les put_object d'upload). On N'UTILISE PLUS de GET HTTP "public" :
+        # en prod R2_PUBLIC_BASE_URL pointe sur l'endpoint S3
+        # (...r2.cloudflarestorage.com) qui refuse un GET non signe -> SSL
+        # handshake failure. copy_object reste dans le bucket, aucune donnee ne
+        # transite par l'app. Repli get->put si la copie n'est pas autorisee.
+        try:
+            client.copy_object(
+                Bucket=bucket,
+                CopySource={"Bucket": bucket, "Key": old_key},
+                Key=new_key,
+            )
+            return
+        except Exception:
+            obj = client.get_object(Bucket=bucket, Key=old_key)
+            body = obj["Body"].read()
+            content_type = obj.get("ContentType") or "application/octet-stream"
+            client.put_object(
+                Bucket=bucket, Key=new_key, Body=body,
+                ContentType=content_type,
+            )
 
     def _delete_old(old_key: str) -> None:
         client.delete_object(Bucket=bucket, Key=old_key)
