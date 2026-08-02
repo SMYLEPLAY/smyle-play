@@ -429,38 +429,28 @@ async def migrate_image_originals(
         aws_secret_access_key=_settings.effective_r2_secret_access_key,
         region_name="auto",
         config=_BotoConfig(
-            connect_timeout=5,
-            read_timeout=20,
-            retries={"max_attempts": 10, "mode": "standard"},
+            connect_timeout=8,
+            read_timeout=10,
+            retries={"max_attempts": 1},
         ),
     )
 
     def _copy_and_verify(old_key: str, new_key: str) -> None:
-        # get_object -> put_object : les DEUX primitives deja utilisees et
-        # PROUVEES en prod (upload d'images = put_object dans services/images.py,
-        # service d'images = get_object dans watt_compat). PAS de copy_object :
-        # R2 le supporte mal et une copie qui echoue corrompt la connexion
-        # reutilisee du pool -> le put suivant se prend un
-        # SSLV3_ALERT_HANDSHAKE_FAILURE. Retries + backoff : le handshake TLS
-        # vers R2 echoue par intermittence ; on retente, la connexion repart neuve.
-        import time as _time
-        last_exc = None
-        for attempt in range(5):
-            try:
-                obj = client.get_object(Bucket=bucket, Key=old_key)
-                body = obj["Body"].read()
-                content_type = (
-                    obj.get("ContentType") or "application/octet-stream"
-                )
-                client.put_object(
-                    Bucket=bucket, Key=new_key, Body=body,
-                    ContentType=content_type,
-                )
-                return
-            except Exception as exc:  # noqa: BLE001
-                last_exc = exc
-                _time.sleep(0.4 * (attempt + 1))
-        raise last_exc  # type: ignore[misc]
+        # DIAGNOSTIC : une seule passe, on etiquette GET vs PUT pour savoir
+        # exactement quelle operation echoue et avec quelle erreur botocore.
+        try:
+            obj = client.get_object(Bucket=bucket, Key=old_key)
+            body = obj["Body"].read()
+            content_type = obj.get("ContentType") or "application/octet-stream"
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"GET {type(e).__name__}: {str(e)[:160]}")
+        try:
+            client.put_object(
+                Bucket=bucket, Key=new_key, Body=body,
+                ContentType=content_type,
+            )
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"PUT {type(e).__name__}: {str(e)[:160]}")
 
     def _delete_old(old_key: str) -> None:
         client.delete_object(Bucket=bucket, Key=old_key)
@@ -486,7 +476,7 @@ async def migrate_image_originals(
             # jamais de timeout muet de la passerelle).
             await asyncio.wait_for(
                 loop.run_in_executor(None, _copy_and_verify, old_key, new_key),
-                timeout=100,
+                timeout=45,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append({
@@ -578,6 +568,7 @@ async def migrate_image_originals(
             "trace": _tb.format_exc()[-1400:],
         })
     return {
+        "code_version": "diag-v1",
         "migrated": migrated,
         "skipped": skipped,
         "errors": errors,
