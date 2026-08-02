@@ -395,8 +395,7 @@ async def migrate_image_originals(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="R2 storage not configured",
         )
-    client = get_r2_client()
-    if client is None:
+    if get_r2_client() is None:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="R2 client unavailable",
@@ -405,10 +404,26 @@ async def migrate_image_originals(
     bucket = _settings.R2_BUCKET
     loop = asyncio.get_event_loop()
 
-    import httpx as _httpx
-    from urllib.parse import quote as _quote
+    # Client boto3 DEDIE a la migration : la connexion du conteneur vers
+    # l'endpoint S3 de R2 est capricieuse (tantot reset SSL immediat, tantot
+    # blocage). connect-timeout COURT (fail-fast) + beaucoup de retries
+    # internes -> on re-tente vite jusqu'a une connexion qui passe, sans
+    # jamais pendre longtemps.
+    import boto3 as _boto3
+    from botocore.config import Config as _BotoConfig
 
-    _pub_base = _settings.effective_r2_public_base_url
+    client = _boto3.client(
+        "s3",
+        endpoint_url=_settings.effective_r2_endpoint_url,
+        aws_access_key_id=_settings.effective_r2_access_key_id,
+        aws_secret_access_key=_settings.effective_r2_secret_access_key,
+        region_name="auto",
+        config=_BotoConfig(
+            connect_timeout=5,
+            read_timeout=20,
+            retries={"max_attempts": 10, "mode": "standard"},
+        ),
+    )
 
     def _copy_and_verify(old_key: str, new_key: str) -> None:
         # get_object -> put_object : les DEUX primitives deja utilisees et
@@ -445,7 +460,7 @@ async def migrate_image_originals(
     # de timeout muet, même si beaucoup d'images échouent) et on renvoie donc
     # TOUJOURS le JSON avec l'erreur exacte. "more": true s'il en reste →
     # le bouton relance en boucle (idempotent) tant qu'il progresse.
-    _CAP = 3
+    _CAP = 1
     attempted = 0
     migrated = 0
     skipped = 0
@@ -461,7 +476,7 @@ async def migrate_image_originals(
             # jamais de timeout muet de la passerelle).
             await asyncio.wait_for(
                 loop.run_in_executor(None, _copy_and_verify, old_key, new_key),
-                timeout=25,
+                timeout=100,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append({
