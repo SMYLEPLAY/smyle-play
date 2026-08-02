@@ -409,6 +409,16 @@ async def migrate_image_originals(
     # blocage). connect-timeout COURT (fail-fast) + beaucoup de retries
     # internes -> on re-tente vite jusqu'a une connexion qui passe, sans
     # jamais pendre longtemps.
+    import os as _os
+
+    # boto3 >= 1.36 ajoute par DEFAUT des checksums de requete (aws-chunked /
+    # CRC32) que Cloudflare R2 REFUSE -> les put/copy partent en vrille
+    # (handshake bizarre puis blocage -> TimeoutError). On repasse au
+    # comportement <1.36 ("when_required") via variables d'env, ignorees sans
+    # risque par les anciennes versions de botocore.
+    _os.environ["AWS_REQUEST_CHECKSUM_CALCULATION"] = "when_required"
+    _os.environ["AWS_RESPONSE_CHECKSUM_VALIDATION"] = "when_required"
+
     import boto3 as _boto3
     from botocore.config import Config as _BotoConfig
 
