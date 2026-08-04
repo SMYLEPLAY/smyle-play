@@ -15,6 +15,12 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+# Ce fichier CONTIENT le motif qu'il traque (la chaine cherchee plus bas est
+# ecrite en clair dans le code du test). Sans cette exclusion, le garde-fou se
+# denonce lui-meme et la CI est rouge en permanence. On s'exclut donc du scan :
+# c'est le seul fichier du depot ou le motif est legitime.
+_CE_FICHIER = Path(__file__).resolve()
+
 _SKIP_DIRS = {
     ".git", "venv", ".venv", "node_modules", "__pycache__", "OBSIDIAN",
     ".pytest_cache", "_masters_backup", "_d2wt", ".relay", ".watcher-logs",
@@ -30,6 +36,8 @@ def _fichiers_texte():
         if not p.is_file() or p.suffix.lower() not in _TEXT_SUFFIXES:
             continue
         if any(part in _SKIP_DIRS for part in p.relative_to(REPO_ROOT).parts):
+            continue
+        if p.resolve() == _CE_FICHIER:
             continue
         yield p
 
