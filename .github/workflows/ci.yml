@@ -232,6 +232,16 @@ jobs:
           done
           echo "Postgres not ready"; exit 1
 
+      # pydub lit la duree d'un fichier audio en appelant ffprobe/ffmpeg. Le
+      # runner GitHub ne les fournit pas : AudioSegment.from_file leve, la
+      # fonction renvoie None (best-effort strict) et test_duration_wav_2s
+      # echoue. Le conteneur de production, lui, a bien ffmpeg (nixpacks
+      # l'installe via la dependance pydub) — c'etait donc un ecart CI/prod,
+      # pas un bug applicatif. La suite audio a venir (extraits 30 s) en a
+      # besoin aussi.
+      - name: Installer ffmpeg (requis par pydub)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
       - name: Apply migrations
         working-directory: watt-api
         run: alembic upgrade head
