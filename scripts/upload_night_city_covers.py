@@ -21,11 +21,11 @@ Pré-requis (variables d'environnement) :
 Usage :
   # 1) Vérifier le plan (aucune écriture) :
   WATT_API_BASE=... WATT_TOKEN=... python3 scripts/upload_night_city_covers.py \
-      --covers "/Users/tommio/Desktop/WORK/SMYLE/cover night city"
+      --covers "/chemin/vers/covers/night-city"
 
   # 2) Exécuter pour de vrai :
   WATT_API_BASE=... WATT_TOKEN=... python3 scripts/upload_night_city_covers.py \
-      --covers "/Users/tommio/Desktop/WORK/SMYLE/cover night city" --execute
+      --covers "/chemin/vers/covers/night-city" --execute
 """
 from __future__ import annotations
 

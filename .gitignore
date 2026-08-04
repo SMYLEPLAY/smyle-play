@@ -117,3 +117,12 @@ _d2wt/
 # ── Corbeille de session Cowork (suppression manuelle par Tom) ──────────
 _to_delete/
 _gitlock_trash/
+
+# ── Artefacts personnels — ne doivent JAMAIS revenir dans le depot public ──
+# (retires du suivi le 2026-08-02 ; les copies locales sont conservees dans
+#  OBSIDIAN/99_ARCHIVE/sorti-du-depot/, qui est lui-meme gitignore)
+LIGNE_TERMINAL_*.txt
+*.plist
+*.command
+AUDIT_*.md
+A_CLASSER/
