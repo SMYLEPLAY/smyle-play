@@ -24,7 +24,7 @@ Provenance image (obligatoire côté API) :
 
 Exemples (un univers = un dossier + sa library) :
   WATT_API_BASE=... WATT_TOKEN=... python3 scripts/backfill_oeuvres.py \
-    --covers "/Users/tommio/Desktop/WORK/SMYLE/cover night city" \
+    --covers "/chemin/vers/covers/night-city" \
     --library "OBSIDIAN/02_WATT/ADN_VISUEL/PROMPT_LIBRARY_Night-City_PUBLIC.md" \
     --platform midjourney --model-version v6.1 --price 30
   # puis, quand le plan est bon :
