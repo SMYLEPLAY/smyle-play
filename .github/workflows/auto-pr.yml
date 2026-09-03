@@ -1,0 +1,36 @@
+name: Auto PR (branches agent)
+
+# Boucle autonome (plan PFSM-2026-09-02, ticket L-01) : le bac à sable de
+# l'agent peut pousser une branche `agent/**` mais n'a ni `gh` ni accès à
+# api.github.com pour ouvrir la PR. Ce workflow l'ouvre à sa place, avec le
+# GITHUB_TOKEN du dépôt, au premier push de la branche (idempotent : rien si
+# une PR ouverte existe déjà pour cette tête).
+#
+# Pré-requis (réglage Tom, une fois) : Settings → Actions → General →
+# « Allow GitHub Actions to create and approve pull requests ».
+#
+# Une PR créée par GITHUB_TOKEN ne déclenche PAS les workflows `pull_request` :
+# c'est pourquoi ci.yml et e2e.yml tournent aussi sur `push: agent/**`.
+
+on:
+  push:
+    branches: ['agent/**']
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Ouvrir la PR si absente
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          set -euo pipefail
+          BR="${GITHUB_REF_NAME}"
+          if [ -n "$(gh pr list --head "$BR" --state open --json number --jq '.[].number')" ]; then echo "PR déjà ouverte"; exit 0; fi
+          TITLE="$(git log -1 --pretty=%s)"; BODY="$(git log -1 --pretty=%b)"
+          gh pr create --base main --head "$BR" --title "$TITLE" --body "${BODY:-PR ouverte automatiquement (branche agent).}"
