@@ -7,14 +7,17 @@
  * Architecture :
  *   - Auto-injecté dans le DOM au 1er appel à openCreditsBuyModal()
  *   - Fetch /credits/packs (apiFetch) au boot pour la grille de packs
- *   - Click pack → POST /credits/grant (stub V1) → refresh balance + toast
+ *   - Click pack → toast « paiement bientôt disponible » (aucun crédit émis)
  *
- * Important — V1 / V2 :
- *   - V1 (actuelle) : POST /credits/grant crédite GRATUITEMENT le user connecté.
- *     Pratique pour test/dev/staging. Risque sécu en prod publique → l'endpoint
- *     doit être désactivé ou restreint avant ouverture publique (cf. P1-C2a-SEC).
- *   - V2 (Phase 11) : remplacer /credits/grant par Stripe Checkout. La modale
- *     ne change pas — seul le handler du click pack bascule sur l'URL Stripe.
+ * État réel (S-11, 2026-09-04, annexe A §M5) :
+ *   - la modale ne s'ouvre QUE si l'item de mode lancement `achatSmyles` est
+ *     VISIBLE (`window.WATT_LAUNCH.achatSmyles`) ; sinon toast honnête ;
+ *   - le stub « V1 gratuit » (POST /credits/grant) est RETIRÉ : depuis le
+ *     gate `is_official`, il répondait 403 à tout compte normal — le clic
+ *     « Acheter » ne pouvait que finir en « Échec de l'opération » ;
+ *   - Stripe (V2) créditera par webhook signé vérifié côté serveur, jamais
+ *     par un appel direct du front. C'est à ce moment qu'on rallumera
+ *     `SHOW_ACHAT_SMYLES=true` et qu'on rebranchera le handler du clic pack.
  *
  * Disclaimer affiché à l'utilisateur pour rester honnête (règle Tom) :
  *   « Beta : les Smyles sont offerts — tu en gagnes en explorant et en jouant. »
@@ -22,7 +25,7 @@
  * Dépendances globales attendues :
  *   - apiFetch  (ui/core/api.js) — fetch authentifié
  *   - smyleToast (ui/core/toast.js) — feedback succès / erreur
- *   - SmyleBalance.refresh() (ui/smyle-balance.js) — refresh badge après grant
+ *   - SmyleBalance.refresh() (ui/smyle-balance.js) — refresh badge (Stripe, plus tard)
  */
 (function () {
   'use strict';
@@ -375,41 +378,18 @@
     }
   }
 
-  // ── Achat d'un pack (V1 : grant gratuit, V2 : Stripe) ──────────────────
+  // ── Achat d'un pack ────────────────────────────────────────────────────
+  // S-11 (2026-09-04, annexe A §M5) — l'appel POST /credits/grant est RETIRÉ.
+  // C'était le stub « V1 gratuit » d'avant le gate is_official : depuis, il
+  // répond 403 à tout compte normal, donc le clic « Acheter » ne pouvait que
+  // finir en « Échec de l'opération ». Tant que Stripe n'est pas branché, on
+  // dit la vérité au lieu d'échouer. Le vrai crédit passera par un webhook
+  // Stripe signé, vérifié côté serveur — jamais par un appel direct du front.
   async function buyPack(btn) {
     if (!btn || btn.classList.contains('is-loading')) return;
     const credits = parseInt(btn.getAttribute('data-pack-credits'), 10);
-    const packId  = btn.getAttribute('data-pack-id');
     if (!credits || credits <= 0) return;
-
-    btn.classList.add('is-loading');
-
-    if (typeof apiFetch !== 'function') {
-      btn.classList.remove('is-loading');
-      _toast('⚠ API non disponible.', 'error');
-      return;
-    }
-
-    try {
-      await apiFetch('/credits/grant', {
-        method: 'POST',
-        json: {
-          credits,
-          reason: `V1 stub — pack ${packId}`,
-        },
-      });
-      // Refresh badge balance topbar (existant)
-      if (window.SmyleBalance && typeof window.SmyleBalance.refresh === 'function') {
-        try { await window.SmyleBalance.refresh(); } catch (_) {}
-      }
-      _toast(`✓ ${credits} Smyles ajoutés à ton compte`, 'success');
-      closeCreditsBuyModal();
-    } catch (err) {
-      console.error('[credits-buy] grant failed:', err);
-      const msg = (err && err.detail) || 'Échec de l\'opération. Réessaie.';
-      _toast(`⚠ ${msg}`, 'error');
-      btn.classList.remove('is-loading');
-    }
+    _toast('Paiement bientôt disponible — tes Smyles se gagnent en attendant.', 'info');
   }
 
   function _toast(text, type) {
@@ -423,6 +403,22 @@
 
   // ── API publique ───────────────────────────────────────────────────────
   function openCreditsBuyModal() {
+    // F3-3 — INTENTION DE PAYER. Stripe n'est pas branche : ce clic est la
+    // seule mesure disponible de la disposition reelle a payer, et c'est
+    // l'un des 5 chiffres qui decideront de la suite de la beta.
+    try {
+      if (window.SmyleTrack && typeof window.SmyleTrack.event === 'function') {
+        window.SmyleTrack.event('topup_click', { source: 'credits-buy' });
+      }
+    } catch (_) { /* la mesure ne bloque jamais l'ouverture */ }
+    // S-11 (2026-09-04, annexe A §M5) — garde APRÈS la mesure : le clic est
+    // compté (intention de payer), mais on n'ouvre pas une modale qui
+    // promettrait un achat impossible tant que Stripe n'est pas branché.
+    // Défensif : drapeau absent → masqué.
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)) {
+      _toast('Tes Smyles se gagnent en explorant, en publiant et en jouant.', 'info');
+      return;
+    }
     injectStyle();
     const modal = ensureModal();
     modal.classList.add('is-open');

@@ -131,6 +131,11 @@ class Settings(BaseSettings):
     SHOW_VOIX: bool = False
     SHOW_TROC: bool = False
     SHOW_THE_PLAN: bool = False
+    # S-11 (2026-09-04, annexe A §M5) — l'achat de Smyles est masqué tant
+    # que Stripe n'est pas branché : /credits/grant répond 403 à tout
+    # compte non is_official, donc la modale d'achat promettait une
+    # transaction impossible. Rallumable par SHOW_ACHAT_SMYLES=true.
+    SHOW_ACHAT_SMYLES: bool = False
 
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
@@ -147,6 +152,7 @@ class Settings(BaseSettings):
             "voix": self._item_visible(self.SHOW_VOIX),
             "troc": self._item_visible(self.SHOW_TROC),
             "thePlan": self._item_visible(self.SHOW_THE_PLAN),
+            "achatSmyles": self._item_visible(self.SHOW_ACHAT_SMYLES),
         }
 
 

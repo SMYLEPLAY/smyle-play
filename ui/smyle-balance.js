@@ -313,13 +313,25 @@
         return;
       }
       // P1-C2a (2026-04-28) — Click sur badge balance → ouvre la modale
-      // d'achat de SMYLES (ui/modals/credits-buy.js, V1 stub gratuit, V2
-      // bascule sur Stripe Checkout). Si la modale n'est pas chargée sur
-      // cette page (ex: page legacy non migrée), on retombe sur le toast
-      // "bientôt disponible" historique pour ne pas casser l'UX.
-      if (typeof window.openCreditsBuyModal === 'function') {
+      // d'achat de SMYLES (ui/modals/credits-buy.js). Si la modale n'est pas
+      // chargée sur cette page (ex: page legacy non migrée), on retombe sur le
+      // toast historique pour ne pas casser l'UX.
+      // S-11 (2026-09-04, annexe A §M5) — la modale n'ouvre que si l'item
+      // `achatSmyles` est VISIBLE : sinon elle listait une grille tarifaire
+      // puis échouait en 403 (/credits/grant est réservé à is_official).
+      // L'ÉMISSION topup_click est conservée dans les deux cas : c'est la
+      // seule mesure de la disposition à payer avant Stripe (F3-3).
+      // Défensif : drapeau absent → masqué.
+      if (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles &&
+          typeof window.openCreditsBuyModal === 'function') {
         window.openCreditsBuyModal();
       } else if (typeof window.smyleToast === 'function') {
+        // F3-3 — meme intention (modale absente OU achat masque) : on mesure.
+        try {
+          if (window.SmyleTrack && typeof window.SmyleTrack.event === 'function') {
+            window.SmyleTrack.event('topup_click', { source: 'balance-widget' });
+          }
+        } catch (_) {}
         window.smyleToast('Tes Smyles se gagnent en explorant, en publiant et en jouant.', { type: 'info', duration: 2800 });
       } else {
         alert('Tes Smyles se gagnent en explorant, en publiant et en jouant.');
