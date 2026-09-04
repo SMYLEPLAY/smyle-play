@@ -1,14 +1,65 @@
+import re
 from datetime import datetime
+from typing import Literal
 from urllib.parse import quote
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, computed_field, field_validator
 
 # Étape 2 — format couleur hex "#RRGGBB" utilisé partout (track.color,
 # futures extensions UI). Regex volontairement stricte (6 chars, majuscules
 # ou minuscules) pour éviter les formats à 3 chars ou sans dièse. Null reste
 # permis et signifie "hérite de la brandColor de l'artiste".
 HEX_COLOR_RE = r"^#[0-9a-fA-F]{6}$"
+
+# S-03 sécurité (2026-09-02) — validateur d'URL média partagé (audio_url,
+# cover_url des tracks ; avatar_url / cover_photo_url des profils).
+#
+# Ces valeurs finissent dans des attributs `src="…"` construits en innerHTML
+# côté front (accueil non connecté, cartes Top Artistes, écran d'échange).
+# Une valeur libre comme `x" onerror="alert(1)` sort de l'attribut : XSS
+# stocké chez tout visiteur. Le validateur est la barrière serveur, en plus
+# des échappeurs front (S-01/S-02).
+#
+# Formes acceptées :
+#   - URL relative de proxy same-origin : /watt/stream/<clé R2> ou
+#     /watt/images/<clé R2> (émises par POST /watt/upload et /watt/upload-image,
+#     clés slugifiées ASCII + éventuels espaces/`%` des anciennes clés) ;
+#   - URL absolue http(s) (ex. anciennes lignes `https://pub-….r2.dev/…`).
+# Tout le reste (javascript:, data:, chemin relatif hors proxy, guillemets,
+# chevrons, backtick, antislash, caractères de contrôle) → ValueError → 422.
+_MEDIA_URL_RELATIVE_RE = re.compile(r"^/watt/(stream|images)/[A-Za-z0-9._%/ -]+$")
+# Caractères de contrôle (0x00-0x1F, 0x7F) + délimiteurs d'attribut HTML.
+# L'espace reste toléré (anciennes clés R2 « Mon Son.wav » ; inoffensif
+# dans un attribut une fois les guillemets bannis).
+_FORBIDDEN_URL_CHARS = set('"\'<>`\\') | {chr(c) for c in range(0, 32)} | {chr(127)}
+
+TRACK_PLATFORMS = ("suno", "udio", "riffusion", "stable_audio", "autre")
+TrackPlatform = Literal["suno", "udio", "riffusion", "stable_audio", "autre"]
+
+
+def validate_media_url(v: str | None) -> str | None:
+    """Valide une URL média (proxy /watt/… ou http(s) absolue). Vide → None."""
+    if v is None:
+        return None
+    v = v.strip()
+    if v == "":
+        return None
+    if any(ch in _FORBIDDEN_URL_CHARS for ch in v):
+        raise ValueError("URL média invalide")
+    if v.startswith("/"):
+        if not _MEDIA_URL_RELATIVE_RE.match(v):
+            raise ValueError(
+                "URL relative non autorisée (attendu /watt/stream/… ou /watt/images/…)"
+            )
+        return v
+    try:
+        u = HttpUrl(v)  # lève si schéma absent / javascript: / data:
+    except Exception as exc:  # pydantic ValidationError ou ValueError selon la version
+        raise ValueError("URL média invalide (http(s):// attendu)") from exc
+    if u.scheme not in ("http", "https"):
+        raise ValueError("Schéma d'URL non autorisé")
+    return v
 
 
 class TrackCreate(BaseModel):
@@ -31,15 +82,33 @@ class TrackCreate(BaseModel):
     prompt_id: UUID | None = None
     # Tags libres — séparés par des virgules ("chill, dark, guitare, 90bpm")
     tags: str | None = Field(default=None, max_length=500)
-    # Plateforme/IA d'origine du son (suno, udio, riffusion, stable_audio,
-    # autre). Validation souple ici (jamais de 422 sur la création) ; la
-    # borne stricte est tenue par le CHECK DB ck_tracks_platform_enum + le
-    # <select> frontend. Vide → None.
-    platform: str | None = Field(default=None, max_length=20)
+    # Plateforme/IA d'origine du son. S-03 (2026-09-02) : enum stricte —
+    # aucun CHECK DB n'existe (le `ck_tracks_platform_enum` cité autrefois
+    # n'est dans aucune migration) et la valeur est interpolée dans le HTML
+    # de la fiche publique (artiste.js, badges.js). Mêmes valeurs que le
+    # <select> du dashboard et que PromptPlatform. Vide → None.
+    platform: TrackPlatform | None = Field(default=None)
     # C2 — drapeau de placement « beat » (étagère /beats) + BPM optionnel.
     # Le beat n'est PLUS un produit distinct : la recette est LE produit.
     is_beat: bool = False
     bpm: int | None = Field(default=None, ge=40, le=300)
+
+    @field_validator("platform", mode="before")
+    @classmethod
+    def normalize_platform(cls, v):
+        # "" (select non renseigné) → None ; on normalise la casse/espaces
+        # avant la validation Literal.
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v = v.strip().lower()
+            return v or None
+        return v
+
+    @field_validator("audio_url", "cover_url")
+    @classmethod
+    def validate_media_urls(cls, v: str | None) -> str | None:
+        return validate_media_url(v)
 
 
 class TrackUpdate(BaseModel):
@@ -68,6 +137,24 @@ class TrackUpdate(BaseModel):
     # C2 — drapeau beat + BPM modifiables après coup.
     is_beat: bool | None = None
     bpm: int | None = Field(default=None, ge=40, le=300)
+    # S-03 — même enum stricte que TrackCreate (le PATCH n'écrit le champ
+    # que s'il est envoyé : exclude_unset côté service).
+    platform: TrackPlatform | None = Field(default=None)
+
+    @field_validator("platform", mode="before")
+    @classmethod
+    def normalize_platform(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v = v.strip().lower()
+            return v or None
+        return v
+
+    @field_validator("cover_url")
+    @classmethod
+    def validate_cover_url(cls, v: str | None) -> str | None:
+        return validate_media_url(v)
 
 
 class DNARead(BaseModel):
