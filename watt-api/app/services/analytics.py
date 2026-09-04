@@ -21,6 +21,19 @@ ALLOWED_EVENTS: set[str] = {
     "boutique_open",    # ouverture de la boutique
     "onboarding_start", # didacticiel premier-run ouvert (D1)
     "onboarding_complete",  # didacticiel terminé / CTA (D1) → mesure de complétion
+    # ── Funnel creator-led (F3-1, 2026-08-02) ─────────────────────────────
+    # Le modèle d'acquisition repose sur le partage du lien créateur. Ces
+    # événements rendent la boucle mesurable ET alimentent, à terme, le
+    # graphe de réputation (recette ↔ résultat ↔ identité ↔ comportement).
+    # Ils portent tous `props.creator` quand une attribution est connue.
+    "creator_visit",    # arrivée sur /u/<slug> ou /@<slug> (1×/session/créateur)
+    "share_click",      # un créateur copie/partage son propre lien
+    "listen_30s",       # 30 s écoutées sur un extrait (intention réelle)
+    "unlock_click",     # clic sur « débloquer » (avant l'achat)
+    "adn_reuse",        # réutilisation d'un ADN possédé
+    "trade",            # troc réalisé
+    "review",           # avis déposé après achat
+    "topup_click",      # clic « recharger » → mesure de l'intention de payer
 }
 
 MAX_BATCH = 50          # événements max par requête

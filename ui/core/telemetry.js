@@ -34,7 +34,10 @@
   var API_BASE = (window.SMYLE_API_BASE ? String(window.SMYLE_API_BASE).replace(/\/+$/, '') : '');
   var ALLOWED = ['visit', 'page_view', 'signup', 'profile_complete', 'product_view',
                  'drawer_open', 'purchase', 'purchase_failed', 'boutique_open',
-                 'onboarding_start', 'onboarding_complete'];
+                 'onboarding_start', 'onboarding_complete',
+                 // Funnel creator-led (F3-1) — miroir de ALLOWED_EVENTS backend.
+                 'creator_visit', 'share_click', 'listen_30s', 'unlock_click',
+                 'adn_reuse', 'trade', 'review', 'topup_click'];
 
   // ── Session anonyme (non-PII) ─────────────────────────────────────────────
   function _sid() {
@@ -50,6 +53,64 @@
   }
   var SID = _sid();
 
+  // ── Attribution créateur (F3-1) ───────────────────────────────────────────
+  // Le modèle d'acquisition est creator-led : un créateur partage son lien,
+  // son audience arrive. Sans attribution, impossible de savoir QUEL créateur
+  // amène du monde ni ce que ça convertit — et cette donnée n'est jamais
+  // rattrapable après coup.
+  //
+  // Règle : PREMIER TOUCHE gagnante, conservée 30 jours. Le slug est un
+  // identifiant public de créateur, pas une donnée personnelle du visiteur ;
+  // et rien n'est émis sans consentement (garde en tête de _enqueue).
+  var ATTRIB_KEY = 'smyle_attrib';
+  var ATTRIB_TTL_MS = 30 * 24 * 3600 * 1000;
+
+  function _creatorFromPath() {
+    var m = location.pathname.match(/^\/(?:u\/|@)([^/?#]+)/);
+    return m ? decodeURIComponent(m[1]).slice(0, 80) : null;
+  }
+
+  function _param(name) {
+    try {
+      var v = new URLSearchParams(location.search).get(name);
+      return v ? String(v).slice(0, 80) : null;
+    } catch (_) { return null; }
+  }
+
+  function _readAttrib() {
+    try {
+      var raw = localStorage.getItem(ATTRIB_KEY);
+      if (!raw) return null;
+      var a = JSON.parse(raw);
+      if (!a || !a.ts || (Date.now() - a.ts) > ATTRIB_TTL_MS) return null;
+      return a;
+    } catch (_) { return null; }
+  }
+
+  function _captureAttrib() {
+    var creator = _param('ref') || _creatorFromPath();
+    if (!creator) return _readAttrib();
+    var existing = _readAttrib();
+    if (existing && existing.creator) return existing;  // premier touche gagne
+    var a = { creator: creator, src: _param('src') || null, ts: Date.now() };
+    try { localStorage.setItem(ATTRIB_KEY, JSON.stringify(a)); } catch (_) {}
+    return a;
+  }
+
+  var ATTRIB = _captureAttrib();
+
+  // Une visite de page créateur, comptée une fois par session et par créateur.
+  function _creatorVisitOnce() {
+    var creator = _creatorFromPath();
+    if (!creator) return;
+    try {
+      var k = 'smyle_cvisit_' + creator;
+      if (sessionStorage.getItem(k)) return;
+      sessionStorage.setItem(k, '1');
+    } catch (_) { /* pas de sessionStorage : on émet quand même */ }
+    _enqueue('creator_visit', { creator: creator, src: (ATTRIB && ATTRIB.src) || null });
+  }
+
   function _token() {
     try { return (typeof getAuthToken === 'function') ? getAuthToken() : null; }
     catch (_) { return null; }
@@ -60,11 +121,19 @@
   function _enqueue(name, props) {
     if (dnt || !_consented()) return;
     if (ALLOWED.indexOf(name) === -1) return;
+    // Attribution jointe à CHAQUE événement : sans elle, on sait qu'il y a
+    // eu une conversion mais pas grâce à qui. Les props explicites priment.
+    var out = (props && typeof props === 'object') ? props : null;
+    if (ATTRIB && ATTRIB.creator) {
+      out = out || {};
+      if (out.creator === undefined) out.creator = ATTRIB.creator;
+      if (out.src === undefined && ATTRIB.src) out.src = ATTRIB.src;
+    }
     buf.push({
       name: name,
       path: location.pathname,
       referrer: document.referrer ? document.referrer.slice(0, 256) : null,
-      props: (props && typeof props === 'object') ? props : null,
+      props: out,
     });
     if (buf.length >= 10) flush();
   }
@@ -105,12 +174,15 @@
     pageView: function () { _enqueue('page_view'); },
     flush: function () { flush(false); },
     sessionId: function () { return SID; },
+    // Créateur à l'origine de la venue (premier touche, 30 j), ou null.
+    attribution: function () { return ATTRIB ? { creator: ATTRIB.creator, src: ATTRIB.src || null } : null; },
   };
   window.SmyleTrack = SmyleTrack;
 
   // ── Auto-instrumentation ──────────────────────────────────────────────────
   if (!dnt) {
     _visitOncePerDay();
+    _creatorVisitOnce();
     _enqueue('page_view');
     setInterval(function () { flush(false); }, 8000);
     window.addEventListener('beforeunload', function () { flush(true); });
