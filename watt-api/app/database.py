@@ -30,14 +30,47 @@ def _normalize_async_url(url: str) -> str:
 # / `MissingGreenlet` en cascade (PR #489, runs CI du 2026-08-05). Avec NullPool,
 # chaque session ouvre et ferme sa propre connexion : rien ne traverse les
 # boucles. En dev/prod (`ENVIRONMENT != "test"`) : pool par défaut, inchangé.
-_ENGINE_KWARGS: dict = {"echo": False}
-if settings.ENVIRONMENT == "test":
-    _ENGINE_KWARGS["poolclass"] = NullPool
+# F-01 (2026-09-04) : bornes du pool en dev/prod. `pool_pre_ping` teste la
+# connexion avant de la prêter (Railway coupe les connexions inactives ; sans
+# lui la première requête après une coupure renvoie une 500 « connection was
+# closed »), `pool_recycle=1800` les renouvelle avant le timeout côté serveur.
+# Les bornes de TAILLE (2 workers × (5 + 10) = 30 connexions max, sous les 100
+# du plan Postgres Railway) ne sont posées QUE hors test : NullPool n'accepte
+# ni `pool_size`, ni `max_overflow`, ni `pool_timeout` (TypeError au boot).
+_POOL_SIZE_KWARGS: dict = {
+    "pool_size": 5,
+    "max_overflow": 10,
+    "pool_timeout": 30,
+}
 
-engine = create_async_engine(
-    _normalize_async_url(settings.DATABASE_URL),
-    **_ENGINE_KWARGS,
-)
+
+def build_engine_kwargs(app_settings) -> dict:
+    """Arguments de `create_async_engine` selon l'environnement.
+
+    Extrait en fonction pour être testable sans reconstruire le module (le
+    moteur importable, lui, est toujours celui de l'environnement courant).
+    """
+    kwargs: dict = {
+        "echo": False,
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,
+    }
+    if app_settings.ENVIRONMENT == "test":
+        kwargs["poolclass"] = NullPool
+        return kwargs
+    kwargs.update(_POOL_SIZE_KWARGS)
+    return kwargs
+
+
+def build_engine(app_settings):
+    """Moteur async construit à partir d'un objet Settings (ou équivalent)."""
+    return create_async_engine(
+        _normalize_async_url(app_settings.DATABASE_URL),
+        **build_engine_kwargs(app_settings),
+    )
+
+
+engine = build_engine(settings)
 
 SessionLocal = async_sessionmaker(
     bind=engine,
