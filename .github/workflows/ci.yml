@@ -28,7 +28,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
@@ -45,10 +45,10 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -99,7 +99,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
@@ -120,10 +120,10 @@ jobs:
       CORS_ALLOWED_ORIGINS: "*"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -164,7 +164,7 @@ jobs:
 
       - name: Upload uvicorn log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: uvicorn-log
           path: /tmp/uvicorn.log
@@ -188,7 +188,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
@@ -207,10 +207,10 @@ jobs:
       ENVIRONMENT: test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -276,10 +276,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
