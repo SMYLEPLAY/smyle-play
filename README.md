@@ -47,7 +47,7 @@ utilise des types Postgres (UUID, enums) et ne tourne pas sur SQLite.
 docker run -d --name smyle-pg -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev \
   -e POSTGRES_DB=smyleplay -p 5432:5432 postgres:16
 
-# 2. Deps
+# 2. Deps (requirements.txt est un LOCKFILE, cf. « Dépendances » plus bas)
 pip install -r requirements.txt
 
 # 3. Variables d'env
@@ -60,6 +60,26 @@ cd watt-api && alembic upgrade head && cd ..
 # 5. Run
 uvicorn main:app --reload
 ```
+
+## Dépendances (lockfile)
+
+`requirements.in` liste les dépendances **voulues** ; `requirements.txt` est le
+**lockfile** installé partout (Railway/nixpacks, CI, e2e, local) — il est
+généré, jamais édité à la main. `watt-api/pyproject.toml` ne sert qu'au
+packaging (`pip install ./watt-api`) : la source de vérité des versions reste
+`requirements.in`/`requirements.txt`.
+
+Pour ajouter ou monter une dépendance :
+
+```bash
+# 1. éditer requirements.in (une ligne par dépendance, borne haute conseillée)
+# 2. régénérer le lockfile — même version de Python que la CI et la prod
+uv pip compile requirements.in --python-version 3.11 -o requirements.txt
+# 3. réinstaller localement et faire tourner la suite avant de commiter
+pip install -r requirements.txt && (cd watt-api && pytest -q)
+```
+
+Commiter `requirements.in` **et** `requirements.txt` dans le même commit.
 
 ## Tests & CI
 

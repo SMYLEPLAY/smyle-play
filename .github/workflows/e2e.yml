@@ -2,7 +2,8 @@ name: E2E smoke (Playwright)
 
 # Filet anti-régression front (H0.1b du durcissement). Premier maillon avant
 # la découpe des monolithes et le Monde Visuel : on démarre l'app prod unifiée
-# (`uvicorn main:app` = FastAPI + Flask servant le front via a2wsgi) et on
+# (`uvicorn main:app` = FastAPI seul, qui sert l'API, les pages et les
+# statiques — Flask et a2wsgi ont été supprimés le 2026-07-30, P0-c) et on
 # vérifie que la vitrine se charge et que le catalogue répond.
 #
 # Workflow SÉPARÉ de ci.yml exprès : pas de conflit de fichier avec les PR qui

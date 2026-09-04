@@ -2,8 +2,9 @@
 const { defineConfig, devices } = require('@playwright/test');
 
 // Filet anti-régression front (H0.1b). L'app prod est servie par
-// `uvicorn main:app` (FastAPI + Flask monté via a2wsgi qui sert le front).
-// En CI on démarre ce process puis on pointe la baseURL dessus.
+// `uvicorn main:app` : FastAPI seul rend l'API, les pages et les statiques
+// (app/routers/pages.py) — Flask et a2wsgi ont été retirés le 2026-07-30
+// (P0-c). En CI on démarre ce process puis on pointe la baseURL dessus.
 const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:8000';
 
 module.exports = defineConfig({
