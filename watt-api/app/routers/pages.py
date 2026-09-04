@@ -14,6 +14,8 @@ Parité route par route (source : OBSIDIAN/05_TECH/Flask_routes_inventory.md) :
   /dashboard /tarifs /library /legal /reset → page HTML dédiée
   /offres                    gate « paliers » : 302 → / si masqué
   /u/{slug} /@{slug}         artiste.html (profil) ; /artiste/{slug} 301 → /u/
+  /oeuvre/{slug}             oeuvre.html (fiche œuvre) — rétablie par F1-1 / L-03,
+                             avec aperçu social (Open Graph) comme /u/{slug}
   /sons /beats /artistes     shell index.html (vue pilotée par marketplace.js)
   /voix                      gate « voix » : 302 → / si masqué, sinon shell
 
@@ -43,7 +45,6 @@ from app.database import SessionLocal
 from app.models.album import Album
 from app.models.playlist import Playlist
 from app.models.prompt import Prompt
-from app.models.user import User
 
 # pages.py → routers → app → watt-api → RACINE DU REPO (même convention
 # que images.py : parents[3]).
@@ -193,22 +194,17 @@ async def _artist_meta(slug: str, request: Request) -> dict | None:
     degrader vers la page brute, jamais renvoyer 500 sur une page publique.
     """
     try:
-        # Import tardif : evite un cycle avec le routeur watt_compat.
-        from app.routers.watt_compat import _derive_artist_slug
+        # Import tardif : evite un cycle (follows → watt_compat → …).
+        from app.routers.follows import _find_artist_by_slug
 
         async with SessionLocal() as db:
-            users = (await db.execute(select(User))).scalars().all()
-        matches = [
-            u
-            for u in users
-            if _derive_artist_slug(u) == slug and bool(u.profile_public)
-        ]
-        if not matches:
-            return None
-        # Meme resolution deterministe que GET /watt/artists/{slug} :
-        # compte officiel d'abord, puis le plus ancien (incident homonymes).
-        matches.sort(key=lambda u: (not bool(u.is_official), u.created_at))
-        user = matches[0]
+            # Resolution CANONIQUE, partagee avec /watt/users/{slug}/playlists,
+            # /albums, /images (follows._find_artist_by_slug) : scan borne aux
+            # artistes potentiels (artist_name renseigne OU email univers) au
+            # lieu de TOUTE la table users, homonymes departages officiel >
+            # plus ancien, et gate profile_public — sans viewer, un profil
+            # prive ou introuvable leve 404, rattrape ci-dessous → page brute.
+            user = await _find_artist_by_slug(db, slug)
         name = (user.artist_name or slug).strip() or slug
         desc = _clip(user.bio) or f"Profil de {name} sur {_BRAND}."
         image = _absolute(request, user.avatar_url or user.cover_photo_url)

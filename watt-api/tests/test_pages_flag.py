@@ -65,6 +65,15 @@ def test_profil_u_et_arobase():
     assert c.get("/@tom").status_code == 200
 
 
+def test_oeuvre_page_servie():
+    # L-03 (reprise PR #489) : la route de page /oeuvre/<slug> avait disparu
+    # à la sortie de Flask (P0-b) → 404 sur LA page qu'un créateur partage.
+    # Slug inconnu ⇒ page brute (aucune méta injectée), mais toujours 200.
+    r = _client().get("/oeuvre/slug-inexistant-l03")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+
+
 def test_alias_artiste_301_vers_u():
     r = _client().get("/artiste/tom")
     assert r.status_code == 301

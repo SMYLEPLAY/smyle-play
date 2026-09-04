@@ -3,10 +3,17 @@
 Le modele d'acquisition est creator-led : un createur partage /u/<slug> ou
 /oeuvre/<slug> sur ses reseaux. Sans balises og:, le lien s'affiche nu.
 
-Tests STRICTEMENT sans base : helpers purs + presence des routes. Voir la
-note de la section « Routes » plus bas pour la raison — elle est importante.
+Trois etages : helpers purs (sans base), presence des routes (sans base), et
+bout de chaine sur base reelle (L-03) — voir la note de la section « Routes ».
 """
 
+import uuid
+
+from httpx import AsyncClient
+from sqlalchemy import update
+
+from app.database import SessionLocal
+from app.models.user import User
 from app.routers.pages import (
     _absolute,
     _clip,
@@ -72,19 +79,18 @@ def test_social_head_large_image_si_image():
 
 # ── Routes (sans base de donnees) ──────────────────────────────────────────
 #
-# On NE fait PAS d'appel HTTP sur /u/<slug>, /@<slug> ni /oeuvre/<slug> dans
-# cette suite. Ces routes ouvrent leur propre session (SessionLocal) pour lire
-# les metadonnees ; declenchees depuis un client de test, elles laissaient la
-# suite dans un etat ou TOUS les fichiers suivants par ordre alphabetique
-# echouaient en cascade (playlists, reports, reserve, smyle_buckets, tiers,
-# tracks, users) avec des MissingGreenlet — constate deux fois en CI le
-# 2026-08-05 (PR #487 puis #488), avec TestClient comme avec AsyncClient.
+# Historique (PR #489, 2026-08-05) : tout appel HTTP sur /u/<slug>, /@<slug> ou
+# /oeuvre/<slug> depuis un client de test faisait echouer EN CASCADE tous les
+# fichiers de tests suivants (playlists, reports, reserve, smyle_buckets, tiers,
+# tracks, users) avec des MissingGreenlet / InterfaceError.
 #
-# L'interaction exacte n'est pas elucidee et merite une investigation a part
-# (voir OBSIDIAN — une route qui ouvre une session hors `get_db` est aussi un
-# risque de fuite de connexion en production). En attendant, on verifie ce qui
-# compte vraiment sans toucher la base : que les routes EXISTENT, et que les
-# balises sont bien fabriquees par les helpers (couverts plus haut).
+# Cause elucidee (L-03) : tests/test_pages_flag.py monte ce router sur un
+# TestClient SYNCHRONE, qui execute l'app sur SA PROPRE boucle asyncio. La
+# connexion asyncpg ouverte la par SessionLocal() etait rendue au pool partage
+# de app.database.engine, puis reutilisee par les tests suivants sur la boucle
+# de session pytest-asyncio. Corrige a la source : `poolclass=NullPool` quand
+# ENVIRONMENT=test (app/database.py) — plus aucune connexion ne traverse les
+# boucles. Les appels HTTP sont donc de nouveau surs (voir « Bout de chaine »).
 
 def _chemins() -> set[str]:
     return {getattr(r, "path", None) for r in router.routes}
@@ -103,3 +109,61 @@ def test_route_oeuvre_existe():
 
 def test_page_index_existe():
     assert "/" in _chemins()
+
+
+# ── Bout de chaine (base reelle) — L-03 ────────────────────────────────────
+#
+# « Livre ≠ branche » : on verifie que la page servie contient VRAIMENT les
+# balises, via la resolution canonique du slug (follows._find_artist_by_slug).
+
+async def _set_profile(user_id, **values) -> None:
+    async with SessionLocal() as db:
+        await db.execute(update(User).where(User.id == user_id).values(**values))
+        await db.commit()
+
+
+async def test_profil_public_injecte_les_balises_og(
+    client: AsyncClient, test_user: dict
+) -> None:
+    # artist_name deja en forme de slug (alphanumerique minuscule) : le slug
+    # derive par _derive_artist_slug est donc exactement ce nom.
+    name = f"ogtest{uuid.uuid4().hex[:10]}"
+    await _set_profile(
+        test_user["id"],
+        artist_name=name,
+        bio="Bio de test pour la carte sociale.",
+        profile_public=True,
+    )
+    try:
+        r = await client.get(f"/u/{name}")
+        assert r.status_code == 200
+        assert "text/html" in r.headers["content-type"]
+        assert f'property="og:title" content="{name} \u2014 WATT"' in r.text
+        assert 'property="og:type" content="profile"' in r.text
+        assert f'property="og:url" content="http://test/u/{name}"' in r.text
+        assert "Bio de test pour la carte sociale." in r.text
+        assert r.text.count('property="og:') >= 4
+        # /@<slug> : meme page, memes balises.
+        assert 'property="og:title"' in (await client.get(f"/@{name}")).text
+    finally:
+        await _set_profile(test_user["id"], profile_public=False)
+
+
+async def test_profil_prive_sert_la_page_brute_sans_fuite(
+    client: AsyncClient, test_user: dict
+) -> None:
+    name = f"privtest{uuid.uuid4().hex[:10]}"
+    await _set_profile(
+        test_user["id"], artist_name=name, bio="Secret.", profile_public=False
+    )
+    r = await client.get(f"/u/{name}")
+    assert r.status_code == 200          # la page brute, jamais 404 ni 500
+    assert 'property="og:' not in r.text  # aucune donnee du profil prive
+    assert "Secret." not in r.text
+
+
+async def test_slug_inconnu_sert_la_page_brute(client: AsyncClient) -> None:
+    for path in ("/u/slug-inexistant-l03", "/oeuvre/slug-inexistant-l03"):
+        r = await client.get(path)
+        assert r.status_code == 200, path
+        assert 'property="og:' not in r.text, path
