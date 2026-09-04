@@ -35,6 +35,22 @@ def test_launch_flags_body_rallume_par_show(monkeypatch):
     assert '"paliers": true' in launch_flags_js_body()
 
 
+def test_launch_flags_expose_achat_smyles_masque_par_defaut(monkeypatch):
+    """S-11 (annexe A §M5) — l'achat de Smyles est un item de mode lancement.
+
+    Sans ce drapeau, le clic sur le badge solde ouvrait une grille tarifaire
+    puis échouait en 403 (`POST /credits/grant` est réservé à `is_official`) :
+    une promesse d'achat que rien ne pouvait honorer. Le front lit la clé
+    `achatSmyles` — si elle disparaissait du JS servi, le repli statique
+    (« tout masqué ») prendrait le relais, mais silencieusement.
+    """
+    monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
+    monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", False)
+    assert '"achatSmyles": false' in launch_flags_js_body()
+    monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", True)
+    assert '"achatSmyles": true' in launch_flags_js_body()
+
+
 def test_launch_flags_endpoint_no_cache():
     r = _client().get("/ui/core/launch-flags.js")
     assert r.status_code == 200

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import get_current_user
+from app.config import settings
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
 from app.models.user import User
@@ -18,7 +19,16 @@ router = APIRouter(prefix="/credits", tags=["credits"])
 
 @router.get("/packs", response_model=CreditPacksResponse)
 async def list_packs():
-    """Liste publique des packs de crédits disponibles."""
+    """Liste publique des packs de crédits disponibles.
+
+    S-11 (2026-09-04, annexe A §M5) : la grille n'est servie que si l'item de
+    mode lancement `achatSmyles` est VISIBLE. Sinon elle exposerait une
+    tarification en euros pour un achat qui n'existe pas encore (Stripe non
+    branché, `POST /credits/grant` réservé à `is_official`) — une promesse de
+    prix que rien ne peut honorer. Rallumable par `SHOW_ACHAT_SMYLES=true`.
+    """
+    if not settings.launch_flags_dict()["achatSmyles"]:
+        return CreditPacksResponse(packs=[])
     packs = [
         CreditPack(
             id=p["id"],
