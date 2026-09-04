@@ -51,6 +51,32 @@ def test_launch_flags_expose_achat_smyles_masque_par_defaut(monkeypatch):
     assert '"achatSmyles": true' in launch_flags_js_body()
 
 
+def test_launch_flags_expose_euros_masque_par_defaut(monkeypatch):
+    """K-08 (annexe B §5) — le front lit `euros` pour masquer la grille
+    « Repere SMYLES » et les previews « ≈ X€ ». Si la cle disparaissait du JS
+    servi, le repli statique (« tout masque ») prendrait le relais en silence.
+    """
+    monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
+    monkeypatch.setattr(settings, "SHOW_EUROS", False)
+    assert '"euros": false' in launch_flags_js_body()
+    monkeypatch.setattr(settings, "SHOW_EUROS", True)
+    assert '"euros": true' in launch_flags_js_body()
+
+
+def test_tarifs_gate_euros(monkeypatch):
+    """/tarifs suit `euros`, pas `paliers` : ouvrir les paliers (commission,
+    mise en avant) n'ouvre pas pour autant un mur de paiement inactif."""
+    monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
+    monkeypatch.setattr(settings, "SHOW_PALIERS", True)
+    monkeypatch.setattr(settings, "SHOW_EUROS", False)
+    r = _client().get("/tarifs")
+    assert r.status_code == 302
+    assert r.headers["location"] == "/"
+
+    monkeypatch.setattr(settings, "SHOW_EUROS", True)
+    assert _client().get("/tarifs").status_code == 200
+
+
 def test_launch_flags_endpoint_no_cache():
     r = _client().get("/ui/core/launch-flags.js")
     assert r.status_code == 200

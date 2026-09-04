@@ -105,9 +105,12 @@
           '<li><span class="ic">▾</span> ' + esc(p.slots) + '</li>',
           '<li><span class="ic">' + (p.featured ? '★' : '·') + '</span> ' + (p.featured ? 'Mise en avant dans la marketplace' : 'Visibilité standard') + '</li>',
         ].join('');
+        // F4-1 — plus de badge « Bientot » : une promesse sans date est une
+        // promesse vide. Le CTA dit deja « Activable a l'ouverture des
+        // paiements », ce qui est factuel et suffit.
         var badge = isCur
           ? '<span class="off-badge current">Ton palier</span>'
-          : (p.tier === 'standard' ? '' : '<span class="off-badge">Bientôt</span>');
+          : '';
         var cta = isCur
           ? '<div class="off-cta is-current">Palier actuel</div>'
           : (p.tier === 'standard'

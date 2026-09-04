@@ -302,6 +302,15 @@ async def dashboard_page():
 
 @router.get("/tarifs", include_in_schema=False)
 async def tarifs_page():
+    # F4-1 / K-08 (annexe B §5) — la page tarifs n'affiche que des packs
+    # « — € » et des boutons « Bientot disponible » : des promesses vides,
+    # atteignables par URL directe et liees depuis offres.html. Elle est
+    # fermee (302 accueil) tant que l'item `euros` n'est pas VISIBLE.
+    # Gate sur `euros` et non `paliers` : ce sont deux choses distinctes —
+    # les paliers peuvent s'ouvrir (commission, mise en avant) sans qu'aucun
+    # euro ne soit encaissable.
+    if not settings.launch_flags_dict()["euros"]:
+        return RedirectResponse("/", status_code=302)
     return _page("tarifs.html")
 
 

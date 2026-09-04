@@ -1987,7 +1987,21 @@ function updatePromptCharCount() {
 //   pack_10  → 0.80 €/crédit  (plafond — le plus cher pour l'acheteur)
 //   pack_200 → 0.60 €/crédit  (plancher — meilleur deal acheteur)
 // On affiche donc : "prix × 0,60€"  —  "prix × 0,80€"
+// K-08 (2026-09-04, annexe B §5) — l'affichage en EUROS est un item de mode
+// lancement. Defensif : drapeau absent (launch-flags.js non charge) → masque.
+function _dashEurosOn() {
+  return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.euros);
+}
+
 function updateCreditGrid() {
+  // K-08 — la grille « Repere SMYLES » annonce « le fan paie entre 48 € et
+  // 64 € » : un chiffre invérifiable tant qu'aucun euro n'est encaissable.
+  // Masquee ET non calculee tant que l'item `euros` n'est pas VISIBLE.
+  if (!_dashEurosOn()) {
+    const grid = document.getElementById('dashCreditGrid');
+    if (grid) grid.style.display = 'none';
+    return;
+  }
   const priceEl = document.getElementById('dashPromptPrice');
   if (!priceEl) return;
   const raw = parseInt(priceEl.value, 10);
@@ -5550,6 +5564,9 @@ function dashUpdateEurPreview(inputId, outputId) {
   const input = document.getElementById(inputId);
   const output = document.getElementById(outputId);
   if (!input || !output) return;
+  // K-08 — « ≈ X€ (ordre d'idée) » sous un prix en Smyles : meme promesse
+  // implicite de conversion. Sortie videe tant que `euros` est masque.
+  if (!_dashEurosOn()) { output.textContent = ''; return; }
   const credits = parseInt(input.value, 10);
   if (typeof window.formatEurApprox !== 'function') {
     output.textContent = '';
@@ -5564,6 +5581,13 @@ function dashUpdateEurPreview(inputId, outputId) {
 
 // Init au boot : pour pré-remplir si les inputs ont déjà une valeur (édition).
 document.addEventListener('DOMContentLoaded', function() {
+  // K-08 — masquage de la grille des le boot : `updateCreditGrid` n'est
+  // appelee qu'a la saisie d'un prix, la grille resterait sinon visible
+  // (statique dans dashboard.html) sur un dashboard jamais touche.
+  if (!_dashEurosOn()) {
+    const grid = document.getElementById('dashCreditGrid');
+    if (grid) grid.style.display = 'none';
+  }
   setTimeout(function() {
     dashUpdateEurPreview('dashAdnPrice', 'dashAdnPriceEur');
     dashUpdateEurPreview('dashPromptPrice', 'dashPromptPriceEur');

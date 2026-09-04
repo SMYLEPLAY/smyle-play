@@ -136,6 +136,12 @@ class Settings(BaseSettings):
     # compte non is_official, donc la modale d'achat promettait une
     # transaction impossible. Rallumable par SHOW_ACHAT_SMYLES=true.
     SHOW_ACHAT_SMYLES: bool = False
+    # K-08 (2026-09-04, annexe B §5) — tout ce qui chiffre en EUROS est un
+    # item de mode lancement a part entiere : page /tarifs, grille
+    # « Repere SMYLES » du dashboard, previews « ≈ X€ ». Tant que Stripe
+    # n'est pas branche, ces surfaces annoncent une conversion que rien
+    # n'honore. Rallumable par SHOW_EUROS=true.
+    SHOW_EUROS: bool = False
 
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
@@ -153,6 +159,7 @@ class Settings(BaseSettings):
             "troc": self._item_visible(self.SHOW_TROC),
             "thePlan": self._item_visible(self.SHOW_THE_PLAN),
             "achatSmyles": self._item_visible(self.SHOW_ACHAT_SMYLES),
+            "euros": self._item_visible(self.SHOW_EUROS),
         }
 
 
