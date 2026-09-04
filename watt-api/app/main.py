@@ -104,6 +104,55 @@ from app.routers.oeuvre import (
 )
 
 
+_SEC_SKIP_PREFIXES = ("/watt/images", "/watt/stream", "/images")
+
+# Prefixes exclus de la COMPRESSION (sur-ensemble des precedents).
+#
+# Aux routes de proxy binaire s'ajoute /auth : BREACH (CVE-2013-3587) permet
+# de deviner un secret present dans une reponse compressee lorsqu'une partie
+# de cette reponse est controlee par l'attaquant, en observant la TAILLE
+# compressee. Les reponses de /auth/* portent le JWT (et /auth/register
+# reflete l'email soumis) : ce sont exactement les conditions de l'attaque.
+# Ces reponses sont minuscules — la compression n'y apportait rien.
+_GZIP_SKIP_PREFIXES = _SEC_SKIP_PREFIXES + ("/auth",)
+
+
+# ── Compression HTTP selective (F1-2, 2026-08-02) ──────────────────────────
+# La page partagee par un createur (/u/<slug>) pese ~415 Ko de texte non
+# compresse (HTML + JS + CSS) — ouverte depuis une story, sur un telephone en
+# 4G. Mesure : gzip la ramene a ~101 Ko, soit -76 %. Plus gros gain de
+# conversion par ligne de code du lot F.
+#
+# /!\ On SAUTE les prefixes de proxy binaire : ces routes streament de l'audio
+# et des images avec support des requetes Range. Les compresser serait au mieux
+# inutile (formats deja compresses), au pire casserait le streaming —
+# l'incident des pochettes disparues (24/07) est venu exactement de la.
+#
+# /!\ On SAUTE aussi /auth (F-07, 2026-09-04) : compresser une reponse qui
+# contient un secret ET une portion controlee par l'attaquant ouvre BREACH
+# (le secret se devine a la TAILLE compressee). Les reponses de /auth/*
+# portent le JWT et refletent l'entree utilisateur.
+#
+# Classe au niveau module (et non dans create_app) pour rester testable.
+class SelectiveGZipMiddleware:
+    """Compresse les reponses HTTP, sauf sous les prefixes donnes."""
+
+    def __init__(self, asgi_app, skip_prefixes: tuple[str, ...] = (), minimum_size: int = 500):
+        from starlette.middleware.gzip import GZipMiddleware
+
+        self.raw = asgi_app
+        self.skip_prefixes = tuple(skip_prefixes)
+        self.gzipped = GZipMiddleware(asgi_app, minimum_size=minimum_size)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or any(
+            scope.get("path", "").startswith(p) for p in self.skip_prefixes
+        ):
+            await self.raw(scope, receive, send)
+            return
+        await self.gzipped(scope, receive, send)
+
+
 def create_app() -> FastAPI:
     # ── Blindage clé secrète (Phase 0.3 lancement, 2026-07-24) ───────────
     # Le JWT est signé HS256 avec SECRET_KEY. Si la variable d'env n'est pas
@@ -165,7 +214,8 @@ def create_app() -> FastAPI:
     # sans violation sur les 6 pages.
     from starlette.datastructures import MutableHeaders
 
-    _SEC_SKIP_PREFIXES = ("/watt/images", "/watt/stream", "/images")
+    # _SEC_SKIP_PREFIXES est defini au niveau module (F-07) : il sert aussi
+    # de base a _GZIP_SKIP_PREFIXES pour la compression selective.
     _CSP_REPORT_ONLY = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
@@ -211,6 +261,12 @@ def create_app() -> FastAPI:
             await self.asgi_app(scope, receive, _send)
 
     app.add_middleware(_SecurityHeadersMiddleware)
+
+    # ── Compression HTTP (F1-2, 2026-08-02) ─────────────────────────────
+    # Voir SelectiveGZipMiddleware (niveau module) pour le detail, la
+    # precaution sur les routes de proxy binaire, et l'exclusion de /auth
+    # (BREACH — un jeton dans une reponse compressee se devine a la taille).
+    app.add_middleware(SelectiveGZipMiddleware, skip_prefixes=_GZIP_SKIP_PREFIXES)
 
     @app.get("/health")
     async def health():
