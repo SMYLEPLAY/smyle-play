@@ -18,6 +18,7 @@ Voir [[2026-06-07]] et [[project_engagement_loop_economy]].
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transaction import TransactionType
@@ -81,10 +82,43 @@ async def claim_daily_checkin(db: AsyncSession, user_id: UUID) -> dict:
         raise ValueError("User not found")
 
     today = _today_utc()
-    last = user.last_checkin_date
+    yesterday = today - timedelta(days=1)
 
-    # Déjà réclamé aujourd'hui → no-op idempotent.
-    if last == today:
+    # S-07 sécurité (2026-09-02) — course « double récompense » (audit A §M2).
+    # Avant : lecture non verrouillée de last_checkin_date, décision en
+    # Python, puis écriture ; deux requêtes concurrentes (2 workers uvicorn,
+    # ou 5 appels parallèles depuis un script) lisaient toutes la valeur
+    # périmée et réclamaient toutes la récompense — grant_credits_atomic ne
+    # verrouille la ligne qu'APRÈS la décision.
+    #
+    # Désormais : UPDATE conditionnel atomique. En READ COMMITTED, Postgres
+    # ré-évalue le WHERE après avoir pris le verrou de ligne : une seule des
+    # transactions concurrentes obtient une ligne via RETURNING, les autres
+    # reçoivent None → `already_claimed`. Le calcul du nouveau compteur est
+    # fait par la base (CASE), sur la valeur à jour, jamais sur une lecture
+    # périmée. Comportement séquentiel strictement identique à avant.
+    row = (await db.execute(
+        text(
+            """
+            UPDATE users
+               SET streak_count = CASE
+                       WHEN last_checkin_date = :yesterday THEN streak_count + 1
+                       ELSE 1
+                   END,
+                   last_checkin_date = :today
+             WHERE id = :uid
+               AND (last_checkin_date IS NULL OR last_checkin_date < :today)
+         RETURNING streak_count
+            """
+        ),
+        {"uid": user_id, "today": today, "yesterday": yesterday},
+    )).first()
+
+    if row is None:
+        # Déjà réclamé aujourd'hui → no-op idempotent. On relit le compteur
+        # depuis la base (l'objet en session peut porter une valeur périmée
+        # si une requête concurrente vient d'incrémenter).
+        await db.refresh(user, ["streak_count"])
         return {
             "claimed": False,
             "streak_count": user.streak_count,
@@ -92,17 +126,12 @@ async def claim_daily_checkin(db: AsyncSession, user_id: UUID) -> dict:
             "already_claimed": True,
         }
 
-    # Consécutif si le dernier check-in était hier ; sinon on repart à 1.
-    if last == today - timedelta(days=1):
-        new_count = user.streak_count + 1
-    else:
-        new_count = 1
-
+    new_count = int(row.streak_count)
     reward = reward_for_streak(new_count)
 
+    # Synchronise l'objet en session avec la ligne réellement écrite.
     user.last_checkin_date = today
     user.streak_count = new_count
-    await db.flush()
 
     await grant_credits_atomic(
         db,
