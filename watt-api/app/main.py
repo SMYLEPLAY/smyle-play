@@ -115,11 +115,29 @@ def create_app() -> FastAPI:
     # Ici on n'ajoute que des en-têtes dans http.response.start, sans jamais
     # toucher au corps. Et on SAUTE explicitement les routes de proxy binaire
     # pour ne rien changer à leur réponse.
-    # Pas de Content-Security-Policy pour l'instant (le front a beaucoup
-    # d'inline scripts/styles — une CSP stricte casserait des pages).
+    # F-02 (2026-09-02) : Content-Security-Policy en mode REPORT-ONLY. Le front
+    # a beaucoup d'inline (onclick=, <style>) → 'unsafe-inline' obligatoire, mais
+    # aucune ressource externe : la politique bloque tout script externe injecté,
+    # <object>, <base> et le framing tiers — une bonne part des payloads XSS.
+    # Report-Only = aucun blocage, les violations apparaissent dans la console
+    # (et Sentry). Bascule en enforcement = ticket séparé après une semaine
+    # sans violation sur les 6 pages.
     from starlette.datastructures import MutableHeaders
 
     _SEC_SKIP_PREFIXES = ("/watt/images", "/watt/stream", "/images")
+    _CSP_REPORT_ONLY = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob: https:; "
+        "media-src 'self' blob: https:; "
+        "connect-src 'self'; "
+        "font-src 'self' data:; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'self'"
+    )
 
     class _SecurityHeadersMiddleware:
         def __init__(self, asgi_app):
@@ -143,6 +161,9 @@ def create_app() -> FastAPI:
                     headers.setdefault(
                         "Strict-Transport-Security",
                         "max-age=63072000; includeSubDomains",
+                    )
+                    headers.setdefault(
+                        "Content-Security-Policy-Report-Only", _CSP_REPORT_ONLY
                     )
                 await send(message)
 
