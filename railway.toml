@@ -2,16 +2,21 @@
 builder = "nixpacks"
 
 [deploy]
-# Uvicorn ASGI — sert FastAPI (routes /watt/*, /api/auth/*, etc.)
-# et monte Flask sur "/" via a2wsgi (index.html + /api/* legacy).
+# Uvicorn ASGI — FastAPI (watt-api/app) sert TOUT : l'API, les pages HTML et
+# les statiques (app/routers/pages.py). Flask est supprimé depuis le 2026-07-30
+# (P0-c « Sortie Flask »). Le Procfile à la racine porte la même commande :
+# c'est un doublon documenté, ce fichier prime sur Railway.
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2 --access-log"
 
 # Pré-deploy : applique les migrations Alembic avant de booter le process.
-# La base suit la chaîne de migrations de watt-api (révision courante 0079).
-# On DOIT donc lancer alembic depuis watt-api : smyleplay-api ne connaît que
-# jusqu'à 0070 et ne peut pas situer 0079 → le pré-déploiement crashait.
+# La base suit la chaîne de migrations de watt-api/alembic/versions/ (0084 au
+# 2026-09-02 ; la tête attendue par le code servi est exposée par
+# GET /health → "alembic_head"). Toujours lancer alembic depuis watt-api/ :
+# c'est le seul backend, l'ancien smyleplay-api a été retiré du dépôt.
 preDeployCommand = "cd watt-api && alembic upgrade head"
 
+# /health vérifie la base (SELECT 1 borné à 3 s) et renvoie 503 si elle est
+# injoignable → Railway garde alors l'ancien build (L-04, 2026-09-02).
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 

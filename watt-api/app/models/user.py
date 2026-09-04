@@ -234,10 +234,12 @@ class User(Base):
     )
 
     # --- Économie ---
-    # Défaut 0 : le bonus de bienvenue (10) est désormais GRANTé explicitement
-    # par create_user via grant_credits_atomic (transaction BONUS tracée dans le
-    # ledger). Cf. migration 0066. Avant, le 10 venait du server_default → aucune
-    # trace comptable de l'origine de ces crédits.
+    # Défaut 0 : le bonus de bienvenue (10) est GRANTé explicitement par
+    # app/services/users.py::create_user via grant_credits_atomic
+    # (WELCOME_BONUS_CREDITS, transaction BONUS tracée au ledger) — et nulle
+    # part ailleurs : le routeur d'inscription (routers/auth.py) n'accorde rien.
+    # Cf. migration 0066. Avant, le 10 venait du server_default → aucune trace
+    # comptable de l'origine de ces crédits.
     credits_balance: Mapped[int] = mapped_column(
         Integer,
         nullable=False,

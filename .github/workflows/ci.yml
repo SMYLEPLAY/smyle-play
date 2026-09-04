@@ -251,8 +251,10 @@ jobs:
         run: |
           set -o pipefail
           # -rf : liste les tests FAILED en fin de sortie. On copie le tout
-          # dans le récapitulatif du run (visible sur la page GitHub sans
-          # connexion) → diagnostic rapide des échecs sans ouvrir les logs.
+          # dans le récapitulatif du run → diagnostic sans dérouler les logs.
+          # Attention : ce récapitulatif ne notifie personne et n'est rendu que
+          # par l'interface Actions (il n'est pas dans le HTML servi à un client
+          # anonyme). La voie notifiée est le commentaire de commit (F-08).
           {
             echo '### Résultat pytest'
             echo '```'

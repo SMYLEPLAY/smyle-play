@@ -68,14 +68,13 @@ async def register(
         await ensure_default_wishlist(db, new_user)
     except Exception:
         await db.rollback()
-    # 10 Smyles de bienvenue : DÉJÀ accordés par le défaut de colonne
-    # User.credits_balance (default=10 / server_default="10"). Le grant
-    # explicite qui se trouvait ici faisait un DOUBLE comptage
-    # (10 défaut + 10 grant = 20 Smyles) — bug corrigé 2026-06-22. Le solde
-    # de bienvenue vient donc uniquement du défaut de colonne (cohérent avec
-    # les helpers de test qui traitent 10 comme la baseline).
-    # NB : pour tracer ce bonus dans le ledger (Transaction), il faudrait
-    # passer le défaut à 0 ET garder un grant unique — décision produit à part.
+    # 10 Smyles de bienvenue : RIEN à faire ici. Le bonus est accordé par
+    # app/services/users.py::create_user, qui appelle grant_credits_atomic
+    # (WELCOME_BONUS_CREDITS = 10, transaction BONUS tracée au ledger) dans la
+    # même transaction que l'insertion du user. La colonne User.credits_balance
+    # a pour défaut 0 depuis la migration 0066 : un grant explicite ici ferait
+    # un DOUBLE comptage. (Ce commentaire décrivait l'état d'avant 0066 —
+    # défaut de colonne à 10 et aucune trace comptable ; corrigé F-04.)
     # Email de bienvenue — best-effort (chantier hygiène revenu 2026-06-10).
     # Mode test Resend tant que le domaine WATT n'est pas déposé.
     try:
