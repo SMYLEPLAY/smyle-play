@@ -15,6 +15,19 @@ tous sur le même défaut : un échappeur qui ne traite pas les guillemets.
 Ce test parcourt `ui/**/*.js` et les JS racine (comme
 `test_repo_public_hygiene.py`) et refuse ces trois formes. La référence à
 copier est `ui/albums.js` : `& < > " ' \\`` → entités.
+
+Portée S-02 (annexe A §B3, §B4, injection #12), fusionnée ici — le ticket
+S-02 créait un fichier de MÊME NOM ; les deux blocs de tests sont concaténés
+(aucun nom de test partagé) :
+
+  - liens sociaux : un `href` posé depuis une valeur saisie par l'artiste
+    (`javascript:…`, `data:…`) s'exécute au clic → vol du jeton de session.
+    La seule source de vérité est `safeSocialHref(key, val)`, dupliquée dans
+    `artiste.js` (profil public) et `dashboard.js` (aperçu du profil).
+  - marqueur d'échange : `__TRADE_OFFER__<id>` est un message posté par le
+    CLIENT via l'endpoint générique `/messages` — son id ne doit jamais être
+    interpolé dans un `onclick`. Carte = `data-offer-id` + délégué, id validé
+    UUID.
 """
 
 from __future__ import annotations
@@ -147,3 +160,71 @@ def test_echappeurs_de_reference_complets():
         assert "&quot;" in corps and "&#39;" in corps, (
             f"{rel} : l'échappeur n'échappe pas `\"` et `'` — copier ui/albums.js:_esc"
         )
+
+
+# ── S-02 : liens sociaux sûrs, marqueur d'échange, self-XSS ───────────────────
+# `_lire` ci-dessus prend un Path ; ce raccourci prend un chemin relatif au dépôt.
+def _lire_rel(rel: str) -> str:
+    return _lire(REPO_ROOT / rel)
+
+
+# Formes vulnérables retirées par S-02 : elles ne doivent pas réapparaître.
+_S02_INTERDITS = (
+    ("artiste.js", "a.href = val;"),                       # href social brut
+    ("artiste.js", "a.href   = val;"),
+    ("dashboard.js", 'href="${p.soundcloud}"'),            # innerHTML += avec URL profil
+    ("dashboard.js", 'href="${p.youtube}"'),
+    ("dashboard.js", 'href="${p.spotify}"'),
+    ("dashboard.js", "${d.sampleName}</strong>"),          # self-XSS nom de fichier
+    ("ui/messaging/messaging.js", "SmyleTradeView.open('${offerId}')"),  # onclick inline
+)
+
+
+@pytest.mark.parametrize("rel,motif", _S02_INTERDITS)
+def test_forme_vulnerable_absente(rel: str, motif: str):
+    assert motif not in _lire_rel(rel), f"{rel} : `{motif}` réintroduit"
+
+
+@pytest.mark.parametrize("rel", ("artiste.js", "dashboard.js"))
+def test_safe_social_href_present(rel: str):
+    """Un seul point d'entrée pour un href social, avec handle encodé."""
+    src = _lire_rel(rel)
+    assert "function safeSocialHref(key, val)" in src, f"{rel} : safeSocialHref absent"
+    assert "encodeURIComponent(v.replace(/^@/, ''))" in src, f"{rel} : handle non encodé"
+    # Tout schéma autre que http(s) est refusé (javascript:, data:, vbscript:).
+    assert r"if (/^[a-z][a-z0-9+.\-]*:/i.test(v)) return '';" in src, (
+        f"{rel} : le refus des schémas non http(s) a disparu"
+    )
+
+
+def test_liens_sociaux_dashboard_en_create_element():
+    """Plus d'`innerHTML +=` pour les liens du profil : createElement + textContent."""
+    src = _lire_rel("dashboard.js")
+    assert "pvLinks.innerHTML +=" not in src, "dashboard.js : innerHTML += réintroduit"
+    assert "pvLinks.appendChild(a);" in src, "dashboard.js : createElement('a') attendu"
+
+
+def test_marqueur_echange_valide_uuid():
+    """`__TRADE_OFFER__<id>` n'est une carte cliquable que si l'id est un UUID."""
+    src = _lire_rel("ui/messaging/messaging.js")
+    assert "const _UUID_RE = /^[0-9a-f]{8}-" in src, "messaging.js : _UUID_RE absent"
+    assert "_UUID_RE.test(content0.slice('__TRADE_OFFER__'.length))" in src, (
+        "messaging.js : le marqueur n'est plus validé UUID au rendu"
+    )
+    assert 'data-offer-id="${_esc(offerId)}"' in src, (
+        "messaging.js : la carte doit porter data-offer-id (plus d'onclick inline)"
+    )
+    assert "_UUID_RE.test(btn.dataset.offerId" in src, (
+        "messaging.js : le délégué doit revalider l'id avant SmyleTradeView.open"
+    )
+
+
+def test_self_xss_titres_du_proprietaire():
+    """Injection #12 : titres/nom de fichier du propre compte échappés aussi."""
+    dash = _lire_rel("dashboard.js")
+    assert "htmlEscape(d.sampleName)" in dash, "dashboard.js : sampleName non échappé"
+    assert "&#39;" in dash, "dashboard.js : htmlEscape n'échappe pas l'apostrophe"
+    wp = _lire_rel("ui/panels/watt-panel.js")
+    assert "&#39;" in wp and "&quot;" in wp, (
+        "watt-panel.js : le titre n'est plus échappé complètement"
+    )

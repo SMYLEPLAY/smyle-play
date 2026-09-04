@@ -3256,6 +3256,36 @@ const SOCIAL_FIELDS = [
   { key: 'twitterX',   label: 'X',          emoji: '✖️', field: 'twitter_x'  },
 ];
 
+// Sécurité (C2 / S-02, 2026-09-02, annexe A §B4) — seule source de vérité
+// pour un href social. Une valeur saisie par un artiste comme "javascript:…"
+// ou "data:…" serait sinon posée en href et exécutée au clic (XSS stocké →
+// vol du jeton de session). Règles :
+//   - http(s):// → tel quel ;
+//   - handle nu (`@toto` / `toto`) → instagram / tiktok / x uniquement, avec
+//     encodeURIComponent (les autres réseaux exigent une URL) ;
+//   - domaine sans schéma (`instagram.com/toto`) → préfixé `https://` ;
+//   - tout le reste (autre schéma, caractères interdits) → '' = chip non rendue.
+const _SOCIAL_HANDLE_BASE = {
+  instagram: (h) => 'https://instagram.com/' + h,
+  tiktok:    (h) => 'https://tiktok.com/@' + h,
+  twitterX:  (h) => 'https://x.com/' + h,
+};
+function safeSocialHref(key, val) {
+  const v = String(val || '').trim();
+  if (!v) return '';
+  if (/[\s"'<>`\\]/.test(v)) return '';                 // caractères interdits
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(v)) return '';      // javascript:, data:, …
+  const base = _SOCIAL_HANDLE_BASE[key];
+  if (base && /^@?[A-Za-z0-9_.-]{1,60}$/.test(v)) {
+    return base(encodeURIComponent(v.replace(/^@/, '')));
+  }
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(v)) {       // domaine sans schéma
+    return 'https://' + v;
+  }
+  return '';
+}
+
 function renderSocials(artist, isSelf) {
   const wrap = $('ap-socials');
   if (!wrap) return;
@@ -3279,10 +3309,12 @@ function renderSocials(artist, isSelf) {
   SOCIAL_FIELDS.forEach(s => {
     const val = (artist[s.key] || '').trim();
     if (val) {
+      const safeHref = safeSocialHref(s.key, val);
+      if (!safeHref) return;   // schéma non autorisé → on n'affiche pas le lien
       hasAny = true;
       const a = document.createElement('a');
       a.className = 'ap-social-chip';
-      a.href   = val;
+      a.href   = safeHref;
       a.target = '_blank';
       a.rel    = 'noopener noreferrer';
       a.title  = s.label;

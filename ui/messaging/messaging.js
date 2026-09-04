@@ -42,6 +42,12 @@
     ));
   }
 
+  // S-02 (2026-09-04, annexe A §B3) — un marqueur d'échange n'est honoré que
+  // si son id est un UUID. Le marqueur `__TRADE_OFFER__<id>` est un message
+  // posté par le CLIENT via l'endpoint générique `/messages` : n'importe qui
+  // peut donc en envoyer un dont la charge n'est pas un id.
+  const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   // Couleur déterministe à partir d'un ID (fallback si pas de brand_color)
   function _colorFromId(id) {
     let h = 0;
@@ -179,6 +185,7 @@
         <div class="msg-pane msg-pane-thread hidden" id="msg-pane-thread"></div>
       </div>`;
     _bindDelegates(el);
+    _bindOfferDelegate(el);
     _renderInbox();
   }
 
@@ -196,6 +203,24 @@
         ev.preventDefault();
         _selectThread(row.dataset.threadUserId, row.dataset.threadUserName || '');
         return;
+      }
+    });
+  }
+
+  // S-02 (2026-09-04, annexe A §B3) — la carte « Offre / proposition » n'a plus
+  // d'onclick inline dans lequel on interpolait `offerId` : elle porte
+  // `data-offer-id`, et UN SEUL délégué posé une fois sur le conteneur (stable ;
+  // les panes sont re-rendus en innerHTML) ouvre l'écran d'échange. L'id est
+  // revalidé UUID ici : SmyleTradeView.open ne reçoit jamais autre chose.
+  function _bindOfferDelegate(el) {
+    if (!el || el.dataset.msgOfferDelegated === '1') return;
+    el.dataset.msgOfferDelegated = '1';
+    el.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-offer-id]');
+      if (!btn || !el.contains(btn)) return;
+      ev.preventDefault();
+      if (window.SmyleTradeView && _UUID_RE.test(btn.dataset.offerId || '')) {
+        window.SmyleTradeView.open(btn.dataset.offerId);
       }
     });
   }
@@ -310,12 +335,14 @@
 
       // Carte d'échange : message marqueur "__TRADE_OFFER__<id>" → carte cliquable
       // qui ouvre l'écran de proposition (au lieu d'un texte brut).
+      // S-02 (2026-09-04, annexe A §B3) — id validé UUID : sinon le message est
+      // rendu comme du texte normal (échappé), pas comme une carte cliquable.
       const content0 = m.content || '';
-      if (content0.indexOf('__TRADE_OFFER__') === 0) {
+      if (content0.indexOf('__TRADE_OFFER__') === 0 && _UUID_RE.test(content0.slice('__TRADE_OFFER__'.length))) {
         const offerId = content0.slice('__TRADE_OFFER__'.length);
         return `
           <div class="msg-bubble ${mine ? 'msg-bubble-me' : 'msg-bubble-other'}">
-            <button type="button" onclick="if(window.SmyleTradeView){SmyleTradeView.open('${offerId}');}"
+            <button type="button" data-offer-id="${_esc(offerId)}"
                     style="display:block;text-align:left;background:rgba(124,58,237,.16);border:1px solid rgba(124,58,237,.55);color:#cdb4ff;border-radius:12px;padding:10px 14px;cursor:pointer;font-size:13px;line-height:1.4">
               🔄 <strong>Offre / proposition</strong><br>
               <span style="opacity:.75;font-size:12px">Cliquer pour voir et répondre</span>
