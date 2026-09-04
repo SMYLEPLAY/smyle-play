@@ -21,7 +21,11 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import (
+    ADMIN_FORBIDDEN_DETAIL,
+    get_current_user,
+    is_admin_user,
+)
 from app.auth.jwt import decode_access_token
 from app.core.ratelimit import limiter
 from app.database import get_db
@@ -234,9 +238,11 @@ class ModerationResult(BaseModel):
 
 
 def _require_official(current_user: User) -> None:
-    if not current_user.is_official:
+    # K-01 : la règle vit dans app.auth.dependencies (is_official OU is_admin).
+    # Nom conservé pour ne pas toucher les 4 appels ci-dessous.
+    if not is_admin_user(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
-                            detail="Réservé à l'administration")
+                            detail=ADMIN_FORBIDDEN_DETAIL)
 
 
 @router.post("/admin/reports/{report_id}/takedown",
