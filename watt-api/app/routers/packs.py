@@ -8,6 +8,7 @@ Endpoints :
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
@@ -23,7 +24,13 @@ from app.services.packs import (
     open_mystery_pack_atomic,
 )
 
-router = APIRouter(prefix="/packs", tags=["packs"])
+# S-08 (2026-09-02) — MODE LANCEMENT gaté côté API : tant que l'item est
+# masqué, toutes les routes de ce routeur répondent 404 (audit A §M8).
+router = APIRouter(
+    prefix="/packs",
+    tags=["packs"],
+    dependencies=[Depends(require_launch_item("packs"))],
+)
 
 
 @router.get("/mystery", response_model=PackInfo)

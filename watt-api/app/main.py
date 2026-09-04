@@ -349,12 +349,12 @@ def create_app() -> FastAPI:
     app.include_router(beats_router)
     app.include_router(images_router)
     app.include_router(links_router)
-    # MODE LANCEMENT — THE PLAN masqué par défaut : le routeur n'est monté que
-    # si l'item est VISIBLE (settings.launch_flags_dict()["thePlan"]). L'import
-    # reste en place ; on ne conditionne que le montage → réversible via env
-    # (MODE_LANCEMENT=False ou SHOW_THE_PLAN=True le remonte).
-    if settings.launch_flags_dict()["thePlan"]:
-        app.include_router(the_plan_router)
+    # MODE LANCEMENT — S-08 (2026-09-02) : THE PLAN est monté comme les autres
+    # routeurs ; le masquage est porté par la dépendance require_launch_item
+    # ("thePlan") posée sur son APIRouter, relue à CHAQUE requête. Avant, le
+    # montage conditionnel était évalué au boot : rallumer l'item exigeait un
+    # redéploiement. Mécanisme désormais unique avec resale/packs/trades/voices.
+    app.include_router(the_plan_router)
     app.include_router(telemetry_router)
     app.include_router(albums_router)
     app.include_router(albums_public_router)

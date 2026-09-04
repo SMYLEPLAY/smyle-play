@@ -20,6 +20,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from app.core.launch import require_launch_item
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -308,6 +309,9 @@ async def unlock_adn(
     "/voices/{voice_id}",
     response_model=UnlockVoiceResponse,
     status_code=status.HTTP_201_CREATED,
+    # S-08 — l'achat de voix suit le drapeau "voix" comme le routeur /api/voices
+    # (le reste d'unlocks.py n'est PAS gaté : sons, images, ADN restent ouverts).
+    dependencies=[Depends(require_launch_item("voix"))],
 )
 @limiter.limit(LIMIT_PURCHASE)
 async def unlock_voice(

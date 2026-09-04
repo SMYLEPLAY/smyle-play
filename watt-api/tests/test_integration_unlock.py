@@ -54,6 +54,7 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 from datetime import datetime, timedelta, timezone
 
+from app.config import settings
 from app.database import SessionLocal
 from app.models.achievement import Achievement, UserAchievement
 from app.models.adn import Adn
@@ -605,7 +606,7 @@ async def test_unlock_credits_seller_gagnes_bucket():
 # =============================================================================
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_double_accept_trade_idempotent(client):
+async def test_double_accept_trade_idempotent(client, monkeypatch):
     """
     Le receiver accepte DEUX FOIS la même offre simultanément (double-clic /
     double-requête). Avant le durcissement H0.3, l'absence de verrou sur la
@@ -618,6 +619,12 @@ async def test_double_accept_trade_idempotent(client):
         (prix snapshot 10 → frais = max(2, 20%) = 2 ; supplément 0)
         → sender 1000→998, receiver 1000→998 (et surtout PAS 996)
     """
+    # S-08 (2026-09-02) : le routeur /trades est désormais gaté par le drapeau
+    # "troc" du MODE LANCEMENT (404 quand masqué, ce qui est le défaut). Ce
+    # test porte sur l'idempotence du burn de frais, pas sur le drapeau : on
+    # rallume l'item le temps du test.
+    monkeypatch.setattr(settings, "SHOW_TROC", True)
+
     sender = await _make_user(initial_balance=1000, artist_name="TradeSender")
     receiver = await _make_user(initial_balance=1000, artist_name="TradeReceiver")
     offered = await _make_published_prompt(sender, price=10)    # prompt du sender
