@@ -934,7 +934,7 @@ function openBoutiqueDrawer(type, dataStr) {
 
   // Cover image en haut du drawer (son uniquement, si disponible)
   if (type === 'son' && data.coverUrl) {
-    html += `<div class="bd-cover"><img src="${(data.coverUrl+'').replace(/"/g,'&quot;')}" alt="" class="bd-cover-img" /></div>`;
+    html += `<div class="bd-cover"><img loading="lazy" decoding="async" src="${(data.coverUrl+'').replace(/"/g,'&quot;')}" alt="" class="bd-cover-img" /></div>`;
   }
   html += `<div class="bd-color-bar" style="background:${color}"></div>`;
   html += `<div><div class="bd-type">${typeLabel}</div><div class="bd-name">${(nameLabel + '').replace(/</g,'&lt;')}</div></div>`;
@@ -1824,7 +1824,7 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
   // SÉCURITÉ (Phase 0 lancement, 2026-07-23) — échappement HTML obligatoire :
   // promptTitle / receiverName / p.title viennent d'un AUTRE utilisateur (nom
   // d'artiste, titre de recette). Sans échappement, un titre piégé du type
-  // <img src=x onerror=...> s'exécutait chez celui qui ouvre la modale et
+  // <img loading="lazy" decoding="async" src=x onerror=...> s'exécutait chez celui qui ouvre la modale et
   // volait son jeton de session (localStorage). On échappe toute donnée serveur.
   const escH = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -2816,7 +2816,7 @@ function _apOpenImageLightbox(card) {
 
   ov.innerHTML =
     '<button type="button" class="ap-lb-close" aria-label="Fermer" style="position:absolute;top:16px;right:20px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:20px;cursor:pointer">✕</button>' +
-    '<img src="' + _apImgEsc(src) + '" alt="' + _apImgEsc(title) + '" style="max-width:min(92vw,900px);max-height:74vh;object-fit:contain;border-radius:14px;box-shadow:0 10px 44px rgba(0,0,0,.6)" />' +
+    '<img loading="lazy" decoding="async" src="' + _apImgEsc(src) + '" alt="' + _apImgEsc(title) + '" style="max-width:min(92vw,900px);max-height:74vh;object-fit:contain;border-radius:14px;box-shadow:0 10px 44px rgba(0,0,0,.6)" />' +
     '<div style="color:#f3f0ff;font-weight:700;font-size:1rem;text-align:center;max-width:90vw">' + _apImgEsc(title) + '</div>' +
     buyBtn;
 
