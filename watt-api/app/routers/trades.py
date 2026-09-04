@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
@@ -36,7 +37,13 @@ from app.schemas.trade import PromptSnap, TradeOfferCreate, TradeOfferRead
 from app.services.credits import _acquire_user_locks
 from app.services.notifications import create_notification
 
-router = APIRouter(prefix="/trades", tags=["trades"])
+# S-08 (2026-09-02) — MODE LANCEMENT gaté côté API : tant que l'item est
+# masqué, toutes les routes de ce routeur répondent 404 (audit A §M8).
+router = APIRouter(
+    prefix="/trades",
+    tags=["trades"],
+    dependencies=[Depends(require_launch_item("troc"))],
+)
 
 _TRADE_TTL_DAYS = 7  # expire automatiquement après 7 jours
 

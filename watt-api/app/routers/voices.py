@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
@@ -43,7 +44,13 @@ from app.services.voices import (
 )
 
 
-router = APIRouter(prefix="/api/voices", tags=["voices"])
+# S-08 (2026-09-02) — MODE LANCEMENT gaté côté API : tant que l'item est
+# masqué, toutes les routes de ce routeur répondent 404 (audit A §M8).
+router = APIRouter(
+    prefix="/api/voices",
+    tags=["voices"],
+    dependencies=[Depends(require_launch_item("voix"))],
+)
 
 
 # -----------------------------------------------------------------------------

@@ -28,6 +28,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
@@ -36,7 +37,13 @@ from app.models.download_event import DownloadEvent
 from app.models.user import User
 from app.services.credits import debit_with_priority
 
-router = APIRouter(prefix="/products/the-plan", tags=["the-plan"])
+# S-08 (2026-09-02) — MODE LANCEMENT gaté côté API : tant que l'item est
+# masqué, toutes les routes de ce routeur répondent 404 (audit A §M8).
+router = APIRouter(
+    prefix="/products/the-plan",
+    tags=["the-plan"],
+    dependencies=[Depends(require_launch_item("thePlan"))],
+)
 
 PRICE = 35           # Smyles — prix réel
 PRICE_STRIKE = 70    # Smyles — prix barré (−50 %)
