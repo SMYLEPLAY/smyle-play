@@ -1,22 +1,35 @@
+# Source de vérité des versions = requirements.in / requirements.txt à la RACINE
+# du dépôt (lockfile `uv pip compile requirements.in --python-version 3.11
+# -o requirements.txt`). Prod (nixpacks), CI et e2e installent requirements.txt ;
+# ce fichier ne sert qu'à `pip install ./watt-api` (packaging) et à l'outillage.
+# F-03 (2026-09-02) : l'ancienne bibliothèque JWT (CVE-2024-33663/33664,
+# jamais importée — le code utilise PyJWT, cf. app/auth/jwt.py) est remplacée ;
+# dépendances alignées sur requirements.in (boto3, slowapi, pydub, Pillow),
+# bornes identiques. Un test d'hygiène (tests/test_repo_public_hygiene.py)
+# interdit son retour dans les trois fichiers de dépendances.
 [project]
 name = "watt-api"
 version = "0.1.0"
 requires-python = ">=3.11"
 
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "sqlalchemy[asyncio]>=2.0",
-    "asyncpg",
-    "alembic",
-    "pydantic[email]>=2.0",
-    "pydantic-settings",
-    "python-jose[cryptography]",
-    "bcrypt",
-    "httpx",
-    "python-multipart",
-    "structlog",
-    "sentry-sdk[fastapi]"
+    "fastapi>=0.110.0,<1.0",
+    "uvicorn[standard]>=0.27.0,<1.0",
+    "sqlalchemy[asyncio]>=2.0,<3.0",
+    "asyncpg>=0.29.0,<1.0",
+    "alembic>=1.13.0,<2.0",
+    "pydantic[email]>=2.0,<3.0",
+    "pydantic-settings>=2.0,<3.0",
+    "PyJWT>=2.8,<3",
+    "bcrypt>=4.0.0,<6.0",
+    "httpx>=0.26.0,<1.0",
+    "python-multipart>=0.0.9,<1.0",
+    "structlog>=24.1.0,<27.0",
+    "sentry-sdk[fastapi]>=1.40.0,<3.0",
+    "slowapi>=0.1.9,<1.0",
+    "boto3>=1.34.0,<2.0",
+    "pydub>=0.25.1,<1.0",
+    "Pillow>=10.4.0,<13.0",
 ]
 
 [project.optional-dependencies]

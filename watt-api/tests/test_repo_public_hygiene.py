@@ -67,3 +67,31 @@ def test_aucun_artefact_machine(motif: str):
         if p.is_file()
     ]
     assert not trouves, f"artefacts à sortir du dépôt public : {trouves}"
+
+
+# F-03 (2026-09-02) : python-jose (CVE-2024-33663/33664) a été remplacé par
+# PyJWT le 2026-07 (app/auth/jwt.py) mais restait déclaré dans
+# watt-api/pyproject.toml — un `pip install ./watt-api` aurait réinstallé une
+# bibliothèque vulnérable. Les trois fichiers de dépendances ne doivent plus
+# jamais la mentionner.
+_FICHIERS_DEPENDANCES = (
+    "watt-api/pyproject.toml",
+    "requirements.in",
+    "requirements.txt",
+)
+
+
+@pytest.mark.parametrize("fichier", _FICHIERS_DEPENDANCES)
+def test_aucune_dependance_python_jose(fichier: str):
+    chemin = REPO_ROOT / fichier
+    assert chemin.is_file(), f"{fichier} introuvable"
+    contenu = chemin.read_text(encoding="utf-8").lower()
+    assert "jose" not in contenu, f"python-jose encore référencé dans {fichier}"
+
+
+def test_pyproject_declare_pyjwt_et_les_dependances_reellement_importees():
+    """pyproject.toml aligné sur requirements.in : le code importe jwt (PyJWT),
+    boto3 (R2), slowapi (rate-limit), pydub (audio) et bcrypt (mots de passe)."""
+    contenu = (REPO_ROOT / "watt-api/pyproject.toml").read_text(encoding="utf-8").lower()
+    for dep in ("pyjwt", "boto3", "slowapi", "pydub", "bcrypt"):
+        assert dep in contenu, f"{dep} absent de watt-api/pyproject.toml"
