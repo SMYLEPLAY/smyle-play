@@ -35,21 +35,34 @@ async def _scalar(db: AsyncSession, sql: str, **params) -> int:
 async def funnel_data(db: AsyncSession, days: int = 30) -> dict:
     """Funnel + répartition par événement sur une fenêtre glissante."""
     days = max(1, min(days, 365))
-    since_clause = f"created_at >= now() - interval '{days} days'"
+    # F-03 (2026-09-02) : la fenêtre est un PARAMÈTRE lié (`:days`), plus une
+    # interpolation dans le SQL — `interval '1 day' * :days` est l'idiome
+    # Postgres pour un intervalle variable. Les requêtes sont des littéraux
+    # purs : bandit B608 (« hardcoded_sql_expressions ») ne se déclenche plus.
+    # (`days` était déjà borné 1..365, donc sans injection réelle — c'est
+    # l'hygiène de l'outil de CI qui est en jeu.)
 
     visitors = await _scalar(
-        db, f"SELECT COUNT(DISTINCT session_id) FROM analytics_events "
-            f"WHERE name = 'visit' AND {since_clause}")
+        db,
+        "SELECT COUNT(DISTINCT session_id) FROM analytics_events "
+        "WHERE name = 'visit' AND created_at >= now() - interval '1 day' * :days",
+        days=days)
     signups = await _scalar(
-        db, f"SELECT COUNT(DISTINCT session_id) FROM analytics_events "
-            f"WHERE name = 'signup' AND {since_clause}")
+        db,
+        "SELECT COUNT(DISTINCT session_id) FROM analytics_events "
+        "WHERE name = 'signup' AND created_at >= now() - interval '1 day' * :days",
+        days=days)
     buyers = await _scalar(
-        db, f"SELECT COUNT(DISTINCT session_id) FROM analytics_events "
-            f"WHERE name = 'purchase' AND {since_clause}")
+        db,
+        "SELECT COUNT(DISTINCT session_id) FROM analytics_events "
+        "WHERE name = 'purchase' AND created_at >= now() - interval '1 day' * :days",
+        days=days)
     returning = await _scalar(
-        db, f"SELECT COUNT(*) FROM (SELECT session_id FROM analytics_events "
-            f"WHERE name = 'visit' AND {since_clause} GROUP BY session_id "
-            f"HAVING COUNT(DISTINCT date(created_at)) >= 2) t")
+        db,
+        "SELECT COUNT(*) FROM (SELECT session_id FROM analytics_events "
+        "WHERE name = 'visit' AND created_at >= now() - interval '1 day' * :days "
+        "GROUP BY session_id HAVING COUNT(DISTINCT date(created_at)) >= 2) t",
+        days=days)
 
     def pct(n: int, d: int) -> float:
         return round(n * 100 / d, 1) if d else 0.0
@@ -62,9 +75,14 @@ async def funnel_data(db: AsyncSession, days: int = 30) -> dict:
     ]
 
     # Répartition brute par événement (diagnostic).
-    rows = (await db.execute(text(
-        f"SELECT name, COUNT(*) AS n FROM analytics_events "
-        f"WHERE {since_clause} GROUP BY name ORDER BY n DESC"))).all()
+    rows = (await db.execute(
+        text(
+            "SELECT name, COUNT(*) AS n FROM analytics_events "
+            "WHERE created_at >= now() - interval '1 day' * :days "
+            "GROUP BY name ORDER BY n DESC"
+        ),
+        {"days": days},
+    )).all()
     by_event = [{"name": r[0], "count": int(r[1])} for r in rows]
 
     return {
