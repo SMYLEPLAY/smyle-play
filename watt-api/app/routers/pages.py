@@ -12,6 +12,7 @@ Parité route par route (source : OBSIDIAN/05_TECH/Flask_routes_inventory.md) :
   /                          index.html
   /watt                      301 → / (legacy)
   /dashboard /tarifs /library /legal /reset → page HTML dédiée
+  /comment-ca-marche         comment-ca-marche.html (lien de l'onboarding)
   /offres                    gate « paliers » : 302 → / si masqué
   /u/{slug} /@{slug}         artiste.html (profil) ; /artiste/{slug} 301 → /u/
   /oeuvre/{slug}             oeuvre.html (fiche œuvre) — rétablie par F1-1 / L-03,
@@ -302,6 +303,15 @@ async def dashboard_page():
 @router.get("/tarifs", include_in_schema=False)
 async def tarifs_page():
     return _page("tarifs.html")
+
+
+@router.get("/comment-ca-marche", include_in_schema=False)
+async def comment_ca_marche_page():
+    # K-03 (2026-09-04) — LIEN MORT : ui/core/onboarding.js:78 pointe vers
+    # /comment-ca-marche, mais aucune route de page ne servait le fichier
+    # (le mount statique ne resout que /comment-ca-marche.html) → 404 depuis
+    # l'onboarding. Page publique non gatee, comme /tarifs et /legal.
+    return _page("comment-ca-marche.html")
 
 
 @router.get("/offres", include_in_schema=False)

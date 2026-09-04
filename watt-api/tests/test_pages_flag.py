@@ -74,6 +74,15 @@ def test_oeuvre_page_servie():
     assert "text/html" in r.headers["content-type"]
 
 
+def test_comment_ca_marche_servie():
+    # K-03 : /comment-ca-marche est linké par l'onboarding
+    # (ui/core/onboarding.js) mais aucune route de page ne le servait —
+    # le mount statique ne résout que /comment-ca-marche.html → 404.
+    r = _client().get("/comment-ca-marche")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+
+
 def test_alias_artiste_301_vers_u():
     r = _client().get("/artiste/tom")
     assert r.status_code == 301
