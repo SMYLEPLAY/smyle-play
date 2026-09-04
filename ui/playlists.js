@@ -1868,10 +1868,13 @@
     const promptPrice = (t.prompt_price_credits || t.promptPriceCredits) != null
       ? (t.prompt_price_credits || t.promptPriceCredits) : null;
 
+    // S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+    // ui/albums.js : _e sert en contexte d'attribut (src, style), la variante
+    // textContent→innerHTML n'échappait pas les guillemets.
     function _e(s) {
-      const d = document.createElement('div');
-      d.textContent = s == null ? '' : String(s);
-      return d.innerHTML;
+      return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+      ));
     }
 
     const coverHTML = cover

@@ -131,10 +131,13 @@
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
+  // S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+  // ui/albums.js : _esc sert dans des attributs et des onclick inline, la
+  // variante textContent→innerHTML n'échappait pas les guillemets.
   function _esc(s) {
-    const d = document.createElement('div');
-    d.textContent = s == null ? '' : String(s);
-    return d.innerHTML;
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+    ));
   }
 
   function _initial(name) {
@@ -332,7 +335,7 @@
         const time    = _timeAgo(t.last_message_at);
         return `
           <button class="stb-msg-thread${unread ? ' stb-msg-unread' : ''}" type="button"
-                  onclick="window.SmyleTopbar.openMsgThread('${_esc(t.other_user_id)}','${_esc(t.other_user_name || '')}')">
+                  data-thread-user-id="${_esc(t.other_user_id)}" data-thread-user-name="${_esc(t.other_user_name || '')}">
             <span class="stb-msg-avatar">${_esc(init)}</span>
             <span class="stb-msg-info">
               <span class="stb-msg-name">${_esc(t.other_user_name || 'Utilisateur')}</span>
@@ -350,6 +353,18 @@
         <span class="stb-msg-title">Messages</span>
       </div>
       <div class="stb-msg-list">${html}</div>`;
+    // S-01 (2026-09-02) — un seul délégué (posé une fois sur le panneau,
+    // stable) remplace l'onclick inline qui interpolait other_user_name
+    // dans du JS : une apostrophe dans un nom d'artiste sortait du littéral.
+    if (panel.dataset.stbDelegated !== '1') {
+      panel.dataset.stbDelegated = '1';
+      panel.addEventListener('click', (ev) => {
+        const row = ev.target.closest('[data-thread-user-id]');
+        if (!row || !panel.contains(row)) return;
+        ev.preventDefault();
+        _openMsgThread(row.dataset.threadUserId, row.dataset.threadUserName || '');
+      });
+    }
     panel.hidden = false;
     _msgState.open = true;
     // Réinitialise le badge quand on ouvre le dropdown
@@ -856,6 +871,16 @@
   // ── Écran "Proposition d'échange" (réutilisable : notif + messages) ──────
   // Affiche l'offre (les 2 prompts + écoute) et permet d'accepter / refuser /
   // annuler selon le rôle. Ouvert via SmyleTopbar.openTradeView(offerId).
+  // S-01 (2026-09-02) — dédoublonnage : le rendu de référence est
+  // ui/core/trade-view.js (SmyleTradeView.open, chargé sur index/artiste/
+  // dashboard/library). _openTradeView ne sert plus que de repli quand
+  // trade-view.js n'est pas chargé, avec le même échappement complet.
+  function _openTradeViewDispatch(offerId) {
+    return (window.SmyleTradeView && typeof window.SmyleTradeView.open === 'function')
+      ? window.SmyleTradeView.open(offerId)
+      : _openTradeView(offerId);
+  }
+
   async function _openTradeView(offerId) {
     if (!offerId) return;
     let offers = [];
@@ -869,17 +894,17 @@
     const pending = o.status === 'pending';
     const off = o.offered_prompt || {};
     const req = o.requested_prompt || {};
-    const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+    const esc = _esc;   // S-01 : échappeur complet (plus de replace(/</g) seul)
     const audio = (p) => (p && p.audio_url)
-      ? `<audio controls preload="none" src="${p.audio_url}" style="width:100%;margin-top:6px;height:30px"></audio>` : '';
+      ? `<audio controls preload="none" src="${esc(p.audio_url)}" style="width:100%;margin-top:6px;height:30px"></audio>` : '';
 
     let actions;
     if (pending && isReceiver) {
       actions = `
-        <button onclick="SmyleTopbar._tradeAct('${o.id}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">✅ Accepter</button>
-        <button onclick="SmyleTopbar._tradeAct('${o.id}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">❌ Refuser</button>`;
+        <button onclick="SmyleTopbar._tradeAct('${esc(o.id)}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">✅ Accepter</button>
+        <button onclick="SmyleTopbar._tradeAct('${esc(o.id)}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">❌ Refuser</button>`;
     } else if (pending && isSender) {
-      actions = `<button onclick="SmyleTopbar._tradeAct('${o.id}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler ma proposition</button>`;
+      actions = `<button onclick="SmyleTopbar._tradeAct('${esc(o.id)}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler ma proposition</button>`;
     } else {
       const lbl = { accepted: '✅ Échange accepté', rejected: '❌ Refusé', cancelled: 'Annulé', expired: '⏳ Expiré' }[o.status] || o.status;
       actions = `<div style="flex:1;text-align:center;opacity:.7;padding:8px">${lbl}</div>`;
@@ -938,16 +963,16 @@
     const isSeller = myId && String(o.seller_id) === myId;
     const isBuyer  = myId && String(o.buyer_id) === myId;
     const pending  = o.status === 'pending';
-    const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+    const esc = _esc;   // S-01 : échappeur complet (plus de replace(/</g) seul)
     const typeLbl = _ADN_TYPE_LABELS[o.target_type] || 'ADN';
 
     let actions;
     if (pending && isSeller) {
       actions = `
-        <button onclick="SmyleTopbar._adnOfferAct('${o.id}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">✅ Accepter · ${o.amount_credits} Smyles</button>
-        <button onclick="SmyleTopbar._adnOfferAct('${o.id}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">❌ Refuser</button>`;
+        <button onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">✅ Accepter · ${o.amount_credits} Smyles</button>
+        <button onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">❌ Refuser</button>`;
     } else if (pending && isBuyer) {
-      actions = `<button onclick="SmyleTopbar._adnOfferAct('${o.id}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler mon offre</button>`;
+      actions = `<button onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler mon offre</button>`;
     } else {
       const lbl = { accepted: '✅ Offre acceptée — ADN livré', rejected: '❌ Refusée', cancelled: 'Annulée', expired: '⏳ Expirée' }[o.status] || o.status;
       actions = `<div style="flex:1;text-align:center;opacity:.7;padding:8px">${lbl}</div>`;
@@ -1015,7 +1040,9 @@
 
   // API publique minimale (appelée depuis les onclick inlines du template).
   window.SmyleTopbar = {
-    openTradeView:    _openTradeView,
+    // S-01 : SmyleTradeView.open (ui/core/trade-view.js) est le rendu de
+    // référence ; _openTradeView n'est qu'un repli si le module est absent.
+    openTradeView:    _openTradeViewDispatch,
     openAdnOfferView: _openAdnOfferView,
     _tradeAct:        _tradeAct,
     _adnOfferAct:     _adnOfferAct,

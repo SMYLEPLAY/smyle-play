@@ -250,11 +250,14 @@
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   function _esc(s) {
-    // Échappement HTML minimal — on construit tout en innerHTML pour garder
-    // le code compact, mais toutes les valeurs dynamiques passent par là.
-    const div = document.createElement('div');
-    div.textContent = s == null ? '' : String(s);
-    return div.innerHTML;
+    // Echappement HTML complet — inclut les guillemets (" et ') car _esc est
+    // utilise en contexte d'ATTRIBUT (href, style, data-*). Sans cela une
+    // valeur controlee par l'artiste (couleur de marque, titre) pourrait
+    // sortir de l'attribut et injecter un handler (XSS). Cf. audit 2026-08-11 ;
+    // S-01 (2026-09-04) : copie exacte de ui/albums.js (& < > " ' `).
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+    ));
   }
 
   function _fmt(n) {

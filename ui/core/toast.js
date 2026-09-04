@@ -86,7 +86,13 @@
 
     const toast = document.createElement('div');
     toast.className = `smyle-toast ${type}`;
-    toast.innerHTML = `${ICONS[type] || ICONS.info}<span>${String(message)}</span>`;
+    // S-01 (2026-09-02) — le message passe en textContent (comme showToast
+    // dans ui/core/dom.js) : les appelants y interpolent des titres serveur
+    // (pack ouvert, marché secondaire), jamais du HTML voulu.
+    toast.innerHTML = ICONS[type] || ICONS.info;   // icône SVG statique uniquement
+    const span = document.createElement('span');
+    span.textContent = String(message);
+    toast.appendChild(span);
     wrap.appendChild(toast);
 
     // Reflow to trigger transition

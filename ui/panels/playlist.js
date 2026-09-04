@@ -68,7 +68,9 @@ function openPlaylist(key, cardEl) {
 
   list.innerHTML = pl.tracks.length
     ? pl.tracks.map((t, i) => {
-        const tuuid = t.trackUuid || t.id || '';
+        // S-01 (2026-09-02) — t.name / ids viennent du catalogue serveur :
+        // échappés via _esc (ui/core/dom.js, échappeur complet).
+        const tuuid = _esc(t.trackUuid || t.id || '');
         const likeBtn  = tuuid
           ? `<button class="like-btn panel-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist" onclick="event.stopPropagation()"></button>`
           : '';
@@ -77,14 +79,14 @@ function openPlaylist(key, cardEl) {
           : '';
         return `
         <div class="track-item${currentPlaylist === key && currentTrackIdx === i ? ' active' : ''}"
-             id="ti-${t.id}" onclick="loadTrack('${key}', ${i})">
+             id="ti-${_esc(t.id)}" onclick="loadTrack('${key}', ${i})">
           <span class="track-num">${String(i + 1).padStart(2, '0')}</span>
           <div class="track-info">
-            <div class="track-name">${t.name}</div>
+            <div class="track-name">${_esc(t.name)}</div>
           </div>
           <div class="track-playing-icon"><span></span><span></span><span></span></div>
           ${t.duration ? `<span class="track-dur">${fmtTime(t.duration)}</span>` : ''}
-          <span class="track-plays" id="plays-${t.id}">${fmtPlays(getPlayCount(t.id))} ▶</span>
+          <span class="track-plays" id="plays-${_esc(t.id)}">${fmtPlays(getPlayCount(t.id))} ▶</span>
           ${likeBtn}${addPlBtn}
           <button class="add-to-mix-btn" title="Ajouter à My Mix"
                   onclick="addToMix(event,'${key}',${i})">＋ Mix</button>

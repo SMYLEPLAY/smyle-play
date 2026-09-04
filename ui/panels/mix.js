@@ -74,13 +74,15 @@ function renderMixPanel() {
 
   if (!list) return;
 
+  // S-01 (2026-09-02) — track.name / pl.label viennent du catalogue serveur
+  // (/watt/tracks-catalog, /playlists/{id}) : échappés via _esc (ui/core/dom.js).
   list.innerHTML = n
     ? myMixTracks.map((m, i) => {
         const pl    = PLAYLISTS[m.playlistKey];
         const track = pl.tracks[m.trackIdx];
         return `
           <div class="mix-track-item${mixPlaying && mixIdx === i ? ' active' : ''}"
-               data-theme="${pl.theme}"
+               data-theme="${_esc(pl.theme)}"
                draggable="true"
                ondragstart="mixDragStart(event,${i})"
                ondragover="mixDragOver(event,${i})"
@@ -90,8 +92,8 @@ function renderMixPanel() {
             <span class="mix-drag-handle" title="Déplacer">⠿</span>
             <span class="mix-track-num">${String(i + 1).padStart(2, '0')}</span>
             <div class="mix-track-info">
-              <div class="mix-track-name">${track.name}</div>
-              <div class="mix-track-pl">${pl.label}</div>
+              <div class="mix-track-name">${_esc(track.name)}</div>
+              <div class="mix-track-pl">${_esc(pl.label)}</div>
             </div>
             <button class="mix-remove-btn" onclick="removeFromMix(event,${i})">✕</button>
           </div>

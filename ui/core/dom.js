@@ -55,8 +55,13 @@ function _fmtHub(n) {
   return String(n);
 }
 
+// S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+// ui/albums.js. Utilisé aussi en contexte d'attribut (aria-label, title) par
+// community.js / mix.js / playlist.js : les guillemets doivent être échappés.
 function _esc(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
 }
 
 function _slugify(name) {

@@ -233,12 +233,14 @@ async function _renderHubFromAPI() {
       : initialsBase.slice(0, 2)).toUpperCase();
     const rankCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'plain';
 
+    // S-01 (2026-09-02) — toutes les valeurs serveur passent par _esc
+    // (ui/core/dom.js, échappeur complet) y compris dans href / style.
     return `
-      <a class="hub-band hub-band-${rankCls}" href="${url}"
-         style="--band-brand:${brand}"
+      <a class="hub-band hub-band-${rankCls}" href="${_esc(url)}"
+         style="--band-brand:${_esc(brand)}"
          aria-label="Voir le profil de ${_esc(name)}">
         <span class="hub-band-rank">${String(i + 1).padStart(2, '0')}</span>
-        <span class="hub-band-avatar" style="background:linear-gradient(135deg, ${brand}, rgba(10,4,26,.9))">
+        <span class="hub-band-avatar" style="background:linear-gradient(135deg, ${_esc(brand)}, rgba(10,4,26,.9))">
           ${_esc(initials)}
         </span>
         <span class="hub-band-info">

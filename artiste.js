@@ -964,7 +964,9 @@ function openBoutiqueDrawer(type, dataStr) {
 
   } else if (type === 'son') {
     const chips = [];
-    if (data.platform) chips.push(data.platform);
+    // S-01 (2026-09-02) — `platform` est une String(20) libre côté DB (aucun
+    // CHECK) : échappée avant interpolation (injection #11, annexe A).
+    if (data.platform) chips.push(_apImgEsc(data.platform));
     if (chips.length) html += `<div class="bd-chips">${chips.map(c => `<span class="bd-chip">${c}</span>`).join('')}</div>`;
     if (data.audioUrl) {
       html += `<div>
@@ -2625,7 +2627,7 @@ async function loadArtistResale(artistId) {
 }
 
 function renderResale(items) {
-  const _e = s => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+  const _e = _apImgEsc;   // S-01 : échappeur complet (guillemets inclus)
   let section = document.getElementById('ap-resale-section');
   if (!section) {
     section = document.createElement('section');
@@ -2721,10 +2723,13 @@ async function _ensureOwnedImageIds() {
   }
 }
 
+// S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+// ui/albums.js : la variante textContent→innerHTML n'échappait pas les
+// guillemets alors que _apImgEsc sert en contexte d'attribut (src, href, title).
 function _apImgEsc(s) {
-  const d = document.createElement('div');
-  d.textContent = s == null ? '' : String(s);
-  return d.innerHTML;
+  return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
 }
 
 function _apImgPreviewUrl(key) {

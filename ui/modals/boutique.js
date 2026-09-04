@@ -43,6 +43,14 @@
   function _toast(msg, opts) {
     if (typeof window.smyleToast === 'function') window.smyleToast(msg, opts || {});
   }
+  // S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+  // ui/albums.js : les titres de prompts d'autres artistes (pack ouvert,
+  // marché secondaire) étaient interpolés bruts dans innerHTML.
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+    ));
+  }
   function _refreshBalance() {
     if (window.SmyleBalance && typeof window.SmyleBalance.refresh === 'function') {
       try { window.SmyleBalance.refresh(); } catch (_) {}
@@ -297,7 +305,7 @@
               ${rar.label}
               <span style="position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:bqShine 1s ease-in-out .3s both;"></span>
             </div>
-            <div style="font-size:22px;font-weight:800;margin:4px 0 16px;color:${isTop ? rar.color : '#fff'};">${title}</div>
+            <div style="font-size:22px;font-weight:800;margin:4px 0 16px;color:${isTop ? rar.color : '#fff'};">${_esc(title)}</div>
             <a href="/library" style="display:block;background:#6c4cf0;color:#fff;border-radius:12px;padding:12px;text-decoration:none;font-weight:700;margin-bottom:8px;">Voir dans ma bibliothèque</a>
             <button id="bqAgainBtn" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;">Ouvrir un autre pack</button>
           </div>
@@ -348,10 +356,10 @@
         return `
           <div style="display:flex;align-items:center;gap:10px;background:#0d0a16;border:1px solid #2c2440;border-radius:12px;padding:12px;margin-bottom:8px;">
             <div style="flex:1;min-width:0;">
-              <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title || 'Un son'}${ltd}</div>
+              <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(it.title || 'Un son')}${ltd}</div>
               <div style="font-size:11px;color:#9990ad;">revente · royaltie artiste incluse</div>
             </div>
-            <button class="bqBuyResale" data-id="${it.unlocked_prompt_id}" style="background:#6c4cf0;border:none;color:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:700;white-space:nowrap;">Acheter · ${it.resale_price}</button>
+            <button class="bqBuyResale" data-id="${_esc(it.unlocked_prompt_id)}" style="background:#6c4cf0;border:none;color:#fff;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:700;white-space:nowrap;">Acheter · ${it.resale_price}</button>
           </div>`;
       }).join('');
       body.innerHTML = `
