@@ -85,8 +85,19 @@
 <script>
 (function () {
   'use strict';
-  var qs = new URLSearchParams(location.search);
-  var token = (qs.get('token') || '').trim();
+  // S-10 (2026-09-02, audit A §M4) : le jeton arrive désormais en FRAGMENT
+  // (#token=...), jamais transmis au serveur donc absent des access-logs.
+  // Le fallback ?token= couvre les emails partis avant le déploiement (60 min
+  // de validité). Dans les deux cas on purge immédiatement l'URL de la barre
+  // d'adresse et de l'historique (history.replaceState) pour que le jeton ne
+  // fuite ni par copier-coller, ni par Referer, ni par le partage d'onglet.
+  var token = (new URLSearchParams(location.hash.replace(/^#/, '')).get('token') || '').trim();
+  if (!token) {
+    token = (new URLSearchParams(location.search).get('token') || '').trim();
+  }
+  if (location.hash || location.search) {
+    try { history.replaceState(null, '', '/reset'); } catch (_) {}
+  }
 
   var reqCard = document.getElementById('rs-request');
   var rstCard = document.getElementById('rs-reset');

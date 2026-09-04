@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -160,15 +162,26 @@ async def forgot_password(
         ))
         await db.commit()
 
-        # Lien absolu : même origine que la requête (front + API servis
-        # ensemble). https forcé hors localhost (proxy Railway).
-        base = str(request.base_url).rstrip("/")
+        # Lien absolu. S-10 (2026-09-02, audit A §M4) : l'origine vient de
+        # PUBLIC_BASE_URL quand elle est posée, sinon de la requête. Avant,
+        # `base` dérivait du seul en-tête Host : un Host arbitraire laissé
+        # passer par l'edge empoisonnait le lien de réinitialisation envoyé
+        # par email. Lu par os.getenv exprès (et non par settings) pour ne pas
+        # toucher app/config.py, partagé par plusieurs tickets en vol ;
+        # poser PUBLIC_BASE_URL=https://<domaine-prod> sur Railway.
+        base = (os.getenv("PUBLIC_BASE_URL") or str(request.base_url)).rstrip("/")
         if "localhost" not in base and "127.0.0.1" not in base:
             base = base.replace("http://", "https://", 1)
         try:
             from app.services.emails import send_password_reset_email
+            # S-10 : le jeton passe en FRAGMENT (#token=...), jamais en query.
+            # Un fragment n'est pas transmis au serveur : il ne finit ni dans
+            # les access-logs uvicorn (--access-log, railway.toml:7 / Procfile)
+            # ni dans l'en-tête Referer d'une ressource tierce. Le jeton reste
+            # valable 60 min : le journaliser, c'est l'offrir à quiconque lit
+            # les logs Railway.
             await send_password_reset_email(
-                user.email, link=f"{base}/reset?token={token}"
+                user.email, link=f"{base}/reset#token={token}"
             )
         except Exception:
             pass
