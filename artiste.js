@@ -789,7 +789,7 @@ async function saveRolesPicker() {
    Aucune de ces 3 sections ne s'affiche si la donnée correspondante est
    vide/null. Le fan pur (aucune vente, aucun son) n'en voit aucune.
 
-   Les achats POST /unlocks/adns/{id} et /unlocks/prompts/{id} :
+   Les achats POST /unlocks/prompts/{id} :
    - 201 Created + objet owned → toast "Débloqué"
    - 402 Payment Required → toast "Crédits insuffisants"
    - 401 Unauthorized    → rediriger vers login
@@ -1100,18 +1100,22 @@ async function boutiqueDrawerUnlock(type, id) {
   }
   const btn = $('boutique-drawer-unlock-btn');
   if (btn) btn.disabled = true;
+  // K-04 (2026-09-04, annexe B §M17) — plus d'entrées 410 : 'adn-artist' et
+  // 'playlist' sont renvoyés vers AdnOfferModal juste au-dessus, et leurs
+  // routes d'unlock direct répondent 410 Gone.
   const ENDPOINTS = {
-    'adn-artist': '/unlocks/adns/',
     'son':        '/unlocks/prompts/',
     'voix':       '/unlocks/voices/',
-    'playlist':   '/unlocks/playlist-adn/',
   };
   const TOASTS = {
-    'adn-artist': 'ADN débloqué 🧬 — retrouve-le dans ta bibliothèque',
     'son':        'Recette débloquée 🧬 — retrouve-la dans ta bibliothèque',
     'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
-    'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
   };
+  if (!ENDPOINTS[type]) {
+    toast('Ce contenu ne s’achète pas directement.');
+    if (btn) btn.disabled = false;
+    return;
+  }
   try {
     await apiFetch(`${ENDPOINTS[type]}${encodeURIComponent(id)}`, { method: 'POST' });
     toast(TOASTS[type] || 'Débloqué ✓');
@@ -2159,7 +2163,13 @@ function renderTracks(artist) {
     // C4 Œuvre complète — bouton PACK (son + image, prix = somme − 10 %),
     // cohérent avec le board. Visible seulement si les DEUX faces existent.
     let oeuvrePackBtn = '';
-    if (linkedPrompt && linkedImage && !artist.isSelf &&
+    // DESACTIVE (2026-08-04) — ce bouton affichait un prix remise -10% calcule
+    // ici, puis postait vers une route d'unlock œuvre qui n'existe pas cote
+    // API. L'achat groupe REEL est POST /watt/oeuvre/{slug}/buy-complete, avec
+    // son propre prix calcule serveur. Rallumer quand la route existe.
+    // K-04 (2026-09-04) : son gestionnaire de clic a ete supprime — le bouton
+    // ne peut plus etre rendu, la branche est conservee comme documentation.
+    if (false && linkedPrompt && linkedImage && !artist.isSelf &&
         linkedPrompt.priceCredits != null && linkedImage.priceCredits != null) {
       const _packP = Math.max(2, Math.floor((linkedPrompt.priceCredits + linkedImage.priceCredits) * 0.9));
       oeuvrePackBtn = `<button type="button" class="ap-track-oeuvre-btn" data-oeuvre-prompt-id="${linkedPrompt.id}" data-oeuvre-price="${_packP}" data-track-name="${(t.name || '').replace(/"/g, '&quot;')}" title="Acheter l'œuvre complète (son + image) · ${_packP} crédits — remise 10%">💠 ${_packP}</button>`;
@@ -2333,34 +2343,10 @@ function renderTracks(artist) {
       if (id) unlockPromptFromProfile(id, unlockBtn);
       return;
     }
-    // Cas 2ter : bouton PACK œuvre → achat groupé son+image (−10 %), miroir board.
-    const oeuvreBtn = ev.target.closest('.ap-track-oeuvre-btn');
-    if (oeuvreBtn) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const pid = oeuvreBtn.dataset.oeuvrePromptId;
-      const price = oeuvreBtn.dataset.oeuvrePrice;
-      const tname = oeuvreBtn.dataset.trackName || 'cette œuvre';
-      if (!pid) return;
-      if (typeof getAuthToken === 'function' && !getAuthToken()) {
-        if (typeof window.openAuthModal === 'function') window.openAuthModal();
-        return;
-      }
-      if (!window.confirm('Acheter l\'œuvre « ' + tname + ' » (son + image) pour ' + price + ' crédits ?\nRemise de 10% déjà incluse.')) return;
-      oeuvreBtn.disabled = true;
-      apiFetch('/unlocks/oeuvre/' + encodeURIComponent(pid), { method: 'POST' })
-        .then(function () {
-          if (window.showToast) window.showToast('Œuvre débloquée 🔗 — les deux faces sont dans ta bibliothèque.');
-          try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
-        })
-        .catch(function (err) {
-          oeuvreBtn.disabled = false;
-          const d = err && err.body && err.body.detail;
-          const msg = (d && (d.message || (typeof d === 'string' ? d : null))) || 'Achat de l\'œuvre impossible.';
-          if (window.showToast) window.showToast(msg); else alert(msg);
-        });
-      return;
-    }
+    // K-04 (2026-09-04, annexe B §M5) — le bouton PACK œuvre et son
+    // gestionnaire sont retirés : ils postaient vers une route d'unlock œuvre
+    // inexistante. L'achat groupé RÉEL est
+    // POST /watt/oeuvre/{slug}/buy-complete depuis la fiche œuvre.
     // Cas 2bis : chip « visuel lié » (œuvre complète) → drawer image (achat séparé)
     const linkedImgBtn = ev.target.closest('.ap-track-linked-img');
     if (linkedImgBtn) {
@@ -2407,50 +2393,10 @@ async function unlockDnaFromProfile() {
   } else {
     toast('🤝 Cet ADN se vend sur proposition.');
   }
-  return;
-  // eslint-disable-next-line no-unreachable
-  const adn = artist.adn;
-
-  // C2/C3 — chemin canonique : drawer d'achat unifié (récap + confirmation +
-  // erreurs humanisées). Le drawer gère lui-même le cas non-connecté (401 →
-  // openAuthModal). Fallback : achat direct historique si le composant
-  // n'est pas chargé sur la page.
-  if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {
-    window.PurchaseDrawer.open({
-      type:       'adn-artist',
-      id:         adn.id,
-      price:      adn.priceCredits,
-      title:      'ADN · ' + (artist.artistName || 'Artiste'),
-      artistName: artist.artistName || '',
-      onSuccess:  () => {
-        state.ownedAdnIds = undefined; // invalide le cache possession
-        setTimeout(() => loadArtist(), 400);
-      },
-    });
-    return;
-  }
-
-  // ── Fallback historique (sans drawer) ────────────────────────────────────
-  // Redirige vers la connexion si non authentifié
-  if (typeof getAuthToken === 'function' && !getAuthToken()) {
-    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/?auth=login&return=${returnUrl}`;
-    return;
-  }
-  const btn = $('ap-dna-unlock-btn');
-  if (btn) btn.disabled = true;
-  try {
-    await apiFetch(`/unlocks/adns/${encodeURIComponent(adn.id)}`, {
-      method: 'POST',
-    });
-    toast('ADN débloqué · -30 % sur tout le catalogue sonore 🎉');
-    // On rafraîchit le profil pour que l'état du bouton reflète le owned
-    state.ownedAdnIds = undefined;
-    setTimeout(() => loadArtist(), 400);
-  } catch (err) {
-    handleUnlockError(err);
-    if (btn) btn.disabled = false;
-  }
+  // K-04 (2026-09-04, annexe B §M17) — le repli « achat direct » qui suivait
+  // (drawer puis unlock ADN direct) était du code mort : la route répond
+  // 410 Gone depuis la doctrine « ADN uniquement sur offre »
+  // (watt-api/app/routers/unlocks.py:228-233). Supprimé.
 }
 
 // ── Unlock ADN VISUEL depuis le profil (mirror de unlockDnaFromProfile) ──
@@ -2469,44 +2415,9 @@ async function unlockVisualDnaFromProfile() {
   } else {
     toast('🤝 Cet ADN se vend sur proposition.');
   }
-  return;
-  // eslint-disable-next-line no-unreachable
-  const adn = artist.visualAdn;
-
-  if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {
-    window.PurchaseDrawer.open({
-      type:       'visual-adn',
-      id:         adn.id,
-      price:      adn.priceCredits,
-      title:      'ADN visuel · ' + (artist.artistName || 'Artiste'),
-      artistName: artist.artistName || '',
-      onSuccess:  () => {
-        state.ownedVisualAdnIds = undefined; // invalide le cache possession
-        setTimeout(() => loadArtist(), 400);
-      },
-    });
-    return;
-  }
-
-  // ── Fallback historique (sans drawer) ────────────────────────────────────
-  if (typeof getAuthToken === 'function' && !getAuthToken()) {
-    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/?auth=login&return=${returnUrl}`;
-    return;
-  }
-  const btn = $('ap-vdna-unlock-btn');
-  if (btn) btn.disabled = true;
-  try {
-    await apiFetch(`/unlocks/visual-adns/${encodeURIComponent(adn.id)}`, {
-      method: 'POST',
-    });
-    toast('ADN visuel débloqué · -30 % sur tout le catalogue visuel 🎨');
-    state.ownedVisualAdnIds = undefined;
-    setTimeout(() => loadArtist(), 400);
-  } catch (err) {
-    handleUnlockError(err);
-    if (btn) btn.disabled = false;
-  }
+  // K-04 (2026-09-04, annexe B §M17) — repli mort supprimé : il visait
+  // l'unlock direct de l'ADN visuel, qui répond 410 Gone
+  // (watt-api/app/routers/unlocks.py:493-496).
 }
 
 // ── Suppression d'un track depuis le profil (owner uniquement) ────────

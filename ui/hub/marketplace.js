@@ -717,7 +717,13 @@
       // recette vendable ET une cover liée ; sinon simple lien vers la fiche.
       const pontPack = pontTotal != null ? Math.max(2, Math.floor(pontTotal * 0.9)) : null;
       const pontHtml = li
-        ? ((pontPack != null && promptId)
+        // DESACTIVE (2026-08-04) — ce bouton promettait un achat qui n'existe
+        // pas : la remise -10% est calculee ici a partir d'une constante
+        // backend absente, et la route d'unlock œuvre correspondante n'existe pas.
+        // On retombe sur le lien non marchand vers la fiche oeuvre, ou
+        // l'achat REEL (POST /watt/oeuvre/{slug}/buy-complete, prix calcule
+        // serveur) fonctionne. Code conserve : rallumer quand la route existe.
+        ? (false && (pontPack != null && promptId)
             ? `<button type="button" class="mp-socle-pont mp-socle-pont-buy" data-oeuvre-prompt-id="${_esc(String(promptId))}" data-oeuvre-price="${pontPack}" data-track-name="${_esc(title)}" title="Acheter l'œuvre complète (son + image) · ${pontPack} Smyles — remise 10%">` +
                 `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
                 `<span class="mp-socle-pont-lbl">💠 Œuvre · ${pontPack} S <span style="opacity:.75;font-weight:600">−10%</span></span>` +
@@ -1089,35 +1095,13 @@
         return;
       }
 
-      // ŒUVRE — achat direct du pack (son + image liée) au prix remisé −10 %.
-      const pontBuyEl = ev.target.closest('.mp-socle-pont-buy');
-      if (pontBuyEl) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const pid   = pontBuyEl.dataset.oeuvrePromptId;
-        const price = pontBuyEl.dataset.oeuvrePrice;
-        const tname = pontBuyEl.dataset.trackName || 'cette œuvre';
-        if (!pid) return;
-        if (typeof getAuthToken === 'function' && !getAuthToken()) {
-          if (typeof window.openAuthModal === 'function') window.openAuthModal();
-          else if (window.showToast) window.showToast('Connecte-toi pour acheter.');
-          return;
-        }
-        if (!window.confirm('Acheter l\'œuvre « ' + tname + ' » (son + image) pour ' + price + ' Smyles ?\nRemise de 10% déjà incluse.')) return;
-        pontBuyEl.disabled = true;
-        apiFetch('/unlocks/oeuvre/' + encodeURIComponent(pid), { method: 'POST' })
-          .then(() => {
-            if (window.showToast) window.showToast('Œuvre débloquée 🔗 — les deux faces sont dans ta bibliothèque.');
-            try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
-          })
-          .catch((err) => {
-            pontBuyEl.disabled = false;
-            const d = err && err.body && err.body.detail;
-            const msg = (d && (d.message || (typeof d === 'string' ? d : null))) || 'Achat de l\'œuvre impossible.';
-            if (window.showToast) window.showToast(msg); else alert(msg);
-          });
-        return;
-      }
+      // K-04 (2026-09-04, annexe B §M5) — le gestionnaire « achat direct de
+      // l'œuvre » a été retiré avec son bouton : il postait vers une route
+      // d'unlock œuvre qui n'existe pas côté API (le routeur unlocks n'expose
+      // que /prompts, /adns, /voices, /playlist-adn, /visual-adns,
+      // /album-adn). L'achat groupé RÉEL est
+      // POST /watt/oeuvre/{slug}/buy-complete, atteint depuis la fiche œuvre
+      // via le pont ci-dessous (prix calculé serveur).
 
       // SOCLE BINAIRE — click sur le PONT → fiche œuvre (drawer track :
       // il présente les deux faces + achats séparés).
@@ -1162,35 +1146,7 @@
     // .mp-son-card existant).
     document.addEventListener('click', (ev) => {
       if (!ev.target.closest('.mp-img-card')) return;
-      // Achat direct de l'œuvre (son + image, −10 %).
-      const pontBuy = ev.target.closest('.mp-socle-pont-buy');
-      if (pontBuy) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const pid   = pontBuy.dataset.oeuvrePromptId;
-        const price = pontBuy.dataset.oeuvrePrice;
-        const tname = pontBuy.dataset.trackName || 'cette œuvre';
-        if (!pid) return;
-        if (typeof getAuthToken === 'function' && !getAuthToken()) {
-          if (typeof window.openAuthModal === 'function') window.openAuthModal();
-          else if (window.showToast) window.showToast('Connecte-toi pour acheter.');
-          return;
-        }
-        if (!window.confirm('Acheter l\'œuvre « ' + tname + ' » (son + image) pour ' + price + ' Smyles ?\nRemise de 10% déjà incluse.')) return;
-        pontBuy.disabled = true;
-        apiFetch('/unlocks/oeuvre/' + encodeURIComponent(pid), { method: 'POST' })
-          .then(() => {
-            if (window.showToast) window.showToast('Œuvre débloquée 🔗 — les deux faces sont dans ta bibliothèque.');
-            try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
-          })
-          .catch((err) => {
-            pontBuy.disabled = false;
-            const d = err && err.body && err.body.detail;
-            const msg = (d && (d.message || (typeof d === 'string' ? d : null))) || 'Achat de l\'œuvre impossible.';
-            if (window.showToast) window.showToast(msg); else alert(msg);
-          });
-        return;
-      }
+      // K-04 — même gestionnaire mort côté carte image : retiré (cf. plus haut).
       // Recette du SON lié (modale unlock directe).
       const sonRecipe = ev.target.closest('.mp-recipe-badge[data-prompt-id]');
       if (sonRecipe) {
@@ -1307,7 +1263,9 @@
       ? (promptPrice + tdLi.priceCredits) : null;
     // Prix pack œuvre = somme des 2 faces − 10 % (miroir backend / board).
     const tdPontPack = tdPontTotal != null ? Math.max(2, Math.floor(tdPontTotal * 0.9)) : null;
-    const tdPontHtml = (tdLi && tdPontPack != null && promptId)
+    // DESACTIVE (2026-08-04) — meme raison que le socle : prix invente et
+    // route d'unlock œuvre inexistante. Rallumer quand le backend existe.
+    const tdPontHtml = false && (tdLi && tdPontPack != null && promptId)
       // Les deux faces sont vendables → VRAI bouton d'achat œuvre (−10 %).
       ? `<button type="button" class="mp-socle-pont mp-socle-pont-buy" id="mp-td-oeuvre-buy" data-oeuvre-prompt-id="${_esc(String(promptId))}" data-oeuvre-price="${tdPontPack}" data-track-name="${_esc(title)}" title="Acheter l'œuvre complète (son + image) · ${tdPontPack} Smyles — remise 10%">` +
           `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
@@ -1429,34 +1387,8 @@
       });
     }
 
-    // Achat ŒUVRE complète (son + image, −10 %) depuis le drawer.
-    const tdOeuvreBtn = overlay.querySelector('#mp-td-oeuvre-buy');
-    if (tdOeuvreBtn) {
-      tdOeuvreBtn.addEventListener('click', function () {
-        const pid   = tdOeuvreBtn.dataset.oeuvrePromptId;
-        const price = tdOeuvreBtn.dataset.oeuvrePrice;
-        const tname = tdOeuvreBtn.dataset.trackName || 'cette œuvre';
-        if (!pid) return;
-        if (typeof getAuthToken === 'function' && !getAuthToken()) {
-          if (typeof window.openAuthModal === 'function') window.openAuthModal();
-          return;
-        }
-        if (!window.confirm('Acheter l\'œuvre « ' + tname + ' » (son + image) pour ' + price + ' Smyles ?\nRemise de 10% déjà incluse.')) return;
-        tdOeuvreBtn.disabled = true;
-        apiFetch('/unlocks/oeuvre/' + encodeURIComponent(pid), { method: 'POST' })
-          .then(function () {
-            if (window.showToast) window.showToast('Œuvre débloquée 🔗 — les deux faces sont dans ta bibliothèque.');
-            try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
-            _close();
-          })
-          .catch(function (err) {
-            tdOeuvreBtn.disabled = false;
-            const d = err && err.body && err.body.detail;
-            const msg = (d && (d.message || (typeof d === 'string' ? d : null))) || 'Achat de l\'œuvre impossible.';
-            if (window.showToast) window.showToast(msg); else alert(msg);
-          });
-      });
-    }
+    // K-04 — bouton #mp-td-oeuvre-buy retiré du drawer avec son gestionnaire
+    // (route d'unlock œuvre inexistante) : cf. plus haut.
   }
 
   // ── Page /voix (chantier Voix 2026-06-12) ────────────────────────────────
@@ -1674,9 +1606,12 @@
             '<div class="mp-socle-price" title="Recette visuelle · ' + _esc(_imgP) + ' Smyles">🎨 Recette · ' + _esc(_imgP) + ' S</div>' +
           '</div>' +
         '</div>' +
-        '<button type="button" class="mp-socle-pont mp-socle-pont-buy" data-oeuvre-prompt-id="' + _esc(String(_ls.id)) + '" data-oeuvre-price="' + _esc(_pack) + '" data-track-name="' + _esc(_ls.title || img.title || '') + '" title="Acheter l\'œuvre complète (son + image) · ' + _esc(_pack) + ' Smyles — remise 10%">' +
+        // DESACTIVE (2026-08-04) — le bouton d'achat oeuvre annoncait un prix
+        // calcule ici (-10%) et postait vers une route d'unlock œuvre qui n'existe
+        // pas cote backend. On garde le pont visuel, sans promesse marchande.
+        '<button type="button" class="mp-socle-pont" title="Voir l\'œuvre complète (son + image)">' +
           '<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>' +
-          '<span class="mp-socle-pont-lbl">💠 Œuvre · ' + _esc(_pack) + ' S <span style="opacity:.75;font-weight:600">−10%</span></span>' +
+          '<span class="mp-socle-pont-lbl">💠 Œuvre</span>' +
           '<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>' +
         '</button>';
     }
