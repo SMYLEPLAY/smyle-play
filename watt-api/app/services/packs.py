@@ -33,6 +33,7 @@ from app.models.transaction import Transaction, TransactionStatus, TransactionTy
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.services.credits import (
     _acquire_user_locks,
+    artist_pct_for_user,
     compute_split,
     grant_credits_atomic,
 )
@@ -199,7 +200,13 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         # 4. Lock l'artiste tiré (en plus du buyer déjà locké).
         await _acquire_user_locks(db, [artist_id])
 
-        artist_revenue, platform_fee = compute_split(price)
+        # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
+        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # appelé sans palier → 20 % en dur sur ce flux, alors que la page
+        # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
+        # Lu DANS la section lockée (le vendeur est déjà verrouillé).
+        artist_pct = await artist_pct_for_user(db, artist_id)
+        artist_revenue, platform_fee = compute_split(price, artist_pct)
 
         # 5. Transaction (type UNLOCK, marquée source=mystery_pack).
         tx = Transaction(
@@ -278,7 +285,9 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
     # les plus rares (PAS "limited" 11–10 000) pour borner l'inflation —
     # garde-fou anti-saignée. Hors savepoint (grant pose son propre nested).
     if pick.max_supply is not None and pick.max_supply <= 10:
-        already_paid = compute_split(price)[0]           # part artiste déjà versée
+        # K-07 : même palier que la vente ci-dessus, sinon le top-up
+        # « prix fort » recalculerait une part artiste différente.
+        already_paid = compute_split(price, artist_pct)[0]  # part déjà versée
         topup = int(pick.price_credits) - already_paid
         if topup > 0:
             await grant_credits_atomic(

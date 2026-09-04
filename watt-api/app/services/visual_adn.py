@@ -240,7 +240,11 @@ async def unlock_visual_adn_atomic(
     """
     # Imports locaux : mirror du style de unlock_adn_atomic + évite tout
     # cycle d'import avec services.unlocks (exceptions partagées).
-    from app.services.credits import _acquire_user_locks, compute_split
+    from app.services.credits import (
+        _acquire_user_locks,
+        artist_pct_for_user,
+        compute_split,
+    )
     from app.services.unlocks import (
         AdnNotPurchasable,
         AlreadyOwned,
@@ -278,7 +282,13 @@ async def unlock_visual_adn_atomic(
     async with db.begin_nested():
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
-        artist_revenue, platform_fee = compute_split(paid)
+        # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
+        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # appelé sans palier → 20 % en dur sur ce flux, alors que la page
+        # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
+        # Lu DANS la section lockée (le vendeur est déjà verrouillé).
+        artist_pct = await artist_pct_for_user(db, artist_id)
+        artist_revenue, platform_fee = compute_split(paid, artist_pct)
         assert artist_revenue + platform_fee == paid
 
         buyer_row = (await db.execute(

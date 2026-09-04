@@ -539,7 +539,11 @@ async def unlock_playlist_adn_atomic(
     from app.models.playlist import Playlist
     from app.models.owned_playlist_adn import OwnedPlaylistAdn
     from app.models.transaction import Transaction, TransactionType, TransactionStatus
-    from app.services.credits import compute_split, _acquire_user_locks
+    from app.services.credits import (
+        _acquire_user_locks,
+        artist_pct_for_user,
+        compute_split,
+    )
 
     playlist = (await db.execute(
         select(Playlist).where(Playlist.id == playlist_id)
@@ -578,7 +582,13 @@ async def unlock_playlist_adn_atomic(
     async with db.begin_nested():
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
-        artist_revenue, platform_fee = compute_split(paid)
+        # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
+        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # appelé sans palier → 20 % en dur sur ce flux, alors que la page
+        # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
+        # Lu DANS la section lockée (le vendeur est déjà verrouillé).
+        artist_pct = await artist_pct_for_user(db, owner_id)
+        artist_revenue, platform_fee = compute_split(paid, artist_pct)
         assert artist_revenue + platform_fee == paid
 
         buyer_row = (await db.execute(
@@ -675,7 +685,11 @@ async def unlock_album_adn_atomic(
     from app.models.album import Album
     from app.models.owned_album_adn import OwnedAlbumAdn
     from app.models.transaction import Transaction, TransactionType, TransactionStatus
-    from app.services.credits import compute_split, _acquire_user_locks
+    from app.services.credits import (
+        _acquire_user_locks,
+        artist_pct_for_user,
+        compute_split,
+    )
 
     album = (await db.execute(
         select(Album).where(Album.id == album_id)
@@ -713,7 +727,13 @@ async def unlock_album_adn_atomic(
     async with db.begin_nested():
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
-        artist_revenue, platform_fee = compute_split(paid)
+        # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
+        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # appelé sans palier → 20 % en dur sur ce flux, alors que la page
+        # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
+        # Lu DANS la section lockée (le vendeur est déjà verrouillé).
+        artist_pct = await artist_pct_for_user(db, owner_id)
+        artist_revenue, platform_fee = compute_split(paid, artist_pct)
         assert artist_revenue + platform_fee == paid
 
         buyer_row = (await db.execute(
