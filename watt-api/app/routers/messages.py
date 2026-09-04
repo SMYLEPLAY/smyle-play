@@ -19,11 +19,42 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.message import Message, MessageThread
 from app.models.notification import NotificationType
+from app.models.trade import TradeOffer
 from app.models.user import User
 from app.schemas.message import MessageCreate, MessageRead, ThreadMessagesResponse, ThreadRead
 from app.services.notifications import create_notification
 
 router = APIRouter(prefix="/messages", tags=["messages"])
+
+# S-03 sécurité (2026-09-02) — marqueur « proposition d'échange » posté par
+# le client (ui/messaging/messaging.js) dans le fil : `__TRADE_OFFER__<uuid>`.
+# Le front le rend sous forme de carte cliquable ; sans contrôle serveur,
+# n'importe qui pouvait poster `__TRADE_OFFER__');alert(1)//` (XSS stocké
+# chez l'interlocuteur). Règle : le suffixe DOIT être l'UUID d'une offre
+# existante, envoyée par l'expéditeur du message au destinataire du fil ;
+# le contenu stocké est la forme canonique (UUID normalisé).
+_TRADE_MARK = "__TRADE_OFFER__"
+
+
+async def _canonical_trade_marker(
+    content: str, *, sender_id: UUID, receiver_id: UUID, db: AsyncSession
+) -> str:
+    """Valide un marqueur d'échange et renvoie sa forme canonique, sinon 400."""
+    raw = content[len(_TRADE_MARK):].strip()
+    try:
+        offer_id = UUID(raw)
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="Marqueur d'échange invalide")
+    offer = (await db.execute(
+        select(TradeOffer).where(TradeOffer.id == offer_id)
+    )).scalar_one_or_none()
+    if (offer is None
+            or offer.sender_id != sender_id
+            or offer.receiver_id != receiver_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="Marqueur d'échange invalide")
+    return f"{_TRADE_MARK}{offer.id}"
 
 
 def _canonical_pair(a: UUID, b: UUID) -> tuple[UUID, UUID]:
@@ -199,10 +230,16 @@ async def send_message(
                    if thread.participant_a == current_user.id
                    else thread.participant_a)
 
+    content = payload.content.strip()
+    if content.startswith(_TRADE_MARK):
+        content = await _canonical_trade_marker(
+            content, sender_id=current_user.id, receiver_id=receiver_id, db=db
+        )
+
     msg = Message(
         thread_id=thread_id,
         sender_id=current_user.id,
-        content=payload.content.strip(),
+        content=content,
     )
     db.add(msg)
 
@@ -217,7 +254,7 @@ async def send_message(
         actor_id=current_user.id,
         target_type="thread",
         target_id=thread_id,
-        metadata={"preview": payload.content[:80]},
+        metadata={"preview": content[:80]},
     )
 
     await db.commit()

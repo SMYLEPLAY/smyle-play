@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -11,6 +12,58 @@ from pydantic import (
     computed_field,
     field_validator,
 )
+
+from app.schemas.track import validate_media_url
+
+# S-03 sécurité (2026-09-02) — liens sociaux.
+#
+# Les valeurs sont posées en `href` sur la page publique /u/<slug> et
+# interpolées dans l'aperçu du dashboard : un schéma `javascript:` ou un
+# guillemet = XSS. Règle serveur (le front S-02 garde sa propre barrière) :
+#   - pseudo nu `@toto` / `toto` (instagram, tiktok, twitter_x) → stocké
+#     SANS le `@` ; le front reconstruit l'URL du réseau ;
+#   - sinon URL http(s) absolue ≤ 500 caractères, sans `"'<>`` ni
+#     caractère de contrôle ; un `domaine.tld/...` sans schéma est
+#     normalisé en `https://` (saisie courante) ;
+#   - tout le reste → ValueError → 422.
+_SOCIAL_HANDLE_RE = re.compile(r"^@?[A-Za-z0-9_.-]{1,60}$")
+_SOCIAL_BARE_DOMAIN_RE = re.compile(r"^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(/.*)?$")
+_SOCIAL_FORBIDDEN_CHARS = set('"\'<>`\\') | {chr(c) for c in range(0, 32)} | {chr(127)}
+_SOCIAL_URL_MAX_LEN = 500
+
+# artist_name : affiché dans des attributs `alt`/`title`, en texte partout
+# (cartes Top Artistes de l'accueil non connecté) et, jusqu'à S-01/S-02,
+# dans des `onclick="…('${name}')"` (messagerie, topbar). Défense en
+# profondeur : pas de chevrons/guillemets/backtick ni de caractère de
+# contrôle. L'apostrophe ASCII (`'`) — fréquente dans les noms français
+# (« L'Impératrice ») — n'est pas refusée mais normalisée en apostrophe
+# typographique `’` (U+2019), inoffensive dans une chaîne JS, même slug.
+_NAME_FORBIDDEN_CHARS = set('<>"`') | {chr(c) for c in range(0, 32)} | {chr(127)}
+
+
+def validate_social_link(v: str | None, *, allow_handle: bool) -> str | None:
+    """Normalise un lien social : pseudo nu (si autorisé) ou URL http(s)."""
+    if v is None:
+        return None
+    v = v.strip()
+    if v == "":
+        return None
+    if any(ch in _SOCIAL_FORBIDDEN_CHARS for ch in v):
+        raise ValueError("Lien invalide : URL https:// ou @pseudo attendu")
+    if allow_handle and _SOCIAL_HANDLE_RE.match(v):
+        return v.lstrip("@")
+    if len(v) > _SOCIAL_URL_MAX_LEN:
+        raise ValueError("Lien invalide : URL trop longue (500 caractères max)")
+    candidate = v
+    if "://" not in candidate and _SOCIAL_BARE_DOMAIN_RE.match(candidate):
+        candidate = "https://" + candidate
+    try:
+        u = HttpUrl(candidate)
+    except Exception as exc:
+        raise ValueError("Lien invalide : URL https:// ou @pseudo attendu") from exc
+    if u.scheme not in ("http", "https"):
+        raise ValueError("Lien invalide : URL https:// ou @pseudo attendu")
+    return candidate
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -191,14 +244,37 @@ class UserUpdate(BaseModel):
             raise ValueError("Field cannot be empty or whitespace only")
         return v
 
-    @field_validator("genre", "city", "soundcloud", "instagram", "youtube",
-                     "tiktok", "spotify", "twitter_x")
+    @field_validator("artist_name")
+    @classmethod
+    def reject_html_in_artist_name(cls, v: str | None) -> str | None:
+        # S-03 — défense en profondeur (l'échappement front reste la vraie
+        # barrière) : le nom est interpolé dans des attributs alt/title et
+        # des chaînes JS inline. Cf. _NAME_FORBIDDEN_CHARS.
+        if v is None:
+            return None
+        if any(ch in _NAME_FORBIDDEN_CHARS for ch in v):
+            raise ValueError("Le nom d'artiste contient des caractères interdits")
+        return v.replace("'", "’")
+
+    @field_validator("genre", "city")
     @classmethod
     def empty_string_to_none(cls, v: str | None) -> str | None:
         # Champs optionnels : une string vide devient None pour garder la DB propre.
         if v is None or v.strip() == "":
             return None
         return v.strip()
+
+    @field_validator("instagram", "tiktok", "twitter_x")
+    @classmethod
+    def validate_social_with_handle(cls, v: str | None) -> str | None:
+        # S-03 — @pseudo nu accepté (stocké sans @) ou URL http(s).
+        return validate_social_link(v, allow_handle=True)
+
+    @field_validator("soundcloud", "youtube", "spotify")
+    @classmethod
+    def validate_social_url_only(cls, v: str | None) -> str | None:
+        # S-03 — URL http(s) uniquement (pas de notion de pseudo nu).
+        return validate_social_link(v, allow_handle=False)
 
     @field_validator("brand_color", "profile_bg_color", "profile_brand_color")
     @classmethod
@@ -214,14 +290,12 @@ class UserUpdate(BaseModel):
     @field_validator("avatar_url", "cover_photo_url")
     @classmethod
     def validate_url(cls, v: str | None) -> str | None:
-        if v is None or v == "":
-            return None
-        # URLs relatives acceptées (ex. /watt/images/...) — servies en proxy same-origin.
-        # Les URLs absolues https:// sont validées via Pydantic HttpUrl.
-        if v.startswith("/"):
-            return v
-        HttpUrl(v)
-        return v
+        # S-03 — même validateur que les médias de tracks : URL relative
+        # limitée au proxy same-origin (/watt/images/… ; /watt/stream/… toléré
+        # par le validateur partagé) ou URL http(s) absolue, sans guillemet ni
+        # chevron. Avant : toute chaîne commençant par "/" passait
+        # (`/x" onload="alert(1)` → XSS stocké sur l'accueil).
+        return validate_media_url(v)
 
     @field_validator("roles")
     @classmethod

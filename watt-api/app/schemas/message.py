@@ -1,11 +1,29 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# S-03 (2026-09-02) — hygiène : un message ne contient pas de caractère de
+# contrôle hors saut de ligne / tabulation (NUL, ESC, retour chariot isolé,
+# séquences ANSI…). Le retour chariot `\r` est toléré uniquement dans `\r\n`
+# (collé par certains navigateurs) et normalisé en `\n`.
+_ALLOWED_CONTROL = {"\n", "\t"}
 
 
 class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("content")
+    @classmethod
+    def reject_control_chars(cls, v: str) -> str:
+        v = v.replace("\r\n", "\n")
+        for ch in v:
+            code = ord(ch)
+            if (code < 32 or code == 127) and ch not in _ALLOWED_CONTROL:
+                raise ValueError("Le message contient des caractères de contrôle interdits")
+        if v.strip() == "":
+            raise ValueError("Le message ne peut pas être vide")
+        return v
 
 
 class MessageRead(BaseModel):

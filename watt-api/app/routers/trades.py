@@ -33,6 +33,7 @@ from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 from app.schemas.trade import PromptSnap, TradeOfferCreate, TradeOfferRead
+from app.schemas.track import validate_media_url
 from app.services.credits import _acquire_user_locks
 from app.services.notifications import create_notification
 
@@ -87,6 +88,15 @@ async def _enrich_offer(offer: TradeOffer, db: AsyncSession) -> TradeOfferRead:
             audio_url = trow.audio_url or (
                 f"/watt/stream/{trow.r2_key}" if trow.r2_key else None
             )
+            # S-03 (2026-09-02) — défense en profondeur : la valeur part
+            # dans un `src="…"` côté front (écran « Proposition d'échange »).
+            # Une audio_url historique non conforme (guillemet, javascript:)
+            # n'est pas renvoyée du tout plutôt que servie brute.
+            if audio_url is not None:
+                try:
+                    audio_url = validate_media_url(audio_url)
+                except ValueError:
+                    audio_url = None
         # Aperçu image (parité visuel) : pour un prompt image, on expose l'URL
         # proxy de l'APERÇU (jamais l'original gaté) → "voir avant d'accepter".
         preview_url = None
