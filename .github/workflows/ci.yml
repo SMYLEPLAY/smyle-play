@@ -186,6 +186,12 @@ jobs:
     # passés, 0 échec. C'est désormais un vrai filet — un test rouge bloque.
     runs-on: ubuntu-latest
 
+    # F-08 (2026-09-04) : ce job (et lui seul) poste le résumé d'un échec en
+    # commentaire du commit → il lui faut `contents: write`. Déclaré au niveau
+    # du job : les autres jobs gardent le jeton en lecture seule.
+    permissions:
+      contents: write
+
     services:
       postgres:
         image: postgres:18
@@ -255,10 +261,38 @@ jobs:
             echo '### Résultat pytest'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          pytest -q -rf 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          # F-08 : la sortie est aussi conservée dans /tmp/pytest.txt pour que
+          # l'étape suivante puisse la poster en commentaire de commit si la
+          # suite est rouge (le récapitulatif GitHub n'est pas notifié).
+          pytest -q -rf 2>&1 | tee /tmp/pytest.txt | tee -a "$GITHUB_STEP_SUMMARY"
           rc=${PIPESTATUS[0]}
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           exit $rc
+
+      # F-08 (2026-09-04) : un run rouge n'envoyait aucune notification — il
+      # fallait ouvrir la page Actions pour le savoir. Le commentaire de commit,
+      # lui, arrive par mail/GitHub. 60 000 octets : sous la limite de 65 536
+      # caractères d'un commentaire GitHub, marge gardée pour l'entête.
+      - name: Poster la sortie pytest en commentaire de commit (échec)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -s /tmp/pytest.txt ]; then
+            echo "pas de sortie pytest (échec avant l'exécution de la suite)"
+            exit 0
+          fi
+          # -F et non -f : la lecture d'un fichier (« @- » = entrée standard)
+          # n'existe que sur --field ; avec --raw-field, gh posterait la chaîne
+          # littérale « @- » comme corps du commentaire (cli/cli, fields.go :
+          # magicFieldValue n'est appelé que pour MagicFields).
+          {
+            echo "Suite pytest ROUGE sur \`${{ github.ref_name }}\` — [run ${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            echo
+            echo '```'
+            tail -c 60000 /tmp/pytest.txt
+            echo '```'
+          } | gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -F body=@-
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 4 — Sécurité : dépendances (pip-audit), code (bandit), secrets (gitleaks)
