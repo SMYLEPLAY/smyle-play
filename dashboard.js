@@ -674,6 +674,41 @@ function renderUserDropdown() {
   }
   const createEl = document.getElementById('dashDropCreate');
   if (createEl) createEl.href = href;
+
+  // F1-3 — « Partager mon lien ». Le lien partage est la forme CANONIQUE
+  // /u/<slug> (celle qui porte l'apercu social cote serveur), pas la forme
+  // courte /@<slug>. Partage natif sur mobile, presse-papier ailleurs.
+  const shareEl = document.getElementById('dashDropShare');
+  if (shareEl) {
+    shareEl.hidden = !slug;
+    if (slug) {
+      const shareUrl = location.origin + '/u/' + encodeURIComponent(slug);
+      shareEl.onclick = async (ev) => {
+        ev.preventDefault();
+        try {
+          if (window.SmyleTrack && typeof window.SmyleTrack.event === 'function') {
+            window.SmyleTrack.event('share_click', { creator: slug });
+          }
+        } catch (_) { /* la mesure ne bloque jamais l'action */ }
+        try {
+          if (navigator.share) {
+            await navigator.share({ url: shareUrl });
+            return;
+          }
+          await navigator.clipboard.writeText(shareUrl);
+          if (typeof window.smyleToast === 'function') {
+            window.smyleToast('Lien copie : ' + shareUrl, { type: 'success', duration: 3200 });
+          }
+        } catch (err) {
+          // Partage annule par l'utilisateur : ne pas afficher d'erreur.
+          if (err && err.name === 'AbortError') return;
+          if (typeof window.smyleToast === 'function') {
+            window.smyleToast('Copie impossible — ton lien : ' + shareUrl, { type: 'info', duration: 5000 });
+          }
+        }
+      };
+    }
+  }
 }
 
 /* Toggle / fermeture du dropdown profil. Handlers installés une seule fois
