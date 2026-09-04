@@ -65,7 +65,12 @@
 <div class="lib-toast" id="oeuvre-toast"></div>
 
 <script src="ui/core/api.js"></script>
-<script src="ui/core/telemetry.js"></script>
+<!-- K-11 (2026-09-04) — chemins ABSOLUS ici : oeuvre.html est servie sur
+     /oeuvre/<slug>, donc un src relatif se résoudrait en
+     /oeuvre/ui/core/… (404) et la mesure serait chargée « sur le papier »
+     mais jamais exécutée. -->
+<script src="/ui/core/consent.js"></script>
+<script src="/ui/core/telemetry.js"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <script src="ui/topbar/topbar.js?v=20260708t6" defer></script>
