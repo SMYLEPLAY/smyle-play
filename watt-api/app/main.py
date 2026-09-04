@@ -1,7 +1,48 @@
+import asyncio
+import logging
+import os
+from functools import lru_cache
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+# ── /health : marqueur de version (L-04, 2026-09-02) ─────────────────────
+# Après l'incident webhook du 01/08 (merges jamais déployés sans que personne
+# ne le voie), /health expose le SHA servi (RAILWAY_GIT_COMMIT_SHA, posé par
+# Railway) et la tête Alembic attendue par le code. La tête est lue dans
+# watt-api/alembic/ (source de vérité) ; si l'ini est introuvable (paquet
+# installé sans les migrations), on retombe sur la constante ci-dessous — à
+# mettre à jour à chaque nouvelle migration.
+_ALEMBIC_HEAD_FALLBACK = "0084_token_version"
+_ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+
+@lru_cache(maxsize=1)
+def _alembic_head() -> str:
+    """Tête de la chaîne de migrations du code (pas l'état de la base)."""
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        cfg = Config(str(_ALEMBIC_INI))
+        # `script_location = alembic` est relatif au CWD (la prod démarre à la
+        # racine du dépôt, pas dans watt-api/) → on l'ancre sur l'ini.
+        cfg.set_main_option("script_location", str(_ALEMBIC_INI.parent / "alembic"))
+        # Pas d'effet de bord sur sys.path (prepend_sys_path) dans le process
+        # de l'app, et pas de DeprecationWarning « path_separator absent ».
+        cfg.set_main_option("prepend_sys_path", "")
+        cfg.set_main_option("path_separator", "os")
+        return ScriptDirectory.from_config(cfg).get_current_head() or _ALEMBIC_HEAD_FALLBACK
+    except Exception as exc:  # ini absent, alembic non installé, têtes multiples
+        logger.warning("alembic_head : lecture dynamique impossible (%s)", exc)
+        return _ALEMBIC_HEAD_FALLBACK
 
 # Observabilité — Sentry s'initialise UNIQUEMENT si un DSN est configuré
 # (SENTRY_DSN en env). No-op total sinon : aucun impact en dev/CI/local.
@@ -152,8 +193,37 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health():
-        """Healthcheck Railway — NE PAS renommer ni monter Flask au-dessus."""
-        return {"status": "ok"}
+        """Healthcheck Railway — NE PAS renommer ni monter Flask au-dessus.
+
+        L-04 (2026-09-02) : sonde de vivacité + vérification DB bornée
+        (SELECT 1 sous 3 s, sinon 503 → Railway garde l'ancien build) +
+        marqueur de version (commit servi, tête Alembic du code, R2 configuré
+        — booléen dérivé de la config, aucun appel réseau).
+        """
+        from app.database import engine
+        from app.services.r2 import is_configured
+
+        async def _db_ping() -> None:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+
+        try:
+            # asyncio.wait_for et non asyncio.timeout : ce dernier n'existe
+            # qu'à partir de Python 3.11 (le bac à sable de l'agent est en 3.10).
+            await asyncio.wait_for(_db_ping(), timeout=3)
+        except Exception as exc:  # timeout, connexion refusée, pool épuisé…
+            logger.warning("healthcheck : base injoignable (%s)", exc)
+            return JSONResponse(
+                status_code=503, content={"status": "degraded", "db": "down"}
+            )
+
+        return {
+            "status": "ok",
+            "db": "ok",
+            "commit": os.getenv("RAILWAY_GIT_COMMIT_SHA", "")[:7],
+            "alembic_head": _alembic_head(),
+            "r2_configured": is_configured(),
+        }
 
     @app.get("/health/client-echo")
     async def client_echo(request: Request):
