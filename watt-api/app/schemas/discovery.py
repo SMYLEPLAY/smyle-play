@@ -97,19 +97,25 @@ class PromptCatalogResponse(BaseModel):
 
 
 # -----------------------------------------------------------------------------
-# ADN — vues publiques (PAS de example_outputs)
+# ADN — vues publiques (PAS de génome : ni description, ni usage_guide,
+# ni example_outputs)
 # -----------------------------------------------------------------------------
 
 class AdnPublicCard(BaseModel):
     """
-    Vignette ADN. `description` et `usage_guide` sont publiques (le buyer
-    doit savoir ce qu'il achète). `example_outputs` est gated.
+    Vignette ADN publique. S-04 sécurité (2026-09-02) : `description` (le
+    génome vendu), `usage_guide` et `example_outputs` sont GATED — le
+    catalogue n'expose que la longueur et des booléens de présence, comme
+    la page artiste (`/watt/artists/{slug}` → characterCount/hasUsageGuide/
+    hasExampleOutputs). Le contenu complet ne sort que par `LibraryAdnItem`
+    (`/me/library/adns`, possession vérifiée).
     """
 
     id: UUID
     artist: ArtistPublicCard
-    description: str
-    usage_guide: str | None = None
+    description_length: int
+    has_usage_guide: bool
+    has_example_outputs: bool
     price_credits: int
 
 

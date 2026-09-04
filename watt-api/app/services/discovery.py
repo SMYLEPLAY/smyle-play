@@ -305,17 +305,26 @@ async def list_public_adns(
         .limit(per_page)
     )
     rows = (await db.execute(items_q)).all()
-    items = [
-        {
-            "id": a.id,
-            "description": a.description,
-            "usage_guide": a.usage_guide,
-            "price_credits": a.price_credits,
-            "artist": _artist_card(u),
-        }
-        for a, u in rows
-    ]
+    items = [_adn_public_card(a, u) for a, u in rows]
     return items, int(total)
+
+
+def _adn_public_card(a: Adn, u: User) -> dict:
+    """
+    S-04 sécurité (2026-09-02) — vue publique d'un ADN : le génome
+    (description), usage_guide et example_outputs sont le contenu VENDU ;
+    on n'expose que la longueur et des booléens de présence (même gate que
+    la page artiste, cf. watt_compat._adn_public_teaser). Contenu complet
+    uniquement via list_user_library_adns (/me/library/adns).
+    """
+    return {
+        "id": a.id,
+        "description_length": len(a.description or ""),
+        "has_usage_guide": bool(a.usage_guide),
+        "has_example_outputs": bool(a.example_outputs),
+        "price_credits": a.price_credits,
+        "artist": _artist_card(u),
+    }
 
 
 async def get_public_adn(db: AsyncSession, adn_id: UUID) -> dict | None:
@@ -328,13 +337,7 @@ async def get_public_adn(db: AsyncSession, adn_id: UUID) -> dict | None:
     if row is None:
         return None
     a, u = row
-    return {
-        "id": a.id,
-        "description": a.description,
-        "usage_guide": a.usage_guide,
-        "price_credits": a.price_credits,
-        "artist": _artist_card(u),
-    }
+    return _adn_public_card(a, u)
 
 
 # -----------------------------------------------------------------------------

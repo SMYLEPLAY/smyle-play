@@ -217,6 +217,24 @@ def _derive_artist_slug(user: User) -> str:
     return _slugify(user.email.split("@", 1)[0] if user.email else "artiste")
 
 
+def _adn_public_teaser(adn) -> dict:
+    """
+    S-04 sécurité (2026-09-02) — gate du génome ADN, source unique.
+
+    Le contenu vendu d'un ADN (description = génome, usage_guide,
+    example_outputs) n'est JAMAIS exposé sur une surface publique : seuls
+    la longueur et des booléens de présence le sont (même règle que la page
+    artiste depuis le 2026-05-13). Le contenu complet ne sort que par
+    /me/library/adns (possession vérifiée). Utilisé par la page artiste,
+    /watt/adns et /watt/adns/{slug}.
+    """
+    return {
+        "characterCount":    len(adn.description or ""),
+        "hasUsageGuide":     bool(adn.usage_guide),
+        "hasExampleOutputs": bool(adn.example_outputs),
+    }
+
+
 def _build_stream_url(track: Track) -> str:
     """
     Construit l'URL streamable côté frontend.
@@ -770,14 +788,13 @@ async def build_artist_detail_payload(
                     OwnedAdn.adn_id == published_adn.id
                 )
             )).scalar_one() or 0)
-        # Pas de teaser exposé : longueur + prix + meta booléens + rareté.
+        # Pas de teaser exposé : longueur + prix + meta booléens + rareté
+        # (S-04 : gate partagé avec /watt/adns via _adn_public_teaser).
         max_sup = published_adn.max_supply
         adn_payload = {
             "id":               str(published_adn.id),
-            "characterCount":   len(published_adn.description or ""),
+            **_adn_public_teaser(published_adn),
             "priceCredits":     published_adn.price_credits,
-            "hasUsageGuide":    bool(published_adn.usage_guide),
-            "hasExampleOutputs": bool(published_adn.example_outputs),
             "createdAt":        published_adn.created_at.isoformat() if published_adn.created_at else None,
             # 2026-05-13 — Rareté + IA pour badges UI publique.
             "aiReference":      published_adn.ai_reference,
@@ -1482,8 +1499,12 @@ async def list_adns(db: AsyncSession = Depends(get_db)) -> dict:
     Liste publique des DNA Playlists (Adn.is_published = True).
 
     Renvoie {'adns': [...]} avec, pour chaque ADN :
-      slug, artistName, brandColor, description, usageGuide,
-      exampleOutputs, priceCredits, trackCount, promptCount, universe.
+      slug, artistName, brandColor, characterCount, hasUsageGuide,
+      hasExampleOutputs, priceCredits, trackCount, promptCount, universe.
+
+    S-04 (2026-09-02) : le génome (description), usageGuide et
+    exampleOutputs ne sont plus servis ici — contenu payant, visible
+    uniquement via /me/library/adns après achat (cf. _adn_public_teaser).
 
     Trié par nombre de tracks descendant (les univers les plus fournis
     apparaissent en premier).
@@ -1518,9 +1539,7 @@ async def list_adns(db: AsyncSession = Depends(get_db)) -> dict:
             "artistId":       str(artist.id),
             "artistName":     artist.artist_name or "",
             "brandColor":     artist.brand_color or "",
-            "description":    adn.description,
-            "usageGuide":     adn.usage_guide or "",
-            "exampleOutputs": adn.example_outputs or "",
+            **_adn_public_teaser(adn),
             "priceCredits":   adn.price_credits,
             "trackCount":     track_count,
             "promptCount":    prompt_count,
@@ -1597,9 +1616,8 @@ async def get_adn(slug: str, db: AsyncSession = Depends(get_db)) -> dict:
             "artistId":       str(target.id),
             "artistName":     target.artist_name or "",
             "brandColor":     target.brand_color or "",
-            "description":    adn.description,
-            "usageGuide":     adn.usage_guide or "",
-            "exampleOutputs": adn.example_outputs or "",
+            # S-04 — génome gaté : longueur + booléens, jamais le contenu.
+            **_adn_public_teaser(adn),
             "priceCredits":   adn.price_credits,
             "universe":       universe,
             "createdAt":      adn.created_at.isoformat() if adn.created_at else None,
