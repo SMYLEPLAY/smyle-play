@@ -16,4 +16,5 @@ window.WATT_LAUNCH = window.WATT_LAUNCH || {
   troc: false,
   thePlan: false,
   achatSmyles: false,
+  euros: false,
 };
