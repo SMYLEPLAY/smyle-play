@@ -29,12 +29,13 @@
     // via le MÊME endpoint d'unlock prompt (mint #X/N inclus). On distingue
     // juste le type pour adapter les repères/toasts.
     'image':      '/unlocks/prompts/',
-    'adn-artist': '/unlocks/adns/',
-    // C4 — ADN Visuel artiste (signature visuelle, mirror de l'ADN musical).
-    'visual-adn': '/unlocks/visual-adns/',
     'voix':       '/unlocks/voices/',
-    'playlist':   '/unlocks/playlist-adn/',
   };
+  // K-04 (2026-09-04, annexe B §M17) — 'adn-artist', 'visual-adn' et 'playlist'
+  // ne figurent plus ici : ces trois types sont routés vers AdnOfferModal par
+  // OFFER_ONLY_TYPES ci-dessous, et leurs routes d'unlock direct répondent
+  // 410 Gone (« ADN uniquement sur offre »). Une table qui les citait encore
+  // laissait croire à un chemin d'achat direct qui n'existe plus.
   var TYPE_LABELS = {
     'son':        '🧬 Recette + fichier',
     'image':      '🖼️ Recette + image originale',
@@ -150,10 +151,13 @@
     'visual-adn': 'visual_adn',
     'adn-artist': 'profile_adn',
   };
+  function _knownType(t) { return !!(ENDPOINTS[t] || OFFER_ONLY_TYPES[t]); }
 
   function open(opts) {
     opts = opts || {};
-    var type  = ENDPOINTS[opts.type] ? opts.type : 'son';
+    // K-04 — un type « offre uniquement » n'est plus dans ENDPOINTS : sans ce
+    // test il retomberait sur 'son' et lancerait un achat direct.
+    var type  = _knownType(opts.type) ? opts.type : 'son';
     var id    = opts.id;
     if (!id) return;
     if (OFFER_ONLY_TYPES[type]) {
