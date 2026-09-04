@@ -14,7 +14,13 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  // En CI on ajoute le reporter `github` : il publie le nom du test, le
+  // fichier:ligne et l'assertion en ANNOTATION GitHub — lisible sur la page
+  // du job sans télécharger l'artefact HTML (le log brut, lui, demande une
+  // session). Sans ça, un échec e2e n'affiche que « exit code 1 ».
+  reporter: process.env.CI
+    ? [['list'], ['github'], ['html', { open: 'never' }]]
+    : 'list',
   timeout: 30_000,
   expect: { timeout: 10_000 },
   use: {

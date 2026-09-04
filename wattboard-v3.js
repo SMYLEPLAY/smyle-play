@@ -313,7 +313,9 @@
     // Côté acheteurs, /beats (C2) listera les sons vendus en tant que beats.
     return tileHtml('sons',  '🤖', 'Sons IA',     'sons',  { createKind: 'son',  viewKey: 'sons',  countLabel: 'publiés' })
          + tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',   countLabel: 'signature' })
-         + tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' })
+         + ((window.WATT_LAUNCH && window.WATT_LAUNCH.voix)
+              ? tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' })
+              : '')
          + tileHtml('adn-playlist', '🧬', 'ADN Playlist', null, { viewKey: 'adn-playlist', viewOnly: true, countLabel: 'le génome d\'une playlist vendable', countText: 'Gérer' });
   }
 
@@ -335,7 +337,9 @@
       '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>' +
       '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature sonore vendable</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>' +
+      ((window.WATT_LAUNCH && window.WATT_LAUNCH.voix)
+        ? '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>'
+        : '') +
       '<button type="button" class="wb3-create-item" data-wb3-create="adn-playlist">🧬 <span>ADN Playlist<em>Le génome d\'une playlist — l\'achat débloque la recette + le seed prompt</em></span></button>';
   }
 
@@ -390,7 +394,9 @@
         (monde === 'visuel'
           ? '<button type="button" class="wb3-cross-btn" data-wb3-view="albums">🖼️ Albums</button>'
           : '<button type="button" class="wb3-cross-btn" data-wb3-view="playlists">📚 Playlists</button>') +
-        '<button type="button" class="wb3-cross-btn" data-wb3-view="trades">🔄 Échanges</button>' +
+        ((window.WATT_LAUNCH && window.WATT_LAUNCH.troc)
+          ? '<button type="button" class="wb3-cross-btn" data-wb3-view="trades">🔄 Échanges</button>'
+          : '') +
         '<button type="button" class="wb3-cross-btn" data-wb3-view="trophees">🏆 Trophées</button>' +
         '<button type="button" class="wb3-cross-btn" data-wb3-view="stats">📈 Analytique</button>' +
         '<a class="wb3-cross-btn" href="/library" style="text-decoration:none;">📦 Bibliothèque</a>' +

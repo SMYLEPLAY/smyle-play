@@ -30,6 +30,13 @@ function _authEscHtml(s) {
   ));
 }
 
+// K-05 (2026-09-04, annexe B §4) — MODE_LANCEMENT côté front : un item n'est
+// visible que si window.WATT_LAUNCH.<item> est vrai. Défensif : drapeau
+// absent (launch-flags.js non chargé) → masqué.
+function _launchItemOn(item) {
+  return !!(window.WATT_LAUNCH && window.WATT_LAUNCH[item]);
+}
+
 // Récupère /users/me et synchronise setCurrentUser. Retourne le user ou null.
 async function _fetchMeAndSync() {
   try {
@@ -299,10 +306,11 @@ function renderAuthArea() {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
           Parrainage
         </button>
-        <button class="user-menu-item" onclick="openPackModal()" role="menuitem">
+        ${_launchItemOn('packs') ? `
+        <button class="user-menu-item" id="user-menu-open-pack" onclick="openPackModal()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
           Ouvrir un pack
-        </button>
+        </button>` : ''}
         <div class="user-menu-sep"></div>
         <button class="user-menu-item user-menu-item-danger" onclick="doLogout()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -640,6 +648,15 @@ function _ensurePackModal() {
 
 async function openPackModal() {
   _closeUserMenu();
+  // K-05 — packs masqués par MODE_LANCEMENT : ni modale, ni appel
+  // /packs/mystery (le point d'entrée du menu n'est plus rendu, mais la
+  // fonction reste appelable par d'autres modules → garde ici aussi).
+  if (!_launchItemOn('packs')) {
+    if (typeof window.smyleToast === 'function') {
+      window.smyleToast('Les packs ne sont pas disponibles pendant le lancement.', { type: 'info', duration: 2800 });
+    }
+    return;
+  }
   const modal = _ensurePackModal();
   modal.style.display = 'flex';
   await _renderPackIntro();

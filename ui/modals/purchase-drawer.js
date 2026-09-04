@@ -257,7 +257,11 @@
           } else {
             parts.push('♾️ Édition ouverte');
           }
-          if (m.secondary && m.secondary.length) {
+          // MODE_LANCEMENT — le marché secondaire n'est pas VISIBLE : on
+          // n'annonce pas une revente sur laquelle l'acheteur ne peut pas
+          // cliquer. Défensif : drapeau absent → masqué.
+          var _resaleOn = !!(window.WATT_LAUNCH && window.WATT_LAUNCH.resale);
+          if (_resaleOn && m.secondary && m.secondary.length) {
             parts.push('♻️ <strong>' + m.secondary.length + '</strong> en revente · à partir de <strong>' + m.secondary_from + ' Smyles</strong>');
           }
           el.innerHTML = parts.join('<br>');
@@ -265,7 +269,7 @@
             var btn = ov.querySelector('.pd-confirm');
             if (btn) {
               btn.disabled = true;
-              btn.textContent = (m.secondary && m.secondary.length) ? 'Épuisé · dispo en revente' : 'Épuisé';
+              btn.textContent = (_resaleOn && m.secondary && m.secondary.length) ? 'Épuisé · dispo en revente' : 'Épuisé';
             }
           }
         }).catch(function () { /* silencieux */ });

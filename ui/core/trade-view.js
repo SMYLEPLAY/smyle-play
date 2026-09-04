@@ -59,6 +59,13 @@
     } catch (_) {}
     const myId = await _getMyId();
     if (o) { _renderAdn(o, myId); return; }
+    // K-05 (2026-09-04, annexe B §4) — troc masqué par MODE_LANCEMENT : pas
+    // d'appel /trades/offers/me (les offres ADN ci-dessus restent ouvertes).
+    // Défensif : drapeau absent → masqué.
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.troc)) {
+      alert("Les échanges ne sont pas disponibles pendant le lancement.");
+      return;
+    }
     try {
       const trades = (await apiFetch('/trades/offers/me')) || [];
       o = trades.find((x) => String(x.id) === String(offerId)) || null;
