@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, 'agent/**']
   workflow_dispatch: {}
 
 concurrency:
@@ -114,8 +114,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
-      SECRET_KEY: ci-flask-secret
-      JWT_SECRET: ci-jwt-secret
+      SECRET_KEY: ci-test-key-not-a-secret-xxxxxxxxxxxxxxxxxxxxxxxx
       ENVIRONMENT: test
       PORT: "8000"
       CORS_ALLOWED_ORIGINS: "*"
@@ -204,8 +203,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/smyleplay_ci
-      SECRET_KEY: ci-flask-secret
-      JWT_SECRET: ci-jwt-secret
+      SECRET_KEY: ci-test-key-not-a-secret-xxxxxxxxxxxxxxxxxxxxxxxx
       ENVIRONMENT: test
 
     steps:
