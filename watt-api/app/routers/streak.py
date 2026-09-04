@@ -5,10 +5,11 @@ Endpoints :
   GET  /streak/me       → état du streak sans réclamer (auth)
   POST /streak/checkin  → réclame la récompense du jour (auth, idempotent/jour)
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
+from app.core.ratelimit import LIMIT_CHECKIN, limiter
 from app.database import get_db
 from app.models.user import User
 from app.schemas.streak import StreakClaim, StreakStatus
@@ -27,7 +28,9 @@ async def my_streak(
 
 
 @router.post("/checkin", response_model=StreakClaim)
+@limiter.limit(LIMIT_CHECKIN)
 async def checkin(
+    request: Request,  # requis par slowapi (cf. credits.py) — ne pas retirer
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

@@ -34,6 +34,12 @@ LIMIT_RESET_PASSWORD = "10/hour"     # essais de jetons
 # Achats : généreuses — un humain ne les atteint jamais, un script oui.
 LIMIT_PURCHASE = "30/minute"
 
+# Check-in quotidien : une seule réclamation par jour est possible (garde
+# atomique dans services/streak.py). La limite coupe le martèlement d'un
+# script qui tenterait la course — 5/minute laisse largement passer un
+# humain qui reclique (S-07, audit A §M2).
+LIMIT_CHECKIN = "5/minute"
+
 
 def client_ip(request: Request) -> str:
     """
