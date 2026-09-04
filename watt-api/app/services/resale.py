@@ -13,12 +13,22 @@ Flux :
                                current_owner_id + resale_price repasse à NULL.
   - get_resale_market        : listings publics du marché secondaire.
 
-Atomicité : begin_nested + locks ordonnés (buyer, seller, artiste d'origine),
-même pattern que unlock_*_atomic. Le caller commit.
+Atomicité : begin_nested + verrou du LISTING (FOR UPDATE) puis locks users
+ordonnés (buyer, seller, artiste d'origine), même pattern que unlock_*_atomic.
+Le caller commit.
+
+S-06 sécurité (2026-09-02) — course « double vente » : le listing était lu
+sans verrou et transféré par un UPDATE inconditionnel ; deux acheteurs
+simultanés payaient tous les deux (vendeur crédité 2×) et le second
+dépossédait le premier. Désormais : listing verrouillé dans le savepoint
+AVANT les verrous users (ordre listing → users partout ; list/unlist ne
+verrouillent aucun user → pas de cycle), re-validation après verrou, et
+transfert conditionnel `WHERE current_owner_id = seller AND resale_price IS
+NOT NULL` (rowcount == 1 sinon ResaleNotListed → rollback du savepoint).
 """
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select, text
+from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -120,7 +130,8 @@ async def buy_resale_atomic(
     Le caller commit. Lève ResaleNotListed / ResaleSelfBuy / ResaleAlreadyOwned
     / ResaleInsufficientCredits.
     """
-    # 1. Charge le listing (sans lock — routage).
+    # 1. Pré-lecture du listing SANS verrou (routage + erreurs rapides hors
+    #    savepoint). La lecture qui fait foi est celle sous FOR UPDATE (3.a).
     up = (await db.execute(
         select(UnlockedPrompt).where(UnlockedPrompt.id == unlocked_prompt_id)
     )).scalar_one_or_none()
@@ -168,7 +179,25 @@ async def buy_resale_atomic(
         raise ResaleAlreadyOwned("Tu possèdes déjà ce prompt")
 
     async with db.begin_nested():
-        # 3. Locks ordonnés (buyer, seller, artiste d'origine s'il existe).
+        # 3.a Verrou du LISTING (S-06) — en premier, avant les users. Deux
+        #     acheteurs simultanés se sérialisent ici ; le second relit la
+        #     ligne après le commit du premier (READ COMMITTED) et échoue à
+        #     la re-validation (resale_price NULL / owner changé / prix
+        #     changé entre l'affichage et l'achat).
+        up = (await db.execute(
+            select(UnlockedPrompt)
+            .where(UnlockedPrompt.id == unlocked_prompt_id)
+            .with_for_update()
+        )).scalar_one_or_none()
+        if (
+            up is None
+            or up.resale_price is None
+            or up.current_owner_id != seller_id
+            or int(up.resale_price) != price
+        ):
+            raise ResaleNotListed("Ce prompt n'est plus en vente")
+
+        # 3.b Locks ordonnés (buyer, seller, artiste d'origine s'il existe).
         lock_ids = [buyer_id, seller_id]
         if original_artist_id is not None:
             lock_ids.append(original_artist_id)
@@ -244,13 +273,29 @@ async def buy_resale_atomic(
                 {"r": artist_royalty, "uid": original_artist_id},
             )
 
-        # 10. TRANSFERT de propriété + retrait de la vente.
+        # 10. TRANSFERT de propriété + retrait de la vente — CONDITIONNEL
+        #     (ceinture + bretelles au-dessus du verrou) : la ligne doit
+        #     encore appartenir au vendeur ET être en vente. rowcount != 1 →
+        #     ResaleNotListed → rollback du savepoint (débits/crédits annulés).
+        try:
+            res = await db.execute(
+                update(UnlockedPrompt)
+                .where(
+                    UnlockedPrompt.id == up.id,
+                    UnlockedPrompt.current_owner_id == seller_id,
+                    UnlockedPrompt.resale_price.is_not(None),
+                )
+                .values(current_owner_id=buyer_id, resale_price=None)
+            )
+        except IntegrityError as e:
+            # UNIQUE (current_owner_id, prompt_id) : l'acheteur a acquis un
+            # exemplaire entre le pré-contrôle (2) et le transfert.
+            raise ResaleAlreadyOwned("Conflit de propriété, réessaie") from e
+        if res.rowcount != 1:
+            raise ResaleNotListed("Ce prompt n'est plus en vente")
+        # Synchronise l'objet en session avec la ligne transférée.
         up.current_owner_id = buyer_id
         up.resale_price = None
-        try:
-            await db.flush()
-        except IntegrityError as e:
-            raise ResaleAlreadyOwned("Conflit de propriété, réessaie") from e
 
         tx.status = TransactionStatus.COMPLETED
         tx.completed_at = func.now()
