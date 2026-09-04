@@ -56,6 +56,9 @@ _AUDIO_MIME_BY_EXT = {
     "ogg":  "audio/ogg",
     "flac": "audio/flac",
     "aac":  "audio/aac",
+    # S-05 (2026-09-02) — accepté à l'upload (_AUDIO_EXTS) : doit rester
+    # streamable maintenant que ce dict sert de liste blanche.
+    "webm": "audio/webm",
 }
 
 
@@ -97,6 +100,18 @@ async def stream_r2_audio(key: str):
             detail="Ressource introuvable.",
         )
 
+    # S-05 sécurité (2026-09-02) — liste blanche d'extensions : le proxy
+    # audio ne sert QUE des clés dont l'extension est un format audio connu
+    # (_AUDIO_MIME_BY_EXT). Bloque .png/.jpg/.webp/.json/… quel que soit le
+    # préfixe (plus robuste que le seul refus `images/`) et les clés sans
+    # extension. Évalué AVANT la config R2 → 404 déterministe.
+    ext = _k.rsplit(".", 1)[-1] if "." in _k else ""
+    if ext not in _AUDIO_MIME_BY_EXT:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ressource introuvable.",
+        )
+
     # Import local pour éviter de tirer boto3 dans tous les imports.
     from app.services.r2 import get_r2_client, is_configured
 
@@ -125,11 +140,10 @@ async def stream_r2_audio(key: str):
             detail="Ressource introuvable.",
         )
 
-    # Détection MIME via extension. Le content-type R2 lui-même est
-    # parfois application/octet-stream — on l'ignore et on force le
-    # bon type, sinon Chrome refuse le play.
-    ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
-    mime = _AUDIO_MIME_BY_EXT.get(ext, "application/octet-stream")
+    # MIME via extension (déjà validée par la liste blanche ci-dessus). Le
+    # content-type R2 lui-même est parfois application/octet-stream — on
+    # l'ignore et on force le bon type, sinon Chrome refuse le play.
+    mime = _AUDIO_MIME_BY_EXT[ext]
 
     # Iterator qui lit le body S3 par chunks de 64 KB. boto3 StreamingBody
     # supporte iter_chunks() qui fait exactement ça.
@@ -148,9 +162,12 @@ async def stream_r2_audio(key: str):
     headers = {}
     if content_length:
         headers["Content-Length"] = str(content_length)
-    # Cache 1h côté browser (les samples R2 sont immuables tant que la
-    # clé ne change pas).
-    headers["Cache-Control"] = "public, max-age=3600"
+    # Cache 1h côté browser uniquement (les samples R2 sont immuables tant
+    # que la clé ne change pas) — S-05 : `private` pour qu'aucun cache
+    # partagé (CDN/proxy) ne conserve un objet audio payant ; `inline` pour
+    # que le navigateur lise plutôt qu'il ne télécharge.
+    headers["Cache-Control"] = "private, max-age=3600"
+    headers["Content-Disposition"] = "inline"
 
     return StreamingResponse(
         _iter_chunks(),
@@ -281,7 +298,9 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
     Convertit un Track FastAPI vers la forme attendue par le JS Flask.
 
     Flask track.to_dict() :
-      {id, name, genre, streamUrl, r2Key, plays, uploadedAt, date}
+      {id, name, genre, streamUrl, plays, uploadedAt, date}
+      (S-05, 2026-09-02 : `r2Key` retiré — clé de stockage interne, aucun
+      consommateur front ; streamUrl suffit à l'écoute.)
 
     Sprint 1 enrichi (2026-05-04) :
       - coverUrl : URL R2 de la pochette (NULL = fallback couleur côté UI)
@@ -299,7 +318,6 @@ def _track_to_flask_dict(track: Track, artist: Optional[User] = None) -> dict:
         "name":       track.title,
         "genre":      "",  # pas de genre par track dans le modèle FastAPI — vide pour compat
         "streamUrl":  _build_stream_url(track),
-        "r2Key":      track.r2_key or "",
         "plays":      track.plays or 0,
         "uploadedAt": uploaded_ms,
         "date":       date_fr,
