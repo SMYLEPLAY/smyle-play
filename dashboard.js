@@ -5540,6 +5540,18 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadTrades() {
   const root = document.getElementById('dash-trades-root');
   if (!root) return;
+
+  // MODE_LANCEMENT — le troc ADN n'est pas VISIBLE au lancement : on masque
+  // la pastille de navigation ET la section, et on n'appelle pas l'API (une
+  // section vide vaut mieux qu'un point d'entrée vers une fonction masquée).
+  // Défensif : window.WATT_LAUNCH absent → masqué. Rallumable par drapeau.
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.troc)) {
+    const _pill = document.getElementById('pill-trades');
+    if (_pill) _pill.style.display = 'none';
+    const _sec = document.getElementById('sec-trades');
+    if (_sec) _sec.style.display = 'none';
+    return;
+  }
   try {
     const data = await apiFetch('/trades/offers/me');
     renderTrades(root, data || []);

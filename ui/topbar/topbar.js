@@ -871,11 +871,21 @@
   // ── Écran "Proposition d'échange" (réutilisable : notif + messages) ──────
   // Affiche l'offre (les 2 prompts + écoute) et permet d'accepter / refuser /
   // annuler selon le rôle. Ouvert via SmyleTopbar.openTradeView(offerId).
+  // K-05 (2026-09-04, annexe B §4) — troc masqué par MODE_LANCEMENT : la vue
+  // échange ouverte depuis une notification n'appelle pas /trades/offers/me.
+  // Défensif : drapeau absent → masqué. (Les offres ADN ne sont pas gatées :
+  // elles passent par openAdnOfferView.)
+  const _trocOn = () => !!(window.WATT_LAUNCH && window.WATT_LAUNCH.troc);
+
   // S-01 (2026-09-02) — dédoublonnage : le rendu de référence est
   // ui/core/trade-view.js (SmyleTradeView.open, chargé sur index/artiste/
   // dashboard/library). _openTradeView ne sert plus que de repli quand
   // trade-view.js n'est pas chargé, avec le même échappement complet.
+  // K-05 : la garde troc est posée ici aussi — le repli _openTradeView et
+  // SmyleTradeView.open la portent chacun, mais le dispatch doit couper
+  // avant tout appel réseau quel que soit le chemin emprunté.
   function _openTradeViewDispatch(offerId) {
+    if (!_trocOn()) { alert("Les échanges ne sont pas disponibles pendant le lancement."); return; }
     return (window.SmyleTradeView && typeof window.SmyleTradeView.open === 'function')
       ? window.SmyleTradeView.open(offerId)
       : _openTradeView(offerId);
@@ -883,6 +893,7 @@
 
   async function _openTradeView(offerId) {
     if (!offerId) return;
+    if (!_trocOn()) { alert("Les échanges ne sont pas disponibles pendant le lancement."); return; }
     let offers = [];
     try { offers = (await apiFetch('/trades/offers/me')) || []; } catch (_) {}
     const o = offers.find(x => String(x.id) === String(offerId));
