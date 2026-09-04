@@ -133,43 +133,54 @@ def test_public_prompt_card_rejects_prompt_text_injection():
 
 
 # -----------------------------------------------------------------------------
-# ADN — vues publiques NE DOIVENT PAS contenir example_outputs
+# ADN — vues publiques NE DOIVENT PAS contenir le génome
+# (S-04, 2026-09-02 : ni description, ni usage_guide, ni example_outputs —
+# seulement description_length + has_usage_guide + has_example_outputs)
 # -----------------------------------------------------------------------------
 
+_ADN_GENOME_FIELDS = {"description", "usage_guide", "example_outputs"}
+
+
+def _adn_public_kwargs():
+    return {
+        "id": uuid4(),
+        "artist": ArtistPublicCard(**_artist_dict()),
+        "description_length": 200,
+        "has_usage_guide": True,
+        "has_example_outputs": False,
+        "price_credits": 50,
+    }
+
+
 def test_public_adn_card_has_no_example_outputs():
-    card = AdnPublicCard(
-        id=uuid4(),
-        artist=ArtistPublicCard(**_artist_dict()),
-        description="X" * 200,
-        usage_guide="how to",
-        price_credits=50,
-    )
-    assert "example_outputs" not in card.model_dump()
+    card = AdnPublicCard(**_adn_public_kwargs())
+    dumped = card.model_dump()
+    assert not (_ADN_GENOME_FIELDS & dumped.keys())
+    assert dumped["description_length"] == 200
+    assert dumped["has_usage_guide"] is True
+    assert dumped["has_example_outputs"] is False
 
 
 def test_public_adn_detail_has_no_example_outputs():
-    detail = AdnPublicDetail(
-        id=uuid4(),
-        artist=ArtistPublicCard(**_artist_dict()),
-        description="X" * 200,
-        usage_guide="how to",
-        price_credits=50,
-    )
-    assert "example_outputs" not in detail.model_dump()
+    detail = AdnPublicDetail(**_adn_public_kwargs())
+    assert not (_ADN_GENOME_FIELDS & detail.model_dump().keys())
 
 
 def test_public_adn_card_rejects_example_outputs_injection():
-    """Filet anti-leak : example_outputs injecté ne doit pas ressortir."""
+    """Filet anti-leak : génome injecté ne doit pas ressortir."""
     card = AdnPublicCard.model_validate({
         "id": uuid4(),
         "artist": _artist_dict(),
-        "description": "X" * 200,
-        "usage_guide": "guide",
+        "description_length": 200,
+        "has_usage_guide": True,
+        "has_example_outputs": True,
         "price_credits": 50,
+        "description": "GATED GENOME",
+        "usage_guide": "GATED GUIDE",
         "example_outputs": "GATED PREMIUM EXAMPLES",
     })
     dumped = card.model_dump()
-    assert "example_outputs" not in dumped
+    assert not (_ADN_GENOME_FIELDS & dumped.keys())
 
 
 # -----------------------------------------------------------------------------
@@ -261,7 +272,9 @@ def test_public_prompt_fields_are_strict_subset_of_library_fields_minus_gated():
 def test_public_adn_fields_strict_subset_of_library_minus_gated():
     public_fields = set(AdnPublicCard.model_fields.keys())
     library_fields = set(LibraryAdnItem.model_fields.keys())
-    # Library doit avoir example_outputs (gated)
-    assert "example_outputs" in library_fields
-    # Public ne doit PAS avoir example_outputs
-    assert "example_outputs" not in public_fields
+    # Library doit avoir le contenu complet (gated) : génome + guide + exemples.
+    assert {"description", "usage_guide", "example_outputs"} <= library_fields
+    # Public ne doit avoir AUCUN de ces trois champs (S-04), seulement les
+    # métadonnées de teaser.
+    assert not ({"description", "usage_guide", "example_outputs"} & public_fields)
+    assert {"description_length", "has_usage_guide", "has_example_outputs"} <= public_fields
