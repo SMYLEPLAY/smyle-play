@@ -17,10 +17,12 @@
   'use strict';
   if (typeof window === 'undefined' || window.SpBadges) return;
 
+  // S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+  // ui/albums.js (l'apostrophe et le backtick manquaient).
   function _esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+    });
   }
 
   var NATURES = {
@@ -104,7 +106,9 @@
       var key = String(platform || '').trim().toLowerCase();
       var label = PLATFORMS[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
       if (!label) return '';
-      var txt = label + (version ? ' · ' + _esc(version) : '');
+      // S-01 (2026-09-02) — `platform` hors liste PLATFORMS est une chaîne
+      // libre (String(20) sans CHECK) : le label dérivé est échappé lui aussi.
+      var txt = _esc(label) + (version ? ' · ' + _esc(version) : '');
       return '<span class="sp-provenance" title="Générée avec ' + _esc(label) + '">⚡ ' + txt + '</span>';
     },
   };

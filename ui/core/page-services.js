@@ -31,10 +31,13 @@
     return h;
   }
 
+  // S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+  // ui/albums.js : _esc sert aussi en contexte d'attribut / onclick inline,
+  // la variante textContent→innerHTML n'échappait pas les guillemets.
   function _esc(s) {
-    const d = document.createElement('div');
-    d.textContent = s == null ? '' : String(s);
-    return d.innerHTML;
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+    ));
   }
 
   function _timeAgo(iso) {

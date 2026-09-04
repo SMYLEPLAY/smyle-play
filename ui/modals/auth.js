@@ -20,6 +20,16 @@
 
 // ── 5. AUTH (FastAPI) ───────────────────────────────────────────────────────
 
+// S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+// ui/albums.js. Script global (pas d'IIFE) : nom préfixé pour ne pas entrer
+// en collision avec les _esc des autres modules. Sert pour le title du badge
+// utilisateur (nom du profil) et le titre du prompt tiré d'un pack.
+function _authEscHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
+}
+
 // Récupère /users/me et synchronise setCurrentUser. Retourne le user ou null.
 async function _fetchMeAndSync() {
   try {
@@ -254,10 +264,10 @@ function renderAuthArea() {
     // BOARD (/dashboard) est réservé au back : analytique + upload sons +
     // recettes Suno.
     area.innerHTML = `
-      <a class="profile-quick-btn" href="${profileHref}" title="Mon profil" aria-label="Mon profil">
+      <a class="profile-quick-btn" href="${_authEscHtml(profileHref)}" title="Mon profil" aria-label="Mon profil">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg>
       </a>
-      <div class="user-badge" title="${fullName}" onclick="toggleUserMenu(event)">
+      <div class="user-badge" title="${_authEscHtml(fullName)}" onclick="toggleUserMenu(event)">
         <div class="user-avatar">${initials}</div>
         <span class="user-badge-caret" aria-hidden="true">▾</span>
       </div>
@@ -265,11 +275,11 @@ function renderAuthArea() {
         <div class="user-menu-head">
           <div class="user-menu-avatar">${initials}</div>
           <div class="user-menu-info">
-            <div class="user-menu-name">${fullName}</div>
-            <div class="user-menu-mail">${user.email || ''}</div>
+            <div class="user-menu-name">${_authEscHtml(fullName)}</div>
+            <div class="user-menu-mail">${_authEscHtml(user.email || '')}</div>
           </div>
         </div>
-        <a class="user-menu-item" href="${profileHref}" role="menuitem">
+        <a class="user-menu-item" href="${_authEscHtml(profileHref)}" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg>
           Mon profil
         </a>
@@ -730,7 +740,7 @@ async function openPack() {
             ${rar.label}
             <span style="position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);animation:shineSweep 1s ease-in-out .3s both;"></span>
           </div>
-          <div style="font-size:22px;font-weight:800;margin:4px 0 16px;color:${isTop ? rar.color : '#fff'};">${title}</div>
+          <div style="font-size:22px;font-weight:800;margin:4px 0 16px;color:${isTop ? rar.color : '#fff'};">${_authEscHtml(title)}</div>
           <a href="/library" style="display:block;background:#6c4cf0;color:#fff;border-radius:12px;padding:12px;text-decoration:none;font-weight:700;margin-bottom:8px;">Voir dans ma bibliothèque</a>
           <button onclick="_renderPackIntro()" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;">Ouvrir un autre pack</button>
         </div>

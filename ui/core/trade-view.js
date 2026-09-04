@@ -16,13 +16,19 @@
     return _myId;
   }
 
-  const _esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+  // S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+  // ui/albums.js. L'ancien `replace(/</g,'&lt;')` laissait passer les
+  // guillemets : une audio_url piégée (`" onerror="…`) posée en src sortait de
+  // l'attribut (XSS stocké, annexe A §B2).
+  const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
   const _audio = (p) => (p && p.audio_url)
-    ? `<audio controls preload="none" src="${p.audio_url}" style="width:100%;margin-top:6px;height:30px"></audio>` : '';
+    ? `<audio controls preload="none" src="${_esc(p.audio_url)}" style="width:100%;margin-top:6px;height:30px"></audio>` : '';
   // Aperçu image (parité visuel) : si le prompt est une image, on montre la
   // miniature d'aperçu (jamais l'original gaté) pour "voir avant d'accepter".
   const _preview = (p) => (p && p.preview_url)
-    ? `<img src="${p.preview_url}" alt="" loading="lazy" style="width:100%;margin-top:6px;border-radius:6px;max-height:160px;object-fit:cover" />` : '';
+    ? `<img src="${_esc(p.preview_url)}" alt="" loading="lazy" style="width:100%;margin-top:6px;border-radius:6px;max-height:160px;object-fit:cover" />` : '';
   const _media = (p) => _preview(p) + _audio(p);
 
   // OFFRES-ADN : une offre cash sur un ADN (target_type présent, pas de
@@ -72,10 +78,10 @@
     let actions;
     if (pending && isSeller) {
       actions = `
-        <button onclick="SmyleTradeView._adnAct('${o.id}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">Accepter · ${o.amount_credits} crédits</button>
-        <button onclick="SmyleTradeView._adnAct('${o.id}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Refuser</button>`;
+        <button onclick="SmyleTradeView._adnAct('${_esc(o.id)}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">Accepter · ${o.amount_credits} crédits</button>
+        <button onclick="SmyleTradeView._adnAct('${_esc(o.id)}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Refuser</button>`;
     } else if (pending && isBuyer) {
-      actions = `<button onclick="SmyleTradeView._adnAct('${o.id}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler mon offre</button>`;
+      actions = `<button onclick="SmyleTradeView._adnAct('${_esc(o.id)}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler mon offre</button>`;
     } else {
       const lbl = { accepted: '✅ Offre acceptée — ADN livré', rejected: '❌ Refusée', cancelled: 'Annulée', expired: '⏳ Expirée' }[o.status] || o.status;
       actions = `<div style="flex:1;text-align:center;opacity:.7;padding:8px">${lbl}</div>`;
@@ -136,10 +142,10 @@
     let actions;
     if (pending && isReceiver) {
       actions = `
-        <button onclick="SmyleTradeView._act('${o.id}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">✅ Accepter</button>
-        <button onclick="SmyleTradeView._act('${o.id}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">❌ Refuser</button>`;
+        <button onclick="SmyleTradeView._act('${_esc(o.id)}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">✅ Accepter</button>
+        <button onclick="SmyleTradeView._act('${_esc(o.id)}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">❌ Refuser</button>`;
     } else if (pending && isSender) {
-      actions = `<button onclick="SmyleTradeView._act('${o.id}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler ma proposition</button>`;
+      actions = `<button onclick="SmyleTradeView._act('${_esc(o.id)}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler ma proposition</button>`;
     } else {
       const lbl = { accepted: '✅ Échange accepté', rejected: '❌ Refusé', cancelled: 'Annulé', expired: '⏳ Expiré' }[o.status] || o.status;
       actions = `<div style="flex:1;text-align:center;opacity:.7;padding:8px">${lbl}</div>`;

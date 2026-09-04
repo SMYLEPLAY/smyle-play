@@ -33,10 +33,13 @@
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+  // S-01 (2026-09-02) — échappeur HTML complet (& < > " ' `), copie de
+  // ui/albums.js : la variante textContent→innerHTML n'échappait pas les
+  // guillemets alors que _esc sert dans des attributs (data-*, title, style).
   function _esc(s) {
-    const d = document.createElement('div');
-    d.textContent = s == null ? '' : String(s);
-    return d.innerHTML;
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+    ));
   }
 
   // Couleur déterministe à partir d'un ID (fallback si pas de brand_color)
@@ -175,7 +178,26 @@
         <div class="msg-pane" id="msg-pane-inbox"></div>
         <div class="msg-pane msg-pane-thread hidden" id="msg-pane-thread"></div>
       </div>`;
+    _bindDelegates(el);
     _renderInbox();
+  }
+
+  // S-01 (2026-09-04) — un SEUL délégué d'événement, posé une fois sur le
+  // conteneur (stable), à la place de l'onclick inline qui interpolait une
+  // donnée utilisateur (other_user_name) dans du JS : une apostrophe dans un
+  // nom d'artiste sortait du littéral. Les panes sont re-rendus en innerHTML :
+  // un délégué posé sur #msg-pane-inbox serait perdu.
+  function _bindDelegates(el) {
+    if (!el || el.dataset.msgDelegated === '1') return;
+    el.dataset.msgDelegated = '1';
+    el.addEventListener('click', (ev) => {
+      const row = ev.target.closest('[data-thread-user-id]');
+      if (row && el.contains(row)) {
+        ev.preventDefault();
+        _selectThread(row.dataset.threadUserId, row.dataset.threadUserName || '');
+        return;
+      }
+    });
   }
 
   function _renderInbox() {
@@ -196,7 +218,7 @@
       ? `<div class="msg-empty">Aucune conversation pour l'instant.</div>`
       : _s.threads.map(t => `
           <button class="msg-thread-row" type="button"
-                  onclick="SmyleMessaging._selectThread('${_esc(t.other_user_id)}', '${_esc(t.other_user_name)}')">
+                  data-thread-user-id="${_esc(t.other_user_id)}" data-thread-user-name="${_esc(t.other_user_name || '')}">
             <span class="msg-thread-avatar">${_esc((t.other_user_name || '?')[0].toUpperCase())}</span>
             <span class="msg-thread-info">
               <span class="msg-thread-name">${_esc(t.other_user_name || 'Utilisateur')}</span>
@@ -445,11 +467,11 @@
 
     if (!theirs.length) { alert(`${receiverName} n'a pas encore de produit échangeable.`); return; }
 
-    const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const esc = _esc;   // S-01 : échappeur complet du module (plus de variante locale)
     const _ic = (k) => k === 'image' ? '🖼 ' : '🎵 ';
-    const theirOpts = theirs.map(p => `<option value="${p.id}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('');
+    const theirOpts = theirs.map(p => `<option value="${_esc(p.id)}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('');
     const myOpts = mine.length
-      ? mine.map(p => `<option value="${p.id}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+      ? mine.map(p => `<option value="${_esc(p.id)}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
       : '<option value="" disabled>Aucun produit à proposer</option>';
 
     const prev = document.getElementById('msg-trade-modal');

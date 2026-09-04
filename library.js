@@ -8,9 +8,12 @@
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
 function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = String(s || '');
-  return d.innerHTML;
+  // Echappement HTML complet (guillemets inclus) — esc() sert aussi en
+  // contexte d'attribut. Cf. audit securite 2026-08-11 ; S-01 (2026-09-02) :
+  // copie exacte de ui/albums.js (& < > " ' `).
+  return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
 }
 
 function getEl(id) { return document.getElementById(id); }
