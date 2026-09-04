@@ -2774,6 +2774,30 @@ async function saveProfile() {
   dashToast('✓ Profil sauvegardé !');
 }
 
+// S-02 (2026-09-02, annexe A §B4) — même règle que safeSocialHref d'artiste.js
+// (dupliquée : les deux pages ne partagent pas de module). http(s) tel quel ;
+// handle nu → instagram / tiktok / x avec encodeURIComponent ; domaine sans
+// schéma → https:// ; tout autre schéma (javascript:, data:) ou caractère
+// interdit → '' (lien non rendu).
+const _DASH_SOCIAL_HANDLE_BASE = {
+  instagram: (h) => 'https://instagram.com/' + h,
+  tiktok:    (h) => 'https://tiktok.com/@' + h,
+  twitterX:  (h) => 'https://x.com/' + h,
+};
+function safeSocialHref(key, val) {
+  const v = String(val || '').trim();
+  if (!v) return '';
+  if (/[\s"'<>`\\]/.test(v)) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(v)) return '';
+  const base = _DASH_SOCIAL_HANDLE_BASE[key];
+  if (base && /^@?[A-Za-z0-9_.-]{1,60}$/.test(v)) {
+    return base(encodeURIComponent(v.replace(/^@/, '')));
+  }
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(v)) return 'https://' + v;
+  return '';
+}
+
 function renderProfileView() {
   const p = getWattProfile();
   const initials = p ? (p.artistName || '?')[0].toUpperCase() : '?';
@@ -2792,21 +2816,30 @@ function renderProfileView() {
   const pvLinks = document.getElementById('pvLinks');
   if (pvLinks && p) {
     pvLinks.innerHTML = '';
-    // Helper local : résout un handle ou une URL en une URL cliquable.
-    // Pour IG/TikTok/Twitter, l'utilisateur peut entrer "@toto" ou une URL
-    // complète — on normalise ici pour que le lien soit toujours valide.
-    const resolve = (val, baseFn) => {
-      if (!val) return '';
-      const v = String(val).trim();
-      if (/^https?:\/\//i.test(v)) return v;
-      return baseFn(v.replace(/^@/, ''));
-    };
-    if (p.soundcloud) pvLinks.innerHTML += `<a class="dash-social-link" href="${p.soundcloud}" target="_blank">SoundCloud</a>`;
-    if (p.instagram)  pvLinks.innerHTML += `<a class="dash-social-link" href="${resolve(p.instagram, h => `https://instagram.com/${h}`)}" target="_blank">Instagram</a>`;
-    if (p.youtube)    pvLinks.innerHTML += `<a class="dash-social-link" href="${p.youtube}" target="_blank">YouTube</a>`;
-    if (p.tiktok)     pvLinks.innerHTML += `<a class="dash-social-link" href="${resolve(p.tiktok,   h => `https://tiktok.com/@${h}`)}" target="_blank">TikTok</a>`;
-    if (p.spotify)    pvLinks.innerHTML += `<a class="dash-social-link" href="${p.spotify}" target="_blank">Spotify</a>`;
-    if (p.twitterX)   pvLinks.innerHTML += `<a class="dash-social-link" href="${resolve(p.twitterX, h => `https://x.com/${h}`)}" target="_blank">Twitter / X</a>`;
+    // C2 / S-02 (2026-09-02, annexe A §B4) — plus d'innerHTML += avec une
+    // valeur du profil : chaque lien est un createElement('a') dont le href
+    // passe par safeSocialHref (http(s) tel quel ; handle nu → IG/TikTok/X ;
+    // domaine sans schéma → https:// ; sinon lien non rendu) et dont le
+    // libellé est posé en textContent. Même règle que la page publique.
+    [
+      ['soundcloud', p.soundcloud, 'SoundCloud'],
+      ['instagram',  p.instagram,  'Instagram'],
+      ['youtube',    p.youtube,    'YouTube'],
+      ['tiktok',     p.tiktok,     'TikTok'],
+      ['spotify',    p.spotify,    'Spotify'],
+      ['twitterX',   p.twitterX,   'Twitter / X'],
+    ].forEach(([key, val, label]) => {
+      if (!val) return;
+      const href = safeSocialHref(key, val);
+      if (!href) return;
+      const a = document.createElement('a');
+      a.className = 'dash-social-link';
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = label;
+      pvLinks.appendChild(a);
+    });
   }
 
   // Lien profil public
@@ -3768,7 +3801,8 @@ function initDashVoiceSale() {
     const zone = document.getElementById('dashVoiceSampleZone');
     const info = document.getElementById('dashVoiceSampleInfo');
     if (zone) zone.classList.add('has-file');
-    if (info) info.innerHTML = `<strong>${d.sampleName}</strong>fichier en attente d'enregistrement`;
+    // S-02 (injection #12, self-XSS) — nom de fichier échappé (htmlEscape complet).
+    if (info) info.innerHTML = `<strong>${htmlEscape(d.sampleName)}</strong>fichier en attente d'enregistrement`;
   }
   // Charge la liste backend et la rend.
   loadMyVoices();
@@ -4544,8 +4578,12 @@ function setVal(id, val) {
   if (el) el.value = val;
 }
 
+// S-02 (2026-09-04) — échappeur HTML complet (& < > " ' `), copie de
+// ui/albums.js (l'apostrophe et le backtick manquaient).
 function htmlEscape(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str == null ? '' : str).replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
 }
 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }

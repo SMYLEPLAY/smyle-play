@@ -522,12 +522,18 @@ function _wattCellLoad(key, content) {
         content.innerHTML = '<div style="opacity:.6">Aucun son publié pour l\'instant.</div>';
         return;
       }
+      // S-02 (2026-09-02, injection #12 self-XSS) — le titre est échappé par
+      // un échappeur complet (& < > " ' `), pas seulement `"`.
+      const _wpEsc = (s) => String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+      ));
       const rows = list.map(t => {
-        const title = String(t.title || 'Sans titre').replace(/"/g, '&quot;');
+        const rawTitle = String(t.title || 'Sans titre');
+        const title = _wpEsc(rawTitle);
         const id = encodeURIComponent(String(t.id || ''));
         // Clic → ouvre l'éditeur "Modifier le son" du dashboard sur ce son.
         return `
-        <div class="wcell-track-row" data-title="${title.toLowerCase()}" title="Modifier ce son" onclick="window.location.href='/dashboard?edit-track=${id}'" style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <div class="wcell-track-row" data-title="${_wpEsc(rawTitle.toLowerCase())}" title="Modifier ce son" onclick="window.location.href='/dashboard?edit-track=${id}'" style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)">
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title}</span>
           <span style="opacity:.6;white-space:nowrap">▶ ${t.plays || 0} ✏️</span>
         </div>`;
