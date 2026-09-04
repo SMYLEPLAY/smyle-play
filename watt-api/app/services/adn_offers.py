@@ -12,7 +12,8 @@ Ce module fournit :
                                 + livraison (Owned*) + Transaction d'audit.
 
 Calque STRICT des garanties de services/unlocks.py : begin_nested (savepoint),
-_acquire_user_locks (ordre trié = pas de deadlock), compute_split, maintien
+_acquire_user_locks (ordre trié = pas de deadlock), commission au palier
+du vendeur (artist_pct_for_user + compute_split), maintien
 des sous-soldes Smyles (promo → achetés → gagnés), idempotence via contrainte
 UNIQUE (AlreadyOwned).
 """
@@ -208,8 +209,9 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
 
     - Re-résout la cible (vendabilité + reserve peuvent avoir changé).
     - Reserve : amount < reserve → ReserveNotMet (refus).
-    - Transfert AU MONTANT DE L'OFFRE : compute_split(amount) → part artiste
-      + commission plateforme. Aucun perk pyramide (le prix est négocié).
+    - Transfert AU MONTANT DE L'OFFRE : compute_split(amount, palier vendeur)
+      → part artiste + commission plateforme. Aucun perk pyramide (le prix
+      est négocié).
     - Livraison : Owned{Playlist,Album,Visual}Adn (idempotent → AlreadyOwned).
     - Transaction d'audit type UNLOCK, metadata marquée adn_offer.
 
@@ -220,7 +222,11 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
         TransactionStatus,
         TransactionType,
     )
-    from app.services.credits import _acquire_user_locks, compute_split
+    from app.services.credits import (
+        _acquire_user_locks,
+        artist_pct_for_user,
+        compute_split,
+    )
 
     buyer_id = offer.sender_id
     amount = int(offer.amount_credits or 0)
@@ -246,7 +252,14 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
     async with db.begin_nested():
         await _acquire_user_locks(db, [buyer_id, target.seller_id])
 
-        artist_revenue, platform_fee = compute_split(amount)
+        # K-06 (2026-09-04, annexe B §1.9a) : la commission suit le PALIER du
+        # VENDEUR (80/88/95), comme services/unlocks.py. Avant, compute_split
+        # était appelé sans palier → 80 % en dur : un vendeur Premium touchait
+        # 80 sur 100 au lieu de 88, alors que la page Offres promet 12 %.
+        # Lecture DANS la section lockée (le vendeur est déjà verrouillé par
+        # _acquire_user_locks) : le palier ne peut pas bouger sous nos pieds.
+        artist_pct = await artist_pct_for_user(db, target.seller_id)
+        artist_revenue, platform_fee = compute_split(amount, artist_pct)
         assert artist_revenue + platform_fee == amount
 
         buyer_row = (await db.execute(

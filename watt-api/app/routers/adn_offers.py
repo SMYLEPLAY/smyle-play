@@ -28,10 +28,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
+from app.models.achievement import AchievementAxis
 from app.models.notification import NotificationType
 from app.models.trade import TradeOffer, TradeStatus
 from app.models.user import User
 from app.schemas.adn_offer import AdnOfferCreate, AdnOfferRead
+from app.services.achievements import check_and_grant_achievements
 from app.services.adn_offers import (
     ReserveNotMet,
     accept_adn_offer_atomic,
@@ -280,7 +282,50 @@ async def accept_adn_offer(
         },
     )
 
+    # Snapshots AVANT commit : les hooks post-commit ne doivent pas dépendre
+    # de l'état de session de `offer`.
+    _buyer_id = offer.sender_id
+    _seller_id = current_user.id
+    _target_type = offer.target_type
+
     await db.commit()
+
+    # ── K-06 (2026-09-04, annexe B §1.9b-c) — hooks post-commit ────────────
+    # L'offre ADN est le SEUL canal de vente d'ADN, et c'était le seul flux
+    # d'achat sans trophées ni parrainage : `fan_first_adn` restait verrouillé
+    # alors que progress.fan valait déjà 1, l'axe ARTIST du vendeur n'avançait
+    # pas, et un lien de parrainage restait PENDING après un 1er achat d'ADN.
+    # Best-effort et APRÈS commit (pattern routers/unlocks.py:175-180) : un
+    # échec ici ne défait jamais une vente déjà enregistrée.
+    try:
+        # Les soldes du vendeur ont été écrits en SQL brut par le service :
+        # l'objet User déjà chargé en session porte encore l'ancien
+        # credits_earned_total, or c'est LUI que lit l'axe ARTIST. On expire
+        # le cache d'identité avant de mesurer la progression.
+        db.expire_all()
+        await check_and_grant_achievements(
+            db, user_id=_buyer_id, axis=AchievementAxis.FAN
+        )
+        await check_and_grant_achievements(
+            db, user_id=_seller_id, axis=AchievementAxis.ARTIST
+        )
+        if _target_type == "visual_adn":
+            await check_and_grant_achievements(
+                db, user_id=_seller_id, axis=AchievementAxis.VISUAL_DNA
+            )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+
+    # Parrainage (mécanique 1) : le 1er achat du filleul est l'action
+    # qualifiante. Idempotent — maybe_reward_referral ne verse qu'une fois.
+    try:
+        from app.services.referrals import maybe_reward_referral
+        if await maybe_reward_referral(db, _buyer_id):
+            await db.commit()
+    except Exception:
+        await db.rollback()
+
     await db.refresh(offer)
     return await _enrich(offer, db)
 
