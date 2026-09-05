@@ -13,6 +13,7 @@ import uuid
 import pytest
 from sqlalchemy import delete
 
+from app.config import settings
 from app.database import SessionLocal
 from app.models.prompt import Prompt
 from app.models.track import Track
@@ -75,7 +76,14 @@ async def _offer_snapshot(client, auth_headers, receiver_id, prompt_id) -> dict:
     return mine[0]["offered_prompt"]
 
 
-async def test_prompt_snap_audio_url_sanitized(client, test_user, auth_headers):
+async def test_prompt_snap_audio_url_sanitized(client, test_user, auth_headers, monkeypatch):
+    # S-08 (2026-09-02) : le routeur /trades est désormais gaté par le
+    # drapeau "troc" du MODE LANCEMENT (404 quand masqué, ce qui est le
+    # défaut). Ce test porte sur l'assainissement de `audio_url` dans le
+    # snapshot de prompt, pas sur le drapeau : on rallume l'item le temps
+    # du test (`launch_flags_dict()` est relu à CHAQUE requête).
+    monkeypatch.setattr(settings, "SHOW_TROC", True)
+
     receiver = await _make_user()
     try:
         prompt_id = await _seed_prompt_with_track(test_user["id"], 'x" onerror="1')
@@ -86,7 +94,14 @@ async def test_prompt_snap_audio_url_sanitized(client, test_user, auth_headers):
         await _cleanup(test_user["id"], receiver)
 
 
-async def test_prompt_snap_audio_url_legit_kept(client, test_user, auth_headers):
+async def test_prompt_snap_audio_url_legit_kept(client, test_user, auth_headers, monkeypatch):
+    # S-08 (2026-09-02) : le routeur /trades est désormais gaté par le
+    # drapeau "troc" du MODE LANCEMENT (404 quand masqué, ce qui est le
+    # défaut). Ce test porte sur l'assainissement de `audio_url` dans le
+    # snapshot de prompt, pas sur le drapeau : on rallume l'item le temps
+    # du test (`launch_flags_dict()` est relu à CHAQUE requête).
+    monkeypatch.setattr(settings, "SHOW_TROC", True)
+
     receiver = await _make_user()
     try:
         legit = "/watt/stream/tracks/son-legitime-0123abcd4567.wav"

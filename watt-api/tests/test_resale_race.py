@@ -19,6 +19,7 @@ import uuid
 import pytest
 from sqlalchemy import delete, func, select, text
 
+from app.config import settings
 from app.database import SessionLocal
 from app.models.achievement import Achievement, UserAchievement
 from app.models.prompt import Prompt
@@ -101,7 +102,14 @@ async def _seed_listing(artist_id, seller_id, price: int) -> tuple[uuid.UUID, uu
     return prompt_id, up_id
 
 
-async def test_two_buyers_same_listing_only_one_wins(client):
+async def test_two_buyers_same_listing_only_one_wins(client, monkeypatch):
+    # S-08 (2026-09-02) : le routeur /resale est désormais gaté par le
+    # drapeau "resale" du MODE LANCEMENT (404 quand masqué, ce qui est le
+    # défaut). Ce test porte sur la course « double vente », pas sur le
+    # drapeau : on rallume l'item le temps du test (`launch_flags_dict()`
+    # est relu à CHAQUE requête).
+    monkeypatch.setattr(settings, "SHOW_RESALE", True)
+
     price = 10
     artist = await _make_user(0, artist_name="RaceArtist")
     seller = await _make_user(0)
@@ -159,12 +167,17 @@ async def test_two_buyers_same_listing_only_one_wins(client):
         await _cleanup_users(artist["id"], seller["id"], buyer_a["id"], buyer_b["id"])
 
 
-async def test_resale_price_changed_between_display_and_buy_is_refused(client):
+async def test_resale_price_changed_between_display_and_buy_is_refused(client, monkeypatch):
     """Re-validation sous verrou : si le prix change (relisting) entre la
     pré-lecture et le savepoint, l'achat au prix affiché est refusé plutôt
     que facturé au nouveau prix. (Simulé par un relisting concurrent : le
     listing repasse à un autre prix pendant la course → l'un des deux achats
     au moins échoue, jamais de double crédit.)"""
+    # S-08 : même gate que ci-dessus. Sans ce rallumage le test resterait
+    # vert à vide (404 fait partie de ses statuts tolérés) sans jamais
+    # exercer la re-validation sous verrou.
+    monkeypatch.setattr(settings, "SHOW_RESALE", True)
+
     artist = await _make_user(0, artist_name="RaceArtist2")
     seller = await _make_user(0)
     buyer = await _make_user(100)
