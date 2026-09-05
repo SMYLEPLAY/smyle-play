@@ -53,6 +53,7 @@ async def buy_oeuvre_atomic(db, *, buyer_id, slug: str) -> _BuyOeuvreResult:
     from app.services.credits import (
         _acquire_user_locks,
         compute_oeuvre_pack_price,
+        artist_pct_for_user,
         compute_split,
     )
     from app.services.marketplace import user_owns_artist_adn
@@ -119,7 +120,13 @@ async def buy_oeuvre_atomic(db, *, buyer_id, slug: str) -> _BuyOeuvreResult:
     async with db.begin_nested():
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
-        artist_revenue, platform_fee = compute_split(paid)
+        # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
+        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # appelé sans palier → 20 % en dur sur ce flux, alors que la page
+        # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
+        # Lu DANS la section lockée (le vendeur est déjà verrouillé).
+        artist_pct = await artist_pct_for_user(db, owner_id)
+        artist_revenue, platform_fee = compute_split(paid, artist_pct)
         assert artist_revenue + platform_fee == paid
 
         buyer_row = (await db.execute(

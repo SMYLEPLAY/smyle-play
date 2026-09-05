@@ -2,7 +2,7 @@
 import uuid
 
 import pytest
-from sqlalchemy import delete, text
+from sqlalchemy import delete, select, text
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -108,4 +108,255 @@ async def test_artist_pct_for_user_lit_le_palier():
     finally:
         async with SessionLocal() as db:
             await db.execute(delete(User).where(User.id == uid))
+            await db.commit()
+
+
+# =============================================================================
+# K-07 (2026-09-04, tâche B-M8) — la commission suit le palier du vendeur
+# PARTOUT, pas seulement sur unlock_prompt_atomic.
+#
+# Avant : voices, packs (mystère + produit), œuvre, ADN visuel et les ADN
+# playlist/album appelaient compute_split(montant) sans palier → 20 % en dur,
+# alors que la page Offres promet 12 % (Premium) et 5 % (Mythique).
+# Un test par service : vendeur `premium` → 88 % du montant payé.
+# =============================================================================
+
+
+from app.models.transaction import Transaction, TransactionType  # noqa: E402
+
+PREMIUM_PCT = 88
+
+
+async def _make_seller_premium() -> uuid.UUID:
+    email = f"pytest-k07s-{uuid.uuid4().hex[:10]}@smyleplay.example"
+    async with SessionLocal() as db:
+        u = await create_user(db, UserCreate(email=email, password="12345678"))
+        uid = u.id
+    async with SessionLocal() as db:
+        await db.execute(
+            text("UPDATE users SET tier = 'premium', credits_balance = 0, "
+                 "artist_name = 'K07 Seller' WHERE id = :u"),
+            {"u": uid},
+        )
+        await db.commit()
+    return uid
+
+
+async def _make_buyer(balance: int = 5000) -> uuid.UUID:
+    email = f"pytest-k07b-{uuid.uuid4().hex[:10]}@smyleplay.example"
+    async with SessionLocal() as db:
+        u = await create_user(db, UserCreate(email=email, password="12345678"))
+        uid = u.id
+    async with SessionLocal() as db:
+        await db.execute(
+            text("UPDATE users SET credits_balance = :b WHERE id = :u"),
+            {"b": balance, "u": uid},
+        )
+        await db.commit()
+    return uid
+
+
+# ── Fabriques de produit + exécution de la vente, par service ──────────────
+
+async def _sell_voice(seller, buyer):
+    from app.models.voice import Voice
+    from app.services.voices import unlock_voice_atomic
+    async with SessionLocal() as db:
+        v = Voice(
+            artist_id=seller,
+            name="K07 Voice",
+            style="calme",
+            genres=[],
+            sample_url="https://example.invalid/s.mp3",
+            license="personnel",
+            price_credits=100,
+            is_published=True,
+        )
+        db.add(v)
+        await db.commit()
+        await db.refresh(v)
+        vid = v.id
+    async with SessionLocal() as db:
+        await unlock_voice_atomic(db, buyer_id=buyer, voice_id=vid)
+        await db.commit()
+
+
+async def _sell_visual_adn(seller, buyer):
+    from app.models.visual_adn import VisualAdn
+    from app.services.visual_adn import unlock_visual_adn_atomic
+    async with SessionLocal() as db:
+        v = VisualAdn(
+            artist_id=seller,
+            description="D" * 220,
+            price_credits=100,
+            is_published=True,
+        )
+        db.add(v)
+        await db.commit()
+        await db.refresh(v)
+        vid = v.id
+    async with SessionLocal() as db:
+        await unlock_visual_adn_atomic(db, buyer_id=buyer, visual_adn_id=vid)
+        await db.commit()
+
+
+async def _sell_playlist_adn(seller, buyer):
+    from app.models.playlist import Playlist
+    from app.services.unlocks import unlock_playlist_adn_atomic
+    async with SessionLocal() as db:
+        p = Playlist(
+            owner_id=seller,
+            title=f"K07 PL {uuid.uuid4().hex[:6]}",
+            visibility="public",
+            adn_for_sale=True,
+            adn_price=100,
+        )
+        db.add(p)
+        await db.commit()
+        await db.refresh(p)
+        pid = p.id
+    async with SessionLocal() as db:
+        await unlock_playlist_adn_atomic(db, buyer_id=buyer, playlist_id=pid)
+        await db.commit()
+
+
+async def _sell_album_adn(seller, buyer):
+    from app.models.album import Album
+    from app.services.unlocks import unlock_album_adn_atomic
+    async with SessionLocal() as db:
+        a = Album(
+            owner_id=seller,
+            title=f"K07 AL {uuid.uuid4().hex[:6]}",
+            visibility="public",
+            adn_for_sale=True,
+            adn_price=100,
+        )
+        db.add(a)
+        await db.commit()
+        await db.refresh(a)
+        aid = a.id
+    async with SessionLocal() as db:
+        await unlock_album_adn_atomic(db, buyer_id=buyer, album_id=aid)
+        await db.commit()
+
+
+async def _make_prompt(seller, *, kind: str = "recipe", price: int = 100):
+    from app.models.prompt import Prompt
+    async with SessionLocal() as db:
+        p = Prompt(
+            artist_id=seller,
+            title=f"K07 {kind} {uuid.uuid4().hex[:6]}",
+            description="x",
+            prompt_text="Y" * 120,
+            price_credits=price,
+            is_published=True,
+        )
+        db.add(p)
+        await db.commit()
+        await db.refresh(p)
+        return p.id
+
+
+async def _sell_pack_produit(seller, buyer):
+    from app.models.track import Track
+    from app.services.pack_purchase import buy_pack_atomic
+    recipe = await _make_prompt(seller, kind="recipe")
+    beat = await _make_prompt(seller, kind="beat")
+    async with SessionLocal() as db:
+        t = Track(
+            title=f"K07 Track {uuid.uuid4().hex[:6]}",
+            artist_id=seller,
+            prompt_id=recipe,
+            beat_id=beat,
+            pack_price_credits=100,
+        )
+        db.add(t)
+        await db.commit()
+        await db.refresh(t)
+        tid = t.id
+    async with SessionLocal() as db:
+        await buy_pack_atomic(db, buyer_id=buyer, track_id=tid)
+        await db.commit()
+
+
+async def _sell_pack_mystere(seller, buyer):
+    from app.services.packs import open_mystery_pack_atomic
+    # Le pool est constitué des prompts pack_eligible d'AUTRUI. Supply illimité
+    # → pas de top-up « prix fort » qui brouillerait l'assertion.
+    await _make_prompt(seller, kind="pool", price=100)
+    async with SessionLocal() as db:
+        await open_mystery_pack_atomic(db, buyer)
+        await db.commit()
+
+
+async def _sell_oeuvre(seller, buyer):
+    from app.models.album import Album
+    from app.models.playlist import Playlist
+    from app.services.oeuvre_purchase import buy_oeuvre_atomic
+    slug = f"k07-oeuvre-{uuid.uuid4().hex[:8]}"
+    async with SessionLocal() as db:
+        db.add(Playlist(
+            owner_id=seller, title="K07 face son", visibility="public",
+            adn_for_sale=True, adn_price=100, oeuvre_slug=slug,
+        ))
+        db.add(Album(
+            owner_id=seller, title="K07 face image", visibility="public",
+            adn_for_sale=True, adn_price=100, oeuvre_slug=slug,
+        ))
+        await db.commit()
+    async with SessionLocal() as db:
+        await buy_oeuvre_atomic(db, buyer_id=buyer, slug=slug)
+        await db.commit()
+
+
+_SERVICES = {
+    # nom du cas → (module concerné, fabrique+vente)
+    "voices": _sell_voice,
+    "visual_adn": _sell_visual_adn,
+    "unlocks.playlist_adn": _sell_playlist_adn,
+    "unlocks.album_adn": _sell_album_adn,
+    "pack_purchase": _sell_pack_produit,
+    "packs.mystery": _sell_pack_mystere,
+    "oeuvre_purchase": _sell_oeuvre,
+}
+
+
+@pytest.mark.parametrize("service", sorted(_SERVICES))
+async def test_commission_suit_le_palier_du_vendeur(service):
+    """Vendeur Premium : 88 % pour l'artiste, 12 % pour la plateforme.
+
+    On lit la transaction UNLOCK émise par le service : `artist_revenue` doit
+    valoir `credits_amount * 88 // 100` (compute_split laisse l'arrondi à la
+    plateforme) et la somme doit être conservée.
+    """
+    seller = await _make_seller_premium()
+    buyer = await _make_buyer()
+    try:
+        await _SERVICES[service](seller, buyer)
+
+        async with SessionLocal() as db:
+            rows = (await db.execute(
+                select(Transaction).where(
+                    Transaction.buyer_id == buyer,
+                    Transaction.seller_id == seller,
+                    Transaction.type == TransactionType.UNLOCK,
+                )
+            )).scalars().all()
+        assert rows, f"{service} : aucune transaction de vente émise"
+        for tx in rows:
+            amount = int(tx.credits_amount)
+            assert int(tx.artist_revenue) == amount * PREMIUM_PCT // 100, (
+                f"{service} : palier vendeur ignoré "
+                f"({tx.artist_revenue} sur {amount})"
+            )
+            assert int(tx.artist_revenue) + int(tx.platform_fee) == amount
+    finally:
+        async with SessionLocal() as db:
+            await db.execute(text("SET session_replication_role = 'replica'"))
+            await db.execute(delete(Transaction).where(
+                (Transaction.buyer_id.in_([buyer, seller]))
+                | (Transaction.seller_id.in_([buyer, seller]))
+            ))
+            await db.execute(text("SET session_replication_role = 'origin'"))
+            await db.execute(delete(User).where(User.id.in_([buyer, seller])))
             await db.commit()

@@ -21,7 +21,11 @@ from app.models.transaction import (
     TransactionType,
 )
 from app.models.unlocked_prompt import UnlockedPrompt
-from app.services.credits import _acquire_user_locks, compute_split
+from app.services.credits import (
+    _acquire_user_locks,
+    artist_pct_for_user,
+    compute_split,
+)
 from app.services.unlocks import (
     AlreadyUnlocked,
     InsufficientCredits,
@@ -101,7 +105,13 @@ async def buy_pack_atomic(
         if buyer_balance < price:
             raise InsufficientCredits(required=price, available=buyer_balance)
 
-        artist_revenue, platform_fee = compute_split(price)
+        # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
+        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # appelé sans palier → 20 % en dur sur ce flux, alors que la page
+        # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
+        # Lu DANS la section lockée (le vendeur est déjà verrouillé).
+        artist_pct = await artist_pct_for_user(db, artist_id)
+        artist_revenue, platform_fee = compute_split(price, artist_pct)
 
         tx = Transaction(
             type=TransactionType.UNLOCK,
