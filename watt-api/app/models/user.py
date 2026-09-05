@@ -136,6 +136,20 @@ class User(Base):
         server_default="false",
     )
 
+    # Rôle d'administration (migration 0085, annexe B §2). DISTINCT de
+    # is_official : celui-ci est l'identité vitrine « Smyle » (checkmark, tri
+    # en tête, playlists modèles) et le cocher sur un compte perso polluerait
+    # l'interface. is_admin ne porte AUCUN effet d'affichage : uniquement le
+    # droit d'accès aux endpoints /admin/* et aux gardes de modération.
+    # Écrit uniquement par migration ou par tools/make_admin.py — jamais
+    # exposé en write par l'API publique.
+    is_admin: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # Modération DSA (migration 0082) — bannissement de compte. TRUE = compte
     # suspendu : login refusé + tout accès authentifié rejeté (403) via
     # get_current_user. banned_at / ban_reason tracent la décision (exigence DSA).

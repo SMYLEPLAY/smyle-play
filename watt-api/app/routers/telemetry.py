@@ -2,7 +2,7 @@
 Télémétrie D0 — collecte privacy-first + funnel admin.
 
   POST /events         → ingestion batch (PUBLIC, auth optionnelle)
-  GET  /admin/funnel   → funnel lisible (gated is_official)
+  GET  /admin/funnel   → funnel lisible (gated is_official OU is_admin)
 
 Privacy-first : aucune PII stockée (pas d'IP, pas de user-agent). `session_id`
 anonyme (client). `user_id` posé seulement si un Bearer valide est présent —
@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.dependencies import ADMIN_FORBIDDEN_DETAIL, is_admin_user
 from app.auth.jwt import decode_access_token, get_current_user
 from app.core.ratelimit import limiter
 from app.database import get_db
@@ -95,6 +96,7 @@ async def admin_funnel(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not current_user.is_official:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Réservé à l'administration")
+    # K-01 : is_official OU is_admin (règle partagée).
+    if not is_admin_user(current_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=ADMIN_FORBIDDEN_DETAIL)
     return await funnel_data(db, days)

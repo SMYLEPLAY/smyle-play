@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.dependencies import is_admin_user
 from app.auth.jwt import get_current_user
 from app.config import settings
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
@@ -51,7 +52,8 @@ async def grant_credits(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Attribution manuelle de crédits — RÉSERVÉE au compte officiel (is_official).
+    Attribution manuelle de crédits — RÉSERVÉE aux administrateurs
+    (is_official OU is_admin, K-01). Crédite UNIQUEMENT l'appelant.
 
     SÉCURITÉ (Phase 0 lancement, 2026-07-23) : cet endpoint créditait librement
     le compte connecté (stub « en attendant Stripe »). Ouvert au public, il
@@ -60,7 +62,9 @@ async def grant_credits(
     utilisateurs se gagnent (streak, parrainage) ou, plus tard, s'achètent via
     un webhook Stripe signé et vérifié côté serveur — jamais par appel direct.
     """
-    if not current_user.is_official:
+    # K-01 : is_official OU is_admin (règle partagée). Message inchangé :
+    # cet endpoint est atteignable par n'importe quel membre connecté.
+    if not is_admin_user(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Réservé. Les Smyles se gagnent en explorant, en publiant et en jouant.",
