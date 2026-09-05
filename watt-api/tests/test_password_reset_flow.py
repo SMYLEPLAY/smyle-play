@@ -32,8 +32,16 @@ from app.services.users import create_user
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
+# Valeurs de test volontairement FACTICES et à faible entropie (motif répétitif
+# `-xxxxxxxx`) : le job CI « Sécurité » passe gitleaks sur tout l'arbre, et sa
+# règle `generic-api-key` lève dès qu'un littéral de plus de 10 caractères et
+# d'entropie de Shannon > 3.5 suit un mot-clé (`password`, `token`…). Une
+# valeur « réaliste » comme "nouveau-mot-de-passe-1" (entropie 3.516) faisait
+# échouer le scan. Ne pas les rendre plus « crédibles » : elles doivent rester
+# manifestement bidon. Contrainte fonctionnelle : >= 8 caractères (UserCreate /
+# ResetPassword, schemas/user.py) et toutes distinctes entre elles.
 _PASSWORD = "12345678"
-_NEW_PASSWORD = "nouveau-mot-de-passe-1"
+_NEW_PASSWORD = "mdp-de-test-xxxxxxxx"
 
 
 @pytest.fixture
@@ -145,7 +153,7 @@ async def test_reset_token_single_use(client, sent_links):
 
         second = await client.post(
             "/auth/reset-password",
-            json={"token": token, "new_password": "encore-un-autre-mdp-9"},
+            json={"token": token, "new_password": "mdp-de-test-2-xxxxxxxx"},
         )
         assert second.status_code == 400, second.text
 
@@ -238,7 +246,7 @@ async def test_reset_password_jeton_bidon_refuse(client):
     """Un jeton inventé ne passe pas (et ne révèle rien de plus qu'un 400)."""
     r = await client.post(
         "/auth/reset-password",
-        json={"token": "pas-un-vrai-jeton", "new_password": _NEW_PASSWORD},
+        json={"token": "token-de-test-xxxxxxxx", "new_password": _NEW_PASSWORD},
     )
     assert r.status_code == 400, r.text
 
