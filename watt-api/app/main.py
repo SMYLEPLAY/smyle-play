@@ -60,6 +60,7 @@ from app.routers.achievements import (
     me_router as achievements_me_router,
     public_router as achievements_public_router,
 )
+from app.routers.admin import router as admin_router
 from app.routers.auth import router as auth_router
 from app.routers.catalog import (
     catalog_router,
@@ -319,6 +320,11 @@ def create_app() -> FastAPI:
             "direct_peer": request.client.host if request.client else None,
         }
 
+    # K-02 (2026-09-04) : le routeur admin existait depuis A4 mais n'était
+    # JAMAIS monté (aucun import ici) → /admin/* répondait 404 et tout patch
+    # visant admin.py était mort. Monté ici, comme les autres routeurs API,
+    # avant le routeur pages + mount_static (qui restent en dernier).
+    app.include_router(admin_router)
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(tracks_router)

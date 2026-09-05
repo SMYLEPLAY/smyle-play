@@ -60,3 +60,37 @@ docker compose up --build
 - Pas d'auth
 - Pas d'endpoint avance
 - Ne pas modifier l'arborescence
+
+## Administration — crediter un testeur en Smyles
+
+Deux etapes. Le role admin (`users.is_admin`) est distinct du compte vitrine
+« Smyle » (`is_official`) : il n'a aucun effet d'affichage.
+
+**1. Se donner le role admin** (sur la machine d'ops, une seule fois) :
+
+```bash
+cd watt-api && python tools/make_admin.py tom@example.com
+# --revoke pour retirer, --list pour voir les admins
+```
+
+**2. Crediter un testeur** (`user_id` = UUID du compte cible ; le token est
+celui d'un compte admin, recupere via `POST /auth/login`) :
+
+```bash
+curl -X POST "https://<host>/admin/users/<USER_UUID>/credits" \
+  -H "Authorization: Bearer <TOKEN_ADMIN>" \
+  -H "Content-Type: application/json" \
+  -d '{"credits": 500, "reason": "beta_tester"}'
+```
+
+Les Smyles sont credites dans le bucket `promo` (non encaissables, depenses en
+premier). `credits` va de 1 a 10000, `reason` est obligatoire (<= 500 car.).
+Reponses : 201 (ok), 403 (pas admin), 404 (compte inconnu), 400 (compte
+suspendu ou supprime), 422 (bornes).
+
+Relire les credits accordes (l'audit est la ligne `transactions`, append-only,
+qui porte `granted_by` / `granted_by_email` / `source`) :
+
+```bash
+curl "https://<host>/admin/grants?limit=50" -H "Authorization: Bearer <TOKEN_ADMIN>"
+```
