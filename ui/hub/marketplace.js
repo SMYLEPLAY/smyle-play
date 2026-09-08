@@ -951,9 +951,10 @@
   //     vers /u/<slug> de l'artiste, ancré sur le track (vue détail)
   // Délégation globale sur document — couvre les rows top + grille +
   // futures sections sans avoir à rebrancher après chaque _renderAll().
-  // D2 (2026-09-08) — les lignes de classement portaient
-  // `onclick="window.location.href='${_esc(href)}'"`. `href` vaut `/@<slug>`
-  // où `slug` vient du profil d'un AUTRE artiste : dans un `onclick`, le
+  // D2 (2026-09-08) — les lignes de classement portaient un gestionnaire
+  // `onclick` en ligne qui interpolait `href` (soit `/@<slug>`) dans une
+  // affectation `window.location.href`. Ce `slug` vient du profil d'un
+  // AUTRE artiste : dans un attribut de gestionnaire, le
   // parseur HTML décode `&#39;` en `'` avant que le JS ne soit compilé, donc
   // `_esc` n'y protège pas. Elles portent maintenant `data-nav-href` et ce
   // délégué unique navigue — après avoir vérifié que la cible est bien un

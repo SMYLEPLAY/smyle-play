@@ -228,3 +228,274 @@ def test_self_xss_titres_du_proprietaire():
     assert "&#39;" in wp and "&quot;" in wp, (
         "watt-panel.js : le titre n'est plus échappé complètement"
     )
+
+
+# ── D1→D5 : plus aucun gestionnaire en ligne interpolé ────────────────────────
+# Pourquoi ce garde-fou existe malgré S-01/S-02 : l'échappeur HTML complet
+# (`& < > " ' \``) posé par ces deux tickets NE protège PAS à l'intérieur d'un
+# attribut de gestionnaire. Le parseur HTML décode les entités (`&#39;` → `'`)
+# AVANT que le contenu de l'attribut ne soit compilé comme du JavaScript :
+#
+#     onclick="f('${_esc(x)}')"   avec x = "a');alert(1);//"
+#     → l'attribut contient  f('a&#39;);alert(1);//')
+#     → décodé par le parseur en  f('a');alert(1);//')  → exécuté.
+#
+# La seule correction sûre est `data-*` + délégation d'événement (le délégué lit
+# `dataset`, jamais évalué comme du code). C'est le motif de S-01/S-02.
+#
+# Ce test interdit donc TOUT NOUVEAU gestionnaire en ligne interpolé. Les sites
+# encore présents sont listés nommément ci-dessous : ils interpolent tous soit
+# un identifiant produit par le SERVEUR (UUID), soit un indice de tableau, soit
+# une constante figée dans le front — aucun tiers ne peut y glisser
+# d'apostrophe. Ils ont été laissés parce que les convertir demanderait de
+# réécrire de grosses portions de rendu (risque de régression > gain), pas
+# parce que le motif serait acceptable. Toute NOUVELLE occurrence — y compris
+# la modification d'une occurrence tolérée — fait échouer ce test : à ce
+# moment-là, on convertit, on ne rallonge pas la liste.
+
+# Gestionnaire en ligne (`onclick=`, `onchange=`, `onerror=`, `ondrop=`…) dont
+# la valeur, entre guillemets doubles, contient une interpolation `${…}`.
+_RE_HANDLER_INTERPOLE = re.compile(r'\bon[a-z]+\s*=\s*"[^"]*\$\{[^"]*"')
+
+# Même chose en guillemets simples : aucune occurrence aujourd'hui, aucune
+# tolérée — la liste ci-dessous ne couvre que la forme en guillemets doubles.
+_RE_HANDLER_INTERPOLE_SQ = re.compile(r"\bon[a-z]+\s*=\s*'[^']*\$\{[^']*'")
+
+
+def _handlers_interpoles():
+    """[(chemin relatif, ligne, attribut normalisé)] pour tout le front."""
+    trouves = []
+    for p in _fichiers_js():
+        src = _lire(p)
+        for m in _RE_HANDLER_INTERPOLE.finditer(src):
+            ligne = src.count("\n", 0, m.start()) + 1
+            trouves.append((
+                str(p.relative_to(REPO_ROOT)),
+                ligne,
+                " ".join(m.group(0).split()),
+            ))
+    return trouves
+
+
+# Sites tolérés : (fichier, attribut exact) → nombre d'occurrences autorisées.
+# La raison est donnée par bloc. L'attribut est comparé au caractère près :
+# changer la donnée interpolée d'un site toléré le fait sortir de la liste.
+_HANDLERS_TOLERES = {
+    # — Identifiants d'échange / de notification : UUID v4 produits par l'API
+    #   (trades.id, notifications.id, users.id). Le rendu de ces écrans est un
+    #   gros gabarit `innerHTML` sans conteneur stable évident ; conversion
+    #   reportée.
+    ("ui/core/trade-view.js", """onclick="SmyleTradeView._adnAct('${_esc(o.id)}','accept')\""""): 1,
+    ("ui/core/trade-view.js", """onclick="SmyleTradeView._adnAct('${_esc(o.id)}','reject')\""""): 1,
+    ("ui/core/trade-view.js", """onclick="SmyleTradeView._adnAct('${_esc(o.id)}','cancel')\""""): 1,
+    ("ui/core/trade-view.js", """onclick="SmyleTradeView._act('${_esc(o.id)}','accept')\""""): 1,
+    ("ui/core/trade-view.js", """onclick="SmyleTradeView._act('${_esc(o.id)}','reject')\""""): 1,
+    ("ui/core/trade-view.js", """onclick="SmyleTradeView._act('${_esc(o.id)}','cancel')\""""): 1,
+    ("ui/core/trade-view.js", """onclick="if(window.SmyleMessaging){document.getElementById('smyle-tradeview').remove();SmyleMessaging.open('${_esc(otherId)}');}\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="SmyleTopbar._tradeAct('${esc(o.id)}','accept')\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="SmyleTopbar._tradeAct('${esc(o.id)}','reject')\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="SmyleTopbar._tradeAct('${esc(o.id)}','cancel')\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','accept')\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','reject')\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','cancel')\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="if(window.SmyleMessaging){document.getElementById('smyle-adnofferview').remove();SmyleMessaging.open('${esc(otherId)}');}\""""): 1,
+    ("ui/topbar/topbar.js", """onclick="window.SmyleTopbar.followBack(event, '${_esc(n.actor_id)}')\""""): 1,
+    # `${extraClick}` est un fragment de code construit dans le module, dont la
+    # seule partie variable est `_esc(n.actor_id)` / `_esc(n.target_id)` (UUID).
+    ("ui/topbar/topbar.js", """onclick="window.SmyleTopbar.markRead(event, '${_esc(n.id)}');${extraClick}\""""): 1,
+    ("ui/core/page-services.js", """onclick="window.__pageMarkRead('${_esc(n.id)}', this)${tradeClick}\""""): 1,
+    ("ui/core/page-services.js", """onclick="window.__pageOpenThread('${_esc(t.other_user_id)}')\""""): 1,
+
+    # — dashboard.js : ids de sons / de voix (UUID serveur), clés de rôle et de
+    #   genre venant de constantes front figées (DASH_ID_ROLES,
+    #   DASH_VOICE_GENRES), couleurs d'un tableau littéral de 6 hex.
+    ("dashboard.js", """onclick="openTrackEdit('${t.id}')\""""): 1,
+    ("dashboard.js", """onclick="deleteTrack('${t.id}')\""""): 1,
+    ("dashboard.js", """onclick="dte2Select('${t.id}')\""""): 1,
+    ("dashboard.js", """onclick="selectEditColor('${c}',this)\""""): 1,
+    ("dashboard.js", """onclick="dashIdentityToggleRole('${r.key}')\""""): 1,
+    ("dashboard.js", """onclick="dashVoiceToggleGenre('${g.key}')\""""): 1,
+    ("dashboard.js", """onclick="dashVoicePublishToggle('${v.id}', false)\""""): 1,
+    ("dashboard.js", """onclick="dashVoicePublishToggle('${v.id}', true)\""""): 1,
+    ("dashboard.js", """onclick="dashVoiceEditFromList('${v.id}')\""""): 1,
+    ("dashboard.js", """onclick="dashVoiceDeleteFromList('${v.id}')\""""): 1,
+    ("dashboard.js", """onclick="cancelTrade('${t.id}', this)\""""): 1,
+    ("dashboard.js", """onclick="acceptTrade('${t.id}', this)\""""): 1,
+    ("dashboard.js", """onclick="rejectTrade('${t.id}', this)\""""): 1,
+
+    # — artiste.js : `type` est un littéral du module ('son' | 'voix' |
+    #   'adn-artist' | 'visual-adn'), les autres sont des UUID serveur.
+    ("artiste.js", """onclick="boutiqueDrawerUnlock('${type}','${data.id}')\""""): 1,
+    ("artiste.js", """onclick="submitTradeOffer('${escH(promptId)}', '${escH(receiverId)}')\""""): 1,
+    ("artiste.js", """onclick="submitTradeOfferProfile('${artist.id || ''}')\""""): 1,
+
+    # — library.js : `${i}` est l'indice de la boucle de rendu (entier),
+    #   `${p.prompt_id}` un UUID serveur. 20 sites, tous du même gabarit.
+    ("library.js", """onclick="copyContent('lib-imgset-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-imgneg-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-imgprompt-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-lyrics-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-prompt-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-pl-adn-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-al-adn-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-al-pal-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-vadn-desc-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-vadn-pal-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-vadn-guide-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-vadn-ex-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-usage-${i}', this)\""""): 1,
+    ("library.js", """onclick="copyContent('lib-ex-${i}', this)\""""): 1,
+    ("library.js", """onclick="libDownloadImage('${p.prompt_id}', this)\""""): 1,
+    ("library.js", """onclick="libDownloadProduct('${p.prompt_id}', this)\""""): 1,
+    ("library.js", """onclick="libUnlistResale('${p.prompt_id}')\""""): 2,
+    ("library.js", """onclick="libListResale('${p.prompt_id}')\""""): 2,
+    ("library.js", """onclick="event.stopPropagation();event.preventDefault();libToggleAudio(this,'lib-audio-${i}')\""""): 1,
+    ("library.js", """onclick="event.stopPropagation();event.preventDefault();libToggleAudio(this,'lib-vaudio-${i}')\""""): 1,
+
+    # — ui/panels/ : indices de boucle, clés de cellule figées (`m.key`), ids de
+    #   playlist et de son produits par le serveur, clé de playlist statique
+    #   passée par le HTML (`openPlaylist('jungle')`…).
+    ("ui/panels/mix.js", """ondragstart="mixDragStart(event,${i})\""""): 1,
+    ("ui/panels/mix.js", """ondragover="mixDragOver(event,${i})\""""): 1,
+    ("ui/panels/mix.js", """ondrop="mixDrop(event,${i})\""""): 1,
+    ("ui/panels/mix.js", """onclick="playMixFromIdx(${i})\""""): 1,
+    ("ui/panels/mix.js", """onclick="removeFromMix(event,${i})\""""): 1,
+    ("ui/panels/mix.js", """onclick="loadSavedPlaylist('${_mixEsc(wishlist.id)}')\""""): 1,
+    ("ui/panels/mix.js", """onclick="loadSavedPlaylist('${_mixEsc(p.id)}')\""""): 1,
+    ("ui/panels/mix.js", """onclick="loadSavedPlaylist('${_mixEsc(p.id)}', true)\""""): 1,
+    ("ui/panels/mix.js", """onclick="deleteSavedPlaylist(event, '${_mixEsc(p.id)}')\""""): 1,
+    ("ui/panels/mix.js", """onclick="deleteSavedPlaylist(event, '${_mixEsc(p.id)}', true)\""""): 1,
+    ("ui/panels/playlist.js", """onclick="loadTrack('${key}', ${i})\""""): 1,
+    ("ui/panels/playlist.js", """onclick="addToMix(event,'${key}',${i})\""""): 1,
+    ("ui/panels/watt-panel.js", """onclick="_wattCellToggle('${m.key}')\""""): 1,
+    ("ui/panels/watt-panel.js", """onclick="window.location.href='/dashboard?edit-track=${id}'\""""): 1,
+}
+
+
+def test_aucun_nouveau_gestionnaire_en_ligne_interpole():
+    """Aucun gestionnaire en ligne interpolé en dehors de la liste tolérée.
+
+    Échoue dès qu'un `onclick="f('${x}')"` apparaît quelque part dans
+    `ui/**/*.js` ou les JS racine — y compris si l'on modifie la donnée
+    interpolée d'un site toléré. Correction attendue : `data-*` + délégation
+    d'événement (cf. `_bindDelegates` dans ui/messaging/messaging.js).
+    """
+    from collections import Counter
+
+    vus = Counter((rel, frag) for rel, _ligne, frag in _handlers_interpoles())
+    lignes = {}
+    for rel, ligne, frag in _handlers_interpoles():
+        lignes.setdefault((rel, frag), []).append(ligne)
+
+    nouveaux = []
+    for cle, n in sorted(vus.items()):
+        autorise = _HANDLERS_TOLERES.get(cle, 0)
+        if n > autorise:
+            rel, frag = cle
+            nouveaux.append(
+                f"{rel}:{','.join(str(x) for x in lignes[cle])} → {frag}"
+                f"  (toléré : {autorise}, trouvé : {n})"
+            )
+    assert not nouveaux, (
+        "gestionnaire en ligne interpolé non toléré — l'échappeur HTML ne "
+        "protège PAS dans un attribut `on…` (le parseur décode `&#39;` en `'` "
+        "avant compilation du JS). Convertir en `data-*` + délégation "
+        "d'événement (motif S-01/S-02, cf. ui/messaging/messaging.js"
+        ":_bindDelegates) :\n  " + "\n  ".join(nouveaux)
+    )
+
+
+def test_aucun_gestionnaire_en_ligne_interpole_en_quotes_simples():
+    """Variante `onclick='…${…}…'` : zéro toléré."""
+    fautifs = []
+    for p in _fichiers_js():
+        src = _lire(p)
+        for m in _RE_HANDLER_INTERPOLE_SQ.finditer(src):
+            ligne = src.count("\n", 0, m.start()) + 1
+            fautifs.append(f"{p.relative_to(REPO_ROOT)}:{ligne} → {m.group(0)[:80]}")
+    assert not fautifs, f"gestionnaire en ligne interpolé (quotes simples) : {fautifs}"
+
+
+@pytest.mark.parametrize("rel", (
+    "ui/messaging/messaging.js", "ui/modals/auth.js", "ui/hub/marketplace.js",
+))
+def test_fichiers_convertis_sans_gestionnaire_en_ligne(rel: str):
+    """D1/D2 : ces trois fichiers n'ont plus AUCUN gestionnaire interpolé."""
+    src = _lire_rel(rel)
+    restants = [
+        " ".join(m.group(0).split())
+        for m in _RE_HANDLER_INTERPOLE.finditer(src)
+    ]
+    assert not restants, f"{rel} : gestionnaire en ligne réintroduit → {restants}"
+
+
+# Formes vulnérables retirées par D1/D2 : elles ne doivent pas réapparaître.
+_D1_INTERDITS = (
+    ("ui/messaging/messaging.js", "_submitTradeFromConv('${receiverId}')"),
+    ("ui/modals/auth.js", "copyReferral('${code}')"),
+    ("ui/modals/auth.js", "copyReferral('${link"),
+    ("ui/hub/marketplace.js", "window.location.href='${_esc(href)}'"),
+    ("dashboard.js", "copyPublicProfileLink('${url}')"),
+)
+
+
+@pytest.mark.parametrize("rel,motif", _D1_INTERDITS)
+def test_forme_vulnerable_d1_absente(rel: str, motif: str):
+    assert motif not in _lire_rel(rel), f"{rel} : `{motif}` réintroduit"
+
+
+def test_delegues_d1_en_place():
+    """Chaque bouton converti est bien repris par un délégué (sinon il ne fait
+    plus rien : la conversion casserait le comportement)."""
+    msg = _lire_rel("ui/messaging/messaging.js")
+    assert 'data-trade-receiver="${_esc(receiverId)}"' in msg, (
+        "messaging.js : le bouton d'envoi doit porter data-trade-receiver"
+    )
+    assert "_submitTradeFromConv(send.dataset.tradeReceiver" in msg, (
+        "messaging.js : le délégué de la modale d'échange a disparu"
+    )
+
+    auth = _lire_rel("ui/modals/auth.js")
+    assert auth.count('data-copy-text="${_authEscHtml(') == 2, (
+        "auth.js : les deux boutons « Copier » doivent porter data-copy-text"
+    )
+    assert "copyReferral(btn.dataset.copyText" in auth, (
+        "auth.js : le délégué de #referralModal a disparu"
+    )
+
+    mp = _lire_rel("ui/hub/marketplace.js")
+    assert mp.count('data-nav-href="${_esc(href)}"') == 2, (
+        "marketplace.js : les deux lignes de classement doivent porter data-nav-href"
+    )
+    assert "function _bindNavRows()" in mp and "_navRowsBound" in mp, (
+        "marketplace.js : le délégué _bindNavRows (idempotent) a disparu"
+    )
+    assert "href.charAt(0) !== '/'" in mp, (
+        "marketplace.js : _bindNavRows doit refuser ce qui n'est pas un chemin interne"
+    )
+
+    dash = _lire_rel("dashboard.js")
+    assert 'data-copy-profile-url="${htmlEscape(url)}"' in dash, (
+        "dashboard.js : le bouton « Copier le lien » doit porter data-copy-profile-url"
+    )
+    assert "copyPublicProfileLink(btn.dataset.copyProfileUrl" in dash, (
+        "dashboard.js : le délégué de #pvPublicLink a disparu"
+    )
+
+
+def test_messaging_un_seul_delegue():
+    """D3 : les deux délégués posés sur le même conteneur sont fusionnés, et
+    la pose reste idempotente."""
+    src = _lire_rel("ui/messaging/messaging.js")
+    assert "msgOfferDelegated" not in src and "_bindOfferDelegate" not in src, (
+        "messaging.js : le second délégué (msgOfferDelegated) est de retour"
+    )
+    # Un seul écouteur `click` posé sur le conteneur `el` de la messagerie.
+    assert src.count("el.addEventListener('click', (ev) => {") == 1, (
+        "messaging.js : plus d'un écouteur de clic posé sur le conteneur"
+    )
+    assert "if (!el || el.dataset.msgDelegated === '1') return;" in src, (
+        "messaging.js : la garde d'idempotence du délégué a disparu"
+    )
+    for marqueur in ("[data-offer-id]", "[data-thread-user-id]"):
+        assert marqueur in src, f"messaging.js : aiguillage `{marqueur}` perdu"
