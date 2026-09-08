@@ -28,7 +28,14 @@ class TransactionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    type: Literal["unlock", "credit_purchase", "earning", "refund", "bonus", "grant"]
+    # NB : doit couvrir TOUTES les valeurs de TransactionType susceptibles
+    # d'apparaître dans l'historique d'un user (buyer_id/seller_id), sinon
+    # GET /credits/transactions lève une ValidationError. "resale" manquait
+    # (latent) ; "burn" est ajouté par D6 (frais de troc brûlés).
+    type: Literal[
+        "unlock", "credit_purchase", "earning", "refund", "bonus", "grant",
+        "resale", "burn",
+    ]
     status: Literal["pending", "completed", "failed", "rolled_back"]
     credits_amount: int
     platform_fee: int
