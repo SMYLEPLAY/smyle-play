@@ -506,7 +506,7 @@
       const name = a.artistName || 'Sans nom';
       const parts = [a.city, a.genre].filter(Boolean).map(_esc).join(' · ');
       return (
-        `<li class="mp-ranking-row" onclick="window.location.href='${_esc(href)}'">` +
+        `<li class="mp-ranking-row" data-nav-href="${_esc(href)}">` +
           `<div class="mp-ranking-rank">${i + 4}</div>` +
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title">${_esc(name)}</div>` +
@@ -951,6 +951,27 @@
   //     vers /u/<slug> de l'artiste, ancré sur le track (vue détail)
   // Délégation globale sur document — couvre les rows top + grille +
   // futures sections sans avoir à rebrancher après chaque _renderAll().
+  // D2 (2026-09-08) — les lignes de classement portaient
+  // `onclick="window.location.href='${_esc(href)}'"`. `href` vaut `/@<slug>`
+  // où `slug` vient du profil d'un AUTRE artiste : dans un `onclick`, le
+  // parseur HTML décode `&#39;` en `'` avant que le JS ne soit compilé, donc
+  // `_esc` n'y protège pas. Elles portent maintenant `data-nav-href` et ce
+  // délégué unique navigue — après avoir vérifié que la cible est bien un
+  // chemin interne (jamais `javascript:` ni une origine tierce).
+  let _navRowsBound = false;
+  function _bindNavRows() {
+    if (_navRowsBound) return;
+    _navRowsBound = true;
+    document.addEventListener('click', (ev) => {
+      const row = ev.target.closest('[data-nav-href]');
+      if (!row) return;
+      const href = row.dataset.navHref || '';
+      if (!href || href === '#' || href.charAt(0) !== '/' || href.charAt(1) === '/') return;
+      ev.preventDefault();
+      window.location.href = href;
+    });
+  }
+
   function _bindTrackClicks() {
     let _currentlyPlaying = null;
 
@@ -1948,7 +1969,7 @@
       const name = a.artistName || 'Sans nom';
       const parts = [a.city, a.genre].filter(Boolean).map(_esc).join(' · ');
       return (
-        `<li class="mp-ranking-row" onclick="window.location.href='${_esc(href)}'">` +
+        `<li class="mp-ranking-row" data-nav-href="${_esc(href)}">` +
           `<div class="mp-ranking-rank">${i + 4}</div>` +
           `<div class="mp-ranking-main">` +
             `<div class="mp-ranking-title">${_esc(name)}</div>` +
@@ -2566,6 +2587,7 @@
     _bindSearch();
     _bindBus();
     _bindTrackClicks();
+    _bindNavRows();
 
     // Trois fetches en parallèle — indépendants, pas de cascade.
     await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);

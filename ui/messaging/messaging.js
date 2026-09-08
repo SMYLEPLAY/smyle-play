@@ -520,10 +520,22 @@
         <label style="display:block;margin:12px 0 4px;opacity:.8">Complément en crédits (optionnel)</label>
         <input id="msg-trade-supp" type="number" min="0" value="0" style="${sel}" />
         <p style="opacity:.6;font-size:12px;margin:12px 0">⚠️ Frais de 20% (brûlé) par côté. Offre valable 7 jours.</p>
-        <button id="msg-trade-send" onclick="SmyleMessaging._submitTradeFromConv('${receiverId}')"
+        <button type="button" id="msg-trade-send" data-trade-receiver="${_esc(receiverId)}"
                 style="width:100%;padding:10px;border:none;border-radius:8px;background:#7C3AED;color:#fff;font-weight:600;cursor:pointer">Envoyer la proposition</button>
       </div>`;
-    el.addEventListener('click', ev => { if (ev.target === el) el.remove(); });
+    // D1 (2026-09-08) — plus d'onclick inline interpolant `receiverId` : le
+    // parseur HTML décode les entités AVANT que le JS de l'attribut ne soit
+    // compilé, donc `_esc` ne protège pas dans un `onclick`. La modale porte
+    // `data-trade-receiver` et ce délégué (posé une fois sur l'élément créé
+    // ici) lit la valeur via dataset — jamais évaluée comme du code.
+    el.addEventListener('click', ev => {
+      if (ev.target === el) { el.remove(); return; }
+      const send = ev.target.closest('[data-trade-receiver]');
+      if (send && el.contains(send)) {
+        ev.preventDefault();
+        _submitTradeFromConv(send.dataset.tradeReceiver || '');
+      }
+    });
     document.body.appendChild(el);
   }
 
