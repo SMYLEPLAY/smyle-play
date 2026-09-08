@@ -186,14 +186,34 @@ async def test_resale_price_changed_between_display_and_buy_is_refused(client, m
         headers = await _login(client, buyer["email"])
         seller_headers = await _login(client, seller["email"])
 
+        # D9 (2026-09-08) : le routeur DOIT être allumé avant la course. Les
+        # deux appels ci-dessous tolèrent chacun un 404 légitime ; si la gate
+        # du MODE LANCEMENT (ou la route elle-même) disparaissait, ils
+        # rendraient 404 tous les deux et tout le corps du test se réduirait à
+        # « rien n'a bougé » — vert à vide. On le vérifie explicitement.
+        r_gate = await client.get("/resale/market", headers=headers)
+        assert r_gate.status_code == 200, r_gate.text
+
         # Relisting (prix 30) et achat lancés en parallèle.
         r_relist, r_buy = await asyncio.gather(
             client.post(f"/resale/prompts/{prompt_id}/list", json={"price": 30},
                         headers=seller_headers),
             client.post(f"/resale/{up_id}/buy", headers=headers),
         )
-        assert r_relist.status_code in (204, 404)
+        # Statuts réellement attendus : 204 (relisting accepté) ou 404 (le
+        # vendeur ne possède plus l'exemplaire) côté vendeur ; 200 (achat au
+        # prix relu sous verrou) ou 404 (prix changé entre la pré-lecture et
+        # le verrou → ResaleNotListed) côté acheteur.
+        assert r_relist.status_code in (204, 404), r_relist.text
         assert r_buy.status_code in (200, 404), r_buy.text
+        # ... et les deux 404 ensemble sont IMPOSSIBLES : un relisting refusé
+        # signifie que la propriété a été transférée, donc que l'achat a
+        # abouti ; un achat refusé signifie que le relisting est passé. Cette
+        # exclusion est ce qui empêche le test de rester vert à vide.
+        assert (r_relist.status_code, r_buy.status_code) != (404, 404), (
+            "les deux appels ont rendu 404 : la route /resale ne répond plus "
+            f"(gate ou routage) — relist={r_relist.text} buy={r_buy.text}"
+        )
         balance = await _balance(buyer["id"])
         if r_buy.status_code == 200:
             paid = r_buy.json()["price_paid"]
