@@ -65,10 +65,16 @@ def _layout(title: str, body_html: str) -> str:
 </body></html>"""
 
 
-async def _send(to: str, subject: str, html: str) -> None:
-    """Envoi bas niveau. Ne lève JAMAIS — best-effort intégral."""
+async def _send(to: str, subject: str, html: str) -> bool:
+    """
+    Envoi bas niveau. Ne lève JAMAIS — best-effort intégral.
+
+    Renvoie True seulement si Resend a accepté le message. B2 (2026-09-08) :
+    avant, la fonction ne renvoyait rien et l'appelant ne pouvait pas savoir
+    qu'un email n'était pas parti. Le mot de passe oublié en dépend.
+    """
     if not emails_enabled() or not to:
-        return
+        return False
     try:
         async with httpx.AsyncClient(timeout=6.0) as client:
             resp = await client.post(
@@ -87,11 +93,14 @@ async def _send(to: str, subject: str, html: str) -> None:
             if resp.status_code >= 400:
                 # Cas attendu en mode test (destinataire ≠ compte Resend) :
                 # on logge en INFO, pas en erreur — c'est un état normal
-                # tant que le domaine n'est pas vérifié.
+                # tant que le domaine n'est pas vérifié. L'appelant, lui,
+                # reçoit False et décide s'il faut alerter (cf. reset MDP).
                 logger.info(
                     "[emails] envoi refusé (%s) vers %s : %s",
                     resp.status_code, to, resp.text[:200],
                 )
+                return False
+            return True
     except Exception:
         logger.warning("[emails] échec d'envoi vers %s", to, exc_info=True)
         try:
@@ -99,6 +108,7 @@ async def _send(to: str, subject: str, html: str) -> None:
             sentry_sdk.capture_exception()
         except Exception:
             pass
+        return False
 
 
 # ── Les 3 emails ──────────────────────────────────────────────────────────
@@ -207,8 +217,15 @@ async def send_purchase_emails(
         logger.warning("[emails] send_purchase_emails a échoué", exc_info=True)
 
 
-async def send_password_reset_email(to: str, *, link: str) -> None:
-    """Lien de réinitialisation de mot de passe (jeton 60 min, usage unique)."""
+async def send_password_reset_email(to: str, *, link: str) -> bool:
+    """
+    Lien de réinitialisation de mot de passe (jeton 60 min, usage unique).
+
+    Renvoie True si Resend a accepté l'envoi, False sinon (module désactivé
+    faute de RESEND_API_KEY, ou destinataire refusé tant que le domaine WATT
+    n'est pas vérifié). L'appelant DOIT traiter False comme un incident
+    d'exploitation : sans email, le testeur est enfermé dehors.
+    """
     body = f"""\
     <p style="color:{_MUTED};font-size:14px;line-height:1.7;margin:0 0 18px;">
       Quelqu'un (toi, normalement) a demandé à réinitialiser le mot de passe
@@ -224,7 +241,20 @@ async def send_password_reset_email(to: str, *, link: str) -> None:
       Si tu n'es pas à l'origine de cette demande, ignore simplement cet
       email — ton mot de passe actuel reste valable.
     </p>"""
-    await _send(to, "Réinitialise ton mot de passe WATT", _layout("Mot de passe oublié ?", body))
+    delivered = await _send(
+        to, "Réinitialise ton mot de passe WATT",
+        _layout("Mot de passe oublié ?", body),
+    )
+    if not delivered:
+        # Bruyant exprès : c'est le seul email dont l'absence bloque un
+        # utilisateur. Ni le lien ni le jeton ne sont journalisés.
+        logger.error(
+            "[emails] lien de réinitialisation NON ENVOYÉ à %s "
+            "(emails_enabled=%s). Secours bêta : "
+            "cd watt-api && python tools/reset_link.py <email>",
+            to, emails_enabled(),
+        )
+    return delivered
 
 
 async def send_welcome_email(to: str, *, name: str | None = None) -> None:

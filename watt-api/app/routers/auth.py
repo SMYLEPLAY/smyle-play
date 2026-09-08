@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -26,6 +27,25 @@ from app.services.referrals import attach_referral_at_signup
 from app.services.users import authenticate_user, create_user, get_user_by_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+logger = logging.getLogger(__name__)
+
+
+def _capture_reset_delivery_failure(user, *, reason: str) -> None:
+    """
+    B2 : remonte un échec de délivrance du lien de réinitialisation à Sentry
+    quand il est configuré. Best-effort intégral : ne lève jamais, et ne porte
+    NI le jeton NI le lien (60 min de prise de contrôle si ça fuite).
+    """
+    try:
+        import sentry_sdk
+
+        sentry_sdk.capture_message(
+            f"[auth] lien de réinitialisation non délivré ({reason})",
+            level="error",
+        )
+    except Exception:
+        pass
 
 
 @router.post(
@@ -134,33 +154,20 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
 ):
     """Toujours {"ok": true} — qu'un compte existe ou non pour cet email."""
-    import hashlib
-    import secrets
-    from datetime import datetime, timedelta, timezone
+    from app.services.password_reset import (
+        account_is_resettable,
+        build_reset_link,
+        issue_reset_token,
+    )
 
     user = await get_user_by_email(db, payload.email)
-    if user is not None and not str(user.email).endswith("@deleted.watt"):
-        # Invalide les jetons actifs précédents (un seul lien valable).
-        from sqlalchemy import update as _update
-
-        from app.models.password_reset_token import PasswordResetToken
-        now = datetime.now(timezone.utc)
-        await db.execute(
-            _update(PasswordResetToken)
-            .where(
-                PasswordResetToken.user_id == user.id,
-                PasswordResetToken.used_at.is_(None),
-            )
-            .values(used_at=now)
-        )
-
-        token = secrets.token_urlsafe(32)
-        db.add(PasswordResetToken(
-            user_id=user.id,
-            token_hash=hashlib.sha256(token.encode()).hexdigest(),
-            expires_at=now + timedelta(minutes=60),
-        ))
-        await db.commit()
+    if account_is_resettable(user):
+        # B2 : la fabrication du jeton (32 bytes urlsafe, SHA-256 en base,
+        # 60 min, usage unique, invalidation du lien précédent) vit désormais
+        # dans app/services/password_reset.py — même code pour l'endpoint et
+        # pour l'outil de secours tools/reset_link.py. Rien n'a changé du
+        # mécanisme, seulement son adresse.
+        token = await issue_reset_token(db, user)
 
         # Lien absolu. S-10 (2026-09-02, audit A §M4) : l'origine vient de
         # PUBLIC_BASE_URL quand elle est posée, sinon de la requête. Avant,
@@ -169,22 +176,37 @@ async def forgot_password(
         # par email. Lu par os.getenv exprès (et non par settings) pour ne pas
         # toucher app/config.py, partagé par plusieurs tickets en vol ;
         # poser PUBLIC_BASE_URL=https://<domaine-prod> sur Railway.
-        base = (os.getenv("PUBLIC_BASE_URL") or str(request.base_url)).rstrip("/")
-        if "localhost" not in base and "127.0.0.1" not in base:
-            base = base.replace("http://", "https://", 1)
+        base = os.getenv("PUBLIC_BASE_URL") or str(request.base_url)
+        # S-10 : le jeton passe en FRAGMENT (#token=...), jamais en query.
+        # Un fragment n'est pas transmis au serveur : il ne finit ni dans
+        # les access-logs uvicorn (--access-log, railway.toml:7 / Procfile)
+        # ni dans l'en-tête Referer d'une ressource tierce. Le jeton reste
+        # valable 60 min : le journaliser, c'est l'offrir à quiconque lit
+        # les logs Railway.
+        link = build_reset_link(base, token)
         try:
             from app.services.emails import send_password_reset_email
-            # S-10 : le jeton passe en FRAGMENT (#token=...), jamais en query.
-            # Un fragment n'est pas transmis au serveur : il ne finit ni dans
-            # les access-logs uvicorn (--access-log, railway.toml:7 / Procfile)
-            # ni dans l'en-tête Referer d'une ressource tierce. Le jeton reste
-            # valable 60 min : le journaliser, c'est l'offrir à quiconque lit
-            # les logs Railway.
-            await send_password_reset_email(
-                user.email, link=f"{base}/reset#token={token}"
-            )
+
+            delivered = await send_password_reset_email(user.email, link=link)
         except Exception:
-            pass
+            delivered = False
+            logger.exception(
+                "[auth] envoi du lien de réinitialisation : exception "
+                "inattendue (compte %s)", user.id,
+            )
+            _capture_reset_delivery_failure(user, reason="exception")
+        if not delivered:
+            # B2 : jusqu'ici l'échec était muet — un testeur restait bloqué
+            # sans que personne ne le sache. La réponse HTTP ne bouge pas
+            # (anti-énumération), mais l'exploitation, elle, est prévenue.
+            logger.error(
+                "[auth] lien de réinitialisation NON DÉLIVRÉ pour user_id=%s "
+                "(emails désactivés ou refusés par Resend). Secours : "
+                "cd watt-api && python tools/reset_link.py <email>",
+                user.id,
+            )
+            _capture_reset_delivery_failure(user, reason="not_delivered")
+    # Réponse strictement identique, compte existant ou non (anti-énumération).
     return {"ok": True}
 
 
@@ -214,7 +236,7 @@ async def reset_password(
     if prt is None or prt.used_at is not None or prt.expires_at < now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Lien invalide ou expiré. Redemande un email de réinitialisation.",
+            detail="Lien invalide ou expiré. Redemande un lien de réinitialisation.",
         )
 
     user = (await db.execute(

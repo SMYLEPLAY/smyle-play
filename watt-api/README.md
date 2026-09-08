@@ -94,3 +94,51 @@ qui porte `granted_by` / `granted_by_email` / `source`) :
 ```bash
 curl "https://<host>/admin/grants?limit=50" -H "Authorization: Bearer <TOKEN_ADMIN>"
 ```
+
+## Administration — un testeur a perdu son mot de passe
+
+Dispositif de **beta interne** (ticket B2). Tant que le domaine WATT n'est pas
+depose et verifie chez Resend, aucun email transactionnel ne part vers un
+testeur : sans `RESEND_API_KEY` le module email est desactive, et avec une cle
+mais sans domaine verifie Resend n'accepte que l'adresse du proprietaire du
+compte. Le jeton de reinitialisation n'existant qu'en empreinte SHA-256 en
+base, il est irrecuperable a posteriori — d'ou cet outil.
+
+Sur la machine d'ops, contre la base pointee par `watt-api/.env` :
+
+```bash
+cd watt-api
+python tools/reset_link.py testeur@example.com --base-url https://<host>
+# --base-url facultatif si PUBLIC_BASE_URL est pose dans l'environnement
+```
+
+Le script affiche **une seule fois** un lien `https://<host>/reset#token=...`
+a transmettre au testeur par un canal direct. Il produit exactement le meme
+jeton que `POST /auth/forgot-password` (meme fonction
+`app/services/password_reset.py` : 32 bytes urlsafe, empreinte SHA-256,
+60 minutes, usage unique, invalidation du lien precedent). Sortie 1 et aucun
+lien si le compte est inconnu, supprime ou banni. Chaque emission ecrit une
+ligne WARNING dans le journal applicatif (`app.services.password_reset` +
+`watt.tools.reset_link`, avec l'operateur et la machine) : un usage abusif est
+visible.
+
+> **Impact.** Un lien emis ici permet de changer le mot de passe d'un compte
+> sans rien connaitre de l'ancien : l'outil donne a son porteur le pouvoir de
+> prendre la main sur **n'importe quel compte**. Il est donc reserve a Tom,
+> sur sa machine, et n'a **aucune route HTTP** — un endpoint de
+> reinitialisation administrative serait une porte derobee.
+
+**A retirer** au profit de l'envoi automatique des que le domaine sera
+verifie chez Resend : poser `RESEND_API_KEY` + `EMAIL_FROM` sur le domaine
+officiel, verifier que `POST /auth/forgot-password` ne logge plus
+`lien de reinitialisation NON DELIVRE`, puis rendre l'outil inutile au
+quotidien (il reste un secours d'exploitation).
+
+### Quand l'email ne part pas
+
+`POST /auth/forgot-password` repond **toujours** `200 {"ok": true}`, qu'un
+compte existe ou non (anti-enumeration) — cette reponse ne change jamais,
+meme quand l'envoi echoue. En revanche l'echec n'est plus silencieux : il
+ecrit un `ERROR` (`[auth] lien de reinitialisation NON DELIVRE pour
+user_id=...`) et, si `SENTRY_DSN` est pose, envoie un evenement Sentry.
+Ni le jeton ni le lien ne sont journalises.
