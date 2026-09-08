@@ -1,5 +1,52 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# ── Garde-fou SECRET_KEY (S-09, audit A §M1) ─────────────────────────────────
+# Le JWT est signé HS256 avec SECRET_KEY : qui la connaît forge un jeton pour
+# n'importe quel compte, compte officiel compris. L'ancienne garde de main.py
+# ne refusait QUE la valeur littérale "dev-secret-change-in-production" —
+# donc `cp .env.example .env` (SECRET_KEY=change-this-to-a-long-random-string)
+# passait, et la CI signait avec une clé de 15 octets (PyJWT 2.13 émet
+# InsecureKeyLengthWarning en dessous de 32 octets, taille du bloc HS256).
+_WEAK_SECRETS = {
+    "dev-secret-change-in-production",
+    "change-this-to-a-long-random-string",
+    "changeme",
+    "change-me",
+    "secret",
+    "ci-flask-secret",
+    "test",
+    "password",
+}
+
+# HS256 = HMAC-SHA256 : une clé plus courte que la sortie du hash (32 octets)
+# n'apporte aucune sécurité supplémentaire. C'est le seuil de PyJWT.
+SECRET_KEY_MIN_BYTES = 32
+
+
+def assert_secret_key_strong(key: str | None) -> None:
+    """Lève RuntimeError si la clé est absente, un placeholder, ou trop courte.
+
+    Appelée au boot du serveur (app.main.create_app). Les migrations Alembic
+    importent app.config mais PAS app.main : la CI migrations n'est pas
+    affectée.
+    """
+    k = (key or "").strip()
+    if not k or k.lower() in _WEAK_SECRETS or "change" in k.lower():
+        raise RuntimeError(
+            "SECRET_KEY absente ou égale à un placeholder public. Définis une "
+            "SECRET_KEY forte et aléatoire dans les variables d'environnement "
+            "avant de démarrer le serveur (génère-la avec : "
+            "python -c \"import secrets; print(secrets.token_urlsafe(48))\")."
+        )
+    n = len(k.encode("utf-8"))
+    if n < SECRET_KEY_MIN_BYTES:
+        raise RuntimeError(
+            f"SECRET_KEY trop courte ({n} octets) : minimum "
+            f"{SECRET_KEY_MIN_BYTES} octets pour HS256. Génère-la avec : "
+            "python -c \"import secrets; print(secrets.token_urlsafe(48))\"."
+        )
+
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
