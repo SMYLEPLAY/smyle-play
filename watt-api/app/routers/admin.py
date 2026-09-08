@@ -29,6 +29,7 @@ from app.database import get_db
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
 from app.schemas.credit import TransactionRead
+from app.services.beta_dashboard import beta_dashboard_data
 from app.services.credits import grant_credits_atomic
 from app.services.dashboard import eco_cockpit_data
 
@@ -136,3 +137,43 @@ async def eco_cockpit(
     db: AsyncSession = Depends(get_db),
 ):
     return await eco_cockpit_data(db)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# B3 — Tableau de bord de bêta (2026-09-08)
+#
+# Tom ne peut pas voir ce qui se passe dans sa bêta sans écrire du SQL, et le
+# seul tableau qui existait (`/admin/funnel`) comptait des événements
+# télémétrie `signup` / `purchase` que le front n'émet jamais : il était
+# structurellement vide. Ici, chaque chiffre d'activité vient du registre des
+# transactions ou d'une table métier — un fait comptable, indépendant du
+# consentement, d'un bloqueur ou de JavaScript.
+#
+#   GET /admin/beta?days=7&limit=20  → l'état de la bêta en une requête
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/beta")
+async def beta_dashboard(
+    days: int = Query(
+        default=7, ge=1, le=365,
+        description="Fenêtre glissante, en jours, pour les compteurs « sur la fenêtre »",
+    ),
+    limit: int = Query(
+        default=20, ge=1, le=100,
+        description="Nombre de ventes récentes et de créateurs listés",
+    ),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """État de la bêta, en lecture seule et borné.
+
+    Sections : `comptes`, `publications`, `ventes` (dont les `limit` dernières,
+    lisibles), `masse_smyles` (création / dépense / destruction / circulation +
+    réconciliation), `createurs`, `conversion_fiche_vers_deblocage`.
+
+    Aucune donnée sensible : ni mot de passe, ni IP, ni e-mail — les personnes
+    sont désignées par leur pseudo. Ce que la base ne sait pas mesurer est
+    renvoyé avec `mesurable: false` et sa raison, jamais avec un chiffre inventé.
+    """
+    return await beta_dashboard_data(db, days=days, limit=limit)

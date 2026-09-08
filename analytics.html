@@ -33,12 +33,16 @@
   .ttl { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--mut); margin:0 0 10px; font-weight:700; }
   .msg { color:var(--mut); font-size:14px; padding:30px 0; text-align:center; }
   .err { color:#e58; }
+  .src { display:inline-block; margin-left:8px; padding:1px 6px; border-radius:3px;
+         background:#1a1430; color:var(--mut); font-size:10px; text-transform:uppercase;
+         letter-spacing:.5px; vertical-align:middle; }
+  .warn { margin:0; padding-left:18px; font-size:13px; color:var(--mut); line-height:1.6; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Funnel produit</h1>
-  <p class="sub">Télémétrie D0 · privacy-first · visiteur → inscrit → 1er achat → revient</p>
+  <p class="sub">Visiteur → inscrit → 1er achat → revient. Inscrits et achats viennent du registre (exacts) ; visiteurs et retours de la télémétrie (partiels). Activité complète de la bêta&nbsp;: <code>GET /admin/beta</code>.</p>
   <div class="row">
     <label style="font-size:13px;color:var(--mut)">Fenêtre</label>
     <select id="days">
@@ -62,7 +66,9 @@
     var steps = d.funnel.map(function (s) {
       var w = top ? Math.round(s.count * 100 / top) : 0;
       return '<div class="step"><div class="step-top">'
-        + '<span class="step-name">' + esc(s.label) + '</span>'
+        + '<span class="step-name">' + esc(s.label)
+        + '<span class="src">' + (s.source === 'comptable' ? 'registre' : 'télémétrie') + '</span>'
+        + '</span>'
         + '<span class="step-num"><b>' + s.count + '</b>'
         + '<span class="step-pct">' + s.of_top + '% des visiteurs</span></span></div>'
         + '<div class="bar"><i style="width:' + w + '%"></i></div></div>';
@@ -79,8 +85,14 @@
       return '<tr><td>' + esc(e.name) + '</td><td>' + e.count + '</td></tr>';
     }).join('') || '<tr><td colspan="2" style="color:var(--mut2)">Aucun événement encore.</td></tr>';
 
+    var warn = (d.avertissements || []).map(function (w) {
+      return '<li>' + esc(w) + '</li>';
+    }).join('');
+
     out.innerHTML =
         '<div class="card"><p class="ttl">Funnel (' + d.window_days + ' j)</p>' + steps + '</div>'
+      + (warn ? '<div class="card"><p class="ttl">Ce que ces chiffres veulent dire</p>'
+                + '<ul class="warn">' + warn + '</ul></div>' : '')
       + '<div class="card"><p class="ttl">Taux de conversion</p>' + conv + '</div>'
       + '<div class="card"><p class="ttl">Événements bruts</p><table>' + ev + '</table></div>';
   }

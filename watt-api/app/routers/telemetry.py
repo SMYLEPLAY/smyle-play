@@ -4,6 +4,13 @@ Télémétrie D0 — collecte privacy-first + funnel admin.
   POST /events         → ingestion batch (PUBLIC, auth optionnelle)
   GET  /admin/funnel   → funnel lisible (gated is_official OU is_admin)
 
+B3 (2026-09-08) : le funnel ne compte plus les événements `signup` /
+`purchase` — que le front n'émet nulle part, ce qui le rendait
+structurellement vide. Les marches « Inscrits » et « 1er achat » sont
+désormais lues dans `users` et `transactions` ; « Visiteurs » et
+« Reviennent » restent télémétriques et sont étiquetées comme telles.
+Le tableau d'activité de la bêta est `GET /admin/beta` (routers/admin.py).
+
 Privacy-first : aucune PII stockée (pas d'IP, pas de user-agent). `session_id`
 anonyme (client). `user_id` posé seulement si un Bearer valide est présent —
 jamais accepté depuis le corps de la requête (anti-spoof).
