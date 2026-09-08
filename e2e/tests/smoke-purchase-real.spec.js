@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { bootSessionAuthentifiee } = require('./_helpers');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE — ACHAT RÉEL, DE BOUT EN BOUT, SANS AUCUN MOCK (K-10, annexe B §6).
@@ -32,7 +33,6 @@ const { test, expect } = require('@playwright/test');
 // produit encore ouverte — le test casserait à chaque ajustement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TOKEN_KEY = 'smyle_api_token';
 const PRICE = 5;
 const WELCOME = 10;
 
@@ -119,14 +119,10 @@ test('achat réel : débit acheteur, crédit vendeur, contenu en bibliothèque',
   expect(acheteurAvant.credits_balance, 'bonus de bienvenue').toBe(WELCOME);
 
   // ── Achat depuis l'INTERFACE, sans aucune interception ───────────────────
-  await page.addInitScript(([key, tok]) => {
-    try { localStorage.setItem(key, tok); } catch (e) { /* */ }
-    // La « recompense du jour » s'auto-ouvre une fois par session pour un
-    // compte neuf (ui/modals/auth.js _maybeNudgeStreak) et se poserait par
-    // dessus le drawer. On pose son verrou de session : on teste l'achat, pas
-    // le streak — et surtout on ne veut aucun Smyle en plus pendant la mesure.
-    try { sessionStorage.setItem('smyle_streak_autoopened', '1'); } catch (e) { /* */ }
-  }, [TOKEN_KEY, acheteur.token]);
+  // Le helper pose le JWT ET le verrou de session du rappel « Récompense du
+  // jour » : cette modale se poserait par dessus le drawer, et surtout elle
+  // créditerait des Smyles en plein milieu de la mesure de solde.
+  await bootSessionAuthentifiee(page, acheteur.token);
 
   let unlockStatus = null;
   page.on('response', (r) => {

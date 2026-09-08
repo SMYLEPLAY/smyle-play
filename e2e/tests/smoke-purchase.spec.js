@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { bootSessionAuthentifiee } = require('./_helpers');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE INTERACTION — Drawer d'achat (clic « Débloquer »).
@@ -15,7 +16,6 @@ const { test, expect } = require('@playwright/test');
 // DB-réel viendra avec une fixture de seed dédiée.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TOKEN_KEY = 'smyle_api_token';
 const FAKE_PROMPT_ID = '11111111-1111-1111-1111-111111111111';
 
 async function _authedToken(request) {
@@ -44,9 +44,7 @@ test('drawer d’achat : rendu + clic « Débloquer » appelle l’unlock', asyn
     });
   });
 
-  await page.addInitScript(([key, tok]) => {
-    try { localStorage.setItem(key, tok); } catch (e) { /* */ }
-  }, [TOKEN_KEY, token]);
+  await bootSessionAuthentifiee(page, token);
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 

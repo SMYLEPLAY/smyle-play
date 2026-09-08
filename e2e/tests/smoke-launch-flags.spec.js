@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { bootSessionAuthentifiee } = require('./_helpers');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE — MODE_LANCEMENT (K-05, annexe B §4).
@@ -23,10 +24,6 @@ const { test, expect } = require('@playwright/test');
 // l'API et on injecte le JWT, comme smoke-auth / smoke-purchase.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TOKEN_KEY = 'smyle_api_token';
-// Drapeau de session que l'app utilise ELLE-MÊME comme garde-fou du rappel
-// « Récompense du jour » (ui/modals/auth.js, `_maybeNudgeStreak`).
-const STREAK_NUDGE_KEY = 'smyle_streak_autoopened';
 const FLAGS_URL = '**/ui/core/launch-flags.js';
 
 async function _authedToken(request) {
@@ -42,21 +39,10 @@ async function _authedToken(request) {
 }
 
 async function _bootAuthed(page, token) {
-  await page.addInitScript(([tokenKey, tok, streakKey]) => {
-    try { localStorage.setItem(tokenKey, tok); } catch (e) { /* */ }
-    // ui/modals/auth.js planifie `_maybeNudgeStreak()` à t+1,2 s après le
-    // boot. Sur un compte NEUF, `GET /streak/me` répond `can_checkin_today:
-    // true` → la « Récompense du jour » s'ouvre TOUTE SEULE, et #streakModal
-    // est un overlay `position:fixed; inset:0; z-index:1000` qui recouvre la
-    // barre d'en-tête : tout clic sur `#authArea .user-badge` est alors
-    // intercepté (échec déterministe, pas une flakiness). smoke-purchase y
-    // échappe seulement parce que .pd-overlay est en z-index 1300.
-    // On pose donc le drapeau de session que l'app utilise elle-même pour ne
-    // proposer la récompense qu'une fois par session : le rappel quotidien
-    // est hors du périmètre de ce smoke et aucune assertion de drapeau de
-    // lancement n'en dépend.
-    try { sessionStorage.setItem(streakKey, '1'); } catch (e) { /* */ }
-  }, [TOKEN_KEY, token, STREAK_NUDGE_KEY]);
+  // JWT + verrou de session du rappel « Récompense du jour » : sans ce dernier,
+  // l'overlay #streakModal recouvre l'en-tête et intercepte le clic sur
+  // `#authArea .user-badge` (cf. e2e/tests/_helpers.js pour le détail).
+  await bootSessionAuthentifiee(page, token);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#authArea .user-badge')).toBeVisible({ timeout: 15000 });
 }
