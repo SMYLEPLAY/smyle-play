@@ -29,6 +29,11 @@ class TransactionType(str, enum.Enum):
     # référencer 'resale' sans cast error. Aucun code actuel ne crée de
     # transaction RESALE — la valeur reste dormante jusqu'à la Phase 10.
     RESALE = "resale"
+    # D6 — destruction de Smyles (frais de troc brûlés). Montant retiré de la
+    # circulation, SANS bénéficiaire : artist_revenue = platform_fee = 0.
+    # `buyer_id` = l'utilisateur débité. La valeur est ajoutée à l'enum
+    # PostgreSQL par la migration 0086 (ALTER TYPE ... ADD VALUE).
+    BURN = "burn"
 
 
 class TransactionStatus(str, enum.Enum):

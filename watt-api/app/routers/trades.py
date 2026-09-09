@@ -30,6 +30,11 @@ from app.database import get_db
 from app.models.notification import NotificationType
 from app.models.prompt import Prompt
 from app.models.trade import TradeOffer, TradeStatus
+from app.models.transaction import (
+    Transaction,
+    TransactionStatus,
+    TransactionType,
+)
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
@@ -356,8 +361,12 @@ async def accept_trade(
     # reversé). Un échange coûte donc bien moins cher qu'acheter les deux
     # prompts (100%), ce qui pousse à l'échange tout en protégeant l'économie.
     #
-    # NB v1 : pas d'écriture Transaction d'audit pour le burn (à ajouter lors
-    # de l'audit global de fin de site). Royalties artiste d'origine = phase 2.
+    # D6 : chaque burn est TRACÉ au ledger (une ligne Transaction de type BURN
+    # par partie débitée, cf. plus bas). Sans cette écriture, la somme des
+    # écritures ne réconciliait plus avec la variation des soldes dès qu'un
+    # échange était accepté. Le montant des frais et la mécanique de l'échange
+    # sont inchangés — on rend traçable ce qui existait déjà.
+    # Royalties artiste d'origine = phase 2.
     TRADE_FEE_RATE = 0.20
     TRADE_FEE_FLOOR = 2
 
@@ -408,15 +417,62 @@ async def accept_trade(
             rem -= take
         u.credits_balance -= amt
 
-    _debit_buckets(sender, sender_fee)
-    _debit_buckets(receiver, receiver_fee)
+    def _burn_tx(user_id: UUID, amount: int, received_prompt_id: UUID | None):
+        """Ligne de ledger d'une destruction de Smyles (frais de troc).
 
-    # Transfert du supplément (sender → receiver), si présent.
-    if supplement > 0:
-        _debit_buckets(sender, supplement)
-        receiver.credits_balance += supplement
-        receiver.smyles_achetes += supplement  # reçu en trade → bucket non encaissable (prudent)
-        receiver.credits_earned_total += supplement
+        `buyer_id` = l'utilisateur débité (personne n'encaisse) ; le split
+        reste à 0/0 → le CHECK conditionnel (branche « autres types ») est
+        satisfait. `idempotency_key` = (offre, user) : la DB refuse un second
+        burn pour la même acceptation même si le verrou d'offre était contourné.
+        """
+        return Transaction(
+            type=TransactionType.BURN,
+            status=TransactionStatus.PENDING,
+            buyer_id=user_id,
+            seller_id=None,
+            credits_amount=amount,
+            artist_revenue=0,
+            platform_fee=0,
+            idempotency_key=f"trade_fee_burn:{offer.id}:{user_id}",
+            metadata_json={
+                "source": "trade_fee_burn",
+                "trade_offer_id": str(offer.id),
+                "received_prompt_id": (
+                    str(received_prompt_id) if received_prompt_id else None
+                ),
+                "fee_rate": TRADE_FEE_RATE,
+                "fee_floor": TRADE_FEE_FLOOR,
+            },
+        )
+
+    # Savepoint : la mutation d'argent (débits + écritures de ledger) est
+    # atomique ; si une écriture échoue (ex : rejeu détecté par
+    # l'idempotency_key), rien n'est débité.
+    async with db.begin_nested():
+        _debit_buckets(sender, sender_fee)
+        _debit_buckets(receiver, receiver_fee)
+
+        # Trace des Smyles détruits : une ligne par partie débitée, du montant
+        # EXACT retiré de la circulation.
+        burns = [
+            _burn_tx(sender.id, sender_fee, offer.requested_prompt_id),
+            _burn_tx(receiver.id, receiver_fee, offer.offered_prompt_id),
+        ]
+        for tx in burns:
+            db.add(tx)
+        await db.flush()
+        for tx in burns:
+            tx.status = TransactionStatus.COMPLETED
+            tx.completed_at = now
+
+        # Transfert du supplément (sender → receiver), si présent. Transfert
+        # entre soldes : rien n'est créé ni détruit, la masse reste constante.
+        if supplement > 0:
+            _debit_buckets(sender, supplement)
+            receiver.credits_balance += supplement
+            receiver.smyles_achetes += supplement  # reçu en trade → bucket non encaissable (prudent)
+            receiver.credits_earned_total += supplement
+        await db.flush()
 
     # 4. Clore l'offre
     offer.status = TradeStatus.ACCEPTED
