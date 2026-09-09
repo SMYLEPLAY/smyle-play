@@ -21,6 +21,14 @@ const TOKEN_KEY = 'smyle_api_token';
 // « Récompense du jour » (ui/modals/auth.js, `_maybeNudgeStreak`).
 const STREAK_NUDGE_KEY = 'smyle_streak_autoopened';
 
+// Drapeau « déjà vu » de l'onboarding premier-run (ui/core/onboarding.js,
+// rechargé sur l'accueil par N-03, 09/09). Sans lui, sur un compte NEUF la
+// modale #obWelcome (position:fixed; inset:0; z-index:1400) s'ouvre à t+0,9 s
+// et recouvre l'en-tête ET le tiroir d'achat (.pd-overlay, z-index 1300) :
+// même échec déterministe que #streakModal. L'onboarding est hors du périmètre
+// de ces smokes ; on pose le drapeau que l'app utilise elle-même.
+const ONBOARDING_SEEN_KEY = 'smyle_onboarded_v1';
+
 /**
  * Prépare une session connectée AVANT le boot des scripts de la page :
  *   1. pose le JWT, comme le ferait une vraie connexion ;
@@ -42,10 +50,11 @@ const STREAK_NUDGE_KEY = 'smyle_streak_autoopened';
  * @param {string} token JWT obtenu par /auth/login
  */
 async function bootSessionAuthentifiee(page, token) {
-  await page.addInitScript(([tokenKey, tok, streakKey]) => {
+  await page.addInitScript(([tokenKey, tok, streakKey, onboardingKey]) => {
     try { localStorage.setItem(tokenKey, tok); } catch (e) { /* */ }
     try { sessionStorage.setItem(streakKey, '1'); } catch (e) { /* */ }
-  }, [TOKEN_KEY, token, STREAK_NUDGE_KEY]);
+    try { localStorage.setItem(onboardingKey, '1'); } catch (e) { /* */ }
+  }, [TOKEN_KEY, token, STREAK_NUDGE_KEY, ONBOARDING_SEEN_KEY]);
 }
 
-module.exports = { TOKEN_KEY, STREAK_NUDGE_KEY, bootSessionAuthentifiee };
+module.exports = { TOKEN_KEY, STREAK_NUDGE_KEY, ONBOARDING_SEEN_KEY, bootSessionAuthentifiee };

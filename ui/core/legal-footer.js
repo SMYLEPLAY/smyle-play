@@ -22,6 +22,7 @@
     var l = 'color:rgba(255,255,255,.55);text-decoration:none;margin:0 10px;';
     f.innerHTML =
       '<span style="letter-spacing:.1em;">⚡ WATT · bêta</span><br>' +
+      '<a href="/comment-ca-marche" style="' + l + '">Comment ça marche</a>' +
       '<a href="/legal#cgu" style="' + l + '">CGU / CGV</a>' +
       '<a href="/legal#confidentialite" style="' + l + '">Confidentialité</a>' +
       '<a href="/legal#mentions" style="' + l + '">Mentions légales</a>' +
