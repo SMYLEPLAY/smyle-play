@@ -84,5 +84,11 @@
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <script src="/ui/player/mini-bar.js?v=20260707player" defer></script>
+<!-- N-07 (09/09) : le bouton « Boutique » de la topbar appelle window.openBoutique
+     (boutique.js) qui ouvre le check-in via window.openStreakPanel (engagement.js) —
+     ces deux modules étaient chargés sur index/dashboard/library/artiste mais pas ici,
+     donc le bouton ne faisait rien sur /oeuvre/<slug>. -->
+<script src="/ui/modals/boutique.js" defer></script>
+<script src="/ui/modals/engagement.js" defer></script>
 </body>
 </html>
