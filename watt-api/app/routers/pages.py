@@ -422,12 +422,23 @@ _ALLOWED_STATIC_SUFFIXES = {
 }
 
 
+# Liste blanche de DOSSIERS (N-01, 09/09) : le mount sert la racine du dépôt,
+# donc sans cette seconde barrière tout fichier d'un sous-dossier portant une
+# extension « front » était téléchargeable — `data/recipes_backfill_*.json`
+# (43 recettes Suno vendues 30 Smyles), `e2e/*.js`, `scripts/*`… Seuls les
+# fichiers à la racine (pages HTML, CSS, JS, tracks.json) et les arbres
+# `ui/` et `assets/` sont des assets front. Tout autre dossier → 404.
+_ALLOWED_STATIC_DIRS = {"ui", "assets"}
+
+
 class _AllowlistStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         p = Path(path)
         hidden = any(part.startswith(".") for part in p.parts)
         allowed = p.suffix.lower() in _ALLOWED_STATIC_SUFFIXES
-        if hidden or not allowed:
+        # `index.html` à la racine via html=True : `path` vaut "." → parts ()
+        in_allowed_dir = len(p.parts) <= 1 or p.parts[0] in _ALLOWED_STATIC_DIRS
+        if hidden or not allowed or not in_allowed_dir:
             raise HTTPException(status_code=404)
         return await super().get_response(path, scope)
 

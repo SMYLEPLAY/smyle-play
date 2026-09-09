@@ -155,6 +155,29 @@ def test_assets_front_servis():
     assert c.get("/dashboard.js").status_code == 200
 
 
+def test_sous_dossiers_hors_front_bloques():
+    """N-01 (09/09) : liste blanche de dossiers. `data/recipes_backfill_*.json`
+    (43 recettes Suno vendues 30 Smyles) était téléchargeable en clair parce
+    que `.json` est un suffixe autorisé et que seuls les dotfiles étaient
+    filtrés. Seuls la racine, `ui/` et `assets/` sont servis."""
+    c = _client()
+    for path in ("/data/recipes_backfill_sunset.json",
+                 "/data/recipes_backfill_jungle.json",
+                 "/data/config/univers.json",
+                 "/e2e/package.json",
+                 "/e2e/tests/_helpers.js",
+                 "/scripts/README_RELAY.md",
+                 "/watt-api/pytest.ini",
+                 "/agents/x.json"):
+        assert c.get(path).status_code == 404, path
+    # Les assets front restent servis : racine, ui/, assets/.
+    assert c.get("/tracks.json").status_code == 200
+    assert c.get("/ui/core/dom.js").status_code == 200
+    assert c.get("/ui/core/launch-flags.js").status_code == 200
+    assert c.get("/comment-ca-marche.html").status_code == 200
+    assert c.get("/assets/the-plan/cover.png").status_code == 200
+
+
 def test_sources_et_dotfiles_bloques():
     c = _client()
     # Flask exposait ces fichiers ; FastAPI doit répondre 404.
