@@ -60,8 +60,8 @@
 <!-- État 1 : demander un lien -->
 <div class="rs-card" id="rs-request" style="display:none">
   <h1>Mot de passe oublié ?</h1>
-  <div class="rs-sub">Donne l'email de ton compte — on t'envoie un lien de
-    réinitialisation valable 60 minutes.</div>
+  <div class="rs-sub">Donne l'email de ton compte — un lien de
+    réinitialisation valable 60 minutes lui sera destiné.</div>
   <label for="rs-email">Email du compte</label>
   <input id="rs-email" type="email" autocomplete="email" placeholder="toi@email.com" />
   <button id="rs-send">Envoyer le lien</button>
@@ -79,7 +79,7 @@
   <input id="rs-pwd2" type="password" minlength="8" autocomplete="new-password" placeholder="••••••••" />
   <button id="rs-apply">Changer mon mot de passe</button>
   <div class="rs-msg" id="rs-reset-msg"></div>
-  <a class="rs-back" href="/reset">Le lien est mort ? Redemande un email</a>
+  <a class="rs-back" href="/reset">Le lien est mort ? Redemande un lien</a>
 </div>
 
 <script>
@@ -136,10 +136,15 @@
     try {
       await post('/auth/forgot-password', { email: email });
       // Toujours le même message, que le compte existe ou non
-      // (anti-énumération) — et honnête sur le mode test email.
+      // (anti-énumération). B2 : le texte doit rester VRAI même quand
+      // l'envoi d'emails est désactivé faute de domaine vérifié — on ne
+      // promet donc pas un email parti, on dit quoi faire s'il ne vient pas.
       msg('rs-request-msg',
-          'Si un compte existe pour ' + email + ', un email vient de partir. ' +
-          'Pense à vérifier les spams.', 'ok');
+          'Demande enregistrée. Si un compte existe pour ' + email + ', un ' +
+          'lien de réinitialisation lui est destiné — vérifie aussi les spams. ' +
+          'L\'envoi d\'emails est encore en cours de mise en place : sans rien ' +
+          'reçu d\'ici quelques minutes, contacte l\'équipe WATT, on te ' +
+          'transmettra ton lien directement.', 'ok');
     } catch (e) {
       msg('rs-request-msg', e.message, 'error');
     }

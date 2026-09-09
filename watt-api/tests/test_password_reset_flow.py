@@ -18,6 +18,13 @@ révocation des JWT (token_version).
 Le service d'envoi est monkeypatché pour capturer le lien (auth.py importe
 `send_password_reset_email` à l'appel, donc patcher le module suffit).
 Postgres requis (cf. conftest.py).
+
+B2 (2026-09-08) — secours bêta interne : la fabrication du jeton est extraite
+dans `app/services/password_reset.py` et partagée avec `tools/reset_link.py`.
+Les tests de fin de fichier couvrent ce chemin : un jeton produit par la même
+fonction que l'outil est accepté par `POST /auth/reset-password`, il reste à
+usage unique, et un compte banni ou supprimé se voit refuser tout lien. Un
+échec d'envoi ne change pas la réponse HTTP mais devient bruyant.
 """
 import uuid
 
@@ -49,8 +56,9 @@ def sent_links(monkeypatch):
     """Capture les liens de réinitialisation au lieu de les envoyer."""
     links: list[str] = []
 
-    async def _fake(to: str, *, link: str) -> None:
+    async def _fake(to: str, *, link: str) -> bool:
         links.append(link)
+        return True  # B2 : l'envoi renvoie désormais son succès.
 
     monkeypatch.setattr(emails_module, "send_password_reset_email", _fake)
     return links
@@ -262,3 +270,199 @@ async def test_reset_html_lit_le_fragment_puis_purge_lurl():
     assert "history.replaceState" in html
     # Le fallback ?token= reste (emails partis avant le déploiement).
     assert "location.search" in html
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# B2 (2026-09-08) — outil de secours `tools/reset_link.py`.
+#
+# L'outil n'est qu'un appelant : toute la logique vit dans
+# `app.services.password_reset.issue_reset_link_for_email`. On teste la
+# fonction (comme l'exige le ticket), pas le sous-processus.
+# ─────────────────────────────────────────────────────────────────────────
+
+_BASE = "https://watt.example"
+
+
+async def _issue_via_tool(email: str):
+    """Exactement ce que fait `tools/reset_link.py` (mêmes arguments)."""
+    from app.services.password_reset import issue_reset_link_for_email
+
+    async with SessionLocal() as db:
+        return await issue_reset_link_for_email(db, email, base_url=_BASE)
+
+
+async def test_outil_secours_produit_un_jeton_accepte_par_reset_password(client):
+    """Le lien de l'outil passe par POST /auth/reset-password, sans email."""
+    user = await _make_user()
+    try:
+        _u, link = await _issue_via_tool(user["email"])
+        assert link.startswith(f"{_BASE}/reset#token="), link
+        token = _token_of(link)
+
+        r = await client.post(
+            "/auth/reset-password",
+            json={"token": token, "new_password": _NEW_PASSWORD},
+        )
+        assert r.status_code == 200, r.text
+
+        ok = await client.post(
+            "/auth/login", json={"email": user["email"], "password": _NEW_PASSWORD}
+        )
+        assert ok.status_code == 200, ok.text
+    finally:
+        await _cleanup(user["id"])
+
+
+async def test_outil_secours_jeton_a_usage_unique(client):
+    """Le jeton émis par l'outil ne sert qu'une fois."""
+    user = await _make_user()
+    try:
+        _u, link = await _issue_via_tool(user["email"])
+        token = _token_of(link)
+
+        first = await client.post(
+            "/auth/reset-password",
+            json={"token": token, "new_password": _NEW_PASSWORD},
+        )
+        assert first.status_code == 200, first.text
+
+        second = await client.post(
+            "/auth/reset-password",
+            json={"token": token, "new_password": "mdp-de-test-3-xxxxxxxx"},
+        )
+        assert second.status_code == 400, second.text
+    finally:
+        await _cleanup(user["id"])
+
+
+async def test_outil_secours_invalide_le_lien_precedent(client, sent_links):
+    """Un lien émis par l'outil tue le lien envoyé par email juste avant."""
+    user = await _make_user()
+    try:
+        await _forgot(client, user["email"])
+        old_token = _token_of(sent_links[0])
+
+        _u, link = await _issue_via_tool(user["email"])
+        new_token = _token_of(link)
+        assert new_token != old_token
+
+        dead = await client.post(
+            "/auth/reset-password",
+            json={"token": old_token, "new_password": _NEW_PASSWORD},
+        )
+        assert dead.status_code == 400, dead.text
+
+        alive = await client.post(
+            "/auth/reset-password",
+            json={"token": new_token, "new_password": _NEW_PASSWORD},
+        )
+        assert alive.status_code == 200, alive.text
+    finally:
+        await _cleanup(user["id"])
+
+
+async def test_outil_secours_refuse_compte_banni():
+    """Compte banni : aucun lien, aucun jeton créé."""
+    from sqlalchemy import func, select
+
+    from app.models.password_reset_token import PasswordResetToken
+    from app.services.password_reset import ResetLinkRefused
+
+    user = await _make_user()
+    try:
+        async with SessionLocal() as db:
+            row = (await db.execute(
+                select(User).where(User.id == user["id"])
+            )).scalar_one()
+            row.is_banned = True
+            await db.commit()
+
+        with pytest.raises(ResetLinkRefused):
+            await _issue_via_tool(user["email"])
+
+        async with SessionLocal() as db:
+            n = (await db.execute(
+                select(func.count()).select_from(PasswordResetToken)
+                .where(PasswordResetToken.user_id == user["id"])
+            )).scalar_one()
+        assert n == 0
+    finally:
+        await _cleanup(user["id"])
+
+
+async def test_outil_secours_refuse_compte_supprime():
+    """Compte anonymisé (@deleted.watt) : aucun lien."""
+    from sqlalchemy import select
+
+    from app.services.password_reset import ResetLinkRefused
+
+    user = await _make_user()
+    deleted_email = f"deleted-{uuid.uuid4().hex[:12]}@deleted.watt"
+    try:
+        async with SessionLocal() as db:
+            row = (await db.execute(
+                select(User).where(User.id == user["id"])
+            )).scalar_one()
+            row.email = deleted_email
+            await db.commit()
+
+        with pytest.raises(ResetLinkRefused):
+            await _issue_via_tool(deleted_email)
+    finally:
+        await _cleanup(user["id"])
+
+
+async def test_outil_secours_refuse_compte_inconnu():
+    """Email inconnu : refus explicite (l'outil est local, il peut parler)."""
+    from app.services.password_reset import ResetLinkRefused
+
+    with pytest.raises(ResetLinkRefused):
+        await _issue_via_tool(f"inconnu-{uuid.uuid4().hex[:10]}@smyleplay.example")
+
+
+async def test_echec_envoi_ne_change_pas_la_reponse_mais_alerte(
+    client, monkeypatch, caplog
+):
+    """
+    B2 : email non délivré → réponse HTTP INCHANGÉE (anti-énumération) mais
+    trace ERROR côté serveur. Le jeton reste utilisable (il est en base).
+    """
+    import logging
+
+    async def _muet(to: str, *, link: str) -> bool:
+        return False  # Resend désactivé ou destinataire refusé.
+
+    monkeypatch.setattr(emails_module, "send_password_reset_email", _muet)
+
+    user = await _make_user()
+    try:
+        with caplog.at_level(logging.ERROR, logger="app.routers.auth"):
+            r = await client.post(
+                "/auth/forgot-password", json={"email": user["email"]}
+            )
+        assert r.status_code == 200, r.text
+        assert r.json() == {"ok": True}
+        assert any("NON DÉLIVRÉ" in rec.getMessage() for rec in caplog.records), (
+            [rec.getMessage() for rec in caplog.records]
+        )
+        # Le lien n'est jamais journalisé (60 min de prise de contrôle).
+        assert not any("#token=" in rec.getMessage() for rec in caplog.records)
+    finally:
+        await _cleanup(user["id"])
+
+
+async def test_anti_enumeration_reponse_identique(client, sent_links):
+    """Compte existant et compte inconnu : réponse strictement identique."""
+    user = await _make_user()
+    try:
+        connu = await client.post(
+            "/auth/forgot-password", json={"email": user["email"]}
+        )
+        inconnu = await client.post(
+            "/auth/forgot-password",
+            json={"email": f"inconnu-{uuid.uuid4().hex[:10]}@smyleplay.example"},
+        )
+        assert connu.status_code == inconnu.status_code == 200
+        assert connu.json() == inconnu.json() == {"ok": True}
+    finally:
+        await _cleanup(user["id"])
