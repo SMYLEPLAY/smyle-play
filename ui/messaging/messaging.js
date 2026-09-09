@@ -185,42 +185,45 @@
         <div class="msg-pane msg-pane-thread hidden" id="msg-pane-thread"></div>
       </div>`;
     _bindDelegates(el);
-    _bindOfferDelegate(el);
     _renderInbox();
   }
 
-  // S-01 (2026-09-04) — un SEUL délégué d'événement, posé une fois sur le
-  // conteneur (stable), à la place de l'onclick inline qui interpolait une
-  // donnée utilisateur (other_user_name) dans du JS : une apostrophe dans un
-  // nom d'artiste sortait du littéral. Les panes sont re-rendus en innerHTML :
-  // un délégué posé sur #msg-pane-inbox serait perdu.
+  // Délégation d'événement du conteneur de messagerie — UN SEUL écouteur qui
+  // aiguille selon le `data-*` rencontré. Les panes sont re-rendus en
+  // innerHTML : un écouteur posé sur #msg-pane-inbox serait perdu ; le
+  // conteneur, lui, est stable.
+  //
+  //   - `data-thread-user-id` (S-01, 2026-09-04) : remplaçait un onclick inline
+  //     qui interpolait `other_user_name` — une apostrophe dans un nom
+  //     d'artiste sortait du littéral JS.
+  //   - `data-offer-id` (S-02, 2026-09-04, annexe A §B3) : carte « Offre /
+  //     proposition ». L'id est revalidé UUID ici, `SmyleTradeView.open` ne
+  //     reçoit jamais autre chose.
+  //
+  // D3 (2026-09-08) : les deux délégués posés séparément sur le MÊME conteneur
+  // sont fusionnés en un seul (ordre d'aiguillage : du plus spécifique — le
+  // bouton d'offre, imbriqué dans une bulle — au plus large). Idempotent via
+  // le drapeau `data-msg-delegated` porté par le conteneur : rappeler
+  // `_bindDelegates` (à chaque `_ensureUI`) ne repose pas d'écouteur.
   function _bindDelegates(el) {
     if (!el || el.dataset.msgDelegated === '1') return;
     el.dataset.msgDelegated = '1';
     el.addEventListener('click', (ev) => {
+      // Carte d'échange dans le fil.
+      const btn = ev.target.closest('[data-offer-id]');
+      if (btn && el.contains(btn)) {
+        ev.preventDefault();
+        if (window.SmyleTradeView && _UUID_RE.test(btn.dataset.offerId || '')) {
+          window.SmyleTradeView.open(btn.dataset.offerId);
+        }
+        return;
+      }
+      // Ligne de conversation dans l'inbox.
       const row = ev.target.closest('[data-thread-user-id]');
       if (row && el.contains(row)) {
         ev.preventDefault();
         _selectThread(row.dataset.threadUserId, row.dataset.threadUserName || '');
         return;
-      }
-    });
-  }
-
-  // S-02 (2026-09-04, annexe A §B3) — la carte « Offre / proposition » n'a plus
-  // d'onclick inline dans lequel on interpolait `offerId` : elle porte
-  // `data-offer-id`, et UN SEUL délégué posé une fois sur le conteneur (stable ;
-  // les panes sont re-rendus en innerHTML) ouvre l'écran d'échange. L'id est
-  // revalidé UUID ici : SmyleTradeView.open ne reçoit jamais autre chose.
-  function _bindOfferDelegate(el) {
-    if (!el || el.dataset.msgOfferDelegated === '1') return;
-    el.dataset.msgOfferDelegated = '1';
-    el.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-offer-id]');
-      if (!btn || !el.contains(btn)) return;
-      ev.preventDefault();
-      if (window.SmyleTradeView && _UUID_RE.test(btn.dataset.offerId || '')) {
-        window.SmyleTradeView.open(btn.dataset.offerId);
       }
     });
   }
@@ -520,10 +523,22 @@
         <label style="display:block;margin:12px 0 4px;opacity:.8">Complément en crédits (optionnel)</label>
         <input id="msg-trade-supp" type="number" min="0" value="0" style="${sel}" />
         <p style="opacity:.6;font-size:12px;margin:12px 0">⚠️ Frais de 20% (brûlé) par côté. Offre valable 7 jours.</p>
-        <button id="msg-trade-send" onclick="SmyleMessaging._submitTradeFromConv('${receiverId}')"
+        <button type="button" id="msg-trade-send" data-trade-receiver="${_esc(receiverId)}"
                 style="width:100%;padding:10px;border:none;border-radius:8px;background:#7C3AED;color:#fff;font-weight:600;cursor:pointer">Envoyer la proposition</button>
       </div>`;
-    el.addEventListener('click', ev => { if (ev.target === el) el.remove(); });
+    // D1 (2026-09-08) — plus d'onclick inline interpolant `receiverId` : le
+    // parseur HTML décode les entités AVANT que le JS de l'attribut ne soit
+    // compilé, donc `_esc` ne protège pas dans un `onclick`. La modale porte
+    // `data-trade-receiver` et ce délégué (posé une fois sur l'élément créé
+    // ici) lit la valeur via dataset — jamais évaluée comme du code.
+    el.addEventListener('click', ev => {
+      if (ev.target === el) { el.remove(); return; }
+      const send = ev.target.closest('[data-trade-receiver]');
+      if (send && el.contains(send)) {
+        ev.preventDefault();
+        _submitTradeFromConv(send.dataset.tradeReceiver || '');
+      }
+    });
     document.body.appendChild(el);
   }
 

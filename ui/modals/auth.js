@@ -472,7 +472,20 @@ function _ensureReferralModal() {
       <div id="referralBody" style="font-size:14px;">Chargement…</div>
     </div>`;
   document.body.appendChild(modal);
-  modal.addEventListener('click', (e) => { if (e.target === modal) closeReferralModal(); });
+  // D2 (2026-09-08) — les deux boutons « Copier » n'ont plus d'onclick inline
+  // interpolant le code / le lien de parrainage (dans un `onclick`, le parseur
+  // HTML décode `&#39;` en `'` avant compilation du JS : `_authEscHtml` n'y
+  // protège pas). Ils portent `data-copy-text` ; ce délégué unique, posé une
+  // seule fois sur la modale (stable, seul `#referralBody` est re-rendu),
+  // lit la valeur via dataset — jamais évaluée comme du code.
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) { closeReferralModal(); return; }
+    const btn = e.target.closest('[data-copy-text]');
+    if (btn && modal.contains(btn)) {
+      e.preventDefault();
+      copyReferral(btn.dataset.copyText || '');
+    }
+  });
   return modal;
 }
 
@@ -492,10 +505,10 @@ async function openReferralModal() {
     const earned   = (data && data.credits_earned) || 0;
     body.innerHTML = `
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-        <code style="flex:1;background:#0d0a16;border:1px solid #2c2440;border-radius:10px;padding:10px 12px;font-size:18px;letter-spacing:2px;text-align:center;">${code}</code>
-        <button onclick="copyReferral('${code}')" style="background:#6c4cf0;border:none;color:#fff;border-radius:10px;padding:10px 12px;cursor:pointer;font-size:13px;">Copier le code</button>
+        <code style="flex:1;background:#0d0a16;border:1px solid #2c2440;border-radius:10px;padding:10px 12px;font-size:18px;letter-spacing:2px;text-align:center;">${_authEscHtml(code)}</code>
+        <button type="button" data-copy-text="${_authEscHtml(code)}" style="background:#6c4cf0;border:none;color:#fff;border-radius:10px;padding:10px 12px;cursor:pointer;font-size:13px;">Copier le code</button>
       </div>
-      <button onclick="copyReferral('${link.replace(/'/g, "\\'")}')" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:9px;cursor:pointer;font-size:12px;margin-bottom:16px;">Copier le lien d'invitation</button>
+      <button type="button" data-copy-text="${_authEscHtml(link)}" style="width:100%;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:9px;cursor:pointer;font-size:12px;margin-bottom:16px;">Copier le lien d'invitation</button>
       <div style="display:flex;text-align:center;gap:8px;">
         <div style="flex:1;background:#0d0a16;border-radius:10px;padding:10px;"><div style="font-size:20px;font-weight:700;">${total}</div><div style="font-size:11px;color:#9990ad;">filleuls</div></div>
         <div style="flex:1;background:#0d0a16;border-radius:10px;padding:10px;"><div style="font-size:20px;font-weight:700;">${rewarded}</div><div style="font-size:11px;color:#9990ad;">validés</div></div>

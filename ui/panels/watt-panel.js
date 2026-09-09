@@ -322,7 +322,9 @@ function _renderArtistTab(container) {
   `;
 
   // Menu items for the artist section.
-  // mode 'link'  → navigue vers le wattboard complet.
+  // mode 'link'  → navigue vers le wattboard complet (D4, 2026-09-08 : via
+  //                `data-wp-nav` + délégué `_bindWpNav`, plus d'attribut
+  //                `onclick` portant du code interpolé).
   // mode 'panel' → se déplie EN ACCORDÉON dans la cellule (_wattCellToggle),
   //                le contenu est chargé à l'ouverture (_wattCellLoad).
   const menuItems = [
@@ -332,7 +334,7 @@ function _renderArtistTab(container) {
       icon: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
       name: 'Dashboard',
       desc: 'Ouvrir le wattboard complet',
-      action: 'window.location.href="/dashboard"',
+      href: '/dashboard',
     },
     {
       key: 'upload',
@@ -367,7 +369,7 @@ function _renderArtistTab(container) {
   const menuHTML = menuItems.map(m => {
     if (m.mode === 'link') {
       return `
-    <div class="artist-menu-item" onclick='${m.action}'>
+    <div class="artist-menu-item" data-wp-nav="${_wpEscAttr(m.href)}" role="button" tabindex="0">
       <div class="artist-menu-icon">${m.icon}</div>
       <div class="artist-menu-info">
         <div class="artist-menu-name">${m.name}</div>
@@ -576,6 +578,34 @@ function _wattCellFilterTracks(value) {
   const empty = document.getElementById('wcell-tracks-empty');
   if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
 }
+
+// Échappeur HTML complet (& < > " ' `) — copie de ui/albums.js. Utilisé pour
+// les attributs `data-*` du menu.
+function _wpEscAttr(s) {
+  return String(s == null ? '' : s).replace(/[&<>"'`]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]
+  ));
+}
+
+// D4 (2026-09-08) — l'item de menu « Dashboard » portait un attribut `onclick`
+// dont la valeur ÉTAIT une interpolation (`m.action`), c'est-à-dire du code JS
+// injecté tel quel dans un attribut de gestionnaire. Il porte
+// maintenant `data-wp-nav` ; ce délégué unique (posé une seule fois sur le
+// document) navigue, après vérification que la cible est un chemin interne.
+let _wpNavBound = false;
+function _bindWpNav() {
+  if (_wpNavBound) return;
+  _wpNavBound = true;
+  document.addEventListener('click', (ev) => {
+    const item = ev.target.closest('[data-wp-nav]');
+    if (!item) return;
+    const href = item.dataset.wpNav || '';
+    if (!href || href.charAt(0) !== '/' || href.charAt(1) === '/') return;
+    ev.preventDefault();
+    window.location.href = href;
+  });
+}
+if (typeof document !== 'undefined') _bindWpNav();
 
 // Exposition globale pour les onclick inline du menu de la cellule.
 if (typeof window !== 'undefined') {

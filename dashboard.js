@@ -2899,8 +2899,8 @@ function renderProfileView() {
     pvPublicLink.innerHTML = `
       <div class="dash-public-link-label">Ton profil public</div>
       <div class="dash-public-link-row">
-        <a class="dash-public-link-url" href="${url}" target="_blank">${window.location.origin}${url}</a>
-        <button class="dash-public-link-copy" onclick="copyPublicProfileLink('${url}')" title="Copier le lien">
+        <a class="dash-public-link-url" href="${htmlEscape(url)}" target="_blank">${htmlEscape(window.location.origin + url)}</a>
+        <button type="button" class="dash-public-link-copy" data-copy-profile-url="${htmlEscape(url)}" title="Copier le lien">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
             <rect x="9" y="9" width="13" height="13" rx="2"/>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -2908,6 +2908,19 @@ function renderProfileView() {
         </button>
       </div>`;
     pvPublicLink.style.display = 'block';
+    // D2 (2026-09-08) — plus d'onclick inline interpolant l'URL (dérivée du nom
+    // d'artiste saisi) : `data-copy-profile-url` + un délégué posé UNE SEULE
+    // fois sur le conteneur stable (son innerHTML est re-rendu à chaque appel,
+    // le conteneur non).
+    if (pvPublicLink.dataset.copyDelegated !== '1') {
+      pvPublicLink.dataset.copyDelegated = '1';
+      pvPublicLink.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-copy-profile-url]');
+        if (!btn || !pvPublicLink.contains(btn)) return;
+        ev.preventDefault();
+        copyPublicProfileLink(btn.dataset.copyProfileUrl || '');
+      });
+    }
   } else if (pvPublicLink) {
     pvPublicLink.style.display = 'none';
   }

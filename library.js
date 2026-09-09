@@ -345,7 +345,7 @@ function renderLibraryImageCell(p, i, artistName, artistLink) {
     <div class="lib-content-block">
       <div class="lib-content-header"><span class="lib-content-label">🖼 Galerie incluse (${gallery.length})</span></div>
       <div class="lib-content-body">
-        <button class="lib-copy-btn" onclick='libDownloadImageSet(${JSON.stringify(gallery.map(g => g.downloadUrl))}, this)'>⬇ Télécharger le set (${gallery.length})</button>
+        <button type="button" class="lib-copy-btn" data-download-set="${esc(JSON.stringify(gallery.map(g => g.downloadUrl)))}">⬇ Télécharger le set (${gallery.length})</button>
         <span style="display:block;margin-top:4px;font-size:11px;color:#a09cb8">Tous les visuels de l'avatar en haute définition — un clic télécharge l'ensemble.</span>
       </div>
     </div>` : '';
@@ -420,6 +420,27 @@ async function libDownloadImage(imageId, btn) {
     if (btn) { btn.disabled = false; btn.textContent = old; }
   }
 }
+
+// D4 (2026-09-08) — le bouton portait un `onclick` en QUOTES SIMPLES dans
+// lequel on interpolait `JSON.stringify([...downloadUrl])`. Dans un attribut de
+// gestionnaire, le parseur HTML décode les entités AVANT de compiler le JS :
+// une apostrophe dans une URL refermait le littéral. La liste passe désormais
+// par `data-download-set` (JSON échappé HTML), relue via dataset par ce délégué
+// unique, posé une seule fois sur le document.
+let _libDownloadSetBound = false;
+function _libBindDownloadSet() {
+  if (_libDownloadSetBound) return;
+  _libDownloadSetBound = true;
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-download-set]');
+    if (!btn) return;
+    ev.preventDefault();
+    let urls = [];
+    try { urls = JSON.parse(btn.dataset.downloadSet || '[]'); } catch (_) { return; }
+    libDownloadImageSet(urls, btn);
+  });
+}
+if (typeof document !== 'undefined') _libBindDownloadSet();
 
 // C4 galerie avatar — télécharge TOUT le set (chaque downloadUrl gaté serveur),
 // séquentiellement pour ne pas saturer. Un clic = tout le set de l'avatar.
