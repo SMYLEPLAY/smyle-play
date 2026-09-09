@@ -5,7 +5,7 @@ Routes :
   POST  /reports               → déposer un signalement (ANONYME AUTORISÉ,
                                  rate-limité ; accusé de réception dans la
                                  réponse + email best-effort si connu)
-  GET   /admin/reports         → liste (admin = is_official), new en premier
+  GET   /admin/reports         → liste (admin = is_official OU is_admin, K-01), new en premier
   PATCH /admin/reports/{id}    → changer le statut (reviewed/actioned/rejected)
 
 Notification : chaque nouveau signalement notifie le compte officiel (SYSTEM)
@@ -175,7 +175,7 @@ async def list_reports(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ReportRead]:
-    if not current_user.is_official:
+    if not is_admin_user(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Réservé à l'administration")
     q = select(ContentReport)
@@ -196,7 +196,7 @@ async def patch_report(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ReportRead:
-    if not current_user.is_official:
+    if not is_admin_user(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Réservé à l'administration")
     report = (await db.execute(
