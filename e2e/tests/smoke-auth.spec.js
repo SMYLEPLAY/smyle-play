@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { bootSessionAuthentifiee } = require('./_helpers');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE INTERACTION — Session connectée (fondation du filet d'interaction).
@@ -18,8 +19,6 @@ const { test, expect } = require('@playwright/test');
 // Rate-limit register désactivé en CI (ENVIRONMENT=test).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TOKEN_KEY = 'smyle_api_token';
-
 test('connexion : un compte authentifié voit l’UI connectée', async ({ page, request }) => {
   const email = `e2e-auth-${Date.now()}-${Math.floor(Math.random() * 1e6)}@smyleplay.example`;
   const password = 'Test123456';
@@ -34,10 +33,9 @@ test('connexion : un compte authentifié voit l’UI connectée', async ({ page,
   const { access_token } = await login.json();
   expect(access_token, 'access_token présent').toBeTruthy();
 
-  // 3. Injecte le token AVANT le boot des scripts de la page.
-  await page.addInitScript(([key, tok]) => {
-    try { localStorage.setItem(key, tok); } catch (e) { /* */ }
-  }, [TOKEN_KEY, access_token]);
+  // 3. Injecte le token AVANT le boot des scripts de la page (helper partagé :
+  //    il pose aussi le verrou du rappel quotidien, cf. e2e/tests/_helpers.js).
+  await bootSessionAuthentifiee(page, access_token);
 
   // 4. Charge l'accueil → auth.js lit le token, fait /users/me, rend l'UI connectée.
   await page.goto('/', { waitUntil: 'domcontentloaded' });
