@@ -171,6 +171,17 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Vérification d'email (migration 0087, Phase A). NON bloquant par défaut :
+    # tant que settings.REQUIRE_EMAIL_VERIFIED est False, le login n'est PAS
+    # refusé (on n'enferme pas dehors les comptes bêta existants). server_default
+    # 'false' → les comptes existants restent à False sans migration de données.
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # Révocation des JWT (migration 0084) : recopié dans le claim `tv` du jeton.
     # Un reset de mot de passe l'incrémente → invalide tous les jetons antérieurs.
     token_version: Mapped[int] = mapped_column(

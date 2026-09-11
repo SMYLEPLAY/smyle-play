@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import create_access_token
+from app.config import settings
 from app.core.ratelimit import (
     LIMIT_FORGOT_PASSWORD,
     LIMIT_LOGIN,
@@ -16,11 +17,13 @@ from app.core.ratelimit import (
 from app.database import get_db
 from app.schemas.user import (
     ForgotPasswordRequest,
+    ResendVerificationRequest,
     ResetPasswordRequest,
     Token,
     UserCreate,
     UserLogin,
     UserRead,
+    VerifyEmailRequest,
 )
 from app.services.playlists import ensure_default_wishlist
 from app.services.referrals import attach_referral_at_signup
@@ -106,6 +109,31 @@ async def register(
         )
     except Exception:
         pass
+    # Email de vérification — best-effort (Phase A). NON bloquant : la
+    # vérification n'est exigée que si REQUIRE_EMAIL_VERIFIED=True (défaut
+    # False). Même robustesse que le reset MDP (jeton SHA-256, expiration,
+    # usage unique) ; le lien porte le jeton en FRAGMENT (#token=). Un envoi
+    # qui échoue (emails désactivés, domaine non vérifié) ne casse jamais
+    # l'inscription.
+    try:
+        from app.services.email_verification import (
+            build_verification_link,
+            issue_verification_token,
+        )
+        from app.services.emails import send_verification_email
+
+        token = await issue_verification_token(db, new_user)
+        # S-10 : origine depuis PUBLIC_BASE_URL si posée, sinon la requête.
+        base = os.getenv("PUBLIC_BASE_URL") or str(request.base_url)
+        link = build_verification_link(base, token)
+        await send_verification_email(new_user.email, link=link)
+    except Exception:
+        # issue_verification_token commit sa propre transaction ; en cas
+        # d'échec on n'empêche pas le compte d'exister (déjà committé).
+        logger.warning(
+            "[auth] envoi du lien de vérification d'email : échec best-effort "
+            "(compte %s)", new_user.id, exc_info=True,
+        )
     return new_user
 
 
@@ -127,6 +155,15 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Compte suspendu.",
+        )
+    # Vérification d'email (Phase A). NON bloquant par défaut : le login n'est
+    # refusé QUE si REQUIRE_EMAIL_VERIFIED=True. Sinon (défaut), un email non
+    # vérifié se connecte normalement — on n'enferme pas dehors les comptes
+    # bêta existants.
+    if settings.REQUIRE_EMAIL_VERIFIED and not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Confirme ton adresse email avant de te connecter.",
         )
     token = create_access_token(
         subject=user.email, token_version=user.token_version or 0
@@ -253,4 +290,94 @@ async def reset_password(
     user.token_version = (user.token_version or 0) + 1
     prt.used_at = now
     await db.commit()
+    return {"ok": True}
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Vérification d'email (Phase A — ouverture gratuite, 2026-09-11)
+#
+# NON bloquante par défaut (settings.REQUIRE_EMAIL_VERIFIED=False). Même
+# robustesse que le reset MDP : jeton 32 bytes urlsafe, empreinte SHA-256 en
+# base, expiration (48 h), usage unique, invalidation du précédent au renvoi.
+# Le jeton voyage en FRAGMENT (#token=), jamais en query.
+# ─────────────────────────────────────────────────────────────────────────
+
+@router.post("/verify-email")
+@limiter.limit(LIMIT_RESET_PASSWORD)
+async def verify_email(
+    payload: VerifyEmailRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Échange un jeton valide → marque le compte `email_verified`. Usage
+    unique : le jeton est consommé (400 si lien mort ou déjà utilisé)."""
+    import hashlib
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+
+    from app.models.email_verification_token import EmailVerificationToken
+    from app.models.user import User
+
+    th = hashlib.sha256(payload.token.encode()).hexdigest()
+    evt = (await db.execute(
+        select(EmailVerificationToken).where(
+            EmailVerificationToken.token_hash == th
+        )
+    )).scalar_one_or_none()
+
+    now = datetime.now(timezone.utc)
+    if evt is None or evt.used_at is not None or evt.expires_at < now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien invalide ou expiré. Redemande un lien de vérification.",
+        )
+
+    user = (await db.execute(
+        select(User).where(User.id == evt.user_id)
+    )).scalar_one_or_none()
+    if user is None or str(user.email).endswith("@deleted.watt"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Compte introuvable.",
+        )
+
+    user.email_verified = True
+    evt.used_at = now  # usage unique
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/resend-verification")
+@limiter.limit(LIMIT_FORGOT_PASSWORD)
+async def resend_verification(
+    payload: ResendVerificationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Renvoie un email de vérification. Réponse toujours {"ok": true} quel que
+    soit l'état du compte (anti-énumération, comme forgot-password). N'émet un
+    nouveau jeton + email que si le compte existe et n'est pas déjà vérifié.
+    """
+    from app.services.email_verification import (
+        account_can_verify,
+        build_verification_link,
+        issue_verification_token,
+    )
+
+    user = await get_user_by_email(db, payload.email)
+    if account_can_verify(user):
+        try:
+            from app.services.emails import send_verification_email
+
+            token = await issue_verification_token(db, user)
+            base = os.getenv("PUBLIC_BASE_URL") or str(request.base_url)
+            link = build_verification_link(base, token)
+            await send_verification_email(user.email, link=link)
+        except Exception:
+            logger.warning(
+                "[auth] renvoi du lien de vérification : échec best-effort "
+                "(compte %s)", user.id, exc_info=True,
+            )
     return {"ok": True}

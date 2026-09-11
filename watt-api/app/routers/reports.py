@@ -239,6 +239,39 @@ def _require_official(current_user: User) -> None:
                             detail="Réservé à l'administration")
 
 
+async def _notify_account(
+    db: AsyncSession,
+    *,
+    user_id,
+    text: str,
+) -> None:
+    """
+    Notifie un compte d'une décision de modération le concernant — DSA art. 17
+    (« statement of reasons ») : l'auteur d'un contenu retiré et le compte
+    suspendu doivent être informés du motif et d'une référence.
+
+    Réutilise EXACTEMENT le centre de notifications déjà en place dans ce
+    routeur (type SYSTEM, même service `create_notification` / même table
+    `notifications` que la notif au compte officiel de `create_report`).
+    Best-effort intégral : une notif qui échoue ne bloque jamais l'action de
+    modération. `create_notification` avale déjà ses propres exceptions ; la
+    garde locale couvre l'import et le cas `user_id` non résolu.
+    """
+    if user_id is None:
+        return
+    try:
+        from app.models.notification import NotificationType
+        from app.services.notifications import create_notification
+        await create_notification(
+            db,
+            user_id=user_id,
+            type=NotificationType.SYSTEM,
+            metadata={"text": text},
+        )
+    except Exception:
+        pass
+
+
 @router.post("/admin/reports/{report_id}/takedown",
              response_model=ModerationResult)
 async def takedown_reported_content(
@@ -269,10 +302,35 @@ async def takedown_reported_content(
         await db.rollback()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=result["detail"])
 
-    if payload.ban_owner:
-        owner_id = await _resolve_owner_id(db, report.target_type, report.target_id)
-        if owner_id is not None:
+    # DSA art. 17 : informer l'AUTEUR du contenu retiré. On résout le
+    # propriétaire une seule fois (notif + éventuel ban).
+    owner_id = await _resolve_owner_id(db, report.target_type, report.target_id)
+    motif = (payload.reason or "").strip() or "non précisé"
+    is_profil = (report.target_type or "").strip().lower() == "profil"
+
+    if is_profil:
+        # Le « retrait » d'un profil EST une suspension de compte
+        # (cf. services/moderation.py::takedown_content) → on notifie une
+        # suspension, pas un retrait de contenu.
+        await _notify_account(
+            db, user_id=owner_id,
+            text=(f"Ton compte a été suspendu suite à un signalement. "
+                  f"Motif : {motif}. Référence : {report.id}."),
+        )
+    else:
+        await _notify_account(
+            db, user_id=owner_id,
+            text=(f"Un de tes contenus ({report.target_type}) a été retiré "
+                  f"de la vitrine suite à un signalement. Motif : {motif}. "
+                  f"Référence : {report.id}."),
+        )
+        if payload.ban_owner and owner_id is not None:
             await ban_user(db, owner_id, payload.reason)
+            await _notify_account(
+                db, user_id=owner_id,
+                text=(f"Ton compte a également été suspendu. "
+                      f"Motif : {motif}. Référence : {report.id}."),
+            )
 
     report.status = ReportStatus.ACTIONED
     report.resolved_at = datetime.now(timezone.utc)
@@ -297,6 +355,12 @@ async def ban_account(
     user = await ban_user(db, user_id, payload.reason)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Compte introuvable")
+    # DSA art. 17 : informer le compte suspendu du motif.
+    motif = (payload.reason or "").strip() or "non précisé"
+    await _notify_account(
+        db, user_id=user_id,
+        text=f"Ton compte a été suspendu. Motif : {motif}.",
+    )
     await db.commit()
     return ModerationResult(ok=True, detail="Compte suspendu.")
 

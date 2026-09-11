@@ -4,6 +4,7 @@ from .album import Album, AlbumImage
 from .base import Base
 from .content_report import ContentReport, ReportReason, ReportStatus
 from .dna import DNA
+from .email_verification_token import EmailVerificationToken
 from .owned_adn import OwnedAdn
 from .owned_album_adn import OwnedAlbumAdn
 from .owned_playlist_adn import OwnedPlaylistAdn
@@ -31,6 +32,7 @@ __all__ = [
     "AlbumImage",
     "Base",
     "DNA",
+    "EmailVerificationToken",
     "OwnedAdn",
     "OwnedAlbumAdn",
     "OwnedPlaylistAdn",

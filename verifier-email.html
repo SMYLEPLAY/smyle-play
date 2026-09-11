@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070608" />
+  <title>Vérifier mon email · WATT</title>
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <style>
+    /* Page vérification d'email — miroir de reset.html (charte WATT,
+       autonome). Deux états :
+         avec #token= (ou ?token=) → vérification automatique du jeton
+         sans jeton (ou jeton mort) → formulaire « renvoie-moi un lien » */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
+      font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .ve-top { width: 100%; padding: 16px 22px; border-bottom: 1px solid var(--sp-border, rgba(255,255,255,.1)); }
+    .ve-top a { color: var(--sp-gold, #ffd700); text-decoration: none; font-weight: 800; letter-spacing: .1em; font-size: 14px; }
+    .ve-card {
+      width: 100%; max-width: 420px; margin: 9vh 20px 0;
+      background: var(--sp-surface, rgba(255,255,255,.04));
+      border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: var(--sp-radius-lg, 16px);
+      padding: 28px 26px;
+    }
+    h1 { font-size: 1.15rem; margin: 0 0 6px; }
+    .ve-sub { color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: .82rem; line-height: 1.6; margin-bottom: 20px; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: var(--sp-text-muted, rgba(255,255,255,.72)); margin: 0 0 6px; }
+    input {
+      width: 100%; padding: 12px 14px; margin-bottom: 14px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: var(--sp-radius-md, 10px);
+      color: var(--sp-text, #e8e8f0); font-size: .9rem; outline: none;
+    }
+    input:focus { border-color: var(--sp-gold, #ffd700); }
+    button {
+      width: 100%; padding: 13px;
+      background: var(--sp-gold, #ffd700); color: #070608;
+      border: none; border-radius: var(--sp-radius-pill, 999px);
+      font-size: .9rem; font-weight: 800; cursor: pointer;
+      transition: filter .15s ease;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.1); }
+    button:disabled { opacity: .5; cursor: wait; }
+    .ve-msg { margin-top: 14px; font-size: .82rem; line-height: 1.6; display: none; }
+    .ve-msg.ok    { display: block; color: var(--sp-success, #4ade80); }
+    .ve-msg.error { display: block; color: var(--sp-danger, #ff5577); }
+    .ve-msg.pending { display: block; color: var(--sp-text-faint, rgba(255,255,255,.55)); }
+    .ve-back { display: block; text-align: center; margin-top: 16px; font-size: .78rem; color: var(--sp-text-faint, rgba(255,255,255,.55)); text-decoration: none; }
+    .ve-back:hover { color: var(--sp-text, #e8e8f0); }
+  </style>
+</head>
+<body>
+
+<div class="ve-top"><a href="/">← ⚡ WATT</a></div>
+
+<!-- État 1 : vérification automatique du jeton (#token=) -->
+<div class="ve-card" id="ve-verify" style="display:none">
+  <h1>Vérification de ton email</h1>
+  <div class="ve-sub">On confirme ton adresse email — un instant.</div>
+  <div class="ve-msg pending" id="ve-verify-msg">Vérification en cours…</div>
+  <button id="ve-verify-resend" style="display:none;margin-top:6px">Renvoyer un email de vérification</button>
+  <a class="ve-back" href="/?auth=login">Retour à la connexion</a>
+</div>
+
+<!-- État 2 : renvoyer un lien de vérification -->
+<div class="ve-card" id="ve-resend" style="display:none">
+  <h1>Renvoyer un email de vérification</h1>
+  <div class="ve-sub">Donne l'email de ton compte — un nouveau lien de
+    vérification valable 48 heures lui sera destiné.</div>
+  <label for="ve-email">Email du compte</label>
+  <input id="ve-email" type="email" autocomplete="email" placeholder="toi@email.com" />
+  <button id="ve-resend-send">Renvoyer le lien</button>
+  <div class="ve-msg" id="ve-resend-msg"></div>
+  <a class="ve-back" href="/?auth=login">Retour à la connexion</a>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  // Miroir de reset.html : le jeton arrive en FRAGMENT (#token=...), jamais
+  // transmis au serveur donc absent des access-logs. Le fallback ?token=
+  // couvre d'éventuels vieux liens. Dans les deux cas on purge immédiatement
+  // l'URL de la barre d'adresse et de l'historique (history.replaceState)
+  // pour que le jeton ne fuite ni par copier-coller, ni par Referer, ni par
+  // le partage d'onglet.
+  var token = (new URLSearchParams(location.hash.replace(/^#/, '')).get('token') || '').trim();
+  if (!token) {
+    token = (new URLSearchParams(location.search).get('token') || '').trim();
+  }
+  if (location.hash || location.search) {
+    try { history.replaceState(null, '', '/verifier-email'); } catch (_) {}
+  }
+
+  var verifyCard = document.getElementById('ve-verify');
+  var resendCard = document.getElementById('ve-resend');
+
+  function msg(id, text, kind) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 've-msg ' + kind;
+  }
+
+  function showResend() {
+    verifyCard.style.display = 'none';
+    resendCard.style.display = '';
+  }
+
+  async function post(path, body) {
+    var r = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    var data = null;
+    try { data = await r.json(); } catch (_) {}
+    if (!r.ok) {
+      var d = data && data.detail;
+      throw new Error(typeof d === 'string' ? d : 'Erreur (' + r.status + '). Réessaie.');
+    }
+    return data;
+  }
+
+  // ── État 1 : vérification automatique du jeton ─────────────────────────
+  if (token) {
+    verifyCard.style.display = '';
+    var resendBtn = document.getElementById('ve-verify-resend');
+    if (resendBtn) resendBtn.addEventListener('click', showResend);
+    (async function () {
+      try {
+        await post('/auth/verify-email', { token: token });
+        msg('ve-verify-msg',
+            'Ton email est vérifié ✔ Tu peux te connecter et profiter de WATT.',
+            'ok');
+        setTimeout(function () { location.href = '/?auth=login'; }, 2200);
+      } catch (e) {
+        // Jeton invalide ou expiré : on propose de renvoyer un lien.
+        msg('ve-verify-msg', e.message, 'error');
+        if (resendBtn) resendBtn.style.display = '';
+      }
+    })();
+  } else {
+    // ── État 2 (accès direct sans jeton) : formulaire de renvoi ──────────
+    showResend();
+  }
+
+  // ── État 2 : renvoi d'un lien de vérification ──────────────────────────
+  var sendBtn = document.getElementById('ve-resend-send');
+  if (sendBtn) sendBtn.addEventListener('click', async function () {
+    var email = (document.getElementById('ve-email').value || '').trim();
+    if (!email || email.indexOf('@') < 1) {
+      msg('ve-resend-msg', 'Entre un email valide.', 'error');
+      return;
+    }
+    sendBtn.disabled = true;
+    try {
+      await post('/auth/resend-verification', { email: email });
+      // Toujours le même message, que le compte existe ou non
+      // (anti-énumération). L'envoi d'emails peut être en cours de mise en
+      // place : on ne promet donc pas un email parti, on dit quoi faire s'il
+      // ne vient pas.
+      msg('ve-resend-msg',
+          'Demande enregistrée. Si un compte non vérifié existe pour ' + email +
+          ', un nouveau lien de vérification lui est destiné — vérifie aussi ' +
+          'les spams. L\'envoi d\'emails est encore en cours de mise en ' +
+          'place : sans rien reçu d\'ici quelques minutes, contacte l\'équipe ' +
+          'WATT.', 'ok');
+    } catch (e) {
+      msg('ve-resend-msg', e.message, 'error');
+    }
+    sendBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

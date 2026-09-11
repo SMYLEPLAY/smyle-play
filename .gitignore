@@ -1,13 +1,8 @@
-# ── Relais de déploiement autonome — état runtime local (jamais versionné) ──
-# On garde .relay/README.md et le placeholder de la file ; le reste est local.
-.relay/queue/*
-!.relay/queue/.gitkeep
-.relay/pushed/
-.relay/done/
-.relay/failed/
-.relay/PAUSE
-.relay/*.lock
-.relay/*.log
+# ── Relais de déploiement autonome — outillage LOCAL (jamais versionné) ─────
+# Tout le dossier .relay/ est un artefact perso (état runtime + doc du relais).
+# Sorti du dépôt public le 2026-09-11 (Phase A, hygiène). Copies gardées sur
+# disque, hors suivi git.
+.relay/
 
 # ── Fichiers audio (hébergés sur Cloudflare R2, pas dans Git) ──────────────
 *.wav
@@ -126,3 +121,15 @@ LIGNE_TERMINAL_*.txt
 *.command
 AUDIT_*.md
 A_CLASSER/
+
+# ── Artefacts perso/internes — sortis du suivi le 2026-09-11 (Phase A) ─────
+# Config d'éditeurs/agents locaux, notes clippées, scripts d'ops perso : gardés
+# sur disque, hors dépôt public. (Grep préalable : aucun n'est requis par le
+# code servi — watt-api/app/ ni ui/.)
+.obsidian/
+.codex/
+Clippings/
+scripts/*relay*
+scripts/README_RELAY.md
+scripts/deploy.sh
+scripts/push_to_github.sh
