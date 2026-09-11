@@ -21,11 +21,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import (
-    ADMIN_FORBIDDEN_DETAIL,
-    get_current_user,
-    is_admin_user,
-)
+from app.auth.dependencies import get_current_user
 from app.auth.jwt import decode_access_token
 from app.core.ratelimit import limiter
 from app.database import get_db
@@ -238,11 +234,9 @@ class ModerationResult(BaseModel):
 
 
 def _require_official(current_user: User) -> None:
-    # K-01 : la règle vit dans app.auth.dependencies (is_official OU is_admin).
-    # Nom conservé pour ne pas toucher les 4 appels ci-dessous.
-    if not is_admin_user(current_user):
+    if not current_user.is_official:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
-                            detail=ADMIN_FORBIDDEN_DETAIL)
+                            detail="Réservé à l'administration")
 
 
 @router.post("/admin/reports/{report_id}/takedown",
@@ -435,28 +429,22 @@ async def migrate_image_originals(
         aws_secret_access_key=_settings.effective_r2_secret_access_key,
         region_name="auto",
         config=_BotoConfig(
-            connect_timeout=8,
-            read_timeout=10,
-            retries={"max_attempts": 1},
+            connect_timeout=10,
+            read_timeout=30,
+            retries={"max_attempts": 5, "mode": "adaptive"},
         ),
     )
 
     def _copy_and_verify(old_key: str, new_key: str) -> None:
-        # DIAGNOSTIC : une seule passe, on etiquette GET vs PUT pour savoir
-        # exactement quelle operation echoue et avec quelle erreur botocore.
-        try:
-            obj = client.get_object(Bucket=bucket, Key=old_key)
-            body = obj["Body"].read()
-            content_type = obj.get("ContentType") or "application/octet-stream"
-        except Exception as e:  # noqa: BLE001
-            raise RuntimeError(f"GET {type(e).__name__}: {str(e)[:160]}")
-        try:
-            client.put_object(
-                Bucket=bucket, Key=new_key, Body=body,
-                ContentType=content_type,
-            )
-        except Exception as e:  # noqa: BLE001
-            raise RuntimeError(f"PUT {type(e).__name__}: {str(e)[:160]}")
+        # Re-cle un original : LIT l'objet existant puis le REECRIT sous une
+        # cle aleatoire (get_object -> put_object). botocore gere les retries.
+        obj = client.get_object(Bucket=bucket, Key=old_key)
+        body = obj["Body"].read()
+        content_type = obj.get("ContentType") or "application/octet-stream"
+        client.put_object(
+            Bucket=bucket, Key=new_key, Body=body,
+            ContentType=content_type,
+        )
 
     def _delete_old(old_key: str) -> None:
         client.delete_object(Bucket=bucket, Key=old_key)
@@ -466,7 +454,7 @@ async def migrate_image_originals(
     # de timeout muet, même si beaucoup d'images échouent) et on renvoie donc
     # TOUJOURS le JSON avec l'erreur exacte. "more": true s'il en reste →
     # le bouton relance en boucle (idempotent) tant qu'il progresse.
-    _CAP = 1
+    _CAP = 10
     attempted = 0
     migrated = 0
     skipped = 0
@@ -482,7 +470,7 @@ async def migrate_image_originals(
             # jamais de timeout muet de la passerelle).
             await asyncio.wait_for(
                 loop.run_in_executor(None, _copy_and_verify, old_key, new_key),
-                timeout=45,
+                timeout=60,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append({
@@ -574,7 +562,6 @@ async def migrate_image_originals(
             "trace": _tb.format_exc()[-1400:],
         })
     return {
-        "code_version": "diag-v1",
         "migrated": migrated,
         "skipped": skipped,
         "errors": errors,
