@@ -78,6 +78,15 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
 
+    # --- Vérification d'email (Phase A — ouverture gratuite) ─────────────
+    # NON bloquant par défaut. Tant que False, le login n'exige PAS un email
+    # vérifié : on n'enferme pas dehors les comptes bêta déjà créés. Le passer
+    # à True (via env Railway, sans redéploiement de code) exigera un email
+    # vérifié pour se connecter — à n'activer qu'une fois l'envoi d'emails
+    # fiable (domaine WATT vérifié côté Resend) et une page /verifier-email en
+    # place, sinon des comptes légitimes seraient bloqués.
+    REQUIRE_EMAIL_VERIFIED: bool = False
+
     # --- CORS ---
     # Liste d'origines autorisées, séparées par des virgules dans le .env.
     # Défaut dev-friendly : Flask local (:8080) et éventuels fronts alternatifs.

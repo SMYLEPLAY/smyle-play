@@ -6,7 +6,7 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, update
+from sqlalchemy import delete, select, update
 
 from app.database import SessionLocal
 from app.models.track import Track
@@ -124,3 +124,102 @@ async def test_takedown_hides_reported_track(client: AsyncClient):
             assert t.is_deleted is True
     finally:
         await _cleanup(admin["id"], owner["id"])
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# DSA art. 17 (« statement of reasons ») : l'auteur d'un contenu retiré et le
+# compte suspendu doivent être notifiés du motif. On vérifie que la notif est
+# bien créée (même centre de notifications que le reste — type SYSTEM).
+# ─────────────────────────────────────────────────────────────────────────
+
+async def _system_notif_texts(user_id) -> list[str]:
+    from app.models.notification import Notification, NotificationType
+
+    async with SessionLocal() as db:
+        rows = (await db.execute(
+            select(Notification).where(
+                Notification.user_id == user_id,
+                Notification.type == NotificationType.SYSTEM,
+            )
+        )).scalars().all()
+    return [(n.metadata_json or {}).get("text", "") for n in rows]
+
+
+@pytest.mark.asyncio
+async def test_takedown_notifie_lauteur(client: AsyncClient):
+    admin = await _mk_user(official=True)
+    owner = await _mk_user()
+    track_id = uuid.uuid4()
+    try:
+        async with SessionLocal() as db:
+            db.add(Track(id=track_id, artist_id=owner["id"], title="Bad",
+                         is_deleted=False))
+            await db.commit()
+
+        r = await client.post("/reports", json={
+            "target_type": "track", "target_id": str(track_id),
+            "reason": "contenu_illegal",
+        })
+        report_id = r.json()["id"]
+
+        admin_tok = await _token(client, admin)
+        h = {"Authorization": f"Bearer {admin_tok}"}
+        r = await client.post(f"/admin/reports/{report_id}/takedown",
+                              json={"ban_owner": False, "reason": "illégal"},
+                              headers=h)
+        assert r.status_code == 200, r.text
+
+        texts = await _system_notif_texts(owner["id"])
+        assert any("retiré" in t and "illégal" in t for t in texts), texts
+        # La référence (id du signalement) figure dans la notif.
+        assert any(str(report_id) in t for t in texts), texts
+    finally:
+        await _cleanup(admin["id"], owner["id"])
+
+
+@pytest.mark.asyncio
+async def test_takedown_ban_owner_notifie_retrait_et_suspension(client: AsyncClient):
+    admin = await _mk_user(official=True)
+    owner = await _mk_user()
+    track_id = uuid.uuid4()
+    try:
+        async with SessionLocal() as db:
+            db.add(Track(id=track_id, artist_id=owner["id"], title="Bad",
+                         is_deleted=False))
+            await db.commit()
+
+        r = await client.post("/reports", json={
+            "target_type": "track", "target_id": str(track_id),
+            "reason": "haine_violence",
+        })
+        report_id = r.json()["id"]
+
+        admin_tok = await _token(client, admin)
+        h = {"Authorization": f"Bearer {admin_tok}"}
+        r = await client.post(f"/admin/reports/{report_id}/takedown",
+                              json={"ban_owner": True, "reason": "récidive"},
+                              headers=h)
+        assert r.status_code == 200, r.text
+
+        texts = await _system_notif_texts(owner["id"])
+        assert any("retiré" in t for t in texts), texts
+        assert any("suspendu" in t for t in texts), texts
+    finally:
+        await _cleanup(admin["id"], owner["id"])
+
+
+@pytest.mark.asyncio
+async def test_ban_account_notifie_le_compte(client: AsyncClient):
+    admin = await _mk_user(official=True)
+    victim = await _mk_user()
+    try:
+        admin_tok = await _token(client, admin)
+        h = {"Authorization": f"Bearer {admin_tok}"}
+        r = await client.post(f"/admin/users/{victim['id']}/ban",
+                              json={"reason": "spam"}, headers=h)
+        assert r.status_code == 200, r.text
+
+        texts = await _system_notif_texts(victim["id"])
+        assert any("suspendu" in t and "spam" in t for t in texts), texts
+    finally:
+        await _cleanup(admin["id"], victim["id"])

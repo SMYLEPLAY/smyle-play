@@ -145,6 +145,17 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+# ── Vérification d'email (Phase A — ouverture gratuite) ─────────────────
+
+class VerifyEmailRequest(BaseModel):
+    # Même robustesse que le reset MDP : jeton urlsafe borné.
+    token: str = Field(min_length=10, max_length=128)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -172,6 +183,10 @@ class UserRead(BaseModel):
     profile_bg_color:    str | None = None
     profile_brand_color: str | None = None
     profile_public: bool = False  # Chantier 1 — visible sur la vitrine /watt
+    # Vérification d'email (migration 0087, Phase A). Exposé pour que le front
+    # affiche l'état « email à confirmer » et le CTA de renvoi. Non bloquant
+    # par défaut (cf. settings.REQUIRE_EMAIL_VERIFIED).
+    email_verified: bool = False
     # Chantier "Positionnement fan/artiste" (migration 0018) — casquettes
     # déclarées par l'utilisateur. Liste de codes ROLE_CODES. None = pas
     # encore choisi. Cf. ROLE_CODES au début du module.
