@@ -5,7 +5,7 @@ Routes :
   POST  /reports               → déposer un signalement (ANONYME AUTORISÉ,
                                  rate-limité ; accusé de réception dans la
                                  réponse + email best-effort si connu)
-  GET   /admin/reports         → liste (admin = is_official), new en premier
+  GET   /admin/reports         → liste (admin = is_official OU is_admin, K-01), new en premier
   PATCH /admin/reports/{id}    → changer le statut (reviewed/actioned/rejected)
 
 Notification : chaque nouveau signalement notifie le compte officiel (SYSTEM)
@@ -21,7 +21,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import (
+    get_current_user,
+    # K-01 : la règle « admin = is_official OU is_admin » vit dans
+    # app.auth.dependencies ; l'import avait disparu de ce module avec le
+    # nettoyage du bouton « sécuriser les images » (#534), alors que N-02
+    # l'utilise sur /admin/reports.
+    is_admin_user,
+)
 from app.auth.jwt import decode_access_token
 from app.core.ratelimit import limiter
 from app.database import get_db
@@ -171,7 +178,7 @@ async def list_reports(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ReportRead]:
-    if not current_user.is_official:
+    if not is_admin_user(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Réservé à l'administration")
     q = select(ContentReport)
@@ -192,7 +199,7 @@ async def patch_report(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ReportRead:
-    if not current_user.is_official:
+    if not is_admin_user(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Réservé à l'administration")
     report = (await db.execute(
