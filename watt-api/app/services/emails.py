@@ -257,6 +257,39 @@ async def send_password_reset_email(to: str, *, link: str) -> bool:
     return delivered
 
 
+async def send_verification_email(to: str, *, link: str) -> bool:
+    """
+    Lien de vérification d'email (jeton usage unique, 48 h). Phase A.
+
+    Renvoie True si Resend a accepté l'envoi, False sinon (module désactivé
+    faute de RESEND_API_KEY, ou destinataire refusé tant que le domaine WATT
+    n'est pas vérifié). Best-effort : l'inscription n'échoue jamais si l'envoi
+    ne part pas, et la vérification n'est pas bloquante par défaut
+    (REQUIRE_EMAIL_VERIFIED=False) — un envoi manqué n'enferme personne dehors.
+
+    Texte sobre : aucune promesse au-delà de « confirme ton adresse ».
+    """
+    body = f"""\
+    <p style="color:{_MUTED};font-size:14px;line-height:1.7;margin:0 0 18px;">
+      Confirme ton adresse email pour sécuriser ton compte WATT. Ce lien est
+      valable <strong style="color:{_TEXT};">48 heures</strong> et ne
+      fonctionne qu'une fois :
+    </p>
+    <p style="text-align:center;margin:0 0 18px;">
+      <a href="{link}" style="display:inline-block;background:{_GOLD};
+         color:#070608;font-weight:800;padding:12px 28px;border-radius:999px;
+         text-decoration:none;font-size:14px;">Confirmer mon adresse</a>
+    </p>
+    <p style="color:{_MUTED};font-size:12px;line-height:1.6;margin:0;">
+      Si tu n'es pas à l'origine de cette inscription, ignore simplement cet
+      email.
+    </p>"""
+    return await _send(
+        to, "Confirme ton adresse email WATT",
+        _layout("Vérifie ton email", body),
+    )
+
+
 async def send_welcome_email(to: str, *, name: str | None = None) -> None:
     """Bienvenue à l'inscription."""
     hello = f"Bienvenue {name} ⚡" if name else "Bienvenue ⚡"

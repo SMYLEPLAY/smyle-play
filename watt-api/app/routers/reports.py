@@ -21,11 +21,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import (
-    ADMIN_FORBIDDEN_DETAIL,
-    get_current_user,
-    is_admin_user,
-)
+from app.auth.dependencies import get_current_user
 from app.auth.jwt import decode_access_token
 from app.core.ratelimit import limiter
 from app.database import get_db
@@ -238,11 +234,42 @@ class ModerationResult(BaseModel):
 
 
 def _require_official(current_user: User) -> None:
-    # K-01 : la règle vit dans app.auth.dependencies (is_official OU is_admin).
-    # Nom conservé pour ne pas toucher les 4 appels ci-dessous.
-    if not is_admin_user(current_user):
+    if not current_user.is_official:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
-                            detail=ADMIN_FORBIDDEN_DETAIL)
+                            detail="Réservé à l'administration")
+
+
+async def _notify_account(
+    db: AsyncSession,
+    *,
+    user_id,
+    text: str,
+) -> None:
+    """
+    Notifie un compte d'une décision de modération le concernant — DSA art. 17
+    (« statement of reasons ») : l'auteur d'un contenu retiré et le compte
+    suspendu doivent être informés du motif et d'une référence.
+
+    Réutilise EXACTEMENT le centre de notifications déjà en place dans ce
+    routeur (type SYSTEM, même service `create_notification` / même table
+    `notifications` que la notif au compte officiel de `create_report`).
+    Best-effort intégral : une notif qui échoue ne bloque jamais l'action de
+    modération. `create_notification` avale déjà ses propres exceptions ; la
+    garde locale couvre l'import et le cas `user_id` non résolu.
+    """
+    if user_id is None:
+        return
+    try:
+        from app.models.notification import NotificationType
+        from app.services.notifications import create_notification
+        await create_notification(
+            db,
+            user_id=user_id,
+            type=NotificationType.SYSTEM,
+            metadata={"text": text},
+        )
+    except Exception:
+        pass
 
 
 @router.post("/admin/reports/{report_id}/takedown",
@@ -275,10 +302,35 @@ async def takedown_reported_content(
         await db.rollback()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=result["detail"])
 
-    if payload.ban_owner:
-        owner_id = await _resolve_owner_id(db, report.target_type, report.target_id)
-        if owner_id is not None:
+    # DSA art. 17 : informer l'AUTEUR du contenu retiré. On résout le
+    # propriétaire une seule fois (notif + éventuel ban).
+    owner_id = await _resolve_owner_id(db, report.target_type, report.target_id)
+    motif = (payload.reason or "").strip() or "non précisé"
+    is_profil = (report.target_type or "").strip().lower() == "profil"
+
+    if is_profil:
+        # Le « retrait » d'un profil EST une suspension de compte
+        # (cf. services/moderation.py::takedown_content) → on notifie une
+        # suspension, pas un retrait de contenu.
+        await _notify_account(
+            db, user_id=owner_id,
+            text=(f"Ton compte a été suspendu suite à un signalement. "
+                  f"Motif : {motif}. Référence : {report.id}."),
+        )
+    else:
+        await _notify_account(
+            db, user_id=owner_id,
+            text=(f"Un de tes contenus ({report.target_type}) a été retiré "
+                  f"de la vitrine suite à un signalement. Motif : {motif}. "
+                  f"Référence : {report.id}."),
+        )
+        if payload.ban_owner and owner_id is not None:
             await ban_user(db, owner_id, payload.reason)
+            await _notify_account(
+                db, user_id=owner_id,
+                text=(f"Ton compte a également été suspendu. "
+                      f"Motif : {motif}. Référence : {report.id}."),
+            )
 
     report.status = ReportStatus.ACTIONED
     report.resolved_at = datetime.now(timezone.utc)
@@ -303,6 +355,12 @@ async def ban_account(
     user = await ban_user(db, user_id, payload.reason)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Compte introuvable")
+    # DSA art. 17 : informer le compte suspendu du motif.
+    motif = (payload.reason or "").strip() or "non précisé"
+    await _notify_account(
+        db, user_id=user_id,
+        text=f"Ton compte a été suspendu. Motif : {motif}.",
+    )
     await db.commit()
     return ModerationResult(ok=True, detail="Compte suspendu.")
 
@@ -435,28 +493,22 @@ async def migrate_image_originals(
         aws_secret_access_key=_settings.effective_r2_secret_access_key,
         region_name="auto",
         config=_BotoConfig(
-            connect_timeout=8,
-            read_timeout=10,
-            retries={"max_attempts": 1},
+            connect_timeout=10,
+            read_timeout=30,
+            retries={"max_attempts": 5, "mode": "adaptive"},
         ),
     )
 
     def _copy_and_verify(old_key: str, new_key: str) -> None:
-        # DIAGNOSTIC : une seule passe, on etiquette GET vs PUT pour savoir
-        # exactement quelle operation echoue et avec quelle erreur botocore.
-        try:
-            obj = client.get_object(Bucket=bucket, Key=old_key)
-            body = obj["Body"].read()
-            content_type = obj.get("ContentType") or "application/octet-stream"
-        except Exception as e:  # noqa: BLE001
-            raise RuntimeError(f"GET {type(e).__name__}: {str(e)[:160]}")
-        try:
-            client.put_object(
-                Bucket=bucket, Key=new_key, Body=body,
-                ContentType=content_type,
-            )
-        except Exception as e:  # noqa: BLE001
-            raise RuntimeError(f"PUT {type(e).__name__}: {str(e)[:160]}")
+        # Re-cle un original : LIT l'objet existant puis le REECRIT sous une
+        # cle aleatoire (get_object -> put_object). botocore gere les retries.
+        obj = client.get_object(Bucket=bucket, Key=old_key)
+        body = obj["Body"].read()
+        content_type = obj.get("ContentType") or "application/octet-stream"
+        client.put_object(
+            Bucket=bucket, Key=new_key, Body=body,
+            ContentType=content_type,
+        )
 
     def _delete_old(old_key: str) -> None:
         client.delete_object(Bucket=bucket, Key=old_key)
@@ -466,7 +518,7 @@ async def migrate_image_originals(
     # de timeout muet, même si beaucoup d'images échouent) et on renvoie donc
     # TOUJOURS le JSON avec l'erreur exacte. "more": true s'il en reste →
     # le bouton relance en boucle (idempotent) tant qu'il progresse.
-    _CAP = 1
+    _CAP = 10
     attempted = 0
     migrated = 0
     skipped = 0
@@ -482,7 +534,7 @@ async def migrate_image_originals(
             # jamais de timeout muet de la passerelle).
             await asyncio.wait_for(
                 loop.run_in_executor(None, _copy_and_verify, old_key, new_key),
-                timeout=45,
+                timeout=60,
             )
         except Exception as exc:  # noqa: BLE001
             errors.append({
@@ -574,7 +626,6 @@ async def migrate_image_originals(
             "trace": _tb.format_exc()[-1400:],
         })
     return {
-        "code_version": "diag-v1",
         "migrated": migrated,
         "skipped": skipped,
         "errors": errors,

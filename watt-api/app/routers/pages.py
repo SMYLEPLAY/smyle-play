@@ -12,6 +12,8 @@ Parité route par route (source : OBSIDIAN/05_TECH/Flask_routes_inventory.md) :
   /                          index.html
   /watt                      301 → / (legacy)
   /dashboard /tarifs /library /legal /reset → page HTML dédiée
+  /verifier-email            page HTML de vérification d'email (Phase A) —
+                             cible du lien envoyé par email, miroir de /reset
   /comment-ca-marche         comment-ca-marche.html (lien de l'onboarding)
   /offres                    gate « paliers » : 302 → / si masqué
   /u/{slug} /@{slug}         artiste.html (profil) ; /artiste/{slug} 301 → /u/
@@ -384,6 +386,15 @@ async def legal_page():
 @router.get("/reset", include_in_schema=False)
 async def reset_page():
     return _page("reset.html")
+
+
+@router.get("/verifier-email", include_in_schema=False)
+async def verifier_email_page():
+    # Phase A (2026-09-11) — page de vérification d'email, miroir de /reset.
+    # C'est la cible du lien envoyé par email (services/email_verification.py::
+    # build_verification_link → {base}/verifier-email#token=...) : le jeton
+    # voyage en FRAGMENT, le front lit location.hash et POSTe /auth/verify-email.
+    return _page("verifier-email.html")
 
 
 @router.get("/sons", include_in_schema=False)
