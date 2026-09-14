@@ -21,7 +21,14 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import (
+    get_current_user,
+    # K-01 : la règle « admin = is_official OU is_admin » vit dans
+    # app.auth.dependencies ; l'import avait disparu de ce module avec le
+    # nettoyage du bouton « sécuriser les images » (#534), alors que N-02
+    # l'utilise sur /admin/reports.
+    is_admin_user,
+)
 from app.auth.jwt import decode_access_token
 from app.core.ratelimit import limiter
 from app.database import get_db
