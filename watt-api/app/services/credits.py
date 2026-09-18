@@ -391,6 +391,7 @@ async def grant_credits_atomic(
     *,
     tx_type: TransactionType = TransactionType.GRANT,
     metadata: dict | None = None,
+    idempotency_key: str | None = None,
 ) -> Transaction:
     """
     Ajoute des crédits au user de manière atomique.
@@ -398,9 +399,10 @@ async def grant_credits_atomic(
     Pattern:
       1. Savepoint (rollback propre si quoi que ce soit échoue)
       2. SELECT ... FOR UPDATE sur la row users (empêche races)
-      3. INSERT transaction (status=pending)
-      4. UPDATE users.credits_balance
-      5. UPDATE transaction (status=completed, completed_at=now)
+      3. (idempotence) si une écriture porte déjà `idempotency_key` → no-op
+      4. INSERT transaction (status=pending)
+      5. UPDATE users.credits_balance
+      6. UPDATE transaction (status=completed, completed_at=now)
 
     Le caller est responsable du `await db.commit()` final.
 
@@ -409,6 +411,22 @@ async def grant_credits_atomic(
                   Les achievements passent BONUS pour distinguer dans le ledger.
       metadata  : dict additionnel mergé dans metadata_json. Si fourni avec
                   reason, les deux sont conservés ({"reason": ..., **metadata}).
+      idempotency_key : clé anti-rejeu (nullable). Quand elle est fournie, un
+                  SECOND appel portant la MÊME clé est un NO-OP : la transaction
+                  déjà écrite est renvoyée telle quelle, AUCUN crédit n'est
+                  réémis. C'est la garantie attendue des chemins sujets au rejeu
+                  (webhook Stripe rejoué, double-clic, retry réseau). À réserver
+                  aux opérations à sémantique « exactement une fois » (bonus de
+                  bienvenue, événement de paiement) — surtout PAS aux grants qui
+                  peuvent légitimement se répéter (grant admin, top-up par pack).
+
+    Sérialisation : la clé est portée par UNE écriture sur UN user, dont la row
+    est lockée (FOR UPDATE) en tête de savepoint. Deux appels concurrents de
+    même clé (donc même user) se sérialisent sur ce lock → le second voit
+    l'écriture du premier et fait no-op. Backstop ultime au niveau DB : l'index
+    UNIQUE partiel `uq_transactions_idempotency_key` (migration 0070) — un
+    doublon lève IntegrityError et le savepoint rollback (aucun double crédit),
+    exactement comme le burn de troc (trades.py) s'appuie déjà dessus.
     """
     if amount <= 0:
         raise ValueError("Amount must be positive")
@@ -427,20 +445,35 @@ async def grant_credits_atomic(
         if not row:
             raise ValueError(f"User {user_id} not found")
 
-        # 2. Construire metadata_json (reason + metadata fusionnés)
+        # 2. Idempotence : sous le lock user, si une écriture porte déjà cette
+        #    clé, on la renvoie SANS recréditer (rejeu = no-op). Le lock garantit
+        #    que le rejeu concurrent voit bien l'écriture COMMITTED du premier.
+        if idempotency_key is not None:
+            existing = (
+                await db.execute(
+                    select(Transaction).where(
+                        Transaction.idempotency_key == idempotency_key
+                    )
+                )
+            ).scalars().first()
+            if existing is not None:
+                return existing
+
+        # 3. Construire metadata_json (reason + metadata fusionnés)
         meta: dict = {}
         if reason:
             meta["reason"] = reason
         if metadata:
             meta.update(metadata)
 
-        # 3. Créer la transaction en PENDING
+        # 4. Créer la transaction en PENDING
         tx = Transaction(
             type=tx_type,
             status=TransactionStatus.PENDING,
             buyer_id=user_id,  # bénéficiaire du grant
             credits_amount=amount,
             metadata_json=meta or None,
+            idempotency_key=idempotency_key,
         )
         db.add(tx)
         await db.flush()
