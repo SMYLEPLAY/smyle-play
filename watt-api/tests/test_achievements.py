@@ -65,7 +65,11 @@ async def _make_user_clean(
     async with SessionLocal() as db:
         await db.execute(
             text(
+                # Seed cohérent A1.4 : buckets alignés sur le solde (tout en
+                # achetés). credits_earned_total est un compteur distinct, pas
+                # un bucket → hors invariant de somme.
                 "UPDATE users SET credits_balance = :b, "
+                "smyles_achetes = :b, smyles_gagnes = 0, smyles_promo = 0, "
                 "credits_earned_total = :e WHERE id = :u"
             ),
             {"b": initial_balance, "e": earned_total, "u": user_id},

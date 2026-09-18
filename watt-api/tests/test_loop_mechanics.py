@@ -120,7 +120,9 @@ async def _make_user(initial_balance: int = 1000, artist_name: str | None = None
     async with SessionLocal() as db:
         await db.execute(
             text(
+                # Seed cohérent A1.4 : buckets alignés sur le solde (tout en achetés).
                 "UPDATE users SET credits_balance = :b, "
+                "smyles_achetes = :b, smyles_gagnes = 0, smyles_promo = 0, "
                 "artist_name = COALESCE(:n, artist_name) WHERE id = :u"
             ),
             {"b": initial_balance, "n": artist_name, "u": user_id},

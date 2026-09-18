@@ -99,7 +99,11 @@ async def _make_user(
             await db.execute(
                 text(
                     "UPDATE users "
+                    # Seed cohérent avec l'invariant A1.4 : le solde est posé en
+                    # même temps que les buckets (tout en « achetés ») pour que
+                    # smyles_achetes + smyles_gagnes + smyles_promo == credits_balance.
                     "SET credits_balance = :b, "
+                    "    smyles_achetes = :b, smyles_gagnes = 0, smyles_promo = 0, "
                     "    artist_name = COALESCE(:n, artist_name) "
                     "WHERE id = :u"
                 ),

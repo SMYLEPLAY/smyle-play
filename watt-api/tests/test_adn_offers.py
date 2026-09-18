@@ -68,8 +68,10 @@ async def _make_user(balance: int = 1000, name: str = "AdnOfferUser") -> tuple:
         uid = user.id
     async with SessionLocal() as db:
         await db.execute(
-            text("UPDATE users SET credits_balance = :b, artist_name = :n "
-                 "WHERE id = :u"),
+            text("UPDATE users SET credits_balance = :b, "
+                 # Seed cohérent A1.4 : buckets alignés sur le solde (tout en achetés).
+                 "smyles_achetes = :b, smyles_gagnes = 0, smyles_promo = 0, "
+                 "artist_name = :n WHERE id = :u"),
             {"b": balance, "n": name, "u": uid},
         )
         await db.commit()
