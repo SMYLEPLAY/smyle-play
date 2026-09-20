@@ -216,6 +216,18 @@ class User(Base):
         server_default="standard",
     )
 
+    # Statut PIONNIER (migration 0090, Brique 1). Commission plafonnée à 10 %
+    # À VIE, selon la règle du TAUX LE PLUS FAVORABLE : un Pionnier ne paie
+    # jamais plus de 10 %, mais un Mythique Pionnier garde ses 5 %.
+    # L'ATTRIBUTION (100 premiers créateurs, rang figé) relève de la Brique 2 —
+    # ici, seul le marqueur existe. Écrit par migration / script d'ops.
+    is_pioneer: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # A1 — sous-soldes par CATÉGORIE de Smyle (migration 0071). Origine =
     # cashabilité : achetés (€, non encaissables) / gagnés (vente, ENCAISSABLES =
     # dette) / promo (offerts, non encaissables, expirables). Invariant cible :
