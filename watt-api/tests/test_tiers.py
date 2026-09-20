@@ -134,7 +134,9 @@ async def _make_seller_premium() -> uuid.UUID:
         uid = u.id
     async with SessionLocal() as db:
         await db.execute(
+            # Seed cohérent A1.4 : solde 0 → buckets à 0 (somme == solde).
             text("UPDATE users SET tier = 'premium', credits_balance = 0, "
+                 "smyles_achetes = 0, smyles_gagnes = 0, smyles_promo = 0, "
                  "artist_name = 'K07 Seller' WHERE id = :u"),
             {"u": uid},
         )
@@ -149,7 +151,10 @@ async def _make_buyer(balance: int = 5000) -> uuid.UUID:
         uid = u.id
     async with SessionLocal() as db:
         await db.execute(
-            text("UPDATE users SET credits_balance = :b WHERE id = :u"),
+            # Seed cohérent A1.4 : buckets alignés sur le solde (tout en achetés).
+            text("UPDATE users SET credits_balance = :b, "
+                 "smyles_achetes = :b, smyles_gagnes = 0, smyles_promo = 0 "
+                 "WHERE id = :u"),
             {"b": balance, "u": uid},
         )
         await db.commit()
