@@ -35,7 +35,7 @@ from app.services.credits import (
     _acquire_user_locks,
     artist_pct_for_user,
     compute_split,
-    grant_credits_atomic,
+    credit_bucket,
 )
 
 # Prix fixe d'un tirage (Smyles). Modéré au lancement, à affiner avec les
@@ -290,14 +290,40 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         already_paid = compute_split(price, artist_pct)[0]  # part déjà versée
         topup = int(pick.price_credits) - already_paid
         if topup > 0:
-            await grant_credits_atomic(
-                db,
-                artist_id,
-                topup,
-                reason="pack_limited_topup",
-                tx_type=TransactionType.BONUS,
-                metadata={"prompt_id": str(pick.id), "tier": rarity, "source": "mystery_pack"},
-            )
+            # Cas A (décision Tom 2026-09-20) : ce versement « prix fort » est un
+            # REVENU CRÉATEUR lié à la consommation de son œuvre → il doit être
+            # RETIRABLE. On le crédite donc dans le bucket smyles_GAGNES (et non
+            # smyles_promo comme le ferait grant_credits_atomic(BONUS)). Doctrine
+            # « retirable = gagné en vendant ».
+            #
+            # On garde le TYPE de ligne BONUS (financé par la plateforme, pas par
+            # un acheteur — distinction conservée au ledger et dans les
+            # dashboards) : SEUL le bucket change. La ligne reste idempotente au
+            # sens historique (aucune clé posée ici, comme avant) et l'invariant
+            # de somme est tenu par credit_bucket (bucket + credits_balance dans
+            # le même UPDATE). Versement hors du savepoint principal → on pose
+            # notre propre savepoint + verrou artiste.
+            async with db.begin_nested():
+                await _acquire_user_locks(db, [artist_id])
+                topup_tx = Transaction(
+                    type=TransactionType.BONUS,
+                    status=TransactionStatus.PENDING,
+                    buyer_id=artist_id,  # bénéficiaire du versement
+                    credits_amount=topup,
+                    metadata_json={
+                        "reason": "pack_limited_topup",
+                        "prompt_id": str(pick.id),
+                        "tier": rarity,
+                        "source": "mystery_pack",
+                    },
+                )
+                db.add(topup_tx)
+                await db.flush()
+                # RETIRABLE : bucket gagnes (au lieu de promo).
+                await credit_bucket(db, artist_id, topup, bucket="gagnes")
+                topup_tx.status = TransactionStatus.COMPLETED
+                topup_tx.completed_at = func.now()
+                await db.flush()
 
     # Trophées packs (paliers 1/10/50/100 ouvertures). Hors savepoint principal,
     # le service achievements gère ses propres begin_nested. Le caller commit.
