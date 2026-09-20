@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.prompt import Prompt
 from app.models.transaction import Transaction, TransactionStatus, TransactionType
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.treasury import begin_commission, credit_commission
 from app.services.credits import _acquire_user_locks
 
 # Split de revente (en %). La part vendeur = le reste (absorbe l'arrondi).
@@ -201,6 +202,9 @@ async def buy_resale_atomic(
         lock_ids = [buyer_id, seller_id]
         if original_artist_id is not None:
             lock_ids.append(original_artist_id)
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, lock_ids)
 
         # 4. Solde acheteur.
@@ -272,6 +276,10 @@ async def buy_resale_atomic(
                 ),
                 {"r": artist_royalty, "uid": original_artist_id},
             )
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # 10. TRANSFERT de propriété + retrait de la vente — CONDITIONNEL
         #     (ceinture + bretelles au-dessus du verrou) : la ligne doit

@@ -21,6 +21,7 @@ from app.models.transaction import (
     TransactionType,
 )
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.treasury import begin_commission, credit_commission
 from app.services.credits import (
     _acquire_user_locks,
     artist_pct_for_user,
@@ -81,6 +82,9 @@ async def buy_pack_atomic(
 
     async with db.begin_nested():
         # Locks ordonnés (buyer + artiste) — sérialise les achats concurrents.
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
         # Stock-out par produit (édition limitée épuisée).
@@ -149,6 +153,10 @@ async def buy_pack_atomic(
             ),
             {"r": artist_revenue, "uid": artist_id},
         )
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # Mint les DEUX exemplaires (avec #X/N si édition limitée).
         for p in (recipe, beat):

@@ -65,3 +65,67 @@ async def treasury_balance(db: AsyncSession) -> dict:
         "gagnes": int(row.smyles_gagnes),
         "promo": int(row.smyles_promo),
     }
+
+
+# -----------------------------------------------------------------------------
+# Encaissement de la commission (Brique 1, flag FEATURE_MARKET_SMYLES)
+# -----------------------------------------------------------------------------
+#
+# LIGNE CHAUDE — le point technique de la brique. Le compte trésorerie est
+# touché par CHAQUE vente. Deux transactions concurrentes qui verrouillent des
+# lignes `users` puis la trésorerie pourraient former un cycle et se bloquer
+# mutuellement (deadlock).
+#
+# RÈGLE D'ORDRE GLOBALE retenue : **la trésorerie est verrouillée EN PREMIER**,
+# avant tout verrou d'utilisateur, dans tous les chemins de vente. Conséquence :
+# aucune transaction ne peut détenir une ligne `users` pendant qu'elle attend la
+# trésorerie → aucun cycle possible → deadlock impossible, par construction.
+#
+# Pourquoi pas simplement l'ajouter au set trié de `_acquire_user_locks` ?
+# Parce que certains chemins verrouillent en DEUX temps (packs.py verrouille
+# l'acheteur, puis l'artiste seulement APRÈS le tirage aléatoire) : un ordre
+# total unique y est impossible, et insérer la trésorerie au milieu rouvrirait
+# un risque de cycle. « Toujours en premier » est la seule règle qui tienne sur
+# les 11 chemins.
+#
+# Contrepartie assumée : les ventes se sérialisent sur cette ligne pendant la
+# durée du savepoint. À l'échelle actuelle (bêta) c'est sans effet. Si le débit
+# de ventes devient un sujet, l'évolution naturelle est d'agréger la commission
+# hors ligne chaude (table compteur dédiée, ou report périodique depuis
+# `SUM(transactions.platform_fee)` — le ledger reste la source de vérité).
+
+async def begin_commission(db: AsyncSession) -> UUID | None:
+    """À appeler EN TÊTE du savepoint d'une vente, AVANT tout autre verrou.
+
+    Résout ET verrouille le compte trésorerie. Renvoie son id, ou None si la
+    brique est désactivée (`FEATURE_MARKET_SMYLES = False`, défaut) ou si le
+    compte n'existe pas — dans ce cas aucun verrou n'est pris et le chemin de
+    vente se comporte exactement comme avant.
+    """
+    from app.config import settings  # import local : pas de cycle au chargement
+
+    if not settings.FEATURE_MARKET_SMYLES:
+        return None
+    row = (await db.execute(
+        text("SELECT id FROM users WHERE is_treasury = TRUE LIMIT 1 FOR UPDATE")
+    )).first()
+    return row.id if row is not None else None
+
+
+async def credit_commission(
+    db: AsyncSession,
+    treasury_id: UUID | None,
+    amount: int,
+) -> None:
+    """Encaisse `amount` Smyles de commission sur la trésorerie.
+
+    No-op si `treasury_id` est None (brique OFF) ou si le montant est nul —
+    l'appelant n'a donc pas de `if` à écrire. Crédite le bucket `achetes`
+    (NON retirable) via `credit_bucket`, qui met à jour bucket ET solde dans le
+    même UPDATE : l'invariant de somme A1.4 reste vrai.
+    """
+    if treasury_id is None or amount <= 0:
+        return
+    from app.services.credits import credit_bucket  # import local : pas de cycle
+
+    await credit_bucket(db, treasury_id, amount, bucket="achetes")

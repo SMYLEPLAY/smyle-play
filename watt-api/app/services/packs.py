@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.prompt import Prompt
 from app.models.transaction import Transaction, TransactionStatus, TransactionType
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.treasury import begin_commission, credit_commission
 from app.services.credits import (
     _acquire_user_locks,
     artist_pct_for_user,
@@ -163,6 +164,9 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
 
     async with db.begin_nested():
         # 1. Lock le buyer (le seller sera locké après tirage).
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id])
 
         # 2. Vérifie le solde AVANT de tirer (évite un tirage gaspillé).
@@ -246,6 +250,10 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
             ),
             {"rev": artist_revenue, "uid": artist_id},
         )
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # 7. #X/N — numéro d'édition pour les éditions LIMITÉES uniquement.
         #    Compté sous le lock artiste (acquis step 4) → pas de doublon.

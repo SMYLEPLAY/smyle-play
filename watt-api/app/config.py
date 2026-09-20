@@ -180,6 +180,18 @@ class Settings(BaseSettings):
     #   • MODE_LANCEMENT = False → tout est rallumé (fin du lancement).
     # Un item est VISIBLE si : (not MODE_LANCEMENT) or SHOW_<ITEM>.
     # Défauts : tout masqué (MODE_LANCEMENT=True, tous les SHOW_* à False).
+    # ── Brique 1 — marché interne en Smyles ──────────────────────────────
+    # Quand FEATURE_MARKET_SMYLES est FALSE (défaut), la commission plateforme
+    # continue de se comporter exactement comme avant : elle est tracée au
+    # ledger (`transactions.platform_fee`) et n'est créditée à personne.
+    # Quand elle passe à TRUE, cette même commission est encaissée par le compte
+    # trésorerie société (bucket NON retirable). Aucun autre comportement ne
+    # change : ni les prix, ni le split, ni la part vendeur.
+    # Bascule réversible : repasser à FALSE arrête l'encaissement sans rien
+    # casser (les montants déjà encaissés restent acquis et reconstructibles
+    # depuis le ledger).
+    FEATURE_MARKET_SMYLES: bool = False
+
     MODE_LANCEMENT: bool = True
     SHOW_PALIERS: bool = False
     SHOW_RESALE: bool = False

@@ -25,6 +25,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.treasury import begin_commission, credit_commission
 from app.models.owned_visual_adn import OwnedVisualAdn
 from app.models.transaction import (
     Transaction,
@@ -280,6 +281,9 @@ async def unlock_visual_adn_atomic(
         )
 
     async with db.begin_nested():
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
@@ -341,6 +345,10 @@ async def unlock_visual_adn_atomic(
             ),
             {"rev": artist_revenue, "uid": artist_id},
         )
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = OwnedVisualAdn(
             user_id=buyer_id, visual_adn_id=visual_adn_id

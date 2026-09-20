@@ -34,9 +34,16 @@ async def test_compte_tresorerie_seede_et_non_connectable():
     assert t.profile_public is False      # jamais liste / affiche
     assert t.is_official is False         # distinct du profil vitrine « Smyle »
     assert t.password_hash is None        # aucune connexion possible
-    # Seede a zero -> invariant A1.4 satisfait des le depart.
-    assert t.credits_balance == 0
-    assert (t.smyles_achetes, t.smyles_gagnes, t.smyles_promo) == (0, 0, 0)
+    # INVARIANTS PERMANENTS du compte societe (vrais au seed comme apres des
+    # encaissements de commission — ce test ne suppose donc aucun ordre
+    # d'execution) :
+    #   - jamais rien en GAGNES : la societe ne doit pas figurer en dette
+    #     encaissable (sinon elle se devrait de l'argent a elle-meme) ;
+    #   - somme des buckets == solde (invariant A1.4) ;
+    #   - jamais de solde negatif.
+    assert t.smyles_gagnes == 0
+    assert t.smyles_achetes + t.smyles_gagnes + t.smyles_promo == t.credits_balance
+    assert t.credits_balance >= 0
 
 
 async def test_resolution_par_drapeau_pas_par_uuid():

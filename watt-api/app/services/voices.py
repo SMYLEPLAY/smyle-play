@@ -28,6 +28,7 @@ from app.models.transaction import (
     TransactionType,
 )
 from app.models.voice import OwnedVoice, Voice
+from app.services.treasury import begin_commission, credit_commission
 from app.services.credits import (
     _acquire_user_locks,
     artist_pct_for_user,
@@ -113,6 +114,9 @@ async def unlock_voice_atomic(
         )
 
     async with db.begin_nested():
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
@@ -175,6 +179,10 @@ async def unlock_voice_atomic(
             ),
             {"rev": artist_revenue, "uid": artist_id},
         )
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # #X/N (chantier Voix 2026-06-12) — stock-out atomique + numéro
         # d'exemplaire, calqué sur unlock_prompt_atomic (0051). Compté SOUS
