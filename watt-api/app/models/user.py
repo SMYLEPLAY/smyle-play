@@ -136,6 +136,22 @@ class User(Base):
         server_default="false",
     )
 
+    # Compte TRÉSORERIE de la société (migration 0089, Brique 1). DISTINCT de
+    # is_official : le vitrine « Smyle » est une identité artiste PUBLIQUE, la
+    # trésorerie est un registre non public (profile_public=False, password_hash
+    # NULL → aucune connexion possible). C'est le compte qui encaisse la
+    # commission plateforme, dans le bucket NON retirable `smyles_achetes`
+    # (jamais `gagnes` : sinon la société figurerait en dette encaissable).
+    # Au plus une ligne (index unique partiel ix_users_is_treasury_true) ;
+    # résolu par requête sur ce drapeau, JAMAIS par un UUID en dur (l'UUID
+    # diffère d'un environnement à l'autre). Cf. app/services/treasury.py.
+    is_treasury: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # Rôle d'administration (migration 0085, annexe B §2). DISTINCT de
     # is_official : celui-ci est l'identité vitrine « Smyle » (checkmark, tri
     # en tête, playlists modèles) et le cocher sur un compte perso polluerait

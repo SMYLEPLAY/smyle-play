@@ -105,7 +105,10 @@ async def beta_dashboard_data(
             "COALESCE(sum(smyles_gagnes), 0) AS gagnes, "
             "COALESCE(sum(smyles_promo), 0) AS promo, "
             "COALESCE(sum(smyles_gagnes_bloque), 0) AS gele "
-            "FROM users"
+            # Brique 1 : la trésorerie société est hors circulation (sa
+            # commission encaissée n'est ni détenue par un créateur, ni
+            # achetée en euros). Exposée à part, pas agrégée ici.
+            "FROM users WHERE NOT is_treasury"
         ),
         {"days": days, "suppr": "%" + _SUFFIXE_SUPPRIME},
     )).first()
