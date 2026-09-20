@@ -61,6 +61,11 @@ async def create_user(
         WELCOME_BONUS_CREDITS,
         reason="welcome_bonus",
         tx_type=TransactionType.BONUS,
+        # Exactement UN bonus de bienvenue par compte, même si la création est
+        # rejouée (retry réseau, double soumission). La clé est dérivée de l'id
+        # du compte → un second passage renvoie la transaction existante sans
+        # recréditer (cf. grant_credits_atomic, idempotence).
+        idempotency_key=f"welcome_bonus:{db_user.id}",
     )
     await db.refresh(db_user)  # recharge credits_balance = 10 (post-grant)
     await db.commit()
