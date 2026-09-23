@@ -15,15 +15,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.credits import count_bucket_inconsistencies
 from app.services.reserve import reserve_status
+from app.services.treasury import treasury_balance
 
 
 async def eco_cockpit_data(db: AsyncSession) -> dict:
     res = await reserve_status(db)
+    # Brique 1 — la TRÉSORERIE société est exclue de la circulation : ses
+    # Smyles (commission encaissée) n'appartiennent à aucun créateur et ne sont
+    # pas des Smyles « achetés en euros ». Les compter ici gonflerait le bucket
+    # `achetes` avec de la commission. Elle est exposée sur sa propre ligne.
     row = (await db.execute(
         text(
             "SELECT COALESCE(SUM(smyles_achetes), 0) AS a, "
             "COALESCE(SUM(smyles_gagnes), 0) AS g, "
-            "COALESCE(SUM(smyles_promo), 0) AS p, COUNT(*) AS n FROM users"
+            "COALESCE(SUM(smyles_promo), 0) AS p, COUNT(*) AS n FROM users "
+            "WHERE NOT is_treasury"
         )
     )).first()
     a, g, p, n = int(row.a), int(row.g), int(row.p), int(row.n)
@@ -35,6 +41,7 @@ async def eco_cockpit_data(db: AsyncSession) -> dict:
             "promo": p,
             "total": a + g + p,
         },
+        "tresorerie_societe": await treasury_balance(db),
         "comptes": n,
         "incoherences_buckets": await count_bucket_inconsistencies(db),
         "business": {

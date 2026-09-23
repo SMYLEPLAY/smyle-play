@@ -48,6 +48,7 @@ from app.models.transaction import (
     TransactionType,
 )
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.treasury import begin_commission, credit_commission
 from app.services.credits import (
     _acquire_user_locks,
     artist_pct_for_user,
@@ -205,6 +206,10 @@ async def unlock_prompt_atomic(
 
     async with db.begin_nested():
         # 3. Locks ordonnés (tri UUID dans _acquire_user_locks)
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
         # 4. Perks PYRAMIDE en cascade (cumul multiplicatif) :
@@ -295,6 +300,10 @@ async def unlock_prompt_atomic(
             ),
             {"rev": artist_revenue, "uid": artist_id},
         )
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # 10. #X/N — numéro d'édition pour les éditions LIMITÉES uniquement.
         #     Compté SOUS LOCK : le verrou sur la ligne artiste (acquis en
@@ -427,6 +436,10 @@ async def unlock_adn_atomic(
         )
 
     async with db.begin_nested():
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
         # C6 : commission selon le palier de l'artiste (80/88/95).
@@ -484,6 +497,10 @@ async def unlock_adn_atomic(
             ),
             {"rev": artist_revenue, "uid": artist_id},
         )
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = OwnedAdn(user_id=buyer_id, adn_id=adn_id)
         db.add(owned)
@@ -580,6 +597,10 @@ async def unlock_playlist_adn_atomic(
     paid = _eff_price(paid, profil_perk)
 
     async with db.begin_nested():
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
@@ -635,6 +656,10 @@ async def unlock_playlist_adn_atomic(
             ),
             {"rev": artist_revenue, "uid": owner_id},
         )
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = OwnedPlaylistAdn(user_id=buyer_id, playlist_id=playlist_id)
         db.add(owned)
@@ -725,6 +750,10 @@ async def unlock_album_adn_atomic(
     paid = _eff_price(paid, profil_perk)
 
     async with db.begin_nested():
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
@@ -780,6 +809,10 @@ async def unlock_album_adn_atomic(
             ),
             {"rev": artist_revenue, "uid": owner_id},
         )
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = OwnedAlbumAdn(user_id=buyer_id, album_id=album_id)
         db.add(owned)

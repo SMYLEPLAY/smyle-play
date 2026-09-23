@@ -19,6 +19,7 @@ Conditions : playlist ET album publics, même oeuvre_slug, même owner, tous deu
 adn_for_sale avec adn_price. Pré-requis : l'acheteur ne possède DÉJÀ aucune des
 deux faces (sinon AlreadyOwned → achète l'autre à l'unité).
 """
+from app.services.treasury import begin_commission, credit_commission
 from app.services.unlocks import (
     AdnNotPurchasable,
     AlreadyOwned,
@@ -118,6 +119,9 @@ async def buy_oeuvre_atomic(db, *, buyer_id, slug: str) -> _BuyOeuvreResult:
     )
 
     async with db.begin_nested():
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
@@ -180,6 +184,10 @@ async def buy_oeuvre_atomic(db, *, buyer_id, slug: str) -> _BuyOeuvreResult:
             ),
             {"rev": artist_revenue, "uid": owner_id},
         )
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # Déblocage des DEUX faces. PK composite → IntegrityError = course/double.
         db.add(OwnedPlaylistAdn(user_id=buyer_id, playlist_id=playlist.id))

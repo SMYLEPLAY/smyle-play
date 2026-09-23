@@ -23,6 +23,7 @@ from uuid import UUID
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
+from app.services.treasury import begin_commission, credit_commission
 from app.services.unlocks import (
     AdnNotPurchasable,
     AlreadyOwned,
@@ -250,6 +251,9 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
         raise AlreadyOwned("L'acheteur possède déjà cet ADN")
 
     async with db.begin_nested():
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, target.seller_id])
 
         # K-06 (2026-09-04, annexe B §1.9a) : la commission suit le PALIER du
@@ -313,6 +317,10 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
             ),
             {"rev": artist_revenue, "uid": target.seller_id},
         )
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = _make_owned(target.target_type, target.target_id, buyer_id)
         db.add(owned)
