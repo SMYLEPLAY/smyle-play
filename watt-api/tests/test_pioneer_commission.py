@@ -16,6 +16,7 @@ from sqlalchemy import delete, select, text
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
+from app.config import settings
 from app.database import SessionLocal
 from app.models.achievement import Achievement, UserAchievement
 from app.models.prompt import Prompt
@@ -78,13 +79,20 @@ async def _user(balance: int, *, pionnier: bool = False, tier: str = "standard")
         u = await create_user(db, UserCreate(email=email, password="12345678"))
         uid = u.id
     async with SessionLocal() as db:
+        # Brique 2 : le statut Pionnier n'existe que par un RANG (CHECK
+        # ck_users_pioneer_coherent) -> on pose le rang suivant disponible.
+        rang = None
+        if pionnier:
+            rang = int((await db.execute(
+                text("SELECT COALESCE(MAX(pioneer_rank), 0) + 1 FROM users")
+            )).scalar_one())
         await db.execute(
             text(
                 "UPDATE users SET credits_balance = :b, smyles_achetes = :b, "
                 "smyles_gagnes = 0, smyles_promo = 0, is_pioneer = :pio, "
-                "tier = :tier WHERE id = :u"
+                "pioneer_rank = :rang, tier = :tier WHERE id = :u"
             ),
-            {"b": balance, "pio": pionnier, "tier": tier, "u": uid},
+            {"b": balance, "pio": pionnier, "rang": rang, "tier": tier, "u": uid},
         )
         for ach in (await db.execute(select(Achievement))).scalars().all():
             db.add(UserAchievement(user_id=uid, achievement_id=ach.id))
@@ -133,10 +141,11 @@ async def _cleanup(*uids):
 # 2. Effet reel sur une vente (marche primaire)
 # ---------------------------------------------------------------------------
 
-async def test_vente_dun_pionnier_commission_10_pct():
+async def test_vente_dun_pionnier_commission_10_pct(monkeypatch):
     """Vendeur standard PIONNIER : la plateforme prend 10 % (et non 20 %),
     le createur garde 90 %. Observable sur la part vendeur ET sur la ligne de
     ledger — independamment de la destination de la commission (autre PR)."""
+    monkeypatch.setattr(settings, "FEATURE_PIONEER", True)
     price = 100
     buyer, seller = await _user(1000), await _user(0, pionnier=True)
     try:
@@ -154,8 +163,9 @@ async def test_vente_dun_pionnier_commission_10_pct():
         await _cleanup(buyer, seller)
 
 
-async def test_vente_dun_mythique_pionnier_garde_5_pct():
+async def test_vente_dun_mythique_pionnier_garde_5_pct(monkeypatch):
     """Le pionnier ne DEGRADE pas un meilleur taux : Mythique reste a 5 %."""
+    monkeypatch.setattr(settings, "FEATURE_PIONEER", True)
     price = 100
     buyer = await _user(1000)
     seller = await _user(0, pionnier=True, tier="mythique")
@@ -176,10 +186,11 @@ async def test_vente_dun_mythique_pionnier_garde_5_pct():
 # 3. La revente N'EST PAS concernee par le taux Pionnier (decision Tom)
 # ---------------------------------------------------------------------------
 
-async def test_revente_ignore_le_taux_pionnier():
+async def test_revente_ignore_le_taux_pionnier(monkeypatch):
     """Le revendeur est Pionnier : la revente garde son split FIXE
     (royaltie 30 / plateforme 20 / vendeur 50). La commission encaissee doit
     rester 20 %, pas 10 %."""
+    monkeypatch.setattr(settings, "FEATURE_PIONEER", True)
     prix_initial, prix_revente = 50, 100
     artiste = await _user(0)                      # auteur d'origine
     revendeur = await _user(1000, pionnier=True)  # PIONNIER

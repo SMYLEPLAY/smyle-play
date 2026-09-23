@@ -227,6 +227,22 @@ class User(Base):
         default=False,
         server_default="false",
     )
+    # Brique 2 (migration 0091) — rang Pionnier FIGÉ à vie (1..100, UNIQUE).
+    # is_pioneer == (pioneer_rank IS NOT NULL), garanti par CHECK en base :
+    # le statut n'existe que par l'attribution d'un rang
+    # (cf. app/services/pioneer.py).
+    pioneer_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pioneer_awarded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Exclusion PERSISTÉE (posée par l'action admin de rattrapage) : un compte
+    # exclu ne reçoit jamais de rang, ni au rattrapage ni en direct.
+    pioneer_excluded: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
 
     # A1 — sous-soldes par CATÉGORIE de Smyle (migration 0071). Origine =
     # cashabilité : achetés (€, non encaissables) / gagnés (vente, ENCAISSABLES =

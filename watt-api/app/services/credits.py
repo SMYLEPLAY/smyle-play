@@ -210,7 +210,14 @@ async def artist_pct_for_user(db: AsyncSession, user_id: UUID) -> int:
     )).first()
     if row is None:
         return artist_pct_for(None, False)
-    return artist_pct_for(row.tier, bool(row.is_pioneer))
+    # Brique 2 : le taux Pionnier ne s'applique que programme ACTIF. Le
+    # rattrapage admin peut poser des rangs flag OFF (ordre recommandé :
+    # rattrapage puis activation) — sans cette garde, le 10 % s'appliquerait aux
+    # ventes avant l'activation coordonnée.
+    from app.config import settings  # import local : pas de cycle
+
+    pionnier_actif = bool(row.is_pioneer) and settings.FEATURE_PIONEER
+    return artist_pct_for(row.tier, pionnier_actif)
 
 
 # -----------------------------------------------------------------------------

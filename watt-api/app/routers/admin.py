@@ -341,3 +341,73 @@ async def beta_dashboard(
     renvoyé avec `mesurable: false` et sa raison, jamais avec un chiffre inventé.
     """
     return await beta_dashboard_data(db, days=days, limit=limit)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Brique 2 — Programme PIONNIER : rattrapage en DEUX TEMPS (2026-09-23)
+#
+# Les créateurs qui ont publié AVANT l'activation doivent recevoir leur rang,
+# dans l'ordre de leur première œuvre. Ce n'est PAS une migration automatique :
+# on ne voit pas les données de prod, et certains comptes (ex. un compte de test)
+# ne doivent pas prendre une place. Donc :
+#
+#   POST /admin/pioneer/retro/preview  { exclude_ids }                 → n'écrit RIEN
+#   POST /admin/pioneer/retro/confirm  { exclude_ids, expected_user_ids } → écrit
+#
+# La confirmation n'écrit que si la liste recalculée est EXACTEMENT celle que
+# l'admin a vue (sinon 409 : relancer l'aperçu). Les exclusions sont PERSISTÉES :
+# un compte exclu ne recevra jamais de rang, ni ici ni plus tard en direct.
+# Idempotent. Utilisable flag FEATURE_PIONEER OFF (ordre recommandé : rattrapage
+# PUIS activation, pour que les rangs suivent l'ordre réel de publication).
+# ─────────────────────────────────────────────────────────────────────────────
+
+from app.services.pioneer import (  # noqa: E402 — regroupé avec la section
+    PioneerRetroConflict,
+    pioneer_stats,
+    retro_candidates,
+    retro_confirm,
+)
+
+
+class PioneerRetroPreviewIn(BaseModel):
+    exclude_ids: list[UUID] = Field(default_factory=list, max_length=500)
+
+
+class PioneerRetroConfirmIn(BaseModel):
+    exclude_ids: list[UUID] = Field(default_factory=list, max_length=500)
+    expected_user_ids: list[UUID] = Field(default_factory=list, max_length=100)
+
+
+@router.post("/pioneer/retro/preview")
+async def pioneer_retro_preview(
+    payload: PioneerRetroPreviewIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """APERÇU — n'écrit rien. Liste ordonnée des comptes qui recevraient un
+    rang Pionnier si l'on confirmait maintenant (exclusions appliquées)."""
+    return {
+        "places": await pioneer_stats(db),
+        "candidats": await retro_candidates(db, payload.exclude_ids),
+        "ecrit": False,
+    }
+
+
+@router.post("/pioneer/retro/confirm")
+async def pioneer_retro_confirm(
+    payload: PioneerRetroConfirmIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """CONFIRMATION — écrit les rangs de la liste vue à l'aperçu."""
+    try:
+        result = await retro_confirm(
+            db,
+            exclude_ids=payload.exclude_ids,
+            expected_user_ids=payload.expected_user_ids,
+        )
+    except PioneerRetroConflict as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(e))
+    await db.commit()
+    return result

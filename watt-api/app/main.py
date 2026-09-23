@@ -61,6 +61,7 @@ from app.routers.achievements import (
     public_router as achievements_public_router,
 )
 from app.routers.admin import router as admin_router
+from app.routers.pioneer import router as pioneer_router
 from app.routers.auth import router as auth_router
 from app.routers.catalog import (
     catalog_router,
@@ -320,6 +321,12 @@ def create_app() -> FastAPI:
     # visant admin.py était mort. Monté ici, comme les autres routeurs API,
     # avant le routeur pages + mount_static (qui restent en dernier).
     app.include_router(admin_router)
+    # Brique 2 — programme Pionnier : compteur public (404 si FEATURE_PIONEER
+    # OFF) + écouteurs ORM qui repèrent les publications pour l'attribution
+    # en direct (enregistrement explicite et idempotent).
+    app.include_router(pioneer_router)
+    from app.services.pioneer import register_listeners
+    register_listeners()
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(tracks_router)
