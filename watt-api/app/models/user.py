@@ -216,6 +216,34 @@ class User(Base):
         server_default="standard",
     )
 
+    # Statut PIONNIER (migration 0090, Brique 1). Commission plafonnée à 10 %
+    # À VIE, selon la règle du TAUX LE PLUS FAVORABLE : un Pionnier ne paie
+    # jamais plus de 10 %, mais un Mythique Pionnier garde ses 5 %.
+    # L'ATTRIBUTION (100 premiers créateurs, rang figé) relève de la Brique 2 —
+    # ici, seul le marqueur existe. Écrit par migration / script d'ops.
+    is_pioneer: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    # Brique 2 (migration 0091) — rang Pionnier FIGÉ à vie (1..100, UNIQUE).
+    # is_pioneer == (pioneer_rank IS NOT NULL), garanti par CHECK en base :
+    # le statut n'existe que par l'attribution d'un rang
+    # (cf. app/services/pioneer.py).
+    pioneer_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pioneer_awarded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Exclusion PERSISTÉE (posée par l'action admin de rattrapage) : un compte
+    # exclu ne reçoit jamais de rang, ni au rattrapage ni en direct.
+    pioneer_excluded: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # A1 — sous-soldes par CATÉGORIE de Smyle (migration 0071). Origine =
     # cashabilité : achetés (€, non encaissables) / gagnés (vente, ENCAISSABLES =
     # dette) / promo (offerts, non encaissables, expirables). Invariant cible :

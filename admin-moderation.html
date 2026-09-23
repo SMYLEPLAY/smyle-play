@@ -77,6 +77,17 @@
     </div>
     <pre id="secOut" style="display:none;background:#0a0712;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:12px;color:#d7d2e6;white-space:pre-wrap;overflow:auto;max-height:280px;margin:6px 0 0"></pre>
   </div>
+
+  <div class="tools">
+    <h2>Programme Pionnier — rattrapage</h2>
+    <p class="sub" style="margin:0 0 10px">Attribue un rang Pionnier aux créateurs qui ont DÉJÀ publié, dans l'ordre de leur première œuvre en ligne. En deux temps : l'aperçu n'écrit rien ; la confirmation écrit exactement la liste affichée. Les comptes exclus (un identifiant par ligne) ne recevront jamais de rang, ni maintenant ni plus tard. Idempotent. Ordre recommandé : faire ce rattrapage AVANT d'activer le programme.</p>
+    <textarea id="pioExclude" rows="3" placeholder="Identifiants (UUID) à exclure — un par ligne (ex. ton compte de test)" style="width:100%;box-sizing:border-box;background:var(--card);color:#eee;border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:13px"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="pioPreviewBtn">Aperçu (n'écrit rien)</button>
+      <button class="ok" id="pioConfirmBtn" disabled>Confirmer l'attribution</button>
+    </div>
+    <div id="pioOut" style="margin-top:8px"></div>
+  </div>
 </div>
 <div class="flash" id="flash"></div>
 
@@ -227,6 +238,69 @@
       })
       .then(function(){ btn.disabled = false; });
   });
+
+  // Programme Pionnier — rattrapage en deux temps (aperçu puis confirmation).
+  (function(){
+    var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    var ta = document.getElementById('pioExclude');
+    var prevBtn = document.getElementById('pioPreviewBtn');
+    var confBtn = document.getElementById('pioConfirmBtn');
+    var out = document.getElementById('pioOut');
+    var last = null;   // { exclude_ids, expected_user_ids } de l'aperçu affiché
+
+    function parseIds(){
+      var toks = (ta.value || '').split(/[\s,;]+/).filter(Boolean);
+      var bad = toks.filter(function(t){ return !UUID_RE.test(t); });
+      if (bad.length) { flash('Identifiant invalide : ' + bad[0], false); return null; }
+      return toks;
+    }
+    // Toute modification des exclusions invalide l'aperçu affiché.
+    ta.addEventListener('input', function(){ last = null; confBtn.disabled = true; });
+
+    function renderPreview(res){
+      var p = res.places || {};
+      var rows = (res.candidats || []).map(function(c){
+        return '<tr><td>#' + esc(c.rang) + '</td><td>' + esc(c.pseudo || '—') + '</td><td>' + esc(c.email_masque || '') +
+               '</td><td style="font-family:monospace;font-size:11px">' + esc(c.user_id) + '</td><td>' + esc((c.premiere_oeuvre || '').slice(0, 10)) +
+               '</td><td>' + esc(c.oeuvres_en_ligne) + '</td></tr>';
+      }).join('');
+      out.innerHTML = '<p class="sub" style="margin:4px 0">Places : ' + esc(p.attribuees) + ' attribuée(s) / ' + esc(p.total) +
+        ' — ' + esc(p.restantes) + ' restante(s). <strong>' + (res.candidats || []).length + '</strong> compte(s) recevraient un rang :</p>' +
+        (rows ? '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th align="left">Rang</th><th align="left">Pseudo</th><th align="left">Email</th><th align="left">ID</th><th align="left">1re œuvre</th><th align="left">Œuvres</th></tr></thead><tbody>' + rows + '</tbody></table>'
+              : '<p class="msg">Aucun compte à attribuer.</p>');
+    }
+
+    prevBtn.addEventListener('click', function(){
+      var ids = parseIds(); if (ids === null) return;
+      prevBtn.disabled = true; confBtn.disabled = true; last = null;
+      apiFetch('/admin/pioneer/retro/preview', { method:'POST', json:{ exclude_ids: ids } })
+        .then(function(res){
+          renderPreview(res);
+          last = { exclude_ids: ids, expected_user_ids: (res.candidats || []).map(function(c){ return c.user_id; }) };
+          confBtn.disabled = last.expected_user_ids.length === 0;
+        })
+        .catch(function(e){ flash((e && e.detail) || (e && e.status === 403 ? 'Réservé à l\'administration.' : 'Aperçu impossible.'), false); })
+        .then(function(){ prevBtn.disabled = false; });
+    });
+
+    confBtn.addEventListener('click', function(){
+      if (!last) return;
+      if (!confirm('Attribuer ' + last.expected_user_ids.length + ' rang(s) Pionnier, exactement comme dans l\'aperçu ? Les rangs sont figés à vie.')) return;
+      confBtn.disabled = true;
+      apiFetch('/admin/pioneer/retro/confirm', { method:'POST', json: last })
+        .then(function(res){
+          var n = (res.attribues || []).length;
+          out.innerHTML = '<p class="msg">' + (res.deja_applique ? 'Déjà appliqué — rien de nouveau.' : (n + ' rang(s) attribué(s).')) +
+            ' Places restantes : ' + esc(res.restantes) + '.</p>';
+          flash(res.deja_applique ? 'Déjà appliqué.' : n + ' rang(s) Pionnier attribué(s).', true);
+          last = null;
+        })
+        .catch(function(e){
+          var m = (e && e.status === 409) ? 'La liste a changé depuis l\'aperçu : relance l\'aperçu.' : ((e && e.detail) || 'Échec de la confirmation.');
+          flash(m, false); confBtn.disabled = true; last = null;
+        });
+    });
+  })();
 
   document.getElementById('reload').addEventListener('click', load);
   document.getElementById('filter').addEventListener('change', load);

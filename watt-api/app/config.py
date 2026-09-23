@@ -211,6 +211,16 @@ class Settings(BaseSettings):
     # n'honore. Rallumable par SHOW_EUROS=true.
     SHOW_EUROS: bool = False
 
+    # ── Brique 2 — programme PIONNIER ────────────────────────────────────
+    # false (défaut) : aucun effet du statut Pionnier. Pas d'attribution en
+    # direct, pas de compteur public, et le taux Pionnier (10 %) N'EST PAS
+    # appliqué aux ventes — même pour un compte qui aurait déjà un rang.
+    # L'action admin de rattrapage, elle, reste utilisable flag OFF : c'est
+    # précisément l'ordre recommandé (rattrapage d'abord, puis activation).
+    # true : attribution en direct à la première publication, compteur
+    # « places restantes » public, et taux Pionnier appliqué.
+    FEATURE_PIONEER: bool = False
+
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
         explicitement rallumé via son drapeau SHOW_*."""

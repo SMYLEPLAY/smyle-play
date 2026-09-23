@@ -88,6 +88,35 @@ def artist_pct_for_tier(tier: object) -> int:
     return 100 - commission_pct_for_tier(tier)
 
 
+# Commission plafond du statut PIONNIER (Brique 1, décision Tom 20/09).
+PIONEER_COMMISSION_PCT = 10
+
+
+def commission_pct_for(tier: object, is_pioneer: bool) -> int:
+    """Commission effective (%) — règle du **taux le plus favorable**.
+
+    Un Pionnier ne paie jamais plus de PIONEER_COMMISSION_PCT, mais il ne PERD
+    jamais un meilleur taux acquis par son palier : on prend le minimum.
+
+        standard (20) + pionnier -> 10   (le pionnier gagne)
+        premium  (12) + pionnier -> 10   (le pionnier gagne)
+        mythique  (5) + pionnier ->  5   (le palier reste meilleur)
+        n'importe quel palier, non pionnier -> barème inchangé
+
+    N'est PAS utilisé par la revente : celle-ci garde son split fixe
+    (royaltie 30 / plateforme 20 / vendeur 50), décision explicite de Tom.
+    """
+    pct = commission_pct_for_tier(tier)
+    if is_pioneer:
+        pct = min(pct, PIONEER_COMMISSION_PCT)
+    return pct
+
+
+def artist_pct_for(tier: object, is_pioneer: bool) -> int:
+    """Part artiste (%) = 100 - commission effective (palier + pionnier)."""
+    return 100 - commission_pct_for(tier, is_pioneer)
+
+
 def listing_slots_for_tier(tier: object) -> int | None:
     """Nombre d'emplacements de vente (None = illimité)."""
     return TIER_LISTING_SLOTS[normalize_tier(tier)]

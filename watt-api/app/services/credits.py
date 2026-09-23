@@ -189,21 +189,35 @@ def compute_split(
 
 
 async def artist_pct_for_user(db: AsyncSession, user_id: UUID) -> int:
-    """Part artiste (%) selon le PALIER du vendeur (C6).
+    """Part artiste (%) selon le PALIER du vendeur (C6) ET son statut PIONNIER.
 
-    Lit `users.tier` et renvoie 80 / 88 / 95 (commission 20 / 12 / 5).
-    Tout palier inconnu / NULL (comptes pré-migration 0069) retombe sur
-    Standard (80%) = comportement historique. À appeler DANS la section
-    lockée d'un flux de vente, juste avant `compute_split`.
+    Lit `users.tier` (80 / 88 / 95 = commission 20 / 12 / 5) et `users.is_pioneer`
+    (Brique 1) puis applique la règle du **taux le plus favorable** : un Pionnier
+    ne paie jamais plus de 10 % de commission, mais un Mythique Pionnier garde
+    ses 5 %. Tout palier inconnu / NULL (comptes pré-migration 0069) retombe sur
+    Standard (80%) = comportement historique. À appeler DANS la section lockée
+    d'un flux de vente, juste avant `compute_split`.
+
+    La REVENTE n'utilise pas cette fonction : elle garde son split fixe
+    (royaltie 30 / plateforme 20 / vendeur 50) — décision Tom, pas de taux
+    Pionnier sur la revente.
     """
-    from app.services.tiers import artist_pct_for_tier  # import local: pas de cycle
+    from app.services.tiers import artist_pct_for  # import local: pas de cycle
 
     row = (await db.execute(
-        text("SELECT tier FROM users WHERE id = :uid"),
+        text("SELECT tier, is_pioneer FROM users WHERE id = :uid"),
         {"uid": user_id},
     )).first()
-    tier = row.tier if row is not None else None
-    return artist_pct_for_tier(tier)
+    if row is None:
+        return artist_pct_for(None, False)
+    # Brique 2 : le taux Pionnier ne s'applique que programme ACTIF. Le
+    # rattrapage admin peut poser des rangs flag OFF (ordre recommandé :
+    # rattrapage puis activation) — sans cette garde, le 10 % s'appliquerait aux
+    # ventes avant l'activation coordonnée.
+    from app.config import settings  # import local : pas de cycle
+
+    pionnier_actif = bool(row.is_pioneer) and settings.FEATURE_PIONEER
+    return artist_pct_for(row.tier, pionnier_actif)
 
 
 # -----------------------------------------------------------------------------

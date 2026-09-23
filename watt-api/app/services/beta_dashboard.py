@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.publications import SQL_OEUVRES_EN_LIGNE
 from app.services.credits import count_bucket_inconsistencies
 
 # Types de transaction qui CRÉENT des Smyles (crédit d'un compte, sans débit
@@ -52,22 +53,9 @@ _SUFFIXE_SUPPRIME = "@deleted.watt"
 # Toutes les surfaces de publication d'un créateur, dans un seul jeu de lignes.
 # `is_deleted` est le soft-delete commun ; `tracks` n'a pas de `is_published`
 # (un morceau déposé est visible sur le profil).
-_SQL_PUBLICATIONS = """
-    SELECT artist_id AS uid, created_at FROM prompts
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM adns
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM visual_adns
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM voices_for_sale
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM tracks
-        WHERE NOT is_deleted
-"""
+# Définition partagée avec le programme Pionnier (source unique) :
+# cf. app/services/publications.py.
+_SQL_PUBLICATIONS = SQL_OEUVRES_EN_LIGNE
 
 # Motif UUID canonique : garde-fou avant le cast `::uuid`. Sans lui, une
 # métadonnée mal formée ferait planter la requête entière (invalid input

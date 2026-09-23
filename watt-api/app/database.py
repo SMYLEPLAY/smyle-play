@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import NullPool
+from sqlalchemy.orm import Session
 
 from app.config import settings
 
@@ -72,13 +73,30 @@ def build_engine(app_settings):
 
 engine = build_engine(settings)
 
+class AppSession(Session):
+    """Session synchrone sous-jacente aux AsyncSession de l'application.
+
+    Sous-classe VIDE : aucun changement de comportement. Elle sert uniquement à
+    borner les écouteurs d'événements ORM (programme Pionnier, Brique 2) aux
+    sessions de l'app, au lieu de les accrocher à toute `Session` du processus.
+    """
+
+
 SessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False,
+    sync_session_class=AppSession,
 )
 
 
 async def get_db() -> AsyncSession:
     async with SessionLocal() as session:
         yield session
+    # Brique 2 — programme Pionnier : si la requête a publié une œuvre (et l'a
+    # commitée), on tente l'attribution d'un rang dans une transaction SÉPARÉE.
+    # No-op si FEATURE_PIONEER est OFF ou si rien n'a été publié. Ne lève jamais.
+    # Non atteint si l'endpoint a levé une exception (rien à attribuer).
+    from app.services.pioneer import award_committed_candidates
+
+    await award_committed_candidates(session.info)
