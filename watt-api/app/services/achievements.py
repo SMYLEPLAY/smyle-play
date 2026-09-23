@@ -197,6 +197,20 @@ async def check_and_grant_achievements(
     Le caller commit. On utilise begin_nested pour isoler chaque grant
     (un grant qui foire ne pollue pas les autres).
     """
+    # Lot 1 (pré-lancement) — « caché = inerte ». Quand les trophées sont
+    # masqués par le mode lancement, on ne débloque RIEN et on ne crédite RIEN :
+    # sinon des utilisateurs recevraient des Smyles BONUS pour une mécanique
+    # qu'ils ne voient pas. Coupé ICI, à la source, parce que cette fonction est
+    # appelée en arrière-plan depuis ~20 endroits (déblocages, publications,
+    # parrainage, ventes…).
+    # Au RALLUMAGE : les paliers sont cumulatifs (compteur ≥ seuil), donc la
+    # prochaine action d'un utilisateur sur un axe débloque d'un coup tous les
+    # paliers déjà atteints, avec leurs récompenses (rattrapage).
+    from app.config import settings  # import local : pas de cycle
+
+    if not settings.launch_flags_dict()["trophees"]:
+        return []
+
     progress = await get_user_progress(db, user_id=user_id, axis=axis)
     if progress <= 0:
         return []

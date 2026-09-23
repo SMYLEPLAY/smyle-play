@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.message import Message, MessageThread
@@ -24,7 +25,13 @@ from app.models.user import User
 from app.schemas.message import MessageCreate, MessageRead, ThreadMessagesResponse, ThreadRead
 from app.services.notifications import create_notification
 
-router = APIRouter(prefix="/messages", tags=["messages"])
+router = APIRouter(
+    prefix="/messages",
+    tags=["messages"],
+    # Lot 1 : cachée au lancement. Les fils existants restent intacts en base
+    # et réapparaissent au rallumage.
+    dependencies=[Depends(require_launch_item("messagerie"))],
+)
 
 # S-03 sécurité (2026-09-02) — marqueur « proposition d'échange » posté par
 # le client (ui/messaging/messaging.js) dans le fil : `__TRADE_OFFER__<uuid>`.

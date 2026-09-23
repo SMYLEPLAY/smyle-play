@@ -294,8 +294,13 @@
 
   // ── Fetchers messagerie topbar (enveloppe) ────────────────────────────────
 
+  // Lot 1 : messagerie cachée tant que WATT_LAUNCH.messagerie est faux
+  // (drapeau absent → caché). Aucune requête, aucune enveloppe.
+  function _msgOn() { return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie); }
+
   async function _fetchMsgThreads() {
     try {
+      if (!_msgOn()) return;
       if (!(window.getAuthToken && window.getAuthToken())) return;
       const data = await apiFetch('/messages/threads');
       _msgState.threads = Array.isArray(data) ? data : [];
@@ -306,6 +311,7 @@
 
   function _startMsgPoll() {
     _stopMsgPoll();
+    if (!_msgOn()) return;
     _msgState.pollTimer = setInterval(_fetchMsgThreads, 15000);
   }
 
@@ -436,7 +442,7 @@
     const authHtml = user ? _renderUserChip(user, mySlug) : _renderAnonChip();
 
     // Enveloppe messagerie (connecté uniquement)
-    const msgHtml = user ? `
+    const msgHtml = (user && _msgOn()) ? `
       <div class="stb-msg-wrap" id="stb-msg-wrap">
         <button class="stb-msg-btn" type="button"
                 onclick="window.SmyleTopbar.toggleMsg(event)"
@@ -992,7 +998,8 @@
     // Négocier : ouvre un fil de messagerie avec l'autre partie (si dispo sur
     // la page) pour discuter avant d'accepter / refuser.
     const otherId   = isSeller ? o.buyer_id : o.seller_id;
-    const negotiate = otherId
+    // Lot 1 : pas de « Négocier » tant que la messagerie est cachée.
+    const negotiate = (otherId && window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie)
       ? `<button onclick="if(window.SmyleMessaging){document.getElementById('smyle-adnofferview').remove();SmyleMessaging.open('${esc(otherId)}');}" style="width:100%;margin-top:8px;padding:9px;border:1px solid rgba(204,136,255,.4);border-radius:8px;background:rgba(204,136,255,.1);color:#cdb4ff;cursor:pointer;font-size:13px">💬 Négocier</button>`
       : '';
 

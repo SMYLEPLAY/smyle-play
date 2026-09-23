@@ -17,6 +17,7 @@ migration 0009), les déblocages sont automatiques.
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
@@ -35,8 +36,16 @@ from app.services.achievements import (
 
 # Deux routers car deux préfixes différents (cf. main.py library/catalog
 # qui font pareil) — séparer permet à FastAPI de bien grouper dans Swagger.
-public_router = APIRouter(prefix="/achievements", tags=["achievements"])
-me_router = APIRouter(prefix="/me/achievements", tags=["achievements"])
+public_router = APIRouter(
+    prefix="/achievements",
+    tags=["achievements"],
+    dependencies=[Depends(require_launch_item("trophees"))],  # Lot 1
+)
+me_router = APIRouter(
+    prefix="/me/achievements",
+    tags=["achievements"],
+    dependencies=[Depends(require_launch_item("trophees"))],  # Lot 1
+)
 
 
 # -----------------------------------------------------------------------------

@@ -17,4 +17,10 @@ window.WATT_LAUNCH = window.WATT_LAUNCH || {
   thePlan: false,
   achatSmyles: false,
   euros: false,
+  offresAdn: false,
+  messagerie: false,
+  serie: false,
+  trophees: false,
+  beats: false,
+  albums: false,
 };

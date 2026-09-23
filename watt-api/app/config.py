@@ -199,6 +199,18 @@ class Settings(BaseSettings):
     SHOW_VOIX: bool = False
     SHOW_TROC: bool = False
     SHOW_THE_PLAN: bool = False
+    # Lot 1 (plan de pré-lancement, 23/09) — construites mais CACHÉES au
+    # lancement, rallumées une par une (sorties mensuelles décidées par
+    # l'agent analytique). « Caché = inerte » : une mécanique cachée ne crédite
+    # plus rien en arrière-plan (trophées : grant coupé dans le service ;
+    # série quotidienne : seule sa route crédite). Données existantes intactes,
+    # elles réapparaissent au rallumage.
+    SHOW_OFFRES_ADN: bool = False   # offres sur ADN (/adn-offers)
+    SHOW_MESSAGERIE: bool = False   # messagerie privée (/messages)
+    SHOW_SERIE: bool = False        # série quotidienne (/streak)
+    SHOW_TROPHEES: bool = False     # trophées + leurs récompenses en Smyles
+    SHOW_BEATS: bool = False        # création / achat de beats, packs recette+beat
+    SHOW_ALBUMS: bool = False       # albums + ADN d'album
     # S-11 (2026-09-04, annexe A §M5) — l'achat de Smyles est masqué tant
     # que Stripe n'est pas branché : /credits/grant répond 403 à tout
     # compte non is_official, donc la modale d'achat promettait une
@@ -238,6 +250,12 @@ class Settings(BaseSettings):
             "thePlan": self._item_visible(self.SHOW_THE_PLAN),
             "achatSmyles": self._item_visible(self.SHOW_ACHAT_SMYLES),
             "euros": self._item_visible(self.SHOW_EUROS),
+            "offresAdn": self._item_visible(self.SHOW_OFFRES_ADN),
+            "messagerie": self._item_visible(self.SHOW_MESSAGERIE),
+            "serie": self._item_visible(self.SHOW_SERIE),
+            "trophees": self._item_visible(self.SHOW_TROPHEES),
+            "beats": self._item_visible(self.SHOW_BEATS),
+            "albums": self._item_visible(self.SHOW_ALBUMS),
         }
 
 

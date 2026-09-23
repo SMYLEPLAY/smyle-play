@@ -4828,6 +4828,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // Section échanges — chargement initial + scroll auto si #trades dans l'URL
   loadTrades();
   loadTrophees();
+  // Lot 1 (pré-lancement) : beats cachés → on MASQUE (sans retirer) les cases
+  // « Proposer comme beat ». Masquer plutôt que retirer : la case d'édition
+  // garde l'état réel du son (is_beat) et le renvoie tel quel à
+  // l'enregistrement, donc aucun beat existant n'est dé-flagué en douce.
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.beats)) {
+    const up = document.querySelector('.dash-beat-flag');
+    if (up) up.style.display = 'none';
+    const ed = document.getElementById('dte2BeatFlag');
+    const edGroup = ed && ed.closest('.dte2-field-group');
+    if (edGroup) edGroup.style.display = 'none';
+  }
+  // Lot 1 : albums cachés → l'écran « ADN Album » (#sec-adn-visuel) est retiré
+  // (son module AdnVisuel.init() sort tout seul si la section est absente).
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.albums)) {
+    const advSec = document.getElementById('sec-adn-visuel');
+    if (advSec) advSec.remove();
+  }
   if (location.hash === '#trades' || location.hash === '#sec-trades') {
     setTimeout(() => {
       const sec = document.getElementById('sec-trades');
@@ -5808,6 +5825,16 @@ const AXIS_ICON  = { buyer: '🛒', fan: '🎚', artist: '🎵', trader: '🔄',
 const TPH_AXES = ['buyer', 'fan', 'artist', 'trader', 'referrer', 'streak', 'collector', 'image_creator', 'image_seller', 'visual_dna'];
 
 async function loadTrophees() {
+  // Lot 1 (pré-lancement) : trophées cachés au lancement. On retire la pastille
+  // de navigation et la section, et on n'appelle aucune API (drapeau absent →
+  // caché). Réapparaissent au rallumage (SHOW_TROPHEES).
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.trophees)) {
+    ['pill-trophees', 'sec-trophees'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    return;
+  }
   const grid = document.getElementById('tphGrid');
   if (!grid) return;
 

@@ -161,6 +161,11 @@
     // sont conservées pour ce retour).
 
     body.innerHTML = html;
+    // Lot 1 : série quotidienne cachée → on retire la tuile (drapeau absent → caché).
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.serie)) {
+      const t = body.querySelector('#bqEarnStreak');
+      if (t) { const g = t.parentNode; t.remove(); if (g) g.style.gridTemplateColumns = '1fr'; }
+    }
     const earnStreak = body.querySelector('#bqEarnStreak');
     const earnRef = body.querySelector('#bqEarnRef');
     if (earnStreak) earnStreak.addEventListener('click', () => {

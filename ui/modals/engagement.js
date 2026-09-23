@@ -87,6 +87,8 @@
     }
   }
   function _openStreak() {
+    // Lot 1 : série quotidienne cachée au lancement (drapeau absent → caché).
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.serie)) return;
     _ensureStreak().style.display = 'flex';
     _renderStreak();
   }

@@ -30,6 +30,13 @@
   'use strict';
 
   // ── Helpers communs ─────────────────────────────────────────────────────
+  // Lot 1 (pré-lancement) : albums cachés au lancement. Drapeau absent →
+  // caché (défensif, comme les autres items du mode lancement). Les albums
+  // existants restent en base et réapparaissent au rallumage (SHOW_ALBUMS).
+  function _albumsOn() {
+    return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.albums);
+  }
+
   function _isAuth() {
     if (typeof getAuthToken === 'function') return !!getAuthToken();
     if (typeof getCurrentUser === 'function') {
@@ -166,6 +173,7 @@
   // Retourne l'album créé ou null si annulé. Respecte la règle projet :
   // tout UI de création/édition collection DOIT exposer le choix public/privé.
   async function promptCreateAlbum() {
+    if (!_albumsOn()) return null;  // Lot 1
     const title = window.prompt('Titre du nouvel album :');
     if (title == null) return null;
     const t = title.trim();
@@ -185,6 +193,7 @@
   // VOLET B — Modale « Ajouter à un album » (calque openAddToPlaylistModal)
   // ══════════════════════════════════════════════════════════════════════════
   async function openAddToAlbumModal(promptId) {
+    if (!_albumsOn()) return null;  // Lot 1
     if (!promptId) return;
     if (!_isAuth()) { _toast('Connecte-toi pour ajouter à un album.'); return; }
     if (document.getElementById('al-add-modal')) return;
@@ -266,6 +275,7 @@
   //           + retrait d'image). Owner uniquement pour les actions.
   // ══════════════════════════════════════════════════════════════════════════
   async function openAlbumViewModal(albumId) {
+    if (!_albumsOn()) return null;  // Lot 1
     if (!albumId) return;
     if (document.getElementById('al-view-modal')) return;
     if (window.SmylePlaylists && window.SmylePlaylists.injectModalStyles) {
@@ -623,6 +633,7 @@
 
   // Achat ADN album — POST /unlocks/album-adn/{id} (calque playlist-adn).
   async function unlockAlbumAdn(albumId) {
+    if (!_albumsOn()) return null;  // Lot 1
     const r = await fetch('/unlocks/album-adn/' + encodeURIComponent(albumId), {
       method: 'POST', credentials: 'same-origin', headers: _headers(true)
     });
@@ -753,6 +764,7 @@
   }
 
   async function _refreshAlbumList() {
+    if (!_albumsOn()) return null;  // Lot 1
     const el = document.getElementById('mymix-album-list');
     if (!el) return;
     if (!_isAuth()) {
@@ -889,7 +901,22 @@
     });
   }
 
+  // Lot 1 : retire les points d'entrée « album » quand ils sont cachés
+  // (boutons + Album sur les cartes image, bloc « Mes albums » de My Mix,
+  // section catalogue ADN d'album de la vitrine).
+  function _hideAlbumEntryPoints() {
+    if (_albumsOn() || document.getElementById('al-launch-hide')) return;
+    const st = document.createElement('style');
+    st.id = 'al-launch-hide';
+    st.textContent = '[data-add-to-album],.mp-section-albums-adn{display:none!important}';
+    document.head.appendChild(st);
+    const list = document.getElementById('mymix-album-list');
+    const sec = list && list.closest('.mymix-img-section');
+    if (sec && sec.parentNode) sec.parentNode.removeChild(sec);
+  }
+
   function _boot() {
+    _hideAlbumEntryPoints();
     _wireGlobalClicks();
     // Appliquer le mode persisté au panneau dès le chargement.
     applyMixMode(_getMode());

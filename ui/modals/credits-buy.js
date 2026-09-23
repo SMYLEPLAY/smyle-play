@@ -313,6 +313,10 @@
 
     // LANCEMENT 2026-07-20 — les deux raccourcis « gagner des Smyles » pointent
     // vers les panneaux existants (streak / parrainage), comme dans la boutique.
+    // Lot 1 : série quotidienne cachée → on retire le raccourci.
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.serie)) {
+      const t = modal.querySelector('#creditsEarnStreak'); if (t) t.remove();
+    }
     const _earnStreak = modal.querySelector('#creditsEarnStreak');
     const _earnRef    = modal.querySelector('#creditsEarnRef');
     if (_earnStreak) _earnStreak.addEventListener('click', () => {

@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
+from app.core.launch import require_launch_item
 from app.database import get_db
 from app.models.user import User
 from app.schemas.discovery import (
@@ -200,7 +201,13 @@ async def list_playlists_adn(
 # Albums ADN en vente (génome de style visuel)
 # -----------------------------------------------------------------------------
 
-@catalog_router.get("/albums-adn", response_model=AlbumAdnCatalogResponse)
+# Lot 1 (pré-lancement) : albums cachés au lancement → catalogue des ADN
+# d'album fermé (404 lancement) tant que SHOW_ALBUMS est éteint.
+@catalog_router.get(
+    "/albums-adn",
+    response_model=AlbumAdnCatalogResponse,
+    dependencies=[Depends(require_launch_item("albums"))],
+)
 async def list_albums_adn(
     artist_id: UUID | None = Query(None, description="Filtre par artiste"),
     page: int = Query(1, ge=1),

@@ -636,7 +636,8 @@
         .map(m => `<span class="mp-son-card-mood" style="display:inline-block;padding:2px 7px;border-radius:9px;background:rgba(255,255,255,.07);color:#b9b3c8;font-size:.68rem;">${_esc(m)}</span>`)
         .join('');
       // C2 — chips beat : 🥁 (placement) + BPM si renseigné.
-      const beatChip = t.isBeat
+      // Lot 1 : pas de chip beat tant que les beats sont cachés au lancement.
+      const beatChip = (t.isBeat && !!(window.WATT_LAUNCH && window.WATT_LAUNCH.beats))
         ? `<span class="mp-son-card-beat" title="Proposé comme beat" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(34,197,94,.14);color:#86efac;font-size:.68rem;font-weight:600;">🥁 Beat${t.bpm ? ' · ' + t.bpm + ' BPM' : ''}</span>`
         : '';
       const tagsRow = (moodChips || beatChip)
@@ -2020,6 +2021,8 @@
   // génome (seedPrompt + palette) n'est JAMAIS exposé ici — clic → fiche album
   // (openAlbumViewModal) où l'achat se fait, puis le génome est révélé.
   async function _fetchAlbumAdns() {
+    // Lot 1 : albums cachés au lancement → aucune requête, section vide.
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.albums)) return [];
     try {
       const data = await window.apiFetch('/catalog/albums-adn?per_page=24', { auth: false });
       return (data && Array.isArray(data.items)) ? data.items : [];

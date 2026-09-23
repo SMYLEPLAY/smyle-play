@@ -89,7 +89,7 @@ def test_launch_flags_endpoint_no_cache():
 
 def test_index_et_shells():
     c = _client()
-    for path in ("/", "/sons", "/beats", "/artistes"):
+    for path in ("/", "/sons", "/artistes"):
         r = c.get(path)
         assert r.status_code == 200, path
         assert "text/html" in r.headers["content-type"], path
@@ -138,6 +138,18 @@ def test_offres_gate_paliers(monkeypatch):
     assert r.status_code == 302 and r.headers["location"] == "/"
     monkeypatch.setattr(settings, "SHOW_PALIERS", True)
     assert _client().get("/offres").status_code == 200
+
+
+def test_beats_gate(monkeypatch):
+    # Lot 1 (pré-lancement) : l'étagère /beats redirige vers l'accueil tant
+    # que SHOW_BEATS est éteint, et redevient une page normale au rallumage.
+    monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
+    monkeypatch.setattr(settings, "SHOW_BEATS", False)
+    r = _client().get("/beats")
+    assert r.status_code == 302 and r.headers["location"] == "/"
+    monkeypatch.setattr(settings, "SHOW_BEATS", True)
+    r = _client().get("/beats")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
 
 
 def test_voix_gate(monkeypatch):

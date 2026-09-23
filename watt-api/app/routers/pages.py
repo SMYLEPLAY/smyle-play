@@ -404,6 +404,10 @@ async def sons_page():
 
 @router.get("/beats", include_in_schema=False)
 async def beats_page():
+    # Lot 1 — BEATS masqués : 302 accueil tant que non VISIBLE (même modèle
+    # que /voix).
+    if not settings.launch_flags_dict()["beats"]:
+        return RedirectResponse("/", status_code=302)
     return _page("index.html")
 
 

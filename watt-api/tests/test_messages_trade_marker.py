@@ -12,6 +12,8 @@ canonique. Postgres requis (cf. conftest.py).
 import uuid
 
 import pytest
+
+from app.config import settings
 from sqlalchemy import delete, select
 
 from app.database import SessionLocal
@@ -20,6 +22,14 @@ from app.models.trade import TradeOffer
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.users import create_user
+
+
+@pytest.fixture(autouse=True)
+def _rallume_lot1(monkeypatch):
+    """Lot 1 : la messagerie sont cachés au lancement par défaut. Ce module teste la
+    mécanique elle-même → on la rallume (même modèle que SHOW_TROC ailleurs)."""
+    monkeypatch.setattr(settings, "SHOW_MESSAGERIE", True)
+
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 

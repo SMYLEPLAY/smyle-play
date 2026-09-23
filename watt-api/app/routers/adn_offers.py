@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
@@ -46,7 +47,12 @@ from app.services.unlocks import (
     InsufficientCredits,
 )
 
-router = APIRouter(prefix="/adn-offers", tags=["adn-offers"])
+router = APIRouter(
+    prefix="/adn-offers",
+    tags=["adn-offers"],
+    # Lot 1 : caché au lancement (sortie mensuelle). 404 tant que masqué.
+    dependencies=[Depends(require_launch_item("offresAdn"))],
+)
 
 _OFFER_TTL_DAYS = 7  # même TTL que les trades prompts
 

@@ -182,6 +182,15 @@ async def unlock_prompt_atomic(
     if prompt_row is None or not prompt_row.is_published:
         raise PromptNotPurchasable("Prompt not found or not published")
 
+    # Lot 1 : un BEAT s'achète par cette même route (c'est une ligne `prompts`,
+    # product_type='beat'). Beats cachés au lancement → refus, avec le même 404
+    # qu'un contenu introuvable (on ne révèle pas la fonction masquée).
+    if getattr(prompt_row, "product_type", "recipe") == "beat":
+        from app.config import settings  # import local : pas de cycle
+
+        if not settings.launch_flags_dict()["beats"]:
+            raise PromptNotPurchasable("Beats indisponibles pendant le lancement")
+
     # Stock-out : édition limitée épuisée (sold_count d'UnlockedPrompt vs
     # max_supply). Même mécanique que les ADN. NULL = illimité → pas de check.
     if prompt_row.max_supply is not None:

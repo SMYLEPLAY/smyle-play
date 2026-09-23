@@ -23,7 +23,8 @@ def require_launch_item(item: str):
     """Dépendance FastAPI : 404 tant que `item` est masqué par le MODE LANCEMENT.
 
     `item` est une clé de `settings.launch_flags_dict()` : "resale", "packs",
-    "voix", "troc", "thePlan", "paliers".
+    "voix", "troc", "thePlan", "paliers", et (lot 1) "offresAdn",
+    "messagerie", "serie", "trophees", "beats", "albums".
     """
 
     async def _dep() -> None:
