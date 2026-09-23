@@ -233,6 +233,10 @@ class Settings(BaseSettings):
     # « places restantes » public, et taux Pionnier appliqué.
     FEATURE_PIONEER: bool = False
 
+    # Lot 2 — date d'ouverture publique (AAAA-MM-JJ). Sert au tableau « Prêt à
+    # sortir » (critère « 6 mois depuis le lancement » de la sortie M6).
+    DATE_LANCEMENT: str = "2026-11-01"
+
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
         explicitement rallumé via son drapeau SHOW_*."""

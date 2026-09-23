@@ -21,7 +21,7 @@ import asyncio
 import re as _re_slug
 import uuid as _uuid_module
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func, select
@@ -1270,9 +1270,28 @@ async def tracks_recent(
     return {"tracks": tracks_out}
 
 
+async def _note_listen(request: Request, db: AsyncSession) -> None:
+    try:
+        auth = request.headers.get("authorization") or ""
+        if not auth.lower().startswith("bearer "):
+            return
+        from app.auth.jwt import decode_access_token
+        from app.services.activity import note_activity
+
+        email = decode_access_token(auth[7:].strip())
+        if not email:
+            return
+        uid = (await db.execute(
+            select(User.id).where(User.email == email, User.is_banned.is_(False))
+        )).scalar_one_or_none()
+        note_activity(uid, listened=True)
+    except Exception:  # noqa: BLE001
+        return
+
+
 @router.post("/plays/{public_id}")
 async def increment_plays(
-    public_id: str, db: AsyncSession = Depends(get_db)
+    public_id: str, request: Request, db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
     Équivalent de `POST /api/watt/plays/<id>` (P1-F8).
@@ -1311,6 +1330,12 @@ async def increment_plays(
 
     if track is None:
         return {"ok": False, "plays": 0}
+
+    # Lot 2 — « écouter en étant connecté » compte comme action d'un actif.
+    # L'écoute reste ANONYME dans play_events ; seul le drapeau du jour
+    # (user_activity_days.listened) est posé si un jeton valide accompagne la
+    # requête. Best-effort, jamais bloquant.
+    await _note_listen(request, db)
 
     # Incrément arithmétique direct (anti-race) — équivalent à
     # `UPDATE tracks SET plays = COALESCE(plays, 0) + 1 WHERE id = :id`.

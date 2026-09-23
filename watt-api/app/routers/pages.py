@@ -429,6 +429,13 @@ async def oeuvre_c4_page(oeuvre_id: str, request: Request):
     return _page_social("o.html", **meta)
 
 
+@router.get("/pret-a-sortir", include_in_schema=False)
+async def pret_a_sortir_page():
+    # Lot 2 — tableau admin « Prêt à sortir ». La page est publique mais vide :
+    # ses données viennent de GET /admin/pret-a-sortir (réservé à l'admin).
+    return _page("pret-a-sortir.html")
+
+
 @router.get("/artiste/{slug}", include_in_schema=False)
 async def artiste_page_legacy(slug: str):
     # Alias rétro-compat : anciens liens /artiste/<slug> → /u/<slug>.

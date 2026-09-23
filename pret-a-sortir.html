@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>Prêt à sortir · WATT</title>
+<!-- Lot 2 — tableau « Prêt à sortir » (admin). Une ligne par sortie mensuelle
+     du plan de pré-lancement : critère, valeur actuelle, feu, fiabilité.
+     Données : GET /admin/pret-a-sortir (réservé à l'administration), tirées
+     de la base uniquement. Écrit pour être lu sans connaissance technique. -->
+<style>
+  :root { --bg:#0a0712; --card:#0d0a16; --line:#2c2440; --text:#eeeaf7; --mut:#a59dbb;
+          --vert:#2fbf71; --orange:#f0a830; --rouge:#e5566b; --vio:#8b6cf6; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding:24px 16px 48px; }
+  .wrap { max-width:880px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  .sub { color:var(--mut); font-size:14px; margin:0 0 18px; line-height:1.5; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:13px; color:var(--mut); margin:0 0 18px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .dot { width:12px; height:12px; border-radius:50%; display:inline-block; flex:0 0 12px; }
+  .dot.vert { background:var(--vert); } .dot.orange { background:var(--orange); } .dot.rouge { background:var(--rouge); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .mois { font-size:12px; font-weight:800; color:var(--vio); background:#1a1430; border-radius:8px; padding:3px 8px; }
+  .sortie { font-size:17px; font-weight:700; flex:1; min-width:180px; }
+  .etat { font-size:13px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+  .regle { color:var(--mut); font-size:12px; margin:6px 0 10px; }
+  .crit { border-top:1px solid #1d1730; padding:10px 0 2px; }
+  .crit-top { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:14px; }
+  .crit-val { font-weight:700; }
+  .crit-cible { color:var(--mut); font-size:12px; }
+  .bar { height:8px; background:#1a1430; border-radius:999px; overflow:hidden; margin:7px 0 4px; }
+  .bar > i { display:block; height:100%; border-radius:999px; }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:6px; margin-left:6px; vertical-align:middle; }
+  .tag.fiable { background:#123324; color:#8fe0b3; }
+  .tag.partielle { background:#3a2c10; color:#f3c76b; }
+  .note { color:var(--mut); font-size:12px; margin:2px 0 0; line-height:1.4; }
+  .msg { color:var(--mut); font-size:14px; padding:30px 0; text-align:center; }
+  .err { color:var(--rouge); }
+  details { margin-top:18px; color:var(--mut); font-size:13px; }
+  details p { margin:6px 0; line-height:1.5; }
+  button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:9px; padding:8px 12px; font-size:13px; cursor:pointer; }
+  button:focus-visible { outline:2px solid var(--vio); outline-offset:2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Prêt à sortir ?</h1>
+  <p class="sub">Chaque mois après le lancement, on allume une nouvelle fonctionnalité — seulement si ses conditions sont remplies.
+    Cette page dit, pour chacune, où on en est. Les chiffres viennent directement de la base de données.</p>
+  <div class="legend">
+    <span><i class="dot vert"></i>Prête : on peut l'allumer</span>
+    <span><i class="dot orange"></i>Presque : on s'en approche, ou une info manque</span>
+    <span><i class="dot rouge"></i>Pas encore</span>
+  </div>
+  <p><button id="reload" type="button">Actualiser</button></p>
+  <div id="out"><p class="msg">Chargement…</p></div>
+  <details id="defs"><summary>Comment ces chiffres sont calculés</summary><div id="defs-body"></div></details>
+</div>
+
+<script src="/ui/core/api.js"></script>
+<script>
+(function () {
+  'use strict';
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+    });
+  }
+  var ETAT = { vert: 'Prête', orange: 'Presque', rouge: 'Pas encore' };
+  var COULEUR = { vert: 'var(--vert)', orange: 'var(--orange)', rouge: 'var(--rouge)' };
+
+  function valeur(v) {
+    if (v == null) return 'pas encore mesurable';
+    if (typeof v === 'object') {
+      var med = v.delai_median_heures;
+      return (med == null ? 'aucun signalement traité' : 'délai médian ' + med + ' h') +
+        ' · ' + v.ouverts_depuis_plus_de_48h + ' en retard';
+    }
+    return String(v);
+  }
+
+  function critHtml(c, feu) {
+    var p = c.progression == null ? 0 : Math.round(c.progression * 100);
+    var col = c.atteint === true ? 'var(--vert)' : (p >= 70 ? 'var(--orange)' : 'var(--rouge)');
+    return '<div class="crit">' +
+      '<div class="crit-top"><span>' + esc(c.critere) +
+        '<span class="tag ' + esc(c.fiabilite) + '">mesure ' + esc(c.fiabilite) + '</span></span>' +
+        '<span><span class="crit-val">' + esc(valeur(c.valeur)) + '</span> ' +
+        '<span class="crit-cible">(objectif : ' + esc(c.cible) + ')</span></span></div>' +
+      (c.progression == null ? '' :
+        '<div class="bar" role="img" aria-label="' + p + ' % de l\'objectif"><i style="width:' + p + '%;background:' + col + '"></i></div>') +
+      (c.note ? '<p class="note">' + esc(c.note) + '</p>' : '') +
+    '</div>';
+  }
+
+  function render(d) {
+    var html = (d.sorties || []).map(function (s) {
+      return '<section class="card" aria-label="' + esc(s.mois + ' — ' + s.sortie) + '">' +
+        '<div class="head"><span class="mois">' + esc(s.mois) + '</span>' +
+        '<span class="sortie">' + esc(s.sortie) + '</span>' +
+        '<span class="etat"><i class="dot ' + esc(s.feu) + '"></i>' + esc(ETAT[s.feu] || s.feu) + '</span></div>' +
+        '<p class="regle">Condition : ' + esc(s.regle) + ' · mesure ' + esc(s.fiabilite) + '</p>' +
+        (s.criteres || []).map(function (c) { return critHtml(c, s.feu); }).join('') +
+      '</section>';
+    }).join('');
+    document.getElementById('out').innerHTML = html +
+      '<p class="note">Mis à jour le ' + esc(new Date(d.genere_le).toLocaleString('fr-FR')) + '.</p>';
+    var defs = d.definitions || {};
+    document.getElementById('defs-body').innerHTML =
+      '<p><strong>Utilisateur actif</strong> : ' + esc(defs.actif) + '</p>' +
+      '<p><strong>Créateur actif</strong> : ' + esc(defs.createur_actif) + '</p>' +
+      '<p><strong>Déblocages</strong> : ' + esc(defs.deblocages) + '</p>' +
+      '<p><strong>Retour la 2e semaine</strong> : ' + esc(defs.retention) + '</p>' +
+      '<p>« Mesure partielle » : le chiffre existe mais il manque encore de l\'historique pour être complet.</p>';
+  }
+
+  function load() {
+    var out = document.getElementById('out');
+    out.innerHTML = '<p class="msg">Chargement…</p>';
+    if (typeof apiFetch !== 'function') { out.innerHTML = '<p class="msg err">Connexion indisponible.</p>'; return; }
+    apiFetch('/admin/pret-a-sortir')
+      .then(render)
+      .catch(function (e) {
+        var s = e && e.status;
+        out.innerHTML = '<p class="msg err">' + (s === 401 || s === 403
+          ? 'Cette page est réservée à l\'administration. Connecte-toi avec un compte administrateur.'
+          : 'Chargement impossible pour le moment. Réessaie.') + '</p>';
+      });
+  }
+  document.getElementById('reload').addEventListener('click', load);
+  load();
+})();
+</script>
+</body>
+</html>

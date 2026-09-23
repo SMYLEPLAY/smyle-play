@@ -20,6 +20,15 @@
 
 // ── 8. AUDIO PLAYER ──────────────────────────────────────────────────────────
 
+// Lot 2 — « écouter en étant connecté » compte dans l'activité du jour :
+// on joint le jeton s'il existe (l'écoute reste anonyme dans play_events).
+function _playAuthHeaders() {
+  try {
+    const t = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    return t ? { Authorization: 'Bearer ' + t } : {};
+  } catch (_) { return {}; }
+}
+
 function showPlayerUI() {
   document.getElementById('player-empty').style.display    = 'none';
   document.getElementById('player-info').style.display     = '';
@@ -113,7 +122,7 @@ function loadTrack(playlistKey, idx) {
   // Notifier l'API du play (fire-and-forget — ne bloque pas la lecture).
   // Pas d'auth requis côté backend (/watt/plays est public par design).
   if (track.id) {
-    fetch(`/watt/plays/${track.id}`, { method: 'POST' }).catch(() => {});
+    fetch(`/watt/plays/${track.id}`, { method: 'POST', headers: _playAuthHeaders() }).catch(() => {});
   }
 
   const playsEl = document.getElementById(`plays-${track.id}`);
@@ -221,7 +230,7 @@ function loadMixTrack() {
 
   // Notifier l'API du play (fire-and-forget — même pattern que loadTrack).
   if (track.id) {
-    fetch(`/watt/plays/${track.id}`, { method: 'POST' }).catch(() => {});
+    fetch(`/watt/plays/${track.id}`, { method: 'POST', headers: _playAuthHeaders() }).catch(() => {});
   }
 
   renderMixPanel(); // mettre à jour active

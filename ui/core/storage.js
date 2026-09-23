@@ -50,10 +50,16 @@ function incrementPlay(id) {
   // valide, on l'utilise comme source de vérité.
   if (typeof fetch !== 'function') return local;
 
+  // Lot 2 : jeton joint s'il existe → « a écouté aujourd'hui » (activité).
+  const _plHeaders = { 'Accept': 'application/json' };
+  try {
+    const _t = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    if (_t) _plHeaders.Authorization = 'Bearer ' + _t;
+  } catch (_) {}
   fetch(`/watt/plays/${encodeURIComponent(id)}`, {
     method: 'POST',
     credentials: 'same-origin',
-    headers: { 'Accept': 'application/json' },
+    headers: _plHeaders,
   })
     .then(r => (r && r.ok) ? r.json() : null)
     .then(data => {

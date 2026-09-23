@@ -454,3 +454,17 @@ async def pioneer_revocations(
 ):
     """Journal des révocations de rang Pionnier (le plus récent d'abord)."""
     return {"revocations": await list_revocations(db)}
+
+
+# ── « Prêt à sortir » (Lot 2) — base du futur agent analytique ──────────────
+
+@router.get("/pret-a-sortir")
+async def pret_a_sortir(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Une ligne par sortie mensuelle (M1…M6) : critère, valeur actuelle, feu
+    vert / orange / rouge, fiabilité. Chiffres tirés de la base uniquement."""
+    from app.services.launch_readiness import readiness
+
+    return await readiness(db)
