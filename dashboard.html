@@ -1667,9 +1667,9 @@
     <div class="dash-field-col" style="margin-top:6px;">
       <button type="button" class="dash-btn-secondary" id="advLinkOeuvreBtn"
               onclick="if(window.OeuvreCompose){OeuvreCompose.open({onSuccess:function(){ try{ if(window.AdnVisuel) AdnVisuel.init(); }catch(_){} }});}">
-        💠 Lier une playlist + un album en Œuvre
+        💠 Lier une playlist + un album en Collection
       </button>
-      <div class="dash-help">Une œuvre réunit une face musique (playlist) et une face visuelle (album) — elle s'affiche en une seule carte bicolore sur ton profil et sa page /oeuvre s'allume.</div>
+      <div class="dash-help">Une collection réunit une face musique (playlist) et une face visuelle (album) — elle s'affiche en une seule carte bicolore sur ton profil et sa page /collection s'allume.</div>
     </div>
 
     <!-- Avertissement visibilité (album privé) -->
@@ -2629,6 +2629,7 @@
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260708parite" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
+<script src="/ui/modals/oeuvre-invite.js?v=20260923o" defer></script>
 <script src="images-create.js?v=20260618c4gal" defer></script>
 <script src="images-list.js?v=20260618c4gal" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>

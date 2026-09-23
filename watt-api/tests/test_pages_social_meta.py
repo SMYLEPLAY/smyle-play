@@ -104,7 +104,9 @@ def test_route_profil_existe():
 def test_route_oeuvre_existe():
     # Regression P0-b : /oeuvre/<slug> n'avait plus de route de page -> 404
     # depuis le 30/07, alors que c'est la page qu'un createur partage.
-    assert "/oeuvre/{slug}" in _chemins()
+    assert "/oeuvre/{slug}" in _chemins()      # Lot 2 : redirige vers /collection
+    assert "/collection/{slug}" in _chemins()
+    assert "/o/{oeuvre_id}" in _chemins()      # Œuvre 1 son + 1 image
 
 
 def test_page_index_existe():
@@ -162,8 +164,11 @@ async def test_profil_prive_sert_la_page_brute_sans_fuite(
     assert "Secret." not in r.text
 
 
-async def test_slug_inconnu_sert_la_page_brute(client: AsyncClient) -> None:
-    for path in ("/u/slug-inexistant-l03", "/oeuvre/slug-inexistant-l03"):
+async def test_slug_inconnu_sert_la_page_brute(client: AsyncClient, monkeypatch) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "SHOW_ALBUMS", True)   # Lot 2 : collections cachées avec les albums
+    for path in ("/u/slug-inexistant-l03", "/collection/slug-inexistant-l03"):
         r = await client.get(path)
         assert r.status_code == 200, path
         assert 'property="og:' not in r.text, path

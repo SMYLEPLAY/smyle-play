@@ -56,6 +56,9 @@ ROUTES = [
     ("SHOW_ALBUMS", "get", f"/watt/albums/{uuid.uuid4()}"),
     ("SHOW_ALBUMS", "post", f"/unlocks/album-adn/{uuid.uuid4()}"),
     ("SHOW_ALBUMS", "get", "/catalog/albums-adn"),
+    # Lot 2 : Collection (playlist + album, ex-« œuvre » C3) cachée avec les albums.
+    ("SHOW_ALBUMS", "get", "/watt/oeuvre/un-slug"),
+    ("SHOW_ALBUMS", "post", "/artist/me/oeuvre"),
 ]
 
 

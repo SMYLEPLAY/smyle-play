@@ -217,6 +217,15 @@ class Prompt(Base):
         nullable=True,
         index=True,
     )
+    # Lot 2 (migration 0093) — liaison au niveau du MORCEAU, portée par
+    # l'IMAGE seulement (CHECK + index unique partiel : un morceau = une image).
+    # Permet d'ajouter une image à un son publié SANS recette. Si le morceau a
+    # une recette, linked_prompt_id est posé en plus (rétrocompatibilité).
+    linked_track_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tracks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     # Nature du lien (migration 0059). TRUE = « ne ensemble » : les DEUX
     # produits ont ete crees dans la MEME action (flux A « vendre aussi la
     # pochette comme image »). Effet : ils ne s'affichent PAS en carte

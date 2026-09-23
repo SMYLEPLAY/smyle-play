@@ -926,6 +926,13 @@ async def build_artist_detail_payload(
         for p in prompts_rows
         if p.linked_prompt_id is not None
     }
+    # Lot 2 (0093) — images liées directement à un MORCEAU (son sans recette).
+    from app.services.links import track_images_for_cards as _track_imgs
+
+    _img_by_track_id = await _track_imgs(db, [t.id for t in tracks])
+
+    def _li_track(t):
+        return _linked_image_by_son_id.get(t.prompt_id) or _img_by_track_id.get(t.id)
 
     prompts_payload = [
         {
@@ -1020,8 +1027,10 @@ async def build_artist_detail_payload(
                 **(playlist_by_track.get(t.id) or {}),
                 # C4 « Oeuvre complete » — image liee injectee aussi sur la
                 # card track (le front matche par promptId). Apercu only.
-                "linkedImage":      _linked_image_by_son_id.get(t.prompt_id),
-                "isOeuvreComplete": _linked_image_by_son_id.get(t.prompt_id) is not None,
+                # Lot 2 : ou image liée directement au MORCEAU (sans recette).
+                "linkedImage":      _li_track(t),
+                "isOeuvreComplete": _li_track(t) is not None,
+                "oeuvreId":         (_li_track(t) or {}).get("id"),
             }
             for t in tracks
         ],
@@ -1242,6 +1251,18 @@ async def tracks_recent(
             li = linked_by_son_id.get(td.get("promptId") or "")
             td["linkedImage"] = li
             td["isOeuvreComplete"] = li is not None
+            td["oeuvreId"] = li["id"] if li else None
+
+    # Lot 2 (0093) — image liée directement au MORCEAU (son sans recette).
+    from app.services.links import track_images_for_cards as _track_imgs
+
+    _by_track = await _track_imgs(db, [t.id for t, _ in rows])
+    for (t, _), td in zip(rows, tracks_out):
+        if not td.get("linkedImage") and t.id in _by_track:
+            li = _by_track[t.id]
+            td["linkedImage"] = li
+            td["isOeuvreComplete"] = True
+            td["oeuvreId"] = li["id"]
 
     # DUALITÉ ADN (B) — badges musique/visuel + tag playlist par son.
     await _enrich_tracks_dualite(db, tracks_out, rows)

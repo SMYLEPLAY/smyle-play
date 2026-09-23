@@ -112,6 +112,22 @@ async def link_products(
             "L'un des deux produits est deja lie a une autre oeuvre complete.",
         )
 
+    # Lot 2 : le morceau de la recette a peut-être déjà une image posée
+    # directement sur lui (0093) → ce son a déjà son Œuvre.
+    son = a if _is_sound(a) else b
+    from app.models.track import Track
+
+    deja = (await db.execute(
+        select(Prompt.id).join(Track, Prompt.linked_track_id == Track.id).where(
+            Track.prompt_id == son.id
+        ).limit(1)
+    )).scalar_one_or_none()
+    if deja is not None:
+        raise LinkError(409, "Ce son a déjà une image.")
+    image = b if son is a else a
+    if image.linked_track_id is not None:
+        raise LinkError(409, "Cette image est déjà dans une autre Œuvre.")
+
     a.linked_prompt_id = b.id
     b.linked_prompt_id = a.id
     # Nature du lien posee symetriquement sur les deux cotes.
@@ -155,6 +171,8 @@ async def linkable_candidates(
     if _is_image(pivot):
         wanted_types = list(_SOUND_TYPES)
         wanted_is_image = False
+        # Lot 2 : les MORCEAUX sans recette sont aussi des sons liables.
+        extra_tracks = await _free_tracks_without_recipe(db, owner_id)
     elif _is_sound(pivot):
         wanted_types = [_IMAGE_TYPE]
         wanted_is_image = True
@@ -201,10 +219,22 @@ async def linkable_candidates(
         for p in rows:
             out.append({
                 "id":           str(p.id),
+                "kind":         "prompt",
                 "title":        p.title,
                 "productType":  p.product_type,
                 "priceCredits": p.price_credits,
                 "coverUrl":     cover_by_prompt.get(p.id, ""),
+            })
+        # Lot 2 : morceaux sans recette (écoute seule) → kind « track » ;
+        # le front les lie par POST /artist/me/tracks/{id}/link.
+        for t in extra_tracks:
+            out.append({
+                "id":           str(t.id),
+                "kind":         "track",
+                "title":        t.title,
+                "productType":  "track",
+                "priceCredits": None,
+                "coverUrl":     t.cover_url or "",
             })
     return out
 
@@ -224,6 +254,11 @@ async def unlink_products(
     p = await _load_owned_prompt_or_404(db, prompt_id=prompt_id, owner_id=owner_id)
     partner_id = p.linked_prompt_id
     p.linked_prompt_id = None
+    # Lot 2 : une image peut aussi être liée à un MORCEAU (linked_track_id).
+    p.linked_track_id = None
+    if _is_sound(p):
+        # Délier une recette délie aussi l'image posée sur son morceau.
+        await _clear_track_link_of_recipe(db, p.id)
     # Le produit delie redevient un produit individuel ordinaire : il ne peut
     # plus etre « ne ensemble » (plus de partenaire). On le remet visible.
     p.bundle_exclusive = False
@@ -233,6 +268,7 @@ async def unlink_products(
         )).scalar_one_or_none()
         if partner is not None and partner.linked_prompt_id == p.id:
             partner.linked_prompt_id = None
+            partner.linked_track_id = None
             # Jamais de produit fantome invisible : le survivant redevient
             # visible individuellement (bundle_exclusive=False).
             partner.bundle_exclusive = False
@@ -254,8 +290,15 @@ async def detach_partner_on_removal(
     produit n'etait pas lie. Ne commit pas (flush seulement) — l'appelant gere
     la transaction du delete.
     """
+    # Lot 2 : une image liée à un MORCEAU (sans recette) est aussi détachée.
+    if prompt.linked_track_id is not None:
+        prompt.linked_track_id = None
+        prompt.bundle_exclusive = False
+    if _is_sound(prompt):
+        await _clear_track_link_of_recipe(db, prompt.id)
     partner_id = prompt.linked_prompt_id
     if partner_id is None:
+        await db.flush()
         return
     prompt.linked_prompt_id = None
     prompt.bundle_exclusive = False
@@ -264,6 +307,7 @@ async def detach_partner_on_removal(
     )).scalar_one_or_none()
     if partner is not None and partner.linked_prompt_id == prompt.id:
         partner.linked_prompt_id = None
+        partner.linked_track_id = None
         partner.bundle_exclusive = False
     await db.flush()
 
@@ -298,6 +342,23 @@ async def linked_sound_payload(db: AsyncSession, image: Prompt) -> dict | None:
     cover_url du Track qui pointe ce prompt (track.prompt_id == son.id).
     Aucune recette/lyrics n'est exposee. None si pas lie ou partenaire non son.
     """
+    if image.linked_prompt_id is None and image.linked_track_id is not None:
+        # Lot 2 (0093) : image liée à un MORCEAU sans recette.
+        from app.models.track import Track
+
+        t = (await db.execute(
+            select(Track).where(Track.id == image.linked_track_id, Track.is_deleted.is_(False))
+        )).scalar_one_or_none()
+        if t is None:
+            return None
+        return {
+            "id":           None,
+            "trackId":      str(t.id),
+            "title":        t.title,
+            "coverUrl":     t.cover_url or "",
+            "priceCredits": None,
+            "productType":  "track",
+        }
     son = await _partner_prompt(db, image)
     if son is None or not _is_sound(son):
         return None
@@ -350,3 +411,312 @@ async def linked_image_payload_for_son_id(
     if son is None:
         return None
     return await linked_image_payload(db, son)
+
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Lot 2 — liaison au niveau du MORCEAU (migration 0093)
+#
+# L'Œuvre = 1 son + 1 image. Le « son » est le MORCEAU publié (tracks), avec
+# ou sans recette. L'image porte `linked_track_id`. Si le morceau a une
+# recette sonore libre, la liaison historique recette <-> image est posée en
+# plus : toutes les surfaces existantes (cartes, /oeuvres, profil) continuent
+# de fonctionner sans changement.
+# ──────────────────────────────────────────────────────────────────────────
+
+
+async def _clear_track_link_of_recipe(db: AsyncSession, recipe_id: _uuid.UUID) -> None:
+    """Détache l'image posée sur le(s) morceau(x) portant cette recette."""
+    from app.models.track import Track
+
+    track_ids = (await db.execute(
+        select(Track.id).where(Track.prompt_id == recipe_id)
+    )).scalars().all()
+    if not track_ids:
+        return
+    imgs = (await db.execute(
+        select(Prompt).where(Prompt.linked_track_id.in_(track_ids))
+    )).scalars().all()
+    for img in imgs:
+        img.linked_track_id = None
+
+
+async def _free_tracks_without_recipe(db: AsyncSession, owner_id: _uuid.UUID):
+    """Morceaux de owner, non supprimés, SANS recette, sans image liée."""
+    from app.models.track import Track
+
+    taken = select(Prompt.linked_track_id).where(Prompt.linked_track_id.isnot(None))
+    return (await db.execute(
+        select(Track).where(
+            Track.artist_id == owner_id,
+            Track.is_deleted.is_(False),
+            Track.prompt_id.is_(None),
+            Track.id.not_in(taken),
+        ).order_by(Track.created_at.desc())
+    )).scalars().all()
+
+
+async def _load_owned_track_or_404(db: AsyncSession, *, track_id, owner_id):
+    from app.models.track import Track
+
+    t = (await db.execute(
+        select(Track).where(
+            Track.id == track_id,
+            Track.artist_id == owner_id,
+            Track.is_deleted.is_(False),
+        )
+    )).scalar_one_or_none()
+    if t is None:
+        raise LinkError(404, "Morceau introuvable.")
+    return t
+
+
+async def _image_of_track(db: AsyncSession, track) -> Prompt | None:
+    """Image liée à ce morceau : par le morceau (0093) ou par sa recette (0059)."""
+    img = (await db.execute(
+        select(Prompt).where(
+            Prompt.linked_track_id == track.id,
+            Prompt.is_deleted.is_(False),
+        )
+    )).scalar_one_or_none()
+    if img is not None:
+        return img
+    if track.prompt_id is None:
+        return None
+    recipe = (await db.execute(
+        select(Prompt).where(Prompt.id == track.prompt_id)
+    )).scalar_one_or_none()
+    if recipe is None or recipe.linked_prompt_id is None:
+        return None
+    img = (await db.execute(
+        select(Prompt).where(
+            Prompt.id == recipe.linked_prompt_id,
+            Prompt.is_deleted.is_(False),
+        )
+    )).scalar_one_or_none()
+    return img if img is not None and _is_image(img) else None
+
+
+async def link_image_to_track(
+    db: AsyncSession,
+    *,
+    owner_id: _uuid.UUID,
+    track_id: _uuid.UUID,
+    image_id: _uuid.UUID,
+    bundle_exclusive: bool = False,
+) -> Prompt:
+    """Lie une IMAGE de owner à un MORCEAU de owner (1:1).
+
+      - 404 si l'un des deux est absent / pas owner / supprimé ;
+      - 409 si ce n'est pas une image, si l'image est déjà liée, ou si le
+        morceau a déjà une image (directement ou via sa recette).
+    Si le morceau a une recette sonore LIBRE, la liaison recette <-> image
+    (0059) est posée aussi. Ne commit pas.
+    """
+    track = await _load_owned_track_or_404(db, track_id=track_id, owner_id=owner_id)
+    img = await _load_owned_prompt_or_404(db, prompt_id=image_id, owner_id=owner_id)
+    if not _is_image(img):
+        raise LinkError(409, "Une Œuvre relie un son et une IMAGE.")
+    if img.linked_prompt_id is not None or img.linked_track_id is not None:
+        raise LinkError(409, "Cette image est déjà dans une autre Œuvre.")
+    if await _image_of_track(db, track) is not None:
+        raise LinkError(409, "Ce son a déjà une image.")
+
+    img.linked_track_id = track.id
+    img.bundle_exclusive = bundle_exclusive
+    if track.prompt_id is not None:
+        recipe = (await db.execute(
+            select(Prompt).where(
+                Prompt.id == track.prompt_id, Prompt.is_deleted.is_(False)
+            )
+        )).scalar_one_or_none()
+        if recipe is not None and _is_sound(recipe) and recipe.linked_prompt_id is None:
+            recipe.linked_prompt_id = img.id
+            img.linked_prompt_id = recipe.id
+            recipe.bundle_exclusive = bundle_exclusive
+    await db.flush()
+    return img
+
+
+async def unlink_track(db: AsyncSession, *, owner_id: _uuid.UUID, track_id: _uuid.UUID) -> None:
+    """Délie l'image de ce morceau (et la recette du morceau, le cas échéant).
+    Idempotent. Ne commit pas."""
+    track = await _load_owned_track_or_404(db, track_id=track_id, owner_id=owner_id)
+    img = await _image_of_track(db, track)
+    if img is None:
+        return
+    await unlink_products(db, owner_id=owner_id, prompt_id=img.id)
+    img.linked_track_id = None
+    img.bundle_exclusive = False
+    await db.flush()
+
+
+async def track_linkable_images(
+    db: AsyncSession, *, owner_id: _uuid.UUID, track_id: _uuid.UUID
+) -> list[dict]:
+    """Images LIBRES de owner, liables à ce morceau (aperçu léger, anti-fuite)."""
+    await _load_owned_track_or_404(db, track_id=track_id, owner_id=owner_id)
+    rows = (await db.execute(
+        select(Prompt).where(
+            Prompt.artist_id == owner_id,
+            Prompt.is_deleted.is_(False),
+            Prompt.product_type == _IMAGE_TYPE,
+            Prompt.linked_prompt_id.is_(None),
+            Prompt.linked_track_id.is_(None),
+        ).order_by(Prompt.created_at.desc())
+    )).scalars().all()
+    return [
+        {
+            "id":           str(p.id),
+            "kind":         "image",
+            "title":        p.title,
+            "productType":  p.product_type,
+            "priceCredits": p.price_credits,
+            "previewKey":   p.preview_r2_key or "",
+        }
+        for p in rows
+    ]
+
+
+async def track_link_state(
+    db: AsyncSession, *, owner_id: _uuid.UUID, track_id: _uuid.UUID
+) -> dict:
+    """État de liaison d'un morceau pour l'éditeur du créateur."""
+    track = await _load_owned_track_or_404(db, track_id=track_id, owner_id=owner_id)
+    img = await _image_of_track(db, track)
+    if img is None:
+        return {"linked": False, "oeuvreId": None, "image": None}
+    return {
+        "linked": True,
+        "oeuvreId": str(img.id),
+        "image": {"id": str(img.id), "title": img.title,
+                  "previewKey": img.preview_r2_key or ""},
+    }
+
+
+async def track_images_for_cards(db: AsyncSession, track_ids: list) -> dict:
+    """Pour des cartes de morceaux : {track_id: aperçu image} des images liées
+    AU MORCEAU (0093). Aperçu public only ; image publiée, non supprimée.
+    Une requête."""
+    if not track_ids:
+        return {}
+    rows = (await db.execute(
+        select(Prompt).where(
+            Prompt.linked_track_id.in_(track_ids),
+            Prompt.product_type == _IMAGE_TYPE,
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+        )
+    )).scalars().all()
+    return {
+        p.linked_track_id: {
+            "id":              str(p.id),
+            "previewKey":      p.preview_r2_key or "",
+            "priceCredits":    p.price_credits,
+            "imagePlatform":   p.image_platform,
+            "bundleExclusive": bool(p.bundle_exclusive),
+        }
+        for p in rows
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Lot 2 — lecture PUBLIQUE d'une Œuvre (page /o/{id}). L'identifiant d'une
+# Œuvre est celui de son IMAGE : toute Œuvre a exactement une image, qu'elle
+# soit liée par le morceau (0093) ou par la recette (0059).
+# ──────────────────────────────────────────────────────────────────────────
+
+
+async def public_oeuvre(db: AsyncSession, image_id: _uuid.UUID) -> dict | None:
+    """Œuvre publique (image + son + créateur), ou None.
+
+    Filtres : image publiée, non supprimée, non retirée ; créateur au profil
+    public et non suspendu ; son = morceau non supprimé (ou, pour une Œuvre
+    historique sans morceau, recette publiée). N'expose JAMAIS de champ gaté
+    (recette, paroles, original de l'image).
+    """
+    from app.models.track import Track
+    from app.models.user import User
+
+    img = (await db.execute(
+        select(Prompt).where(
+            Prompt.id == image_id,
+            Prompt.product_type == _IMAGE_TYPE,
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            Prompt.taken_down_at.is_(None),
+        )
+    )).scalar_one_or_none()
+    if img is None:
+        return None
+    artist = (await db.execute(select(User).where(User.id == img.artist_id))).scalar_one_or_none()
+    if artist is None or not artist.profile_public or artist.is_banned:
+        return None
+
+    track = None
+    recipe = None
+    if img.linked_track_id is not None:
+        track = (await db.execute(
+            select(Track).where(Track.id == img.linked_track_id, Track.is_deleted.is_(False))
+        )).scalar_one_or_none()
+    if img.linked_prompt_id is not None:
+        recipe = (await db.execute(
+            select(Prompt).where(
+                Prompt.id == img.linked_prompt_id,
+                Prompt.is_published.is_(True),
+                Prompt.is_deleted.is_(False),
+            )
+        )).scalar_one_or_none()
+        if recipe is not None and not _is_sound(recipe):
+            recipe = None
+        if track is None and recipe is not None:
+            track = (await db.execute(
+                select(Track).where(Track.prompt_id == recipe.id, Track.is_deleted.is_(False))
+                .order_by(Track.created_at.asc()).limit(1)
+            )).scalar_one_or_none()
+    if track is not None and recipe is None and track.prompt_id is not None:
+        recipe = (await db.execute(
+            select(Prompt).where(
+                Prompt.id == track.prompt_id,
+                Prompt.is_published.is_(True),
+                Prompt.is_deleted.is_(False),
+            )
+        )).scalar_one_or_none()
+    if track is None and recipe is None:
+        return None
+
+    from app.routers.watt_compat import _build_stream_url, _derive_artist_slug
+
+    title = (track.title if track is not None else recipe.title) or img.title
+    return {
+        "id": str(img.id),
+        "title": title,
+        "creator": {
+            "id": str(artist.id),
+            "name": artist.artist_name or "",
+            "slug": _derive_artist_slug(artist),
+            "avatarUrl": artist.avatar_url or "",
+        },
+        "image": {
+            "id": str(img.id),
+            "title": img.title,
+            "previewKey": img.preview_r2_key or "",
+            "priceCredits": img.price_credits,
+            "platform": img.image_platform,
+        },
+        "sound": {
+            "trackId": str(track.id) if track is not None else None,
+            "title": title,
+            "streamUrl": _build_stream_url(track) if track is not None else "",
+            "coverUrl": (track.cover_url or "") if track is not None else "",
+            # La moitié SON n'est achetable que si le morceau a une recette.
+            "recipe": (
+                {"id": str(recipe.id), "priceCredits": recipe.price_credits,
+                 "productType": recipe.product_type}
+                if recipe is not None else None
+            ),
+        },
+        # Achat de l'Œuvre entière : décision d'argent en attente (prix).
+        # Le front réserve l'emplacement ; rien n'est vendable ici.
+        "bundle": None,
+    }

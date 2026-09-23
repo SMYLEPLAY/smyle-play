@@ -783,7 +783,7 @@
       const nPl     = items.filter(i => i.kind === 'playlist').length;
       const nAlb    = items.filter(i => i.kind === 'album').length;
       const parts = [];
-      if (nOeuvre) parts.push(nOeuvre + ' œuvre' + (nOeuvre > 1 ? 's' : ''));
+      if (nOeuvre) parts.push(nOeuvre + ' collection' + (nOeuvre > 1 ? 's' : ''));
       if (nPl)     parts.push(nPl + ' playlist' + (nPl > 1 ? 's' : ''));
       if (nAlb)    parts.push(nAlb + ' album' + (nAlb > 1 ? 's' : ''));
       const countLabel = parts.join(' · ');
@@ -811,7 +811,7 @@
             '</div>'
           : '';
         const typeBadge = (kind === 'oeuvre')
-          ? '<div class="ap-col-type ap-col-type--oeuvre">💠 Œuvre</div>'
+          ? '<div class="ap-col-type ap-col-type--oeuvre">💠 Collection</div>'
           : '<div class="ap-col-type ap-col-type--music">🎧 Playlist</div>';
         const oeuvreAttr = (kind === 'oeuvre' && slugOeuvre)
           ? ' data-oeuvre-slug="' + _esc(slugOeuvre) + '"'
@@ -888,7 +888,7 @@
           if (e.target.closest('.ap-pl-qp, .ap-pl-card-actions, .ap-pl-adn-badge')) return;
           e.preventDefault();
           e.stopPropagation();
-          window.location.href = '/oeuvre/' + encodeURIComponent(tile.dataset.oeuvreSlug);
+          window.location.href = '/collection/' + encodeURIComponent(tile.dataset.oeuvreSlug);
         }, true);
       });
       root.querySelectorAll('.ap-col-albumtile[data-album-id]').forEach(function(tile) {

@@ -30,6 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.auth.jwt import decode_access_token
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
@@ -50,12 +51,22 @@ from app.services.users import get_user_by_email
 # préfixe, `GET /oeuvre/{slug}` (JSON) intercepterait la navigation navigateur
 # vers la PAGE /oeuvre/<slug> (servie par Flask) → la page ne se chargerait
 # jamais. On sépare donc : API = /watt/oeuvre/{slug}, PAGE = /oeuvre/<slug>.
-router = APIRouter(prefix="/watt", tags=["oeuvre"])
+# Lot 2 (décision 23/09) : ce regroupement playlist + album s'appelle
+# désormais « Collection » côté utilisateur (« Œuvre » = uniquement 1 son +
+# 1 image, C4). Il dépend des albums → caché avec eux (SHOW_ALBUMS).
+router = APIRouter(
+    prefix="/watt",
+    tags=["oeuvre"],
+    dependencies=[Depends(require_launch_item("albums"))],
+)
 
 # Router OWNER (actions de l'artiste) — hors /watt, comme /artist/me/images.
 # C'est le primitive de « binarité qui se complète » : un artiste LIE sa
 # playlist (face son) et son album (face visuel) en une œuvre, ou la délie.
-owner_router = APIRouter(tags=["oeuvre"])
+owner_router = APIRouter(
+    tags=["oeuvre"],
+    dependencies=[Depends(require_launch_item("albums"))],  # Lot 2
+)
 
 # Auth OPTIONNELLE : auto_error=False → pas de 401 si le header manque. Le
 # endpoint reste public (un visiteur voit l'œuvre) ; `owned` n'est enrichi
@@ -321,7 +332,7 @@ async def buy_oeuvre_complete(
             "paid": result.paid,
             "playlist_id": str(result.playlist_id),
             "album_id": str(result.album_id),
-            "message": "Œuvre complète débloquée — ADN son + visuel dans ta bibliothèque",
+            "message": "Collection débloquée — ADN son + visuel dans ta bibliothèque",
         }
     except ValueError as e:
         await db.rollback()
@@ -330,13 +341,13 @@ async def buy_oeuvre_complete(
         await db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Tu possèdes déjà une face de cette œuvre",
+            detail="Tu possèdes déjà une face de cette collection",
         )
     except Exception:
         await db.rollback()
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Échec de l'achat de l'œuvre",
+            detail="Échec de l'achat de la collection",
         )
 
 
@@ -384,7 +395,7 @@ async def bind_oeuvre(
     if not slug:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Impossible de dériver un slug — donne un titre à l'œuvre.",
+            detail="Impossible de dériver un slug — donne un titre à la collection.",
         )
 
     # Garde-fou collision : une AUTRE playlist/album du même owner porte déjà ce
@@ -406,7 +417,7 @@ async def bind_oeuvre(
     if clash_pl is not None or clash_al is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Ce slug d'œuvre est déjà utilisé — choisis un autre titre.",
+            detail="Ce nom de collection est déjà utilisé — choisis un autre titre.",
         )
 
     playlist.oeuvre_slug = slug
@@ -418,7 +429,7 @@ async def bind_oeuvre(
         "slug": slug,
         "playlistId": str(playlist.id),
         "albumId": str(album.id),
-        "url": "/oeuvre/" + slug,
+        "url": "/collection/" + slug,
     }
 
 

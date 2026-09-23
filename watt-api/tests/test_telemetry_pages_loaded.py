@@ -20,7 +20,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PAGES = [
     "index.html",
     "artiste.html",   # /u/<slug> — page d'atterrissage du lien partagé
-    "oeuvre.html",    # /oeuvre/<slug>
+    "oeuvre.html",    # /collection/<slug> (C3)
+    "o.html",         # /o/<id> — Œuvre 1 son + 1 image (lien partagé, Lot 2)
     "dashboard.html",
     "library.html",
     "comment-ca-marche.html",

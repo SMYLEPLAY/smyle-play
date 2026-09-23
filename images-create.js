@@ -480,6 +480,19 @@
         toast(visibility()
           ? 'Image publiée et en vente.'
           : 'Image enregistrée en brouillon — publie-la quand tu veux.');
+        /* Lot 2 — Œuvre (1 son + 1 image) : si l'artiste venait de « Créer
+           une nouvelle image » pour un son, on la lie à ce son ; sinon on
+           propose tout de suite « Ajoute un son » (image publiée seulement). */
+        var OI = window.SmyleOeuvreInvite;
+        if (OI && created && created.id) {
+          var pendingTrack = OI.consumePending('track');
+          if (pendingTrack) {
+            return OI.linkTrackImage(pendingTrack, created.id)
+              .then(function (resp) { OI.showDone(resp); })
+              .catch(function () { toast('Image créée, mais ajout au son impossible. Réessaie depuis ton son.'); });
+          }
+          if (visibility()) OI.afterImage({ imageId: created.id, title: created.title || '' });
+        }
       })
       .then(function () {
         reset();

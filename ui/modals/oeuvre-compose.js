@@ -77,11 +77,11 @@
     ov.id = 'oc-overlay';
     ov.className = 'oc-overlay';
     ov.innerHTML =
-      '<div class="oc-box" role="dialog" aria-modal="true" aria-label="Composer une œuvre">' +
+      '<div class="oc-box" role="dialog" aria-modal="true" aria-label="Composer une collection">' +
         '<button class="oc-close" aria-label="Fermer">&times;</button>' +
-        '<p class="oc-kicker">ŒUVRE BINAIRE</p>' +
-        '<h3 class="oc-title">Composer une œuvre</h3>' +
-        '<p class="oc-sub">Lie une playlist (face son) et un album (face visuel) en une œuvre unique. Elle se complète quand les deux faces ont leur ADN.</p>' +
+        '<p class="oc-kicker">COLLECTION</p>' +
+        '<h3 class="oc-title">Composer une collection</h3>' +
+        '<p class="oc-sub">Lie une playlist (face son) et un album (face visuel) en une collection. Elle se complète quand les deux faces ont leur ADN.</p>' +
         '<div class="oc-field">' +
           '<label class="oc-label"><span class="oc-face">SON</span>Playlist</label>' +
           '<select class="oc-select" id="oc-playlist"><option value="">Chargement…</option></select>' +
@@ -91,13 +91,13 @@
           '<select class="oc-select" id="oc-album"><option value="">Chargement…</option></select>' +
         '</div>' +
         '<div class="oc-field">' +
-          '<label class="oc-label">Titre de l\'œuvre <span style="opacity:.5">(optionnel)</span></label>' +
+          '<label class="oc-label">Titre de la collection <span style="opacity:.5">(optionnel)</span></label>' +
           '<input class="oc-input" id="oc-title" type="text" maxlength="120" placeholder="Ex. Jungle Osmose" />' +
         '</div>' +
         '<div class="oc-err" id="oc-err"></div>' +
         '<div class="oc-actions">' +
           '<button class="oc-cancel" type="button">Annuler</button>' +
-          '<button class="oc-confirm" type="button">Lier l\'œuvre</button>' +
+          '<button class="oc-confirm" type="button">Créer la collection</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(ov);
@@ -137,15 +137,15 @@
         json: { playlist_id: pid, album_id: aid, title: title || null },
       }).then(function (resp) {
         var slug = resp && resp.slug;
-        var url = (resp && resp.url) || ('/oeuvre/' + slug);
-        _toast('Œuvre liée 🔗', 'success');
+        var url = (resp && resp.url) || ('/collection/' + slug);
+        _toast('Collection créée 🔗', 'success');
         var box = ov.querySelector('.oc-box');
         if (box) {
           box.innerHTML =
             '<button class="oc-close" aria-label="Fermer">&times;</button>' +
-            '<p class="oc-kicker">ŒUVRE LIÉE ✓</p>' +
+            '<p class="oc-kicker">COLLECTION CRÉÉE ✓</p>' +
             '<h3 class="oc-title">C\'est en ligne</h3>' +
-            '<div class="oc-done"><p class="oc-sub">Ton œuvre binaire est accessible ici :</p>' +
+            '<div class="oc-done"><p class="oc-sub">Ta collection est accessible ici :</p>' +
             '<a href="' + _esc(url) + '">' + _esc(url) + '</a></div>' +
             '<div class="oc-actions"><button class="oc-confirm" type="button" onclick="window.location.href=\'' + _esc(url) + '\'">Voir l\'œuvre</button></div>';
           box.querySelector('.oc-close').addEventListener('click', close);
@@ -153,12 +153,12 @@
         if (typeof opts.onSuccess === 'function') { try { opts.onSuccess(resp); } catch (_) {} }
       }).catch(function (err) {
         btn.disabled = false;
-        btn.textContent = 'Lier l\'œuvre';
+        btn.textContent = 'Créer la collection';
         var s = err && err.status;
         if (s === 404) _err('Playlist ou album introuvable (vérifie qu\'ils t\'appartiennent).');
-        else if (s === 409) _err('Ce titre d\'œuvre est déjà pris — choisis-en un autre.');
-        else if (s === 422) _err('Donne un titre à l\'œuvre.');
-        else if (s === 401) _err('Connecte-toi pour composer une œuvre.');
+        else if (s === 409) _err('Ce titre de collection est déjà pris — choisis-en un autre.');
+        else if (s === 422) _err('Donne un titre à la collection.');
+        else if (s === 401) _err('Connecte-toi pour composer une collection.');
         else _err('Échec de la liaison. Réessaie.');
       });
     });
