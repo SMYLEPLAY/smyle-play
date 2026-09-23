@@ -32,6 +32,7 @@ from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.prompt import Prompt
 from app.models.transaction import Transaction, TransactionStatus, TransactionType
 from app.models.unlocked_prompt import UnlockedPrompt
@@ -42,6 +43,22 @@ from app.services.credits import _acquire_user_locks
 RESALE_ARTIST_PCT = 30
 RESALE_PLATFORM_PCT = 20
 # vendeur = 100 - 30 - 20 = 50%
+
+# Suffixe d'email d'un compte SUPPRIMÉ. La suppression RGPD est une
+# ANONYMISATION (app/services/account_deletion.py) : la ligne `users` reste,
+# donc `original_artist_id` n'est PAS remis à NULL quand un artiste supprime son
+# compte. Sans ce test, la royaltie continuerait d'être versée sur un compte mort
+# (connexion impossible → Smyles irrécupérables, et comptés dans la dette
+# encaissable puisqu'ils vont en `gagnes`).
+_DELETED_EMAIL_SUFFIX = "@deleted.watt"
+
+
+async def _artist_account_deleted(db: AsyncSession, artist_id: UUID) -> bool:
+    """True si le compte de l'artiste d'origine a été supprimé (anonymisé)."""
+    row = (await db.execute(
+        text("SELECT email FROM users WHERE id = :uid"), {"uid": artist_id}
+    )).first()
+    return row is None or str(row.email or "").endswith(_DELETED_EMAIL_SUFFIX)
 
 # Bornes de prix de revente (cohérentes avec les prix de prompt).
 RESALE_PRICE_MIN = 1
@@ -221,11 +238,31 @@ async def buy_resale_atomic(
         # 5. Split à 3. La part vendeur absorbe l'arrondi (reste).
         artist_royalty = (price * RESALE_ARTIST_PCT) // 100
         platform_fee = (price * RESALE_PLATFORM_PCT) // 100
-        # Si l'artiste d'origine n'existe plus, sa royaltie va à la plateforme.
-        if original_artist_id is None:
-            platform_fee += artist_royalty
-            artist_royalty = 0
+
+        # Artiste d'origine DISPARU = ligne absente (NULL) — et, brique ON,
+        # compte supprimé/anonymisé (cas réel : la suppression RGPD ne remet
+        # jamais original_artist_id à NULL, cf. _artist_account_deleted).
+        artist_gone = original_artist_id is None
+        if not artist_gone and settings.FEATURE_MARKET_SMYLES:
+            artist_gone = await _artist_account_deleted(db, original_artist_id)
+
+        royaltie_orpheline_au_vendeur = False
+        if artist_gone:
+            if settings.FEATURE_MARKET_SMYLES:
+                # Brique 1 (décision Tom 23/09) : la royaltie orpheline va au
+                # VENDEUR (revenu de vente → `gagnes`, retirable). La société
+                # reste plafonnée à RESALE_PLATFORM_PCT (20 %), jamais 50 %.
+                # Split effectif : artiste 0 / plateforme 20 / vendeur 80.
+                artist_royalty = 0
+                royaltie_orpheline_au_vendeur = True
+            else:
+                # Historique (brique OFF, comportement prod inchangé) : la
+                # royaltie orpheline gonfle la part plateforme (0 / 50 / 50).
+                platform_fee += artist_royalty
+                artist_royalty = 0
         seller_cut = price - artist_royalty - platform_fee
+        # Conservation stricte : rien n'est créé ni perdu dans le split.
+        assert artist_royalty + platform_fee + seller_cut == price
 
         # 6. Transaction RESALE (artist_revenue + platform_fee <= credits_amount,
         #    la part vendeur n'y est pas stockée — cf. contrainte assouplie 0047).
@@ -242,6 +279,7 @@ async def buy_resale_atomic(
                 "prompt_id": str(prompt_id),
                 "original_artist_id": str(original_artist_id) if original_artist_id else None,
                 "seller_cut": seller_cut,
+                "royaltie_orpheline_au_vendeur": royaltie_orpheline_au_vendeur,
             },
         )
         db.add(tx)
