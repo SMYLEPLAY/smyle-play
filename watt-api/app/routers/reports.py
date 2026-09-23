@@ -30,13 +30,21 @@ from app.models.user import User
 
 router = APIRouter(tags=["reports"])
 
-_TARGET_TYPES = ("track", "prompt", "image", "profil", "playlist", "album")
+_TARGET_TYPES = (
+    "track", "prompt", "image", "profil", "playlist", "album",
+    # Lot 2 (anti-squat Pionnier) : ADN, ADN visuels et voix signalables
+    # et retirables comme les autres œuvres.
+    "adn", "visual_adn", "voix",
+)
 
 
 class ReportCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    target_type: Literal["track", "prompt", "image", "profil", "playlist", "album"]
+    target_type: Literal[
+        "track", "prompt", "image", "profil", "playlist", "album",
+        "adn", "visual_adn", "voix",
+    ]
     target_id: str = Field(min_length=1, max_length=64)
     reason: ReportReason
     detail: str | None = Field(default=None, max_length=2000)
@@ -334,6 +342,50 @@ async def takedown_reported_content(
 
     report.status = ReportStatus.ACTIONED
     report.resolved_at = datetime.now(timezone.utc)
+    await db.commit()
+    return ModerationResult(ok=True, detail=result["detail"])
+
+
+class DirectTakedownRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    target_type: Literal[
+        "track", "prompt", "image", "playlist", "album",
+        "adn", "visual_adn", "voix",
+    ]
+    target_id: str = Field(min_length=1, max_length=64)
+    # Motif OBLIGATOIRE : c'est la « statement of reasons » envoyée à l'auteur.
+    reason: str = Field(min_length=3, max_length=500)
+
+
+@router.post("/admin/moderation/takedown", response_model=ModerationResult)
+async def takedown_direct(
+    payload: DirectTakedownRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ModerationResult:
+    """
+    Lot 2 (anti-squat Pionnier) — retrait DIRECT par la modération, sans
+    signalement préalable (ex. : œuvres bâclées publiées pour prendre une
+    place Pionnier). Même effet que le retrait sur signalement : contenu caché
+    et marqué `taken_down_at` (il ne qualifie plus personne), auteur notifié
+    avec le motif. Le rang Pionnier éventuel n'est PAS retiré ici : c'est une
+    décision séparée (POST /admin/pioneer/{user_id}/revoke), « à vie sauf fraude ».
+    """
+    _require_official(current_user)
+    from app.services.moderation import takedown_content
+
+    result = await takedown_content(
+        db, payload.target_type, payload.target_id, payload.reason
+    )
+    if not result["ok"]:
+        await db.rollback()
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=result["detail"])
+    owner_id = await _resolve_owner_id(db, payload.target_type, payload.target_id)
+    await _notify_account(
+        db, user_id=owner_id,
+        text=(f"Un de tes contenus ({payload.target_type}) a été retiré de la "
+              f"vitrine par la modération. Motif : {payload.reason}."),
+    )
     await db.commit()
     return ModerationResult(ok=True, detail=result["detail"])
 
@@ -641,10 +693,13 @@ async def _resolve_owner_id(db: AsyncSession, target_type: str, target_id: str):
     """Retrouve le compte propriétaire d'un contenu (pour ban_owner)."""
     import uuid as _uuid
 
+    from app.models.adn import Adn
     from app.models.album import Album
     from app.models.playlist import Playlist
     from app.models.prompt import Prompt
     from app.models.track import Track
+    from app.models.visual_adn import VisualAdn
+    from app.models.voice import Voice
 
     ttype = (target_type or "").strip().lower()
     try:
@@ -656,6 +711,7 @@ async def _resolve_owner_id(db: AsyncSession, target_type: str, target_id: str):
     model = {
         "prompt": Prompt, "image": Prompt, "track": Track,
         "playlist": Playlist, "album": Album,
+        "adn": Adn, "visual_adn": VisualAdn, "voix": Voice,
     }.get(ttype)
     if model is None:
         return None

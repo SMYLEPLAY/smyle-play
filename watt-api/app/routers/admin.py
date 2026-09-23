@@ -362,10 +362,13 @@ async def beta_dashboard(
 # ─────────────────────────────────────────────────────────────────────────────
 
 from app.services.pioneer import (  # noqa: E402 — regroupé avec la section
+    PioneerNotHeld,
     PioneerRetroConflict,
+    list_revocations,
     pioneer_stats,
     retro_candidates,
     retro_confirm,
+    revoke_pioneer,
 )
 
 
@@ -411,3 +414,43 @@ async def pioneer_retro_confirm(
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(e))
     await db.commit()
     return result
+
+
+# ── Anti-squat Pionnier (Lot 2, « à vie sauf fraude ») ──────────────────────
+
+class PioneerRevokeIn(BaseModel):
+    # Motif OBLIGATOIRE : il est journalisé (pioneer_revocations).
+    reason: str = Field(min_length=3, max_length=500)
+
+
+@router.post("/pioneer/{user_id}/revoke")
+async def pioneer_revoke(
+    user_id: UUID,
+    payload: PioneerRevokeIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Révoque un rang Pionnier (fraude / squat), motif obligatoire, et remet
+    la place en jeu : elle revient au prochain créateur éligible, sous le même
+    verrou sans course que l'attribution. Le compte révoqué est exclu à vie."""
+    try:
+        result = await revoke_pioneer(
+            db, user_id=user_id, reason=payload.reason, revoked_by=admin.id
+        )
+    except PioneerNotHeld as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    await db.commit()
+    return result
+
+
+@router.get("/pioneer/revocations")
+async def pioneer_revocations(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Journal des révocations de rang Pionnier (le plus récent d'abord)."""
+    return {"revocations": await list_revocations(db)}

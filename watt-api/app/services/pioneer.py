@@ -39,6 +39,18 @@ la publication, déjà validée.
 
 Ordre du rattrapage : date de la PREMIÈRE œuvre actuellement en ligne
 (`created_at`, puis id en départage — ordre total, reproductible).
+
+─── Anti-squat (Lot 2, « à vie, sauf fraude ») ─────────────────────────────────
+Un admin peut RÉVOQUER un rang (`revoke_pioneer`), motif obligatoire, journalisé
+dans `pioneer_revocations`. Le compte révoqué est exclu à vie
+(`pioneer_excluded`). La place libérée est REMISE EN JEU sous le même verrou :
+elle revient au prochain créateur éligible, dans l'ordre du rattrapage (date de
+première œuvre en ligne), avec la règle d'email du direct.
+
+Numéros de rang : un rang libéré laisse un TROU dans 1..100. Toute attribution
+(direct, rattrapage, réattribution) prend donc le PLUS PETIT numéro libre — et
+non plus « max + 1 », qui aurait dépassé 100 dès la première révocation une
+fois les 100 places prises. Le rang reste figé pour celui qui le détient.
 """
 from __future__ import annotations
 
@@ -85,6 +97,10 @@ def _mask_email(email: str | None) -> str | None:
     return (local[:2] + "***@" + domain) if local else "***@" + domain
 
 
+class PioneerNotHeld(Exception):
+    """Révocation demandée sur un compte qui n'a pas de rang Pionnier."""
+
+
 class PioneerRetroConflict(Exception):
     """La liste à confirmer ne correspond plus à la liste recalculée (des
     données ont changé entre l'aperçu et la confirmation) → relancer l'aperçu."""
@@ -92,6 +108,21 @@ class PioneerRetroConflict(Exception):
 
 async def _lock(db: AsyncSession) -> None:
     await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _LOCK_KEY})
+
+
+async def _free_ranks(db: AsyncSession, n: int) -> list[int]:
+    """Les `n` plus petits numéros de rang libres dans 1..PIONEER_SLOTS."""
+    if n <= 0:
+        return []
+    rows = (await db.execute(
+        text(
+            "SELECT r FROM generate_series(1, :slots) AS r "
+            "WHERE NOT EXISTS (SELECT 1 FROM users WHERE pioneer_rank = r) "
+            "ORDER BY r LIMIT :n"
+        ),
+        {"slots": PIONEER_SLOTS, "n": n},
+    )).all()
+    return [int(r.r) for r in rows]
 
 
 async def pioneer_stats(db: AsyncSession) -> dict:
@@ -139,11 +170,10 @@ async def award_pioneer(db: AsyncSession, user_id: UUID, *, live: bool = True) -
         return None
     if not await is_eligible(db, user_id, live=live):
         return None
-    rank = int((await db.execute(
-        text("SELECT COALESCE(MAX(pioneer_rank), 0) + 1 FROM users")
-    )).scalar_one())
-    if rank > PIONEER_SLOTS:
+    libres = await _free_ranks(db, 1)
+    if not libres:
         return None
+    rank = libres[0]
     await db.execute(
         text(
             "UPDATE users SET pioneer_rank = :r, is_pioneer = TRUE, "
@@ -154,15 +184,22 @@ async def award_pioneer(db: AsyncSession, user_id: UUID, *, live: bool = True) -
     return rank
 
 
-async def retro_candidates(db: AsyncSession, exclude_ids: list[UUID] | None = None) -> list[dict]:
+async def retro_candidates(
+    db: AsyncSession,
+    exclude_ids: list[UUID] | None = None,
+    *,
+    need_email: bool = False,
+    limit: int | None = None,
+) -> list[dict]:
     """APERÇU du rattrapage — n'écrit RIEN. Comptes qui recevraient un rang,
-    dans l'ordre, dans la limite des places restantes. Email non exigé."""
+    dans l'ordre, dans la limite des places restantes. Email non exigé au
+    rattrapage (`need_email=False`) ; la réattribution après révocation suit
+    la règle du direct."""
     stats = await pioneer_stats(db)
     if stats["restantes"] <= 0:
         return []
-    base = int((await db.execute(
-        text("SELECT COALESCE(MAX(pioneer_rank), 0) FROM users")
-    )).scalar_one())
+    lim = stats["restantes"] if limit is None else min(limit, stats["restantes"])
+    rangs = await _free_ranks(db, lim)
     rows = (await db.execute(
         text(
             "WITH o AS (" + SQL_OEUVRES_EN_LIGNE + "), "
@@ -171,18 +208,20 @@ async def retro_candidates(db: AsyncSession, exclude_ids: list[UUID] | None = No
             "SELECT u.id, u.artist_name, u.email, p.premiere, p.oeuvres "
             "FROM premieres p JOIN users u ON u.id = p.uid "
             "WHERE u.pioneer_rank IS NULL AND " + _SQL_EXCLUSIONS + " "
+            "AND (NOT :need_email OR u.email_verified) "
             "AND NOT (u.id = ANY(CAST(:exclude AS uuid[]))) "
             "ORDER BY p.premiere ASC, u.id ASC LIMIT :lim"
         ),
         {
             "exclude": list(exclude_ids or []),
-            "lim": stats["restantes"],
+            "lim": lim,
+            "need_email": need_email,
             "deleted_pattern": _DELETED_PATTERN,
         },
     )).all()
     return [
         {
-            "rang": base + i + 1,
+            "rang": rangs[i],
             "user_id": str(r.id),
             "pseudo": r.artist_name,
             "email_masque": _mask_email(r.email),
@@ -247,12 +286,10 @@ async def retro_confirm(
             "attribution en direct…). Relance l'aperçu puis confirme à nouveau."
         )
 
-    base = int((await db.execute(
-        text("SELECT COALESCE(MAX(pioneer_rank), 0) FROM users")
-    )).scalar_one())
+    rangs = await _free_ranks(db, len(attendu))
     attribues = []
     for i, uid in enumerate(attendu):
-        rang = base + i + 1
+        rang = rangs[i]
         await db.execute(
             text(
                 "UPDATE users SET pioneer_rank = :r, is_pioneer = TRUE, "
@@ -264,6 +301,114 @@ async def retro_confirm(
     return {"attribues": attribues, "deja_applique": False,
             "exclusions_ignorees_deja_pionniers": deja_pionniers,
             **(await pioneer_stats(db))}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Révocation (anti-squat, « à vie sauf fraude ») + remise en jeu de la place
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def revoke_pioneer(
+    db: AsyncSession,
+    *,
+    user_id: UUID,
+    reason: str,
+    revoked_by: UUID | None,
+) -> dict:
+    """Révoque le rang Pionnier de `user_id` et remet la place en jeu.
+
+    Sous le verrou applicatif (même garantie sans course que l'attribution) :
+      1. retire le rang (is_pioneer false, rang NULL) et EXCLUT le compte à vie
+         (`pioneer_excluded`) — il ne récupérera jamais de rang ;
+      2. journalise (motif obligatoire, admin, rang) dans `pioneer_revocations` ;
+      3. réattribue le numéro libéré au PROCHAIN créateur éligible (ordre du
+         rattrapage ; email exigé seulement si REQUIRE_EMAIL_VERIFIED) — s'il y
+         en a un. Sinon la place reste libre et sera prise par la prochaine
+         attribution (directe ou rattrapage).
+
+    Lève PioneerNotHeld si le compte n'a pas de rang, ValueError si le motif est
+    vide. L'appelant commit.
+    """
+    motif = (reason or "").strip()
+    if len(motif) < 3:
+        raise ValueError("Motif obligatoire (3 caractères minimum).")
+    await _lock(db)
+    row = (await db.execute(
+        text("SELECT pioneer_rank FROM users WHERE id = :uid"), {"uid": user_id}
+    )).first()
+    if row is None or row.pioneer_rank is None:
+        raise PioneerNotHeld("Ce compte n'a pas de rang Pionnier.")
+    rang = int(row.pioneer_rank)
+
+    await db.execute(
+        text(
+            "UPDATE users SET pioneer_rank = NULL, is_pioneer = FALSE, "
+            "pioneer_awarded_at = NULL, pioneer_excluded = TRUE WHERE id = :uid"
+        ),
+        {"uid": user_id},
+    )
+    rev_id = (await db.execute(
+        text(
+            "INSERT INTO pioneer_revocations (id, user_id, rank, reason, revoked_by) "
+            "VALUES (gen_random_uuid(), :uid, :r, :reason, :by) RETURNING id"
+        ),
+        {"uid": user_id, "r": rang, "reason": motif[:500], "by": revoked_by},
+    )).scalar_one()
+
+    suivant = await retro_candidates(
+        db, need_email=bool(settings.REQUIRE_EMAIL_VERIFIED), limit=1
+    )
+    reattribue = None
+    if suivant:
+        cand = suivant[0]
+        # Le plus petit numéro libre est celui qu'on vient de libérer, sauf s'il
+        # restait déjà des trous plus bas (places jamais pourvues).
+        await db.execute(
+            text(
+                "UPDATE users SET pioneer_rank = :r, is_pioneer = TRUE, "
+                "pioneer_awarded_at = now() WHERE id = :uid AND pioneer_rank IS NULL"
+            ),
+            {"r": cand["rang"], "uid": UUID(cand["user_id"])},
+        )
+        await db.execute(
+            text("UPDATE pioneer_revocations SET reassigned_to = :to WHERE id = :id"),
+            {"to": UUID(cand["user_id"]), "id": rev_id},
+        )
+        reattribue = {"user_id": cand["user_id"], "pseudo": cand["pseudo"],
+                      "rang": cand["rang"]}
+    log.info("pioneer.revoke", extra={"user_id": str(user_id), "rang": rang,
+                                      "reattribue": reattribue})
+    return {
+        "revoque": {"user_id": str(user_id), "rang": rang, "motif": motif[:500]},
+        "reattribue": reattribue,
+        **(await pioneer_stats(db)),
+    }
+
+
+async def list_revocations(db: AsyncSession, limit: int = 100) -> list[dict]:
+    """Journal des révocations, le plus récent d'abord (lecture admin)."""
+    rows = (await db.execute(
+        text(
+            "SELECT r.id, r.user_id, r.rank, r.reason, r.revoked_by, "
+            "r.reassigned_to, r.created_at, u.artist_name AS pseudo "
+            "FROM pioneer_revocations r LEFT JOIN users u ON u.id = r.user_id "
+            "ORDER BY r.created_at DESC LIMIT :lim"
+        ),
+        {"lim": max(1, min(int(limit), 500))},
+    )).all()
+    return [
+        {
+            "id": str(r.id),
+            "user_id": str(r.user_id) if r.user_id else None,
+            "pseudo": r.pseudo,
+            "rang": int(r.rank),
+            "motif": r.reason,
+            "revoque_par": str(r.revoked_by) if r.revoked_by else None,
+            "reattribue_a": str(r.reassigned_to) if r.reassigned_to else None,
+            "date": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

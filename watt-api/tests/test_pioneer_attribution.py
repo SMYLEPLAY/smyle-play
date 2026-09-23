@@ -98,23 +98,21 @@ async def _cleanup(*uids):
 
 
 async def _prefill(jusqua: int) -> str:
-    """Remplit des rangs factices jusqu'à `jusqua` inclus. Renvoie une étiquette
-    de nettoyage."""
+    """Pose des rangs factices sur TOUS les numéros libres de 1..`jusqua`
+    (Lot 2 : les trous laissés par une révocation comptent comme des places).
+    Renvoie une étiquette de nettoyage."""
     tag = uuid.uuid4().hex[:8]
     async with SessionLocal() as db:
-        base = int((await db.execute(
-            text("SELECT COALESCE(MAX(pioneer_rank), 0) FROM users")
-        )).scalar_one())
-        if base < jusqua:
-            await db.execute(
-                text(
-                    "INSERT INTO users (id, email, is_pioneer, pioneer_rank) "
-                    "SELECT gen_random_uuid(), 'pytest-pfill-' || g || '-' || :t "
-                    "|| '@smyleplay.example', TRUE, g FROM generate_series(CAST(:a AS int), CAST(:b AS int)) g"
-                ),
-                {"t": tag, "a": base + 1, "b": jusqua},
-            )
-            await db.commit()
+        await db.execute(
+            text(
+                "INSERT INTO users (id, email, is_pioneer, pioneer_rank) "
+                "SELECT gen_random_uuid(), 'pytest-pfill-' || g || '-' || :t "
+                "|| '@smyleplay.example', TRUE, g FROM generate_series(1, CAST(:b AS int)) g "
+                "WHERE NOT EXISTS (SELECT 1 FROM users WHERE pioneer_rank = g)"
+            ),
+            {"t": tag, "b": jusqua},
+        )
+        await db.commit()
     return tag
 
 
@@ -212,11 +210,14 @@ async def test_tresorerie_et_vitrine_exclus(drapeau):
 async def test_attribution_rang_suivant_idempotente():
     uid = await _createur()
     try:
+        # Lot 2 : l'attribution prend le PLUS PETIT numéro libre (un rang
+        # révoqué laisse un trou qui doit être repris).
         async with SessionLocal() as db:
-            base = int((await db.execute(
-                text("SELECT COALESCE(MAX(pioneer_rank), 0) FROM users"))).scalar_one())
+            attendu = int((await db.execute(text(
+                "SELECT min(r) FROM generate_series(1, 100) r "
+                "WHERE NOT EXISTS (SELECT 1 FROM users WHERE pioneer_rank = r)"))).scalar_one())
         rang = await _award(uid)
-        assert rang == base + 1
+        assert rang == attendu
         assert await _award(uid) == rang          # 2e appel : même rang, rien de neuf
         r = await _rang(uid)
         assert r.pioneer_rank == rang and r.is_pioneer is True
@@ -240,17 +241,20 @@ async def test_plus_aucune_place_au_dela_de_100():
 # ─── 3. CONCURRENCE ───────────────────────────────────────────────────────────
 
 async def test_concurrence_publications_simultanees_rangs_distincts():
-    """10 créateurs publient au même instant : 10 rangs DISTINCTS et
-    CONSÉCUTIFS, aucun doublon (verrou applicatif + UNIQUE en filet)."""
+    """10 créateurs publient au même instant : 10 rangs DISTINCTS (les
+    plus petits numéros libres), aucun doublon (verrou applicatif + UNIQUE en filet)."""
     uids = [await _createur() for _ in range(10)]
     try:
         async with SessionLocal() as db:
-            base = int((await db.execute(
-                text("SELECT COALESCE(MAX(pioneer_rank), 0) FROM users"))).scalar_one())
+            libres = [int(r) for r in (await db.execute(text(
+                "SELECT r FROM generate_series(1, 100) r "
+                "WHERE NOT EXISTS (SELECT 1 FROM users WHERE pioneer_rank = r) "
+                "ORDER BY r LIMIT 10"))).scalars().all()]
         rangs = await asyncio.wait_for(
             asyncio.gather(*(_award(u) for u in uids)), timeout=60)
         assert None not in rangs
-        assert sorted(rangs) == list(range(base + 1, base + 11))
+        # Les 10 plus petits numéros libres (Lot 2 : trous repris).
+        assert sorted(rangs) == libres
         assert len(set(rangs)) == 10
     finally:
         await _cleanup(*uids)

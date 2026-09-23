@@ -125,6 +125,12 @@ class Voice(Base):
         default=False,
         server_default="false",
     )
+    # Lot 2 (migration 0092) — retrait par la modération. Tant que la marque
+    # est posée, un trigger en base garde le contenu caché quel que soit le
+    # chemin d'écriture, et il ne qualifie plus au programme Pionnier.
+    taken_down_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Phase B metadata 2026-05-13 : origine + lien track (CHECK enum côté DB)
     voice_origin: Mapped[str | None] = mapped_column(
         String(20),

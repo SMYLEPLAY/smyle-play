@@ -17,7 +17,10 @@ COLLECTIONS qui regroupent des œuvres déjà comptées), commentaires, messages
 
 « En ligne » exclut automatiquement ce que la modération a retiré : un retrait
 de prompt/image passe `is_published` à false, un retrait de track passe
-`is_deleted` à true (cf. moderation.takedown_content).
+`is_deleted` à true (cf. moderation.takedown_content). Lot 2 : le retrait pose
+aussi `taken_down_at`, exclu EXPLICITEMENT ici — une œuvre retirée ne qualifie
+plus jamais personne, même republiée (le trigger 0092 l'en empêche de toute
+façon ; double filet).
 
 Date : `created_at`. Il n'existe AUCUNE colonne de date de publication dans le
 schéma : un brouillon créé tôt puis publié tard est daté de sa création.
@@ -25,17 +28,17 @@ schéma : un brouillon créé tôt puis publié tard est daté de sa création.
 
 SQL_OEUVRES_EN_LIGNE = """
     SELECT artist_id AS uid, created_at FROM prompts
-        WHERE is_published AND NOT is_deleted
+        WHERE is_published AND NOT is_deleted AND taken_down_at IS NULL
     UNION ALL
     SELECT artist_id, created_at FROM adns
-        WHERE is_published AND NOT is_deleted
+        WHERE is_published AND NOT is_deleted AND taken_down_at IS NULL
     UNION ALL
     SELECT artist_id, created_at FROM visual_adns
-        WHERE is_published AND NOT is_deleted
+        WHERE is_published AND NOT is_deleted AND taken_down_at IS NULL
     UNION ALL
     SELECT artist_id, created_at FROM voices_for_sale
-        WHERE is_published AND NOT is_deleted
+        WHERE is_published AND NOT is_deleted AND taken_down_at IS NULL
     UNION ALL
     SELECT artist_id, created_at FROM tracks
-        WHERE NOT is_deleted
+        WHERE NOT is_deleted AND taken_down_at IS NULL
 """
