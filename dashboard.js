@@ -4638,7 +4638,17 @@ async function loadCreatorStats() {
       tile('🎧', 'Écoutes', s.plays) +
       tile('🛒', 'Ventes', s.sales) +
       tile('💠', 'Smyles gagnés', s.revenue_smyles) +
-      '</div>';
+      // Lot 3 — gains payés par les acheteurs avec des Smyles offerts :
+      // dépensables, mais pas retirables en euros.
+      (Number(s.revenue_non_retirable_smyles) > 0
+        ? tile('🔒', 'Gagnés — non retirables', s.revenue_non_retirable_smyles)
+        : '') +
+      '</div>' +
+      (Number(s.revenue_non_retirable_smyles) > 0
+        ? '<p style="margin:-8px 0 16px;font-size:12px;color:rgba(255,255,255,.55)">' +
+          '« Non retirables » : la part de tes ventes payée par les acheteurs avec des Smyles offerts. ' +
+          'Tu peux les dépenser sur WATT, mais pas les retirer en euros.</p>'
+        : '');
     el.style.display = 'block';
   } catch (_) { /* non connecté / erreur → strip masquée */ }
 }

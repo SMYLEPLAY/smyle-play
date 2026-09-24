@@ -37,6 +37,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.credits import buyer_promo_part, credit_sale_revenue, promo_share
 from app.models.adn import Adn
 from app.models.owned_adn import OwnedAdn
 from app.models.owned_playlist_adn import OwnedPlaylistAdn
@@ -266,12 +267,19 @@ async def unlock_prompt_atomic(
             raise InsufficientCredits(required=paid, available=buyer_balance)
 
         # 7. Transaction PENDING
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=artist_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -299,16 +307,7 @@ async def unlock_prompt_atomic(
         )
 
         # 9. Credit seller (balance + earned_total)
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": artist_id},
-        )
+        await credit_sale_revenue(db, artist_id, artist_revenue, vendeur_promo)
 
         # Brique 1 — la commission plateforme est encaissee par la societe
         # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
@@ -466,12 +465,19 @@ async def unlock_adn_atomic(
         if buyer_balance < paid:
             raise InsufficientCredits(required=paid, available=buyer_balance)
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=artist_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -496,16 +502,7 @@ async def unlock_adn_atomic(
             ),
             {"paid": paid, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": artist_id},
-        )
+        await credit_sale_revenue(db, artist_id, artist_revenue, vendeur_promo)
 
         # Brique 1 — la commission plateforme est encaissee par la societe
         # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
@@ -630,12 +627,19 @@ async def unlock_playlist_adn_atomic(
         if int(buyer_row.credits_balance) < paid:
             raise InsufficientCredits(required=paid, available=int(buyer_row.credits_balance))
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=owner_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -655,16 +659,7 @@ async def unlock_playlist_adn_atomic(
             ),
             {"paid": paid, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": owner_id},
-        )
+        await credit_sale_revenue(db, owner_id, artist_revenue, vendeur_promo)
 
         # Brique 1 — la commission plateforme est encaissee par la societe
         # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
@@ -783,12 +778,19 @@ async def unlock_album_adn_atomic(
         if int(buyer_row.credits_balance) < paid:
             raise InsufficientCredits(required=paid, available=int(buyer_row.credits_balance))
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=owner_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -808,16 +810,7 @@ async def unlock_album_adn_atomic(
             ),
             {"paid": paid, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": owner_id},
-        )
+        await credit_sale_revenue(db, owner_id, artist_revenue, vendeur_promo)
 
         # Brique 1 — la commission plateforme est encaissee par la societe
         # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.

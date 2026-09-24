@@ -132,6 +132,16 @@ class Transaction(Base):
         String(255), nullable=True
     )
     euro_amount_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Lot 3 (migration 0095) — fuite « Smyles offerts → argent réel ».
+    # promo_paid : part du montant payée par l'acheteur en Smyles PROMO (audit).
+    # promo_non_retirable : part créditée aux bénéficiaires en NON retirable
+    # (bucket promo). Immuables (trigger append-only).
+    promo_paid: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    promo_non_retirable: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

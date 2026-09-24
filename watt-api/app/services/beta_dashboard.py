@@ -92,7 +92,8 @@ async def beta_dashboard_data(
             "COALESCE(sum(smyles_achetes), 0) AS achetes, "
             "COALESCE(sum(smyles_gagnes), 0) AS gagnes, "
             "COALESCE(sum(smyles_promo), 0) AS promo, "
-            "COALESCE(sum(smyles_gagnes_bloque), 0) AS gele "
+            "COALESCE(sum(smyles_gagnes_bloque), 0) AS gele, "
+            "COALESCE(sum(smyles_promo_gagnes), 0) AS promo_gagnes "
             # Brique 1 : la trésorerie société est hors circulation (sa
             # commission encaissée n'est ni détenue par un créateur, ni
             # achetée en euros). Exposée à part, pas agrégée ici.
@@ -253,6 +254,8 @@ async def beta_dashboard_data(
                 "gagnes": int(c.gagnes),
                 "dont_gagnes_geles": int(c.gele),
                 "promo": int(c.promo),
+                # Lot 3 : dont gains de vente NON retirables (payés en promo).
+                "dont_promo_gagnes_non_retirables": int(c.promo_gagnes),
                 "total": constate,
             },
             "reconciliation": {

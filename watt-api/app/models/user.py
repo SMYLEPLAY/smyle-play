@@ -264,6 +264,12 @@ class User(Base):
     smyles_gagnes_bloque: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    # Lot 3 (migration 0095) — SOUS-ENSEMBLE de smyles_promo : Smyles gagnés en
+    # vente mais NON retirables (payés par l'acheteur avec des Smyles offerts).
+    # Borné à smyles_promo par un trigger. Affiché « gagnés — non retirables ».
+    smyles_promo_gagnes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     # --- Parrainage (mécanique 1) ---
     # Code unique partageable par l'utilisateur. Généré à l'inscription et

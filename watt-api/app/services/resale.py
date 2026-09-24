@@ -32,6 +32,7 @@ from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.credits import buyer_promo_part, credit_sale_revenue, promo_share
 from app.config import settings
 from app.models.prompt import Prompt
 from app.models.transaction import Transaction, TransactionStatus, TransactionType
@@ -264,6 +265,17 @@ async def buy_resale_atomic(
         # Conservation stricte : rien n'est créé ni perdu dans le split.
         assert artist_royalty + platform_fee + seller_cut == price
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : la part payée en
+        # promo par l'acheteur est répartie au prorata entre le vendeur et
+        # l'artiste d'origine, créditée chez eux en NON retirable. Le reliquat
+        # éventuel suit la commission (jamais retirable). Tracé au ledger.
+        promo_paye = await buyer_promo_part(db, buyer_id, price)
+        vendeur_promo = promo_share(seller_cut, promo_paye, price)
+        artiste_promo = min(
+            promo_share(artist_royalty, promo_paye, price),
+            promo_paye - vendeur_promo,
+        )
+
         # 6. Transaction RESALE (artist_revenue + platform_fee <= credits_amount,
         #    la part vendeur n'y est pas stockée — cf. contrainte assouplie 0047).
         tx = Transaction(
@@ -272,10 +284,13 @@ async def buy_resale_atomic(
             buyer_id=buyer_id,
             seller_id=seller_id,
             credits_amount=price,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo + artiste_promo,
             artist_revenue=artist_royalty,
             platform_fee=platform_fee,
             metadata_json={
                 "source": "resale",
+                "promo": {"vendeur": vendeur_promo, "artiste": artiste_promo},
                 "prompt_id": str(prompt_id),
                 "original_artist_id": str(original_artist_id) if original_artist_id else None,
                 "seller_cut": seller_cut,
@@ -296,24 +311,10 @@ async def buy_resale_atomic(
             {"p": price, "uid": buyer_id},
         )
         # 8. Crédite le vendeur (balance + earned_total).
-        await db.execute(
-            text(
-                "UPDATE users SET credits_balance = credits_balance + :c, "
-                "smyles_gagnes = smyles_gagnes + :c, "
-                "credits_earned_total = credits_earned_total + :c WHERE id = :uid"
-            ),
-            {"c": seller_cut, "uid": seller_id},
-        )
+        await credit_sale_revenue(db, seller_id, seller_cut, vendeur_promo)
         # 9. Royaltie à l'artiste d'origine (si présent et > 0).
         if original_artist_id is not None and artist_royalty > 0:
-            await db.execute(
-                text(
-                    "UPDATE users SET credits_balance = credits_balance + :r, "
-                    "smyles_gagnes = smyles_gagnes + :r, "
-                    "credits_earned_total = credits_earned_total + :r WHERE id = :uid"
-                ),
-                {"r": artist_royalty, "uid": original_artist_id},
-            )
+            await credit_sale_revenue(db, original_artist_id, artist_royalty, artiste_promo)
 
         # Brique 1 — commission encaissee par la societe (bucket NON
         # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.

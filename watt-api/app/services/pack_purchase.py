@@ -13,6 +13,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.credits import buyer_promo_part, credit_sale_revenue, promo_share
 from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.transaction import (
@@ -117,12 +118,19 @@ async def buy_pack_atomic(
         artist_pct = await artist_pct_for_user(db, artist_id)
         artist_revenue, platform_fee = compute_split(price, artist_pct)
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, price)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, price)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=artist_id,
             credits_amount=price,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -145,14 +153,7 @@ async def buy_pack_atomic(
             ),
             {"p": price, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users SET credits_balance = credits_balance + :r, "
-                "smyles_gagnes = smyles_gagnes + :r, "
-                "credits_earned_total = credits_earned_total + :r WHERE id = :uid"
-            ),
-            {"r": artist_revenue, "uid": artist_id},
-        )
+        await credit_sale_revenue(db, artist_id, artist_revenue, vendeur_promo)
 
         # Brique 1 — commission encaissee par la societe (bucket NON
         # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.

@@ -208,10 +208,12 @@ async def test_scenario_deux_comptes_une_vente_un_credit_admin(
         attendu_delta = 2 * WELCOME_BONUS_CREDITS + 100 - commission
         assert ma["en_circulation"]["total"] == \
             mb["en_circulation"]["total"] + attendu_delta
+        # Lot 3 (fuite « offert → argent réel » corrigée) : l'acheteur a payé
+        # entièrement en Smyles promo (bienvenue + crédit admin) → la part
+        # artiste lui est créditée en promo (non retirable), pas en gagnés.
         assert ma["en_circulation"]["promo"] == \
-            mb["en_circulation"]["promo"] + 2 * WELCOME_BONUS_CREDITS + 100 - PRIX
-        assert ma["en_circulation"]["gagnes"] == \
-            mb["en_circulation"]["gagnes"] + part_artiste
+            mb["en_circulation"]["promo"] + 2 * WELCOME_BONUS_CREDITS + 100 - PRIX + part_artiste
+        assert ma["en_circulation"]["gagnes"] == mb["en_circulation"]["gagnes"]
 
         # Réconciliation : notre scénario est parfaitement équilibré, donc
         # l'écart global ne bouge pas d'un Smyle.
