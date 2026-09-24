@@ -68,6 +68,7 @@ from app.routers.catalog import (
     me_pricing_router,
 )
 from app.routers.credits import router as credits_router
+from app.routers.payments import router as payments_router
 from app.routers.follows import router as follows_router
 from app.routers.library import router as library_router
 from app.routers.marketplace import router as marketplace_router
@@ -331,6 +332,7 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(tracks_router)
     app.include_router(credits_router)
+    app.include_router(payments_router)  # Lot 3 — Brique 5 (Stripe)
     app.include_router(transactions_router)
     app.include_router(marketplace_router)
     app.include_router(unlocks_router)

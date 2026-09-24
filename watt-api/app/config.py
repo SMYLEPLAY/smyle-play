@@ -235,6 +235,18 @@ class Settings(BaseSettings):
     # « places restantes » public, et taux Pionnier appliqué.
     FEATURE_PIONEER: bool = False
 
+    # ── Brique 5 — achat de Smyles par carte (Stripe Checkout), Lot 3 ────
+    # Clés UNIQUEMENT par variables d'environnement (Railway) — jamais dans le
+    # code ni dans git. Sans clé secrète, l'achat répond 503 « indisponible ».
+    # Clés de TEST (sk_test_…) tant que Tom n'a pas son compte réel.
+    STRIPE_SECRET_KEY: str | None = None
+    STRIPE_WEBHOOK_SECRET: str | None = None
+    STRIPE_PUBLISHABLE_KEY: str | None = None
+    # Mention de franchise en base de TVA (micro-entreprise), affichée sur la
+    # page de paiement et reprise sur le reçu Stripe. À activer si Tom est en
+    # franchise (art. 293 B du CGI).
+    MENTION_TVA_FRANCHISE: bool = False
+
     # Lot 2 — date d'ouverture publique (AAAA-MM-JJ). Sert au tableau « Prêt à
     # sortir » (critère « 6 mois depuis le lancement » de la sortie M6).
     DATE_LANCEMENT: str = "2026-11-01"

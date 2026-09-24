@@ -40,7 +40,13 @@ async def list_packs():
         )
         for p in CREDIT_PACKS
     ]
-    return CreditPacksResponse(packs=packs)
+    from app.services.stripe_payments import TVA_MENTION, is_configured
+
+    return CreditPacksResponse(
+        packs=packs,
+        mention_tva=TVA_MENTION if settings.MENTION_TVA_FRANCHISE else None,
+        paiement_carte=is_configured(),
+    )
 
 
 @router.post("/grant", response_model=TransactionRead, status_code=status.HTTP_201_CREATED)

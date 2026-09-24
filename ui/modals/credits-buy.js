@@ -7,7 +7,9 @@
  * Architecture :
  *   - Auto-injecté dans le DOM au 1er appel à openCreditsBuyModal()
  *   - Fetch /credits/packs (apiFetch) au boot pour la grille de packs
- *   - Click pack → toast « paiement bientôt disponible » (aucun crédit émis)
+ *   - Lot 3 : clic pack = sélection ; case de renonciation obligatoire ;
+ *     « Payer » → POST /credits/checkout → page de paiement Stripe. Le crédit
+ *     arrive par le webhook signé côté serveur, jamais depuis le navigateur.
  *
  * État réel (S-11, 2026-09-04, annexe A §M5) :
  *   - la modale ne s'ouvre QUE si l'item de mode lancement `achatSmyles` est
@@ -158,6 +160,16 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(255, 215, 0, 0.18);
     }
+    .credits-pack.is-selected { border-color: #ffd700; box-shadow: 0 0 0 2px rgba(255,215,0,.45); }
+    .credits-modal__packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 14px 0 10px; }
+    .credits-buy__tva { margin: 0 0 8px; font-size: 12px; color: rgba(255,255,255,.6); }
+    .credits-buy__consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: rgba(255,255,255,.85); cursor: pointer; margin: 6px 0; }
+    .credits-buy__consent input { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 1px; accent-color: #ffd700; }
+    .credits-buy__legal { font-size: 12px; color: rgba(255,255,255,.55); margin: 6px 0 12px; }
+    .credits-buy__legal a { color: #cc88ff; }
+    .credits-buy__pay { width: 100%; padding: 13px 16px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; background: linear-gradient(120deg, #ffd700, #ff9f1a); color: #1a1206; }
+    .credits-buy__pay:disabled { opacity: .45; cursor: not-allowed; }
+    .credits-buy__pay:focus-visible, .credits-pack:focus-visible { outline: 2px solid #ffd700; outline-offset: 2px; }
     .credits-pack.is-loading {
       opacity: 0.6;
       cursor: wait;
@@ -280,6 +292,21 @@
           d'artistes. Tu en gagnes en explorant, en publiant et en revenant.
         </p>
 
+        <!-- Lot 3 — Brique 5 : achat par carte (Stripe Checkout). Le crédit
+             arrive par le serveur (webhook signé), jamais depuis cette page. -->
+        <div class="credits-buy" id="creditsBuyBlock">
+          <div class="credits-modal__packs" id="creditsPacks"></div>
+          <p class="credits-buy__tva" id="creditsTva" hidden></p>
+          <label class="credits-buy__consent">
+            <input type="checkbox" id="creditsConsent" />
+            <span>Je demande la fourniture immédiate du contenu numérique et je renonce à mon droit de rétractation.</span>
+          </label>
+          <p class="credits-buy__legal">En payant, tu acceptes les
+            <a href="/legal#cgv-smyles" target="_blank" rel="noopener">conditions de vente des Smyles</a>.
+            Paiement sécurisé par Stripe : WATT ne voit jamais ta carte.</p>
+          <button type="button" class="credits-buy__pay" id="creditsPayBtn" disabled>Choisis un pack</button>
+        </div>
+
         <div class="credits-modal__earn">
           <button type="button" class="credits-earn" id="creditsEarnStreak">
             <span class="credits-earn__ico" aria-hidden="true">🔥</span>
@@ -298,6 +325,11 @@
         </div>
       </div>
     `;
+
+    const _consent = modal.querySelector('#creditsConsent');
+    if (_consent) _consent.addEventListener('change', _refreshPayBtn);
+    const _pay = modal.querySelector('#creditsPayBtn');
+    if (_pay) _pay.addEventListener('click', _payByCard);
 
     // Click outside the modal closes it
     modal.addEventListener('click', (ev) => {
@@ -346,6 +378,11 @@
     try {
       const data = await apiFetch('/credits/packs');
       const packs = (data && data.packs) || [];
+      const tva = document.getElementById('creditsTva');
+      if (tva) {
+        tva.hidden = !(data && data.mention_tva);
+        tva.textContent = (data && data.mention_tva) || '';
+      }
       if (packs.length === 0) {
         container.innerHTML = '<div class="credits-modal__error">Aucun pack disponible pour le moment.</div>';
         return;
@@ -360,8 +397,8 @@
             ? `${(unitCents / 100).toFixed(2)} € / Smyle`
             : '';
           return `
-            <button type="button" class="credits-pack" data-pack-id="${p.id}"
-              data-pack-credits="${p.credits}"
+            <button type="button" class="credits-pack" data-pack-id="${String(p.id).replace(/[^a-z0-9_]/gi, '')}"
+              data-pack-credits="${p.credits}" data-pack-price="${String(priceDisplay).replace(/[<>"'`&]/g, '')}"
               onclick="window._creditsBuyPack(this)">
               <span class="credits-pack__credits">${p.credits}</span>
               <span class="credits-pack__credits-label">Smyles</span>
@@ -382,6 +419,45 @@
     }
   }
 
+  // ── Lot 3 — sélection du pack + paiement par carte ─────────────────────
+  let _selectedPack = null;
+
+  function _refreshPayBtn() {
+    const btn = document.getElementById('creditsPayBtn');
+    const consent = document.getElementById('creditsConsent');
+    if (!btn) return;
+    const ok = !!_selectedPack && !!(consent && consent.checked);
+    btn.disabled = !ok;
+    btn.textContent = _selectedPack
+      ? `Payer ${_selectedPack.price} par carte`
+      : 'Choisis un pack';
+  }
+
+  async function _payByCard() {
+    const btn = document.getElementById('creditsPayBtn');
+    const consent = document.getElementById('creditsConsent');
+    if (!_selectedPack || !consent || !consent.checked || !btn) return;
+    btn.disabled = true;
+    btn.textContent = 'Ouverture du paiement…';
+    try {
+      const out = await apiFetch('/credits/checkout', {
+        method: 'POST',
+        json: { pack_id: _selectedPack.id, renonce_retractation: true },
+      });
+      if (out && out.url && /^https:\/\/checkout\.stripe\.com\//.test(out.url)) {
+        window.location.href = out.url;
+        return;
+      }
+      throw new Error('url');
+    } catch (err) {
+      const s = err && err.status;
+      _toast(s === 503
+        ? 'Le paiement par carte n\'est pas encore disponible.'
+        : 'Impossible d\'ouvrir le paiement. Réessaie dans un instant.', 'error');
+      _refreshPayBtn();
+    }
+  }
+
   // ── Achat d'un pack ────────────────────────────────────────────────────
   // S-11 (2026-09-04, annexe A §M5) — l'appel POST /credits/grant est RETIRÉ.
   // C'était le stub « V1 gratuit » d'avant le gate is_official : depuis, il
@@ -393,7 +469,15 @@
     if (!btn || btn.classList.contains('is-loading')) return;
     const credits = parseInt(btn.getAttribute('data-pack-credits'), 10);
     if (!credits || credits <= 0) return;
-    _toast('Paiement bientôt disponible — tes Smyles se gagnent en attendant.', 'info');
+    // Lot 3 : un clic SÉLECTIONNE le pack ; le paiement part du bouton
+    // « Payer », seulement une fois la case de renonciation cochée.
+    document.querySelectorAll('#creditsPacks .credits-pack').forEach((b) => b.classList.remove('is-selected'));
+    btn.classList.add('is-selected');
+    _selectedPack = {
+      id: btn.getAttribute('data-pack-id'),
+      price: btn.getAttribute('data-pack-price') || '',
+    };
+    _refreshPayBtn();
   }
 
   function _toast(text, type) {
@@ -437,6 +521,30 @@
     if (modal) modal.classList.remove('is-open');
     document.body.style.overflow = '';
   }
+
+  // Lot 3 — retour de la page de paiement Stripe (?achat=ok / ?achat=annule).
+  // Rien n'est crédité ici : le serveur crédite à la réception du webhook
+  // signé. On prévient simplement et on rafraîchit le solde quelques fois.
+  function _handleReturn() {
+    let q;
+    try { q = new URLSearchParams(window.location.search).get('achat'); } catch (_) { return; }
+    if (!q) return;
+    if (q === 'ok') {
+      _toast('Paiement reçu — tes Smyles arrivent dans quelques secondes.', 'success');
+      [3000, 8000, 15000].forEach((ms) => setTimeout(() => {
+        try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
+      }, ms));
+    } else if (q === 'annule') {
+      _toast('Paiement annulé — aucun montant n\'a été prélevé.', 'info');
+    }
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('achat');
+      window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _handleReturn);
+  else _handleReturn();
 
   // Expositions globales
   window.openCreditsBuyModal  = openCreditsBuyModal;
