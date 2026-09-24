@@ -205,7 +205,9 @@ class Settings(BaseSettings):
     # plus rien en arrière-plan (trophées : grant coupé dans le service ;
     # série quotidienne : seule sa route crédite). Données existantes intactes,
     # elles réapparaissent au rallumage.
-    SHOW_OFFRES_ADN: bool = False   # offres sur ADN (/adn-offers)
+    # Lot 3 (décision Tom 23/09) : VISIBLE au lancement — c'est le seul moyen
+    # d'acheter un ADN. L'interrupteur est gardé pour pouvoir le couper.
+    SHOW_OFFRES_ADN: bool = True    # offres sur ADN (/adn-offers)
     SHOW_MESSAGERIE: bool = False   # messagerie privée (/messages)
     SHOW_SERIE: bool = False        # série quotidienne (/streak)
     SHOW_TROPHEES: bool = False     # trophées + leurs récompenses en Smyles
