@@ -49,6 +49,8 @@
       background: linear-gradient(120deg, #7c5cff, #0055ff); color: #fff; white-space: nowrap; }
     .o-btn:focus-visible, .o-share:focus-visible { outline: 2px solid var(--sp-gold, #ffd700); outline-offset: 2px; }
     .o-bundle[hidden] { display: none; }
+    .o-btn--bundle { width: 100%; padding: 13px 16px; font-size: 14px; background: linear-gradient(120deg, #ffd700, #ff9f1a); color: #1a1206; }
+    .o-bundle-note { margin: 6px 0 0; font-size: 12px; color: var(--sp-text-muted, rgba(255,255,255,.72)); }
     .o-report { align-self: flex-start; background: none; border: none; padding: 4px 0; cursor: pointer;
       color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: 12px; text-decoration: underline; }
     .o-share { align-self: flex-start; padding: 10px 14px; border-radius: 11px; cursor: pointer; font-weight: 600; font-size: 13px;
@@ -82,9 +84,8 @@
         <div class="o-half" id="o-half-son"></div>
         <div class="o-half" id="o-half-image"></div>
 
-        <!-- Achat de l'Œuvre entière : emplacement RÉSERVÉ. Le prix est une
-             décision d'argent en attente (Tom) ; rien n'est vendu ici tant que
-             l'API ne renvoie pas `bundle`. Chaque moitié reste achetable à part. -->
+        <!-- Achat de l'Œuvre entière (Lot 3) : son + image − 10 %, un seul achat.
+             Chaque moitié reste aussi achetable à part. -->
         <div class="o-bundle" id="o-bundle" hidden></div>
 
         <button type="button" class="o-share" id="o-share">Copier le lien de l'œuvre</button>
