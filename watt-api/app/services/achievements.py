@@ -197,19 +197,17 @@ async def check_and_grant_achievements(
     Le caller commit. On utilise begin_nested pour isoler chaque grant
     (un grant qui foire ne pollue pas les autres).
     """
-    # Lot 1 (pré-lancement) — « caché = inerte ». Quand les trophées sont
-    # masqués par le mode lancement, on ne débloque RIEN et on ne crédite RIEN :
-    # sinon des utilisateurs recevraient des Smyles BONUS pour une mécanique
-    # qu'ils ne voient pas. Coupé ICI, à la source, parce que cette fonction est
-    # appelée en arrière-plan depuis ~20 endroits (déblocages, publications,
-    # parrainage, ventes…).
-    # Au RALLUMAGE : les paliers sont cumulatifs (compteur ≥ seuil), donc la
-    # prochaine action d'un utilisateur sur un axe débloque d'un coup tous les
-    # paliers déjà atteints, avec leurs récompenses (rattrapage).
+    # Lot 1 + Lot 3 (décision Tom 23/09) — trophées MASQUÉS au lancement.
+    # « Caché = inerte » côté argent : AUCUN Smyle n'est crédité tant que les
+    # trophées sont masqués. Mais le palier franchi est ENREGISTRÉ tout de
+    # suite, sans récompense (`reward_forfeited`) et sans rien renvoyer à
+    # l'interface. Au rallumage, ces badges apparaissent ; seuls les paliers
+    # franchis APRÈS le rallumage créditent — pas de rattrapage massif de
+    # Smyles. (Équivalent robuste d'une « date de réactivation » : certains
+    # axes, comme les gains cumulés ou la série, ne sont pas datables.)
     from app.config import settings  # import local : pas de cycle
 
-    if not settings.launch_flags_dict()["trophees"]:
-        return []
+    masque = not settings.launch_flags_dict()["trophees"]
 
     progress = await get_user_progress(db, user_id=user_id, axis=axis)
     if progress <= 0:
@@ -244,12 +242,14 @@ async def check_and_grant_achievements(
                 ua = UserAchievement(
                     user_id=user_id,
                     achievement_id=ach.id,
+                    reward_forfeited=masque,
                 )
                 db.add(ua)
                 await db.flush()  # déclenche UNIQUE check tôt
 
-                # Grant des crédits BONUS si reward > 0
-                if ach.credit_reward > 0:
+                # Grant des crédits BONUS si reward > 0 — jamais pendant le
+                # masquage (badge seul).
+                if ach.credit_reward > 0 and not masque:
                     bonus_tx = await grant_credits_atomic(
                         db,
                         user_id=user_id,
@@ -273,7 +273,52 @@ async def check_and_grant_achievements(
             # C'est attendu, on continue avec les autres candidates.
             continue
 
-    return newly_unlocked
+    # Masqués : rien n'est annoncé à l'interface (la fonctionnalité n'existe
+    # pas encore pour l'utilisateur).
+    return [] if masque else newly_unlocked
+
+
+async def enregistrer_paliers_sans_recompense(db: AsyncSession) -> dict:
+    """Lot 3 — à lancer par l'admin JUSTE AVANT de rallumer les trophées.
+
+    Filet de sécurité du principe « paliers déjà atteints = badge sans
+    Smyles » : pour chaque compte et chaque axe, tout palier déjà atteint mais
+    pas encore enregistré (progression faite par un chemin qui n'appelle pas
+    le calcul des trophées) est enregistré SANS récompense. Idempotent
+    (UNIQUE user/palier). N'écrit aucun Smyle. Le caller commit.
+    """
+    achievements = list((await db.execute(select(Achievement))).scalars().all())
+    by_axis: dict = {}
+    for ach in achievements:
+        by_axis.setdefault(ach.axis, []).append(ach)
+    user_ids = list((await db.execute(
+        select(User.id).where(User.is_treasury.is_(False))
+    )).scalars().all())
+    deja = {
+        (r.user_id, r.achievement_id)
+        for r in (await db.execute(
+            select(UserAchievement.user_id, UserAchievement.achievement_id)
+        )).all()
+    }
+    ajoutes = 0
+    for uid in user_ids:
+        for axis, achs in by_axis.items():
+            manquants = [a for a in achs if (uid, a.id) not in deja]
+            if not manquants:
+                continue
+            progress = await get_user_progress(db, user_id=uid, axis=axis)
+            for ach in manquants:
+                if ach.threshold <= progress:
+                    try:
+                        async with db.begin_nested():
+                            db.add(UserAchievement(
+                                user_id=uid, achievement_id=ach.id, reward_forfeited=True,
+                            ))
+                            await db.flush()
+                        ajoutes += 1
+                    except IntegrityError:
+                        continue
+    return {"comptes": len(user_ids), "badges_sans_recompense_ajoutes": ajoutes}
 
 
 # -----------------------------------------------------------------------------

@@ -190,20 +190,53 @@ async def test_trophees_caches_ne_creditent_rien(monkeypatch):
         await _cleanup(uid)
 
 
-async def test_trophees_rallumes_rattrapent_les_paliers_atteints(monkeypatch):
-    """Paliers cumulatifs : rallumés, la prochaine action débloque ce qui était
-    atteint pendant la période cachée (comportement à connaître pour M1)."""
+async def test_trophees_rallumes_badge_sans_smyles_pour_les_paliers_deja_atteints(monkeypatch):
+    """Lot 3 (décision Tom 23/09) : un palier franchi pendant le masquage est
+    enregistré SANS récompense ; au rallumage, il n'est PAS crédité. Seuls les
+    paliers franchis après le rallumage créditent."""
     uid = await _user()
     try:
         monkeypatch.setattr(settings, "SHOW_TROPHEES", False)
-        await _publier_image(uid)                  # progression pendant « caché »
+        await _publier_image(uid)                  # palier 1 franchi pendant « caché »
+        async with SessionLocal() as db:
+            assert await check_and_grant_achievements(
+                db, user_id=uid, axis=AchievementAxis.IMAGE_CREATOR) == []
+            await db.commit()
+        async with SessionLocal() as db:
+            n, forf = (await db.execute(text(
+                "SELECT count(*), bool_and(reward_forfeited) FROM user_achievements "
+                "WHERE user_id = :u"), {"u": uid})).first()
+        assert n >= 1 and forf is True             # badge acquis, marqué sans récompense
         monkeypatch.setattr(settings, "SHOW_TROPHEES", True)
         async with SessionLocal() as db:
             out = await check_and_grant_achievements(
                 db, user_id=uid, axis=AchievementAxis.IMAGE_CREATOR)
             await db.commit()
-        assert len(out) >= 1
-        assert await _bonus_trophees(uid) >= 1
+        assert out == []                           # rien de neuf
+        assert await _bonus_trophees(uid) == 0     # aucun Smyle de rattrapage
+    finally:
+        await _cleanup(uid)
+
+
+async def test_preparation_du_rallumage_filet_de_securite(monkeypatch):
+    """Progression faite par un chemin qui n'appelle pas le calcul : l'action
+    admin « préparer le rallumage » enregistre le palier sans Smyles."""
+    from app.services.achievements import enregistrer_paliers_sans_recompense
+
+    uid = await _user()
+    try:
+        monkeypatch.setattr(settings, "SHOW_TROPHEES", False)
+        await _publier_image(uid)                  # aucun calcul déclenché
+        async with SessionLocal() as db:
+            out = await enregistrer_paliers_sans_recompense(db)
+            await db.commit()
+        assert out["badges_sans_recompense_ajoutes"] >= 1
+        monkeypatch.setattr(settings, "SHOW_TROPHEES", True)
+        async with SessionLocal() as db:
+            assert await check_and_grant_achievements(
+                db, user_id=uid, axis=AchievementAxis.IMAGE_CREATOR) == []
+            await db.commit()
+        assert await _bonus_trophees(uid) == 0
     finally:
         await _cleanup(uid)
 

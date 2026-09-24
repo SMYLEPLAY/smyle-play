@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Enum as SQLEnum,
@@ -139,4 +140,9 @@ class UserAchievement(Base):
         UUID(as_uuid=True),
         ForeignKey("transactions.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    # Lot 3 (migration 0096) — palier franchi pendant que les trophées étaient
+    # MASQUÉS : badge acquis, mais AUCUN Smyle (décision Tom 23/09).
+    reward_forfeited: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
     )

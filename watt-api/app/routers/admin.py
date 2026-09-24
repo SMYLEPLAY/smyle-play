@@ -468,3 +468,20 @@ async def pret_a_sortir(
     from app.services.launch_readiness import readiness
 
     return await readiness(db)
+
+
+# ── Trophées : préparation du rallumage (Lot 3, décision Tom 23/09) ─────────
+
+@router.post("/trophees/preparer-rallumage")
+async def trophees_preparer_rallumage(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """À lancer juste AVANT de passer SHOW_TROPHEES à true : enregistre, sans
+    aucun Smyle, les paliers déjà atteints. Après le rallumage, seuls les
+    paliers franchis ensuite créditent. Idempotent, sans risque de le relancer."""
+    from app.services.achievements import enregistrer_paliers_sans_recompense
+
+    out = await enregistrer_paliers_sans_recompense(db)
+    await db.commit()
+    return out
