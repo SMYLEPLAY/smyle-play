@@ -109,6 +109,14 @@ async def create_report(
         reason=payload.reason,
         detail=payload.detail,
     )
+    # Lot 3 — un signalement ANONYME sans détail ni email violait la
+    # contrainte ck_content_reports_not_empty (erreur 500). On répond une
+    # erreur claire à la place.
+    if report.reporter_id is None and not report.reporter_email and not (payload.detail or "").strip():
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Ajoute un détail (ou ton email) pour qu'on puisse traiter le signalement.",
+        )
     db.add(report)
     await db.flush()
 

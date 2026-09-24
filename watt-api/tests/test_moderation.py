@@ -159,6 +159,7 @@ async def test_takedown_notifie_lauteur(client: AsyncClient):
         r = await client.post("/reports", json={
             "target_type": "track", "target_id": str(track_id),
             "reason": "contenu_illegal",
+            "detail": "Signalement de test.",
         })
         report_id = r.json()["id"]
 
@@ -191,6 +192,7 @@ async def test_takedown_ban_owner_notifie_retrait_et_suspension(client: AsyncCli
         r = await client.post("/reports", json={
             "target_type": "track", "target_id": str(track_id),
             "reason": "haine_violence",
+            "detail": "Signalement de test.",
         })
         report_id = r.json()["id"]
 
