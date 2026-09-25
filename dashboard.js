@@ -1525,131 +1525,59 @@ async function openTrackEdit(localId) {
 // Le pivot côté son est le prompt-recette (t.promptId) : c'est lui qui porte
 // linked_prompt_id. Sans recette liée, on invite l'artiste à en lier une.
 async function renderOeuvreCompleteSon(t) {
+  // Lot 2 : l'Œuvre se construit au niveau du MORCEAU (avec ou sans recette).
   const box = document.getElementById('dteOeuvreBox');
   if (!box) return;
-  const promptId = t && t.promptId;
-  if (!promptId) {
+  const trackId = t && t.dbId;
+  if (!trackId) {
     box.innerHTML =
-      `<span class="dte-hint">Lie d'abord une recette (ADN) à ce son pour pouvoir le réunir avec une image en « Œuvre complète ».</span>`;
+      `<span class="dte-hint">Ce son n'est pas encore enregistré en ligne : publie-le pour pouvoir lui ajouter une image.</span>`;
     return;
   }
   box.innerHTML = `<span class="dte-hint">Chargement…</span>`;
-  // On lit l'état de lien du prompt via /artist/me/prompts (linked_prompt_id).
-  let linkedPartner = null;
+  let state = null;
   try {
-    const resp = await apiFetch('/artist/me/prompts');
-    const items = (resp && Array.isArray(resp.items)) ? resp.items
-                : (Array.isArray(resp) ? resp : []);
-    const mine = items.find(p => p && p.id === promptId);
-    if (mine && (mine.linked_prompt_id || mine.linkedPromptId)) {
-      linkedPartner = mine.linked_prompt_id || mine.linkedPromptId;
-    }
+    state = await apiFetch(`/artist/me/tracks/${encodeURIComponent(trackId)}/link`);
   } catch (_) {}
-  if (linkedPartner) {
-    renderOeuvreLinkedState(box, promptId, () => renderOeuvreCompleteSon(t));
-  } else {
-    renderOeuvreUnlinkedState(box, promptId, 'image', () => renderOeuvreCompleteSon(t));
+  const refresh = () => renderOeuvreCompleteSon(t);
+  if (state && state.linked && state.oeuvreId) {
+    const imgTitle = (state.image && state.image.title) || 'image';
+    box.innerHTML =
+      `<div class="dte-oeuvre-linked">` +
+        `<span class="dte-oeuvre-linked-label">🔗 Œuvre avec « ${htmlEscape(imgTitle)} »</span>` +
+        `<a class="dash-btn-ghost" href="/o/${encodeURIComponent(state.oeuvreId)}" target="_blank" rel="noopener">Voir l'œuvre</a>` +
+        `<button type="button" class="dash-btn-ghost dte-oeuvre-unlink-btn">Délier</button>` +
+      `</div>` +
+      `<span class="dte-hint">Le son et l'image restent vendables séparément.</span>`;
+    const btn = box.querySelector('.dte-oeuvre-unlink-btn');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          await apiFetch(`/artist/me/tracks/${encodeURIComponent(trackId)}/link`,
+            { method: 'DELETE', raw: true });
+          dashToast('Œuvre déliée ✓');
+          refresh();
+        } catch (err) {
+          btn.disabled = false;
+          dashToast('Erreur : ' + (err && err.message || 'déliaison impossible'));
+        }
+      });
+    }
+    return;
   }
-}
-
-// État « lié » : affiche le partenaire + bouton Délier. On récupère un aperçu
-// du partenaire via /linkable n'est pas adapté (il liste les libres), donc on
-// affiche un libellé générique + le bouton Délier (DELETE idempotent).
-function renderOeuvreLinkedState(box, promptId, onRefresh) {
   box.innerHTML =
-    `<div class="dte-oeuvre-linked">` +
-      `<span class="dte-oeuvre-linked-label">🔗 Réuni en œuvre complète</span>` +
-      `<button type="button" class="dash-btn-ghost dte-oeuvre-unlink-btn">Délier</button>` +
-    `</div>` +
-    `<span class="dte-hint">Les deux produits restent vendables séparément.</span>`;
-  const btn = box.querySelector('.dte-oeuvre-unlink-btn');
-  if (btn) {
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      try {
-        await apiFetch(`/artist/me/prompts/${encodeURIComponent(promptId)}/link`,
-          { method: 'DELETE', raw: true });
-        dashToast('Œuvre déliée ✓');
-        if (typeof onRefresh === 'function') onRefresh();
-      } catch (err) {
-        btn.disabled = false;
-        dashToast('Erreur : ' + (err && err.message || 'déliaison impossible'));
+    `<button type="button" class="dash-btn-ghost dte-oeuvre-link-btn">🖼 Ajouter une image</button>` +
+    `<span class="dte-hint">Un son + une image = une œuvre, avec sa page à partager. Ça marche aussi pour un son sans recette.</span>`;
+  const addBtn = box.querySelector('.dte-oeuvre-link-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      if (window.SmyleOeuvreInvite) {
+        closeTrackEdit();
+        window.SmyleOeuvreInvite.afterSound({ trackId, title: t.name || '' });
       }
     });
   }
-}
-
-// État « non lié » : bouton « Lier à une <image|son> » → charge les candidats
-// (/linkable) et propose un sélecteur. Au choix → POST link bundle_exclusive=false.
-function renderOeuvreUnlinkedState(box, promptId, kindLabel, onRefresh) {
-  const label = kindLabel === 'image' ? 'une image' : 'un son';
-  box.innerHTML =
-    `<button type="button" class="dash-btn-ghost dte-oeuvre-link-btn">🔗 Lier à ${label}</button>` +
-    `<span class="dte-hint">Réunis ce produit avec ${label} en « Œuvre complète » (les deux restent vendables séparément).</span>` +
-    `<div class="dte-oeuvre-candidates" style="display:none"></div>`;
-  const btn = box.querySelector('.dte-oeuvre-link-btn');
-  const list = box.querySelector('.dte-oeuvre-candidates');
-  if (!btn || !list) return;
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    list.style.display = 'block';
-    list.innerHTML = `<span class="dte-hint">Chargement des candidats…</span>`;
-    let candidates = [];
-    try {
-      candidates = await apiFetch(
-        `/artist/me/prompts/${encodeURIComponent(promptId)}/linkable`);
-      candidates = Array.isArray(candidates) ? candidates : [];
-    } catch (err) {
-      list.innerHTML = `<span class="dte-hint">Erreur de chargement : ${htmlEscape(err && err.message || '')}</span>`;
-      btn.disabled = false;
-      return;
-    }
-    if (candidates.length === 0) {
-      const empty = kindLabel === 'image'
-        ? `Aucune image disponible à lier — crée-en une d'abord.`
-        : `Aucun son disponible à lier — crée-en un d'abord.`;
-      list.innerHTML = `<span class="dte-hint">${empty}</span>`;
-      btn.disabled = false;
-      return;
-    }
-    list.innerHTML = candidates.map(c => {
-      const thumb = c.coverUrl
-        ? `<img src="${htmlEscape(c.coverUrl)}" alt="" class="dte-oeuvre-thumb">`
-        : (c.previewKey
-            ? `<img src="/watt/images/${String(c.previewKey).split('/').map(encodeURIComponent).join('/')}" alt="" class="dte-oeuvre-thumb">`
-            : `<span class="dte-oeuvre-thumb dte-oeuvre-thumb-ph">${kindLabel === 'image' ? '🖼️' : '🎵'}</span>`);
-      return `<button type="button" class="dte-oeuvre-cand" data-cand-id="${htmlEscape(c.id)}">` +
-        thumb +
-        `<span class="dte-oeuvre-cand-title">${htmlEscape(c.title || 'Sans titre')}</span>` +
-        `<span class="dte-oeuvre-cand-price">${htmlEscape(String(c.priceCredits))} Smyles</span>` +
-      `</button>`;
-    }).join('');
-    list.querySelectorAll('.dte-oeuvre-cand').forEach(cb => {
-      cb.addEventListener('click', async () => {
-        const otherId = cb.getAttribute('data-cand-id');
-        list.querySelectorAll('.dte-oeuvre-cand').forEach(x => x.disabled = true);
-        try {
-          // bundle_exclusive=false EN DUR : lien rétroactif → les deux produits
-          // restent visibles individuellement (ils avaient une vie publique).
-          await apiFetch(`/artist/me/prompts/${encodeURIComponent(promptId)}/link`, {
-            method: 'POST',
-            json: { other_prompt_id: otherId, bundle_exclusive: false },
-            raw: true,
-          });
-          dashToast('Œuvre complète créée ✓');
-          if (typeof onRefresh === 'function') onRefresh();
-        } catch (err) {
-          const st = err && err.status;
-          const msg = st === 409
-            ? 'Lien impossible (déjà lié ou natures incompatibles).'
-            : ('Erreur : ' + (err && err.message || 'lien impossible'));
-          dashToast(msg);
-          list.querySelectorAll('.dte-oeuvre-cand').forEach(x => x.disabled = false);
-        }
-      });
-    });
-    btn.disabled = false;
-  });
 }
 
 function closeTrackEdit() {
@@ -2588,6 +2516,37 @@ async function uploadTrack() {
   // C1 — rafraîchit les compteurs des tuiles WattBoard v3 (sons/beats/…)
   try { if (window.WattBoardV3) window.WattBoardV3.refresh(); } catch (_) {}
   dashToast(`⚡ "${name}" publié sur WATT !`);
+
+  // Lot 2 — Œuvre (1 son + 1 image) : juste après la publication, on propose
+  // de compléter. Trois cas :
+  //   1. l'artiste venait de « Créer une nouvelle image » depuis une image
+  //      en attente → on lie directement ce son à cette image ;
+  //   2. la pochette a déjà été vendue comme image (œuvre créée) → on montre
+  //      le lien à partager ;
+  //   3. sinon → « Ajoute une image » (une existante ou une nouvelle).
+  try { await _proposeOeuvreAfterSound(dbTrackId, name); } catch (_) {}
+}
+
+async function _proposeOeuvreAfterSound(trackId, name) {
+  const OI = window.SmyleOeuvreInvite;
+  if (!OI || !trackId) return;
+  const pendingImage = OI.consumePending('image');
+  if (pendingImage) {
+    try {
+      const resp = await OI.linkTrackImage(trackId, pendingImage);
+      OI.showDone(resp);
+    } catch (e) {
+      dashToast('Son publié, mais ajout à l\'image impossible : ' + _humanizeApiError(e));
+    }
+    return;
+  }
+  let state = null;
+  try { state = await apiFetch(`/artist/me/tracks/${encodeURIComponent(trackId)}/link`); } catch (_) {}
+  if (state && state.linked && state.oeuvreId) {
+    OI.showDone({ oeuvreId: state.oeuvreId, url: '/o/' + state.oeuvreId });
+    return;
+  }
+  OI.afterSound({ trackId, title: name });
 }
 
 // ── 8. PROFIL ─────────────────────────────────────────────────────────────────
@@ -4679,7 +4638,17 @@ async function loadCreatorStats() {
       tile('🎧', 'Écoutes', s.plays) +
       tile('🛒', 'Ventes', s.sales) +
       tile('💠', 'Smyles gagnés', s.revenue_smyles) +
-      '</div>';
+      // Lot 3 — gains payés par les acheteurs avec des Smyles offerts :
+      // dépensables, mais pas retirables en euros.
+      (Number(s.revenue_non_retirable_smyles) > 0
+        ? tile('🔒', 'Gagnés — non retirables', s.revenue_non_retirable_smyles)
+        : '') +
+      '</div>' +
+      (Number(s.revenue_non_retirable_smyles) > 0
+        ? '<p style="margin:-8px 0 16px;font-size:12px;color:rgba(255,255,255,.55)">' +
+          '« Non retirables » : la part de tes ventes payée par les acheteurs avec des Smyles offerts. ' +
+          'Tu peux les dépenser sur WATT, mais pas les retirer en euros.</p>'
+        : '');
     el.style.display = 'block';
   } catch (_) { /* non connecté / erreur → strip masquée */ }
 }
@@ -4828,6 +4797,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // Section échanges — chargement initial + scroll auto si #trades dans l'URL
   loadTrades();
   loadTrophees();
+  // Lot 1 (pré-lancement) : beats cachés → on MASQUE (sans retirer) les cases
+  // « Proposer comme beat ». Masquer plutôt que retirer : la case d'édition
+  // garde l'état réel du son (is_beat) et le renvoie tel quel à
+  // l'enregistrement, donc aucun beat existant n'est dé-flagué en douce.
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.beats)) {
+    const up = document.querySelector('.dash-beat-flag');
+    if (up) up.style.display = 'none';
+    const ed = document.getElementById('dte2BeatFlag');
+    const edGroup = ed && ed.closest('.dte2-field-group');
+    if (edGroup) edGroup.style.display = 'none';
+  }
+  // Lot 1 : albums cachés → l'écran « ADN Album » (#sec-adn-visuel) est retiré
+  // (son module AdnVisuel.init() sort tout seul si la section est absente).
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.albums)) {
+    const advSec = document.getElementById('sec-adn-visuel');
+    if (advSec) advSec.remove();
+  }
   if (location.hash === '#trades' || location.hash === '#sec-trades') {
     setTimeout(() => {
       const sec = document.getElementById('sec-trades');
@@ -5808,6 +5794,16 @@ const AXIS_ICON  = { buyer: '🛒', fan: '🎚', artist: '🎵', trader: '🔄',
 const TPH_AXES = ['buyer', 'fan', 'artist', 'trader', 'referrer', 'streak', 'collector', 'image_creator', 'image_seller', 'visual_dna'];
 
 async function loadTrophees() {
+  // Lot 1 (pré-lancement) : trophées cachés au lancement. On retire la pastille
+  // de navigation et la section, et on n'appelle aucune API (drapeau absent →
+  // caché). Réapparaissent au rallumage (SHOW_TROPHEES).
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.trophees)) {
+    ['pill-trophees', 'sec-trophees'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    return;
+  }
   const grid = document.getElementById('tphGrid');
   if (!grid) return;
 

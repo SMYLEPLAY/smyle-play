@@ -28,6 +28,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.prompt import Prompt
@@ -42,8 +43,18 @@ from app.schemas.album import (
 from app.services import albums as svc
 
 
-router = APIRouter(prefix="/albums", tags=["albums"])
-public_router = APIRouter(prefix="/watt", tags=["watt-albums"])
+router = APIRouter(
+    prefix="/albums",
+    tags=["albums"],
+    # Lot 1 : albums cachés au lancement. Données intactes, réapparaissent
+    # au rallumage.
+    dependencies=[Depends(require_launch_item("albums"))],
+)
+public_router = APIRouter(
+    prefix="/watt",
+    tags=["watt-albums"],
+    dependencies=[Depends(require_launch_item("albums"))],  # Lot 1
+)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────

@@ -581,6 +581,8 @@ async def unlock_visual_adn(
     "/album-adn/{album_id}",
     status_code=status.HTTP_200_OK,
     summary="Achète l'ADN d'un album d'images public",
+    # Lot 1 : ADN d'album caché avec les albums.
+    dependencies=[Depends(require_launch_item("albums"))],
 )
 @limiter.limit(LIMIT_PURCHASE)
 async def unlock_album_adn(

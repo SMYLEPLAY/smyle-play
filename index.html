@@ -235,11 +235,12 @@
 <nav class="mp-cat-nav" id="mp-cat-nav" aria-label="Catégories">
   <!-- Mode Musique (Tout = catalogue complet des sons ; Beats/Voix = sous-vues) -->
   <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/sons">🗂 Tout</a>
-  <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/beats">🥁 Beats</a>
+  <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/beats" id="mp-cat-beats">🥁 Beats</a>
   <a class="mp-voir-tout mp-cat-link mp-cat-musique" href="/voix" id="mp-cat-voix">🎙 Voix</a>
   <!-- MODE LANCEMENT — VOIX masquée : retire le lien si l'item n'est pas
        VISIBLE. Défensif : window.WATT_LAUNCH absent → masqué. -->
   <script>(function(){var f=window.WATT_LAUNCH||{};if(!f.voix){var e=document.getElementById('mp-cat-voix');if(e&&e.parentNode)e.parentNode.removeChild(e);}})();</script>
+  <script>(function(){var f=window.WATT_LAUNCH||{};if(!f.beats){var e=document.getElementById('mp-cat-beats');if(e&&e.parentNode)e.parentNode.removeChild(e);}})();</script>
   <!-- Mode Image (étagères = sous-catégories par tag d'usage) -->
   <a class="mp-voir-tout mp-cat-link mp-cat-image" href="/images">🗂 Tout</a>
   <a class="mp-voir-tout mp-cat-link mp-cat-image" href="/images?tag=avatar">🧑‍🎤 Avatars</a>

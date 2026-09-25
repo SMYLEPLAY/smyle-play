@@ -189,21 +189,35 @@ def compute_split(
 
 
 async def artist_pct_for_user(db: AsyncSession, user_id: UUID) -> int:
-    """Part artiste (%) selon le PALIER du vendeur (C6).
+    """Part artiste (%) selon le PALIER du vendeur (C6) ET son statut PIONNIER.
 
-    Lit `users.tier` et renvoie 80 / 88 / 95 (commission 20 / 12 / 5).
-    Tout palier inconnu / NULL (comptes pré-migration 0069) retombe sur
-    Standard (80%) = comportement historique. À appeler DANS la section
-    lockée d'un flux de vente, juste avant `compute_split`.
+    Lit `users.tier` (80 / 88 / 95 = commission 20 / 12 / 5) et `users.is_pioneer`
+    (Brique 1) puis applique la règle du **taux le plus favorable** : un Pionnier
+    ne paie jamais plus de 10 % de commission, mais un Mythique Pionnier garde
+    ses 5 %. Tout palier inconnu / NULL (comptes pré-migration 0069) retombe sur
+    Standard (80%) = comportement historique. À appeler DANS la section lockée
+    d'un flux de vente, juste avant `compute_split`.
+
+    La REVENTE n'utilise pas cette fonction : elle garde son split fixe
+    (royaltie 30 / plateforme 20 / vendeur 50) — décision Tom, pas de taux
+    Pionnier sur la revente.
     """
-    from app.services.tiers import artist_pct_for_tier  # import local: pas de cycle
+    from app.services.tiers import artist_pct_for  # import local: pas de cycle
 
     row = (await db.execute(
-        text("SELECT tier FROM users WHERE id = :uid"),
+        text("SELECT tier, is_pioneer FROM users WHERE id = :uid"),
         {"uid": user_id},
     )).first()
-    tier = row.tier if row is not None else None
-    return artist_pct_for_tier(tier)
+    if row is None:
+        return artist_pct_for(None, False)
+    # Brique 2 : le taux Pionnier ne s'applique que programme ACTIF. Le
+    # rattrapage admin peut poser des rangs flag OFF (ordre recommandé :
+    # rattrapage puis activation) — sans cette garde, le 10 % s'appliquerait aux
+    # ventes avant l'activation coordonnée.
+    from app.config import settings  # import local : pas de cycle
+
+    pionnier_actif = bool(row.is_pioneer) and settings.FEATURE_PIONEER
+    return artist_pct_for(row.tier, pionnier_actif)
 
 
 # -----------------------------------------------------------------------------
@@ -260,6 +274,73 @@ async def credit_bucket(
             "credits_balance = credits_balance + :a WHERE id = :uid"
         ),
         {"a": amount, "uid": user_id},
+    )
+
+
+# -----------------------------------------------------------------------------
+# Lot 3 — fuite « Smyles offerts → argent réel » (décision Tom, 23/09).
+#
+# Un acheteur paie d'abord avec ses Smyles PROMO (offerts : bienvenue,
+# parrainage, trophées…). Avant ce lot, la part vendeur était TOUJOURS créditée
+# en `gagnes` (retirable) : un Smyle offert devenait de l'argent réel chez le
+# vendeur. Désormais, la part de chaque bénéficiaire FINANCÉE par du promo lui
+# est créditée dans SON bucket `promo` (dépensable, NON retirable) ; le reste
+# (financé par des Smyles achetés ou gagnés) va en `gagnes` comme avant.
+#
+# Répartition : au PRORATA du montant de chaque bénéficiaire, arrondi AU
+# PROFIT DU PROMO (plafond) — aucune unité de promo ne peut atterrir en
+# `gagnes`. Le reliquat de promo éventuel suit la commission (trésorerie ou
+# destruction), qui n'est jamais retirable.
+#
+# Le sous-total `smyles_promo_gagnes` (sous-ensemble de `smyles_promo`, cf.
+# migration 0095) garde la trace de ces gains non retirables pour l'affichage
+# créateur « gagnés — non retirables ». Aucun changement du CHECK de somme.
+# -----------------------------------------------------------------------------
+
+
+async def buyer_promo_part(db: AsyncSession, buyer_id: UUID, paid: int) -> int:
+    """Part de `paid` que l'acheteur va régler en Smyles PROMO (ordre de
+    dépense promo → achetés → gagnés). À appeler SOUS le verrou de l'acheteur,
+    AVANT son débit."""
+    if paid <= 0:
+        return 0
+    promo = (await db.execute(
+        text("SELECT smyles_promo FROM users WHERE id = :uid"), {"uid": buyer_id}
+    )).scalar_one_or_none()
+    return max(0, min(int(paid), int(promo or 0)))
+
+
+def promo_share(amount: int, promo_paid: int, paid: int) -> int:
+    """Part promo d'un bénéficiaire qui reçoit `amount` sur un paiement `paid`
+    dont `promo_paid` en promo : prorata arrondi au plafond, bornée à `amount`
+    et à `promo_paid`."""
+    if amount <= 0 or promo_paid <= 0 or paid <= 0:
+        return 0
+    part = -(-amount * promo_paid // paid)  # plafond entier
+    return max(0, min(part, amount, promo_paid))
+
+
+async def credit_sale_revenue(
+    db: AsyncSession, user_id: UUID, amount: int, promo_part: int
+) -> None:
+    """Crédite un revenu de vente : `amount - promo_part` en `gagnes`
+    (retirable), `promo_part` en `promo` (non retirable, compté dans le
+    sous-total « gagnés non retirables »). Solde, gains cumulés et invariant de
+    somme tenus dans le même UPDATE. À appeler sous verrou."""
+    if amount <= 0:
+        return
+    promo_part = max(0, min(int(promo_part), int(amount)))
+    await db.execute(
+        text(
+            "UPDATE users SET "
+            "credits_balance = credits_balance + :a, "
+            "smyles_gagnes = smyles_gagnes + :g, "
+            "smyles_promo = smyles_promo + :p, "
+            "smyles_promo_gagnes = smyles_promo_gagnes + :p, "
+            "credits_earned_total = credits_earned_total + :a "
+            "WHERE id = :uid"
+        ),
+        {"a": amount, "g": amount - promo_part, "p": promo_part, "uid": user_id},
     )
 
 

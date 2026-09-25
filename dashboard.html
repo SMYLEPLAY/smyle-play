@@ -672,6 +672,12 @@
       <span class="dash-section-sub">Poste un son · publie ton ADN · WAV · MP3 · FLAC · AAC · M4A · max 100&nbsp;MB</span>
     </div>
 
+    <!-- Brique 2 — compteur Pionnier. Masqué par défaut ; affiché par
+         /ui/pioneer-counter.js UNIQUEMENT si /pioneer/places répond (programme
+         lancé, FEATURE_PIONEER=true) et qu'il reste des places. -->
+    <div data-pioneer-counter hidden
+         style="margin:10px 0 14px;padding:10px 14px;border:1px solid rgba(255,182,39,.45);border-radius:10px;background:rgba(255,182,39,.08);color:#f3e7c7;font-size:13px;line-height:1.45"></div>
+
     <!-- Sous-titre produit : 1a Poster un morceau -->
     <div class="dash-subhdr">
       <span class="dash-subhdr-num">1a</span>
@@ -1661,9 +1667,9 @@
     <div class="dash-field-col" style="margin-top:6px;">
       <button type="button" class="dash-btn-secondary" id="advLinkOeuvreBtn"
               onclick="if(window.OeuvreCompose){OeuvreCompose.open({onSuccess:function(){ try{ if(window.AdnVisuel) AdnVisuel.init(); }catch(_){} }});}">
-        💠 Lier une playlist + un album en Œuvre
+        💠 Lier une playlist + un album en Collection
       </button>
-      <div class="dash-help">Une œuvre réunit une face musique (playlist) et une face visuelle (album) — elle s'affiche en une seule carte bicolore sur ton profil et sa page /oeuvre s'allume.</div>
+      <div class="dash-help">Une collection réunit une face musique (playlist) et une face visuelle (album) — elle s'affiche en une seule carte bicolore sur ton profil et sa page /collection s'allume.</div>
     </div>
 
     <!-- Avertissement visibilité (album privé) -->
@@ -2623,6 +2629,7 @@
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260708parite" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
+<script src="/ui/modals/oeuvre-invite.js?v=20260923o" defer></script>
 <script src="images-create.js?v=20260618c4gal" defer></script>
 <script src="images-list.js?v=20260618c4gal" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
@@ -3062,6 +3069,7 @@
 <script src="/ui/messaging/messaging.js?v=20260708adn" defer></script>
 <script src="/ui/core/trade-view.js?v=20260708adn2" defer></script>
 <script src="/ui/core/page-services.js" defer></script>
+<script src="/ui/pioneer-counter.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
 <script src="/ui/core/legal-footer.js" defer></script>
 <script src="/ui/player/mini-bar.js?v=20260707player" defer></script>

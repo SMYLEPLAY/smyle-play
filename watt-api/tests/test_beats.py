@@ -14,6 +14,8 @@ Postgres requis (cf. conftest).
 import uuid
 
 import pytest
+
+from app.config import settings
 from httpx import AsyncClient
 from sqlalchemy import delete, select, text
 
@@ -29,6 +31,14 @@ from app.services.beats import create_beat
 from app.services.pack_purchase import buy_pack_atomic
 from app.services.unlocks import PromptNotPurchasable, unlock_prompt_atomic
 from app.services.users import create_user
+
+
+@pytest.fixture(autouse=True)
+def _rallume_lot1(monkeypatch):
+    """Lot 1 : les beats sont cachés au lancement par défaut. Ce module teste la
+    mécanique elle-même → on la rallume (même modèle que SHOW_TROC ailleurs)."""
+    monkeypatch.setattr(settings, "SHOW_BEATS", True)
+
 
 
 async def _make_user(initial_balance: int = 1000) -> uuid.UUID:

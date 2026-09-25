@@ -23,6 +23,8 @@ from uuid import UUID
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
+from app.services.credits import buyer_promo_part, credit_sale_revenue, promo_share
+from app.services.treasury import begin_commission, credit_commission
 from app.services.unlocks import (
     AdnNotPurchasable,
     AlreadyOwned,
@@ -250,6 +252,9 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
         raise AlreadyOwned("L'acheteur possède déjà cet ADN")
 
     async with db.begin_nested():
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, target.seller_id])
 
         # K-06 (2026-09-04, annexe B §1.9a) : la commission suit le PALIER du
@@ -273,12 +278,19 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
                 required=amount, available=int(buyer_row.credits_balance)
             )
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, amount)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, amount)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=target.seller_id,
             credits_amount=amount,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -303,16 +315,11 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
             {"paid": amount, "uid": buyer_id},
         )
         # Crédit vendeur (part artiste)
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": target.seller_id},
-        )
+        await credit_sale_revenue(db, target.seller_id, artist_revenue, vendeur_promo)
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = _make_owned(target.target_type, target.target_id, buyer_id)
         db.add(owned)

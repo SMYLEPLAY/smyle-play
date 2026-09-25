@@ -300,7 +300,10 @@
       // écran #sec-adn-visuel. Le bouton « + Créer » expose les deux.
       return tileHtml('images',     '🖼️', 'Images IA',  'images', { createKind: 'image', viewKey: 'images-list', countLabel: 'publiées' })
            + tileHtml('adn-visuel', '🎨', 'ADN Visuel', null, { viewKey: 'visual-adn', viewOnly: true, countLabel: 'ta signature visuelle vendable', countText: 'Gérer' })
-           + tileHtml('adn-album',  '🎨', 'ADN Album',  null, { viewKey: 'adn-album', viewOnly: true, countLabel: 'génome de style d\'un album', countText: 'Gérer' });
+           // Lot 1 : ADN Album caché tant que les albums sont éteints.
+           + ((window.WATT_LAUNCH && window.WATT_LAUNCH.albums)
+                ? tileHtml('adn-album',  '🎨', 'ADN Album',  null, { viewKey: 'adn-album', viewOnly: true, countLabel: 'génome de style d\'un album', countText: 'Gérer' })
+                : '');
     }
     // DÉCISION 100 % IA (Tom, 2026-06-10) : aucun produit non-IA vendu sur
     // la plateforme. La tuile « Musique perso » (humaine, gated palier) est
@@ -331,11 +334,16 @@
         '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette + le fichier original</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="avatar">🧑‍🎤 <span>Avatar<em>Même écran que « Image » avec le tag « avatar » déjà coché</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="adn-visuel">🎨 <span>ADN visuel<em>Ta signature visuelle vendable — l\'achat débloque le génome de style</em></span></button>' +
-        '<button type="button" class="wb3-create-item" data-wb3-create="adn-album">🎨 <span>ADN Album<em>Le génome de style d\'un album — l\'achat débloque la recette de style</em></span></button>';
+        ((window.WATT_LAUNCH && window.WATT_LAUNCH.albums)
+          ? '<button type="button" class="wb3-create-item" data-wb3-create="adn-album">🎨 <span>ADN Album<em>Le génome de style d\'un album — l\'achat débloque la recette de style</em></span></button>'
+          : '');
     }
     return '' +
       '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>' +
+      // Lot 1 : beats cachés au lancement.
+      ((window.WATT_LAUNCH && window.WATT_LAUNCH.beats)
+        ? '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>'
+        : '') +
       '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature sonore vendable</em></span></button>' +
       ((window.WATT_LAUNCH && window.WATT_LAUNCH.voix)
         ? '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>'
@@ -392,12 +400,18 @@
             la collection n'était pas accessible depuis le board) */
       '<div class="wb3-cross">' +
         (monde === 'visuel'
-          ? '<button type="button" class="wb3-cross-btn" data-wb3-view="albums">🖼️ Albums</button>'
+          // Lot 1 : albums cachés au lancement → pas de raccourci Albums.
+          ? ((window.WATT_LAUNCH && window.WATT_LAUNCH.albums)
+              ? '<button type="button" class="wb3-cross-btn" data-wb3-view="albums">🖼️ Albums</button>'
+              : '')
           : '<button type="button" class="wb3-cross-btn" data-wb3-view="playlists">📚 Playlists</button>') +
         ((window.WATT_LAUNCH && window.WATT_LAUNCH.troc)
           ? '<button type="button" class="wb3-cross-btn" data-wb3-view="trades">🔄 Échanges</button>'
           : '') +
-        '<button type="button" class="wb3-cross-btn" data-wb3-view="trophees">🏆 Trophées</button>' +
+        // Lot 1 : trophées cachés au lancement.
+        ((window.WATT_LAUNCH && window.WATT_LAUNCH.trophees)
+          ? '<button type="button" class="wb3-cross-btn" data-wb3-view="trophees">🏆 Trophées</button>'
+          : '') +
         '<button type="button" class="wb3-cross-btn" data-wb3-view="stats">📈 Analytique</button>' +
         '<a class="wb3-cross-btn" href="/library" style="text-decoration:none;">📦 Bibliothèque</a>' +
       '</div>';

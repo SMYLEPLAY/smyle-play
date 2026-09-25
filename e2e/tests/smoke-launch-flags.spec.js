@@ -56,7 +56,9 @@ async function _openUserMenu(page) {
   const menu = page.locator('#smyle-user-menu');
   await expect(menu, 'le menu utilisateur est ouvert').toHaveClass(/\bopen\b/);
   await expect(
-    menu.locator('.user-menu-item', { hasText: 'Récompense du jour' }),
+    // Lot 1 : « Récompense du jour » est désormais gatée (série quotidienne) ;
+    // le repère non gaté devient « Parrainage » (visible au lancement).
+    menu.locator('.user-menu-item', { hasText: 'Parrainage' }),
     'repère non gaté : le menu est bien rendu',
   ).toHaveCount(1);
   return menu;
@@ -82,6 +84,9 @@ test('cas 1 — packs masqués : pas d’entrée « Ouvrir un pack », pas d’a
   // Le menu utilisateur s'ouvre, mais ne propose pas « Ouvrir un pack ».
   const menu = await _openUserMenu(page);
   await expect(menu.locator('#user-menu-open-pack')).toHaveCount(0);
+  // Lot 1 : série quotidienne cachée → pas d'entrée « Récompense du jour ».
+  expect(flags.serie, 'série quotidienne masquée par défaut en CI').toBeFalsy();
+  await expect(menu.locator('.user-menu-item', { hasText: 'Récompense du jour' })).toHaveCount(0);
 
   // Et la fonction reste sans effet si un autre module l'appelle (garde
   // interne) : ni modale, ni appel /packs/mystery.
@@ -101,7 +106,7 @@ test('cas 2 — drapeaux rallumés : l’entrée « Ouvrir un pack » réappara�
     await route.fulfill({
       status: 200,
       contentType: 'application/javascript',
-      body: 'window.WATT_LAUNCH = { paliers: true, resale: true, packs: true, voix: true, troc: true, thePlan: true };',
+      body: 'window.WATT_LAUNCH = { paliers: true, resale: true, packs: true, voix: true, troc: true, thePlan: true, serie: true };',
     });
   });
 
@@ -114,6 +119,8 @@ test('cas 2 — drapeaux rallumés : l’entrée « Ouvrir un pack » réappara�
   const entry = menu.locator('#user-menu-open-pack');
   await expect(entry).toBeVisible();
   await expect(entry).toHaveText(/Ouvrir un pack/);
+  // Lot 1 : série rallumée → l'entrée « Récompense du jour » revient.
+  await expect(menu.locator('.user-menu-item', { hasText: 'Récompense du jour' })).toHaveCount(1);
 
   // Symétrie du cas 1 : la garde interne s'efface aussi — la modale s'ouvre.
   await page.evaluate(() => { if (window.openPackModal) window.openPackModal(); });

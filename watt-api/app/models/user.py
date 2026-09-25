@@ -136,6 +136,22 @@ class User(Base):
         server_default="false",
     )
 
+    # Compte TRÉSORERIE de la société (migration 0089, Brique 1). DISTINCT de
+    # is_official : le vitrine « Smyle » est une identité artiste PUBLIQUE, la
+    # trésorerie est un registre non public (profile_public=False, password_hash
+    # NULL → aucune connexion possible). C'est le compte qui encaisse la
+    # commission plateforme, dans le bucket NON retirable `smyles_achetes`
+    # (jamais `gagnes` : sinon la société figurerait en dette encaissable).
+    # Au plus une ligne (index unique partiel ix_users_is_treasury_true) ;
+    # résolu par requête sur ce drapeau, JAMAIS par un UUID en dur (l'UUID
+    # diffère d'un environnement à l'autre). Cf. app/services/treasury.py.
+    is_treasury: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # Rôle d'administration (migration 0085, annexe B §2). DISTINCT de
     # is_official : celui-ci est l'identité vitrine « Smyle » (checkmark, tri
     # en tête, playlists modèles) et le cocher sur un compte perso polluerait
@@ -200,6 +216,34 @@ class User(Base):
         server_default="standard",
     )
 
+    # Statut PIONNIER (migration 0090, Brique 1). Commission plafonnée à 10 %
+    # À VIE, selon la règle du TAUX LE PLUS FAVORABLE : un Pionnier ne paie
+    # jamais plus de 10 %, mais un Mythique Pionnier garde ses 5 %.
+    # L'ATTRIBUTION (100 premiers créateurs, rang figé) relève de la Brique 2 —
+    # ici, seul le marqueur existe. Écrit par migration / script d'ops.
+    is_pioneer: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    # Brique 2 (migration 0091) — rang Pionnier FIGÉ à vie (1..100, UNIQUE).
+    # is_pioneer == (pioneer_rank IS NOT NULL), garanti par CHECK en base :
+    # le statut n'existe que par l'attribution d'un rang
+    # (cf. app/services/pioneer.py).
+    pioneer_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    pioneer_awarded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Exclusion PERSISTÉE (posée par l'action admin de rattrapage) : un compte
+    # exclu ne reçoit jamais de rang, ni au rattrapage ni en direct.
+    pioneer_excluded: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # A1 — sous-soldes par CATÉGORIE de Smyle (migration 0071). Origine =
     # cashabilité : achetés (€, non encaissables) / gagnés (vente, ENCAISSABLES =
     # dette) / promo (offerts, non encaissables, expirables). Invariant cible :
@@ -218,6 +262,12 @@ class User(Base):
     # ⊆ smyles_gagnes. Le reste des gagnés devient retirable après maturation
     # (cf. app/services/escrow.py). Défaut 0.
     smyles_gagnes_bloque: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    # Lot 3 (migration 0095) — SOUS-ENSEMBLE de smyles_promo : Smyles gagnés en
+    # vente mais NON retirables (payés par l'acheteur avec des Smyles offerts).
+    # Borné à smyles_promo par un trigger. Affiché « gagnés — non retirables ».
+    smyles_promo_gagnes: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
 

@@ -45,6 +45,8 @@ REQUIRES : Postgres réel via DATABASE_URL (cf. conftest.py).
 import uuid
 
 import pytest
+
+from app.config import settings
 from sqlalchemy import delete, text
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
@@ -55,6 +57,15 @@ from app.models.transaction import Transaction
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.users import create_user
+
+
+@pytest.fixture(autouse=True)
+def _rallume_lot1(monkeypatch):
+    """Lot 1 : les offres ADN (et les trophées, actifs quand ces tests ont été écrits) sont cachés au lancement par défaut. Ce module teste la
+    mécanique elle-même → on la rallume (même modèle que SHOW_TROC ailleurs)."""
+    monkeypatch.setattr(settings, "SHOW_OFFRES_ADN", True)
+    monkeypatch.setattr(settings, "SHOW_TROPHEES", True)
+
 
 
 # =============================================================================

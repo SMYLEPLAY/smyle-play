@@ -540,7 +540,10 @@ async function _setupFollowButton(artist) {
   btn.style.display = '';
 
   // ── Bouton Message ──────────────────────────────────────────────────────
-  if (msgBtn && artist.id) {
+  // Lot 1 : messagerie cachée au lancement → bouton Message masqué.
+  const _msgOn = !!(window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie);
+  if (msgBtn && !_msgOn) msgBtn.style.display = 'none';
+  if (msgBtn && artist.id && _msgOn) {
     msgBtn.style.display = '';
     msgBtn.onclick = () => {
       if (window.SmyleMessaging) {

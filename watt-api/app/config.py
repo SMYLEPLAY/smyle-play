@@ -180,6 +180,18 @@ class Settings(BaseSettings):
     #   • MODE_LANCEMENT = False → tout est rallumé (fin du lancement).
     # Un item est VISIBLE si : (not MODE_LANCEMENT) or SHOW_<ITEM>.
     # Défauts : tout masqué (MODE_LANCEMENT=True, tous les SHOW_* à False).
+    # ── Brique 1 — marché interne en Smyles ──────────────────────────────
+    # Quand FEATURE_MARKET_SMYLES est FALSE (défaut), la commission plateforme
+    # continue de se comporter exactement comme avant : elle est tracée au
+    # ledger (`transactions.platform_fee`) et n'est créditée à personne.
+    # Quand elle passe à TRUE, cette même commission est encaissée par le compte
+    # trésorerie société (bucket NON retirable). Aucun autre comportement ne
+    # change : ni les prix, ni le split, ni la part vendeur.
+    # Bascule réversible : repasser à FALSE arrête l'encaissement sans rien
+    # casser (les montants déjà encaissés restent acquis et reconstructibles
+    # depuis le ledger).
+    FEATURE_MARKET_SMYLES: bool = False
+
     MODE_LANCEMENT: bool = True
     SHOW_PALIERS: bool = False
     SHOW_RESALE: bool = False
@@ -187,6 +199,20 @@ class Settings(BaseSettings):
     SHOW_VOIX: bool = False
     SHOW_TROC: bool = False
     SHOW_THE_PLAN: bool = False
+    # Lot 1 (plan de pré-lancement, 23/09) — construites mais CACHÉES au
+    # lancement, rallumées une par une (sorties mensuelles décidées par
+    # l'agent analytique). « Caché = inerte » : une mécanique cachée ne crédite
+    # plus rien en arrière-plan (trophées : grant coupé dans le service ;
+    # série quotidienne : seule sa route crédite). Données existantes intactes,
+    # elles réapparaissent au rallumage.
+    # Lot 3 (décision Tom 23/09) : VISIBLE au lancement — c'est le seul moyen
+    # d'acheter un ADN. L'interrupteur est gardé pour pouvoir le couper.
+    SHOW_OFFRES_ADN: bool = True    # offres sur ADN (/adn-offers)
+    SHOW_MESSAGERIE: bool = False   # messagerie privée (/messages)
+    SHOW_SERIE: bool = False        # série quotidienne (/streak)
+    SHOW_TROPHEES: bool = False     # trophées + leurs récompenses en Smyles
+    SHOW_BEATS: bool = False        # création / achat de beats, packs recette+beat
+    SHOW_ALBUMS: bool = False       # albums + ADN d'album
     # S-11 (2026-09-04, annexe A §M5) — l'achat de Smyles est masqué tant
     # que Stripe n'est pas branché : /credits/grant répond 403 à tout
     # compte non is_official, donc la modale d'achat promettait une
@@ -198,6 +224,32 @@ class Settings(BaseSettings):
     # n'est pas branche, ces surfaces annoncent une conversion que rien
     # n'honore. Rallumable par SHOW_EUROS=true.
     SHOW_EUROS: bool = False
+
+    # ── Brique 2 — programme PIONNIER ────────────────────────────────────
+    # false (défaut) : aucun effet du statut Pionnier. Pas d'attribution en
+    # direct, pas de compteur public, et le taux Pionnier (10 %) N'EST PAS
+    # appliqué aux ventes — même pour un compte qui aurait déjà un rang.
+    # L'action admin de rattrapage, elle, reste utilisable flag OFF : c'est
+    # précisément l'ordre recommandé (rattrapage d'abord, puis activation).
+    # true : attribution en direct à la première publication, compteur
+    # « places restantes » public, et taux Pionnier appliqué.
+    FEATURE_PIONEER: bool = False
+
+    # ── Brique 5 — achat de Smyles par carte (Stripe Checkout), Lot 3 ────
+    # Clés UNIQUEMENT par variables d'environnement (Railway) — jamais dans le
+    # code ni dans git. Sans clé secrète, l'achat répond 503 « indisponible ».
+    # Clés de TEST (sk_test_…) tant que Tom n'a pas son compte réel.
+    STRIPE_SECRET_KEY: str | None = None
+    STRIPE_WEBHOOK_SECRET: str | None = None
+    STRIPE_PUBLISHABLE_KEY: str | None = None
+    # Mention de franchise en base de TVA (micro-entreprise), affichée sur la
+    # page de paiement et reprise sur le reçu Stripe. À activer si Tom est en
+    # franchise (art. 293 B du CGI).
+    MENTION_TVA_FRANCHISE: bool = False
+
+    # Lot 2 — date d'ouverture publique (AAAA-MM-JJ). Sert au tableau « Prêt à
+    # sortir » (critère « 6 mois depuis le lancement » de la sortie M6).
+    DATE_LANCEMENT: str = "2026-11-01"
 
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
@@ -216,6 +268,12 @@ class Settings(BaseSettings):
             "thePlan": self._item_visible(self.SHOW_THE_PLAN),
             "achatSmyles": self._item_visible(self.SHOW_ACHAT_SMYLES),
             "euros": self._item_visible(self.SHOW_EUROS),
+            "offresAdn": self._item_visible(self.SHOW_OFFRES_ADN),
+            "messagerie": self._item_visible(self.SHOW_MESSAGERIE),
+            "serie": self._item_visible(self.SHOW_SERIE),
+            "trophees": self._item_visible(self.SHOW_TROPHEES),
+            "beats": self._item_visible(self.SHOW_BEATS),
+            "albums": self._item_visible(self.SHOW_ALBUMS),
         }
 
 

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#070608" />
+  <!-- Lot 2 — page à partager d'une ŒUVRE (1 son + 1 image), servie sur
+       /o/{id}. Les balises d'aperçu social (og:*, twitter:*) sont injectées
+       côté serveur (watt-api/app/routers/pages.py::_oeuvre_c4_meta).
+       Chemins ABSOLUS partout : la page vit sous /o/<id>. -->
+  <title>Œuvre · WATT</title>
+  <link rel="stylesheet" href="/topbar.css" />
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <style>
+    body.o-page { margin: 0; background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .o-main { max-width: 960px; margin: 0 auto; padding: 88px 16px 64px; box-sizing: border-box; }
+    .o-state { text-align: center; padding: 80px 16px; color: var(--sp-text-muted, rgba(255,255,255,.72)); }
+    .o-state h2 { color: #fff; margin: 0 0 8px; }
+    .o-state a { color: var(--sp-mauve, #cc88ff); font-weight: 700; text-decoration: none; }
+    .o-kicker { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--sp-mauve, #cc88ff); margin: 0 0 6px; }
+    .o-title { font-size: clamp(26px, 5vw, 40px); line-height: 1.1; margin: 0 0 8px; color: #fff; word-break: break-word; }
+    .o-by { margin: 0 0 24px; color: var(--sp-text-muted, rgba(255,255,255,.72)); font-size: 15px; }
+    .o-by a { color: #fff; font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--sp-border-strong, rgba(255,255,255,.25)); }
+    .o-stage { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    @media (max-width: 720px) { .o-stage { grid-template-columns: 1fr; } }
+    .o-visual { position: relative; border-radius: 18px; overflow: hidden; background: #0e0b16;
+      border: 1px solid var(--sp-border, rgba(255,255,255,.10)); aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; }
+    .o-visual img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .o-visual-ph { font-size: 64px; opacity: .4; }
+    .o-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .o-player { background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid var(--sp-border, rgba(255,255,255,.10));
+      border-radius: 16px; padding: 16px; }
+    .o-player-label { font-size: 12px; color: var(--sp-text-faint, rgba(255,255,255,.55)); margin: 0 0 8px; }
+    .o-player audio { width: 100%; display: block; }
+    .o-player-empty { font-size: 13px; color: var(--sp-text-faint, rgba(255,255,255,.55)); margin: 0; }
+    .o-half { display: flex; gap: 12px; align-items: center; background: var(--sp-surface, rgba(255,255,255,.04));
+      border: 1px solid var(--sp-border, rgba(255,255,255,.10)); border-radius: 16px; padding: 12px; min-width: 0; }
+    .o-half-thumb { width: 56px; height: 56px; flex: 0 0 56px; border-radius: 10px; overflow: hidden; background: #0e0b16;
+      display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .o-half-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .o-half-body { flex: 1; min-width: 0; }
+    .o-half-kind { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 2px; }
+    .o-half-kind--son { color: var(--sp-monde-audio, #0055ff); filter: brightness(1.6); }
+    .o-half-kind--image { color: var(--sp-monde-visuel, #cc88ff); }
+    .o-half-title { margin: 0; color: #fff; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o-half-note { margin: 2px 0 0; font-size: 12px; color: var(--sp-text-faint, rgba(255,255,255,.55)); }
+    .o-btn { flex: 0 0 auto; padding: 10px 14px; border-radius: 11px; border: none; cursor: pointer; font-weight: 700; font-size: 13px;
+      background: linear-gradient(120deg, #7c5cff, #0055ff); color: #fff; white-space: nowrap; }
+    .o-btn:focus-visible, .o-share:focus-visible { outline: 2px solid var(--sp-gold, #ffd700); outline-offset: 2px; }
+    .o-bundle[hidden] { display: none; }
+    .o-btn--bundle { width: 100%; padding: 13px 16px; font-size: 14px; background: linear-gradient(120deg, #ffd700, #ff9f1a); color: #1a1206; }
+    .o-bundle-note { margin: 6px 0 0; font-size: 12px; color: var(--sp-text-muted, rgba(255,255,255,.72)); }
+    .o-report { align-self: flex-start; background: none; border: none; padding: 4px 0; cursor: pointer;
+      color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: 12px; text-decoration: underline; }
+    .o-share { align-self: flex-start; padding: 10px 14px; border-radius: 11px; cursor: pointer; font-weight: 600; font-size: 13px;
+      background: none; color: var(--sp-text, #e8e8f0); border: 1px solid var(--sp-border-strong, rgba(255,255,255,.25)); }
+  </style>
+</head>
+<body class="o-page">
+
+<div id="smyle-topbar"></div>
+
+<main class="o-main" id="o-main">
+  <div class="o-state" id="o-loading">Chargement de l'œuvre…</div>
+
+  <div class="o-state" id="o-empty" style="display:none">
+    <h2>Œuvre introuvable</h2>
+    <p>Cette œuvre n'existe pas ou n'est plus en ligne.</p>
+    <a href="/">Retour à l'accueil</a>
+  </div>
+
+  <article id="o-content" style="display:none" aria-labelledby="o-title">
+    <p class="o-kicker">ŒUVRE · UN SON + UNE IMAGE</p>
+    <h1 class="o-title" id="o-title"></h1>
+    <p class="o-by" id="o-by"></p>
+
+    <div class="o-stage">
+      <div class="o-visual" id="o-visual"></div>
+
+      <div class="o-side">
+        <div class="o-player" id="o-player"></div>
+
+        <div class="o-half" id="o-half-son"></div>
+        <div class="o-half" id="o-half-image"></div>
+
+        <!-- Achat de l'Œuvre entière (Lot 3) : son + image − 10 %, un seul achat.
+             Chaque moitié reste aussi achetable à part. -->
+        <div class="o-bundle" id="o-bundle" hidden></div>
+
+        <button type="button" class="o-share" id="o-share">Copier le lien de l'œuvre</button>
+        <button type="button" class="o-report" id="o-report">Signaler cette œuvre</button>
+      </div>
+    </div>
+  </article>
+</main>
+
+<div class="lib-toast" id="o-toast"></div>
+
+<script src="/ui/core/launch-flags.js"></script>
+<script src="/ui/core/api.js"></script>
+<script src="/ui/core/consent.js"></script>
+<script src="/ui/core/telemetry.js"></script>
+<script src="/ui/core/events.js"></script>
+<script src="/ui/core/toast.js"></script>
+<script src="/ui/topbar/topbar.js?v=20260923o" defer></script>
+<script src="/ui/modals/purchase-drawer.js?v=20260923o"></script>
+<script src="/ui/modals/report-modal.js?v=20260923o"></script>
+<script src="/oeuvre-c4.js?v=20260923o" defer></script>
+<script src="/ui/smyle-balance.js" defer></script>
+<script src="/ui/session-guard.js" defer></script>
+</body>
+</html>

@@ -33,7 +33,7 @@
   }
 
   function _slug() {
-    var m = window.location.pathname.match(/^\/oeuvre\/([^/?#]+)/);
+    var m = window.location.pathname.match(/^\/(?:collection|oeuvre)\/([^/?#]+)/);
     return m ? decodeURIComponent(m[1]) : '';
   }
 
@@ -56,16 +56,16 @@
     if (!window.apiFetch) { _toast('Connexion indisponible.', 'error'); return; }
     window.apiFetch('/watt/oeuvre/' + encodeURIComponent(SLUG) + '/buy-complete', { method: 'POST' })
       .then(function () {
-        _toast('Œuvre complète débloquée 🎉', 'success');
+        _toast('Collection débloquée 🎉', 'success');
         try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
         load();
       })
       .catch(function (err) {
         var s = err && err.status;
-        if (s === 401) { _toast('Connecte-toi pour acheter l\'œuvre complète.', 'error'); }
+        if (s === 401) { _toast('Connecte-toi pour acheter la collection.', 'error'); }
         else if (s === 402) { _toast('Solde de Smyles insuffisant.', 'error'); }
-        else if (s === 409) { _toast('Tu possèdes déjà cette œuvre.', 'info'); }
-        else if (s === 404) { _toast('Le pack « œuvre complète » arrive bientôt.', 'info'); }
+        else if (s === 409) { _toast('Tu possèdes déjà cette collection.', 'info'); }
+        else if (s === 404) { _toast('Le pack « collection » arrive bientôt.', 'info'); }
         else {
           // Toute autre erreur (500, réseau…) : ne pas masquer en « arrive
           // bientôt ». Surfacer le détail serveur si disponible.
@@ -84,7 +84,7 @@
     var card = (typeof window.renderOeuvreCard === 'function')
       ? window.renderOeuvreCard({
           slug: data.oeuvreSlug,
-          title: (son && son.title) || (visuel && visuel.title) || 'Œuvre',
+          title: (son && son.title) || (visuel && visuel.title) || 'Collection',
           son: son ? { title: son.title, platform: 'suno', color: son.color } : null,
           visuel: visuel ? { title: visuel.title, platform: 'chatgpt', previewKey: cover } : null,
         })
@@ -195,20 +195,20 @@
     if (!data.isComplete) {
       el.innerHTML = '<div class="oeuvre-pack oeuvre-pack--half">' +
         '<div class="oeuvre-pack-seal">◇</div>' +
-        '<p class="oeuvre-pack-note">L\'œuvre se complète quand les <strong>deux faces</strong> sont publiées.</p>' +
+        '<p class="oeuvre-pack-note">La collection se complète quand les <strong>deux faces</strong> sont publiées.</p>' +
         '</div>';
       return;
     }
     var price = _packPrice(data);
     var btnLabel = price != null
       ? '◆ Acheter les deux · à partir de ' + price + ' ⚡'
-      : '◆ Débloquer l\'œuvre complète';
+      : '◆ Débloquer la collection';
     var noteExtra = price != null
       ? ' <span class="oeuvre-pack-save">−15 % vs séparé</span>'
       : '';
     el.innerHTML = '<div class="oeuvre-pack oeuvre-pack--full">' +
       '<div class="oeuvre-pack-seal">◆</div>' +
-      '<h3 class="oeuvre-pack-ttl">Œuvre complète · Musique + Visuel</h3>' +
+      '<h3 class="oeuvre-pack-ttl">Collection · Musique + Visuel</h3>' +
       '<p class="oeuvre-pack-note">Les deux ADN en un seul geste, au tarif groupé.' + noteExtra + '</p>' +
       '<button type="button" class="oeuvre-btn oeuvre-btn--pack" onclick="window.__oeuvreBuyComplete()">' +
         btnLabel + '</button>' +

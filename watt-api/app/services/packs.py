@@ -28,9 +28,11 @@ from sqlalchemy import and_, exists, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.credits import buyer_promo_part, credit_sale_revenue, promo_share
 from app.models.prompt import Prompt
 from app.models.transaction import Transaction, TransactionStatus, TransactionType
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.treasury import begin_commission, credit_commission
 from app.services.credits import (
     _acquire_user_locks,
     artist_pct_for_user,
@@ -163,6 +165,9 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
 
     async with db.begin_nested():
         # 1. Lock le buyer (le seller sera locké après tirage).
+        # Brique 1 — tresorerie verrouillee EN PREMIER (regle d'ordre globale
+        # anti-deadlock sur cette ligne chaude). No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id])
 
         # 2. Vérifie le solde AVANT de tirer (évite un tirage gaspillé).
@@ -209,12 +214,19 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         artist_revenue, platform_fee = compute_split(price, artist_pct)
 
         # 5. Transaction (type UNLOCK, marquée source=mystery_pack).
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, price)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, price)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=artist_id,
             credits_amount=price,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -236,16 +248,11 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
             ),
             {"p": price, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": artist_id},
-        )
+        await credit_sale_revenue(db, artist_id, artist_revenue, vendeur_promo)
+
+        # Brique 1 — commission encaissee par la societe (bucket NON
+        # retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # 7. #X/N — numéro d'édition pour les éditions LIMITÉES uniquement.
         #    Compté sous le lock artiste (acquis step 4) → pas de doublon.

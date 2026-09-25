@@ -31,6 +31,13 @@ _GATED = [
     ("POST", "/unlocks/voices/00000000-0000-0000-0000-000000000001", "voix"),
     ("GET", "/products/the-plan/v1", "thePlan"),
     ("POST", "/products/the-plan/v1/buy", "thePlan"),
+    # Lot 1 (pré-lancement, 23/09) — 6 fonctionnalités cachées au lancement.
+    ("GET", "/adn-offers/me", "offresAdn"),
+    ("GET", "/messages/threads", "messagerie"),
+    ("POST", "/streak/checkin", "serie"),
+    ("GET", "/me/achievements", "trophees"),
+    ("POST", "/artist/me/beats", "beats"),
+    ("GET", "/albums/me", "albums"),
 ]
 
 _SHOW_ATTR = {
@@ -39,6 +46,12 @@ _SHOW_ATTR = {
     "troc": "SHOW_TROC",
     "voix": "SHOW_VOIX",
     "thePlan": "SHOW_THE_PLAN",
+    "offresAdn": "SHOW_OFFRES_ADN",
+    "messagerie": "SHOW_MESSAGERIE",
+    "serie": "SHOW_SERIE",
+    "trophees": "SHOW_TROPHEES",
+    "beats": "SHOW_BEATS",
+    "albums": "SHOW_ALBUMS",
 }
 
 
@@ -94,10 +107,14 @@ async def test_mode_lancement_off_rallume_tout(client, monkeypatch):
 
 
 async def test_routes_non_gatees_restent_ouvertes(client, monkeypatch):
-    """Régression : les offres ADN et le reste d'unlocks NE sont PAS gatés."""
+    """Régression : les offres ADN NE dépendent PAS du drapeau du troc, et le
+    catalogue reste ouvert. (Depuis le lot 1, les offres ADN ont LEUR PROPRE
+    drapeau `offresAdn` : on le rallume ici pour isoler l'intention d'origine —
+    couper le troc ne doit pas couper les offres ADN.)"""
     monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
     for attr in _SHOW_ATTR.values():
         monkeypatch.setattr(settings, attr, False)
+    monkeypatch.setattr(settings, "SHOW_OFFRES_ADN", True)
 
     # /adn-offers est un routeur distinct (main.py) — jamais gaté par le troc.
     r = await client.get("/adn-offers/me")

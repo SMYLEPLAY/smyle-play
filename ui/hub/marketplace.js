@@ -636,7 +636,8 @@
         .map(m => `<span class="mp-son-card-mood" style="display:inline-block;padding:2px 7px;border-radius:9px;background:rgba(255,255,255,.07);color:#b9b3c8;font-size:.68rem;">${_esc(m)}</span>`)
         .join('');
       // C2 — chips beat : 🥁 (placement) + BPM si renseigné.
-      const beatChip = t.isBeat
+      // Lot 1 : pas de chip beat tant que les beats sont cachés au lancement.
+      const beatChip = (t.isBeat && !!(window.WATT_LAUNCH && window.WATT_LAUNCH.beats))
         ? `<span class="mp-son-card-beat" title="Proposé comme beat" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:9px;background:rgba(34,197,94,.14);color:#86efac;font-size:.68rem;font-weight:600;">🥁 Beat${t.bpm ? ' · ' + t.bpm + ' BPM' : ''}</span>`
         : '';
       const tagsRow = (moodChips || beatChip)
@@ -1136,6 +1137,12 @@
         ev.stopPropagation();
         const trackId = card.dataset.trackId;
         const track   = _state.tracks.find(x => String(x.id) === String(trackId));
+        // Lot 2 : le pont mène à la page de l'Œuvre (/o/<id>), à partager.
+        const oid = track && (track.oeuvreId || (track.linkedImage && track.linkedImage.id));
+        if (oid && /^[0-9a-fA-F-]{36}$/.test(String(oid))) {
+          window.location.href = '/o/' + encodeURIComponent(oid);
+          return;
+        }
         if (track) _openTrackDetailDrawer(track);
         return;
       }
@@ -2020,6 +2027,8 @@
   // génome (seedPrompt + palette) n'est JAMAIS exposé ici — clic → fiche album
   // (openAlbumViewModal) où l'achat se fait, puis le génome est révélé.
   async function _fetchAlbumAdns() {
+    // Lot 1 : albums cachés au lancement → aucune requête, section vide.
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.albums)) return [];
     try {
       const data = await window.apiFetch('/catalog/albums-adn?per_page=24', { auth: false });
       return (data && Array.isArray(data.items)) ? data.items : [];
@@ -2116,7 +2125,7 @@
         ? '<img src="' + _esc(coverUrl) + '" alt="" loading="lazy">'
         : '<div class="mp-oeuvre-card-cover-fallback" aria-hidden="true">🎵</div>';
       return (
-        '<article class="mp-oeuvre-card" data-son-id="' + _esc(son.id || '') + '" tabindex="0" role="button" title="Voir l\'œuvre">' +
+        '<article class="mp-oeuvre-card" data-son-id="' + _esc(son.id || '') + '" data-oeuvre-id="' + _esc(o.oeuvreId || img.id || '') + '" tabindex="0" role="button" title="Voir l\'œuvre">' +
           '<div class="mp-oeuvre-card-covers">' +
             '<div class="mp-oeuvre-card-cover">' + cover + '</div>' +
           '</div>' +
@@ -2124,7 +2133,9 @@
             '<div class="mp-oeuvre-card-title">' + _esc(son.title || 'Œuvre') + '</div>' +
             '<div class="mp-img-card-badges">' + oeuvreBadge + '</div>' +
             '<div class="mp-oeuvre-card-prices">' +
-              '<span>🎵 ' + _esc(son.priceCredits) + ' Smyles</span>' +
+              (son.priceCredits != null
+                ? '<span>🎵 ' + _esc(son.priceCredits) + ' Smyles</span>'
+                : '<span>🎵 En écoute libre</span>') +
               '<span>🖼️ ' + _esc(img.priceCredits) + ' Smyles</span>' +
             '</div>' +
           '</div>' +
@@ -2139,6 +2150,13 @@
         const card = e.target.closest('.mp-oeuvre-card');
         if (!card) return;
         const sonId = card.dataset.sonId;
+        // Lot 2 : chaque Œuvre (1 son + 1 image) a sa page à partager /o/<id>
+        // (id = celui de son image). Le clic y mène directement.
+        const oid = card.dataset.oeuvreId;
+        if (oid && /^[0-9a-fA-F-]{36}$/.test(oid)) {
+          window.location.href = '/o/' + encodeURIComponent(oid);
+          return;
+        }
         // NB : la page binaire /oeuvre/<slug> s'appuie sur `oeuvre_slug`
         // (Playlist+Album). Le payload /oeuvres (Prompt son + image liée) ne
         // porte AUCUN slug d'œuvre → pas de navigation possible ici. On garde
@@ -2297,9 +2315,11 @@
                : `<div class="mp-id-linked-cover mp-id-linked-cover-fallback">🎵</div>`}
              <div class="mp-id-linked-main">
                <div class="mp-id-linked-title">${_esc(ls.title || 'Son lié')}</div>
-               <div class="mp-id-linked-price">🎵 ${_esc(ls.priceCredits)} <span>Smyles</span></div>
+               <div class="mp-id-linked-price">${ls.priceCredits != null
+                 ? `🎵 ${_esc(ls.priceCredits)} <span>Smyles</span>`
+                 : '🎵 En écoute libre'}</div>
              </div>
-             <button class="mp-id-linked-btn" id="mp-id-linked-btn" type="button">Voir le son</button>
+             <button class="mp-id-linked-btn" id="mp-id-linked-btn" type="button">Voir l'œuvre</button>
            </div>
          </div>`
       : '';
@@ -2402,6 +2422,11 @@
     const lsBtn = overlay.querySelector('#mp-id-linked-btn');
     if (lsBtn && ls) {
       lsBtn.addEventListener('click', () => {
+        // Lot 2 : chaque Œuvre a sa page /o/<id> (id = celui de l'image).
+        if (im.id && /^[0-9a-fA-F-]{36}$/.test(String(im.id))) {
+          window.location.href = '/o/' + encodeURIComponent(im.id);
+          return;
+        }
         const track = (_state.tracks || []).find(t => String(t.promptId) === String(ls.id));
         if (track) { _close(); _openTrackDetailDrawer(track); return; }
         if (window.PurchaseDrawer) {

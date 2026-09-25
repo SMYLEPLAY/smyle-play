@@ -18,7 +18,8 @@
 (function () {
   'use strict';
 
-  var TARGET_TYPES = { track: 1, prompt: 1, image: 1, profil: 1, playlist: 1, album: 1 };
+  // Lot 2 : ADN, ADN visuels et voix signalables (anti-squat Pionnier).
+  var TARGET_TYPES = { track: 1, prompt: 1, image: 1, profil: 1, playlist: 1, album: 1, adn: 1, visual_adn: 1, voix: 1 };
   var REASONS = [
     ['contenu_illegal', 'Contenu illégal'],
     ['contrefacon',     'Contrefaçon / droits d’auteur'],

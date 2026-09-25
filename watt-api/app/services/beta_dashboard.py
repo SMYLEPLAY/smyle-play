@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.publications import SQL_OEUVRES_EN_LIGNE
 from app.services.credits import count_bucket_inconsistencies
 
 # Types de transaction qui CRÉENT des Smyles (crédit d'un compte, sans débit
@@ -52,22 +53,9 @@ _SUFFIXE_SUPPRIME = "@deleted.watt"
 # Toutes les surfaces de publication d'un créateur, dans un seul jeu de lignes.
 # `is_deleted` est le soft-delete commun ; `tracks` n'a pas de `is_published`
 # (un morceau déposé est visible sur le profil).
-_SQL_PUBLICATIONS = """
-    SELECT artist_id AS uid, created_at FROM prompts
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM adns
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM visual_adns
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM voices_for_sale
-        WHERE is_published AND NOT is_deleted
-    UNION ALL
-    SELECT artist_id, created_at FROM tracks
-        WHERE NOT is_deleted
-"""
+# Définition partagée avec le programme Pionnier (source unique) :
+# cf. app/services/publications.py.
+_SQL_PUBLICATIONS = SQL_OEUVRES_EN_LIGNE
 
 # Motif UUID canonique : garde-fou avant le cast `::uuid`. Sans lui, une
 # métadonnée mal formée ferait planter la requête entière (invalid input
@@ -104,8 +92,12 @@ async def beta_dashboard_data(
             "COALESCE(sum(smyles_achetes), 0) AS achetes, "
             "COALESCE(sum(smyles_gagnes), 0) AS gagnes, "
             "COALESCE(sum(smyles_promo), 0) AS promo, "
-            "COALESCE(sum(smyles_gagnes_bloque), 0) AS gele "
-            "FROM users"
+            "COALESCE(sum(smyles_gagnes_bloque), 0) AS gele, "
+            "COALESCE(sum(smyles_promo_gagnes), 0) AS promo_gagnes "
+            # Brique 1 : la trésorerie société est hors circulation (sa
+            # commission encaissée n'est ni détenue par un créateur, ni
+            # achetée en euros). Exposée à part, pas agrégée ici.
+            "FROM users WHERE NOT is_treasury"
         ),
         {"days": days, "suppr": "%" + _SUFFIXE_SUPPRIME},
     )).first()
@@ -262,6 +254,8 @@ async def beta_dashboard_data(
                 "gagnes": int(c.gagnes),
                 "dont_gagnes_geles": int(c.gele),
                 "promo": int(c.promo),
+                # Lot 3 : dont gains de vente NON retirables (payés en promo).
+                "dont_promo_gagnes_non_retirables": int(c.promo_gagnes),
                 "total": constate,
             },
             "reconciliation": {

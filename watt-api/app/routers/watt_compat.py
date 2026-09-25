@@ -21,7 +21,7 @@ import asyncio
 import re as _re_slug
 import uuid as _uuid_module
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func, select
@@ -926,6 +926,13 @@ async def build_artist_detail_payload(
         for p in prompts_rows
         if p.linked_prompt_id is not None
     }
+    # Lot 2 (0093) — images liées directement à un MORCEAU (son sans recette).
+    from app.services.links import track_images_for_cards as _track_imgs
+
+    _img_by_track_id = await _track_imgs(db, [t.id for t in tracks])
+
+    def _li_track(t):
+        return _linked_image_by_son_id.get(t.prompt_id) or _img_by_track_id.get(t.id)
 
     prompts_payload = [
         {
@@ -1020,8 +1027,10 @@ async def build_artist_detail_payload(
                 **(playlist_by_track.get(t.id) or {}),
                 # C4 « Oeuvre complete » — image liee injectee aussi sur la
                 # card track (le front matche par promptId). Apercu only.
-                "linkedImage":      _linked_image_by_son_id.get(t.prompt_id),
-                "isOeuvreComplete": _linked_image_by_son_id.get(t.prompt_id) is not None,
+                # Lot 2 : ou image liée directement au MORCEAU (sans recette).
+                "linkedImage":      _li_track(t),
+                "isOeuvreComplete": _li_track(t) is not None,
+                "oeuvreId":         (_li_track(t) or {}).get("id"),
             }
             for t in tracks
         ],
@@ -1242,6 +1251,18 @@ async def tracks_recent(
             li = linked_by_son_id.get(td.get("promptId") or "")
             td["linkedImage"] = li
             td["isOeuvreComplete"] = li is not None
+            td["oeuvreId"] = li["id"] if li else None
+
+    # Lot 2 (0093) — image liée directement au MORCEAU (son sans recette).
+    from app.services.links import track_images_for_cards as _track_imgs
+
+    _by_track = await _track_imgs(db, [t.id for t, _ in rows])
+    for (t, _), td in zip(rows, tracks_out):
+        if not td.get("linkedImage") and t.id in _by_track:
+            li = _by_track[t.id]
+            td["linkedImage"] = li
+            td["isOeuvreComplete"] = True
+            td["oeuvreId"] = li["id"]
 
     # DUALITÉ ADN (B) — badges musique/visuel + tag playlist par son.
     await _enrich_tracks_dualite(db, tracks_out, rows)
@@ -1249,9 +1270,28 @@ async def tracks_recent(
     return {"tracks": tracks_out}
 
 
+async def _note_listen(request: Request, db: AsyncSession) -> None:
+    try:
+        auth = request.headers.get("authorization") or ""
+        if not auth.lower().startswith("bearer "):
+            return
+        from app.auth.jwt import decode_access_token
+        from app.services.activity import note_activity
+
+        email = decode_access_token(auth[7:].strip())
+        if not email:
+            return
+        uid = (await db.execute(
+            select(User.id).where(User.email == email, User.is_banned.is_(False))
+        )).scalar_one_or_none()
+        note_activity(uid, listened=True)
+    except Exception:  # noqa: BLE001
+        return
+
+
 @router.post("/plays/{public_id}")
 async def increment_plays(
-    public_id: str, db: AsyncSession = Depends(get_db)
+    public_id: str, request: Request, db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
     Équivalent de `POST /api/watt/plays/<id>` (P1-F8).
@@ -1290,6 +1330,12 @@ async def increment_plays(
 
     if track is None:
         return {"ok": False, "plays": 0}
+
+    # Lot 2 — « écouter en étant connecté » compte comme action d'un actif.
+    # L'écoute reste ANONYME dans play_events ; seul le drapeau du jour
+    # (user_activity_days.listened) est posé si un jeton valide accompagne la
+    # requête. Best-effort, jamais bloquant.
+    await _note_listen(request, db)
 
     # Incrément arithmétique direct (anti-race) — équivalent à
     # `UPDATE tracks SET plays = COALESCE(plays, 0) + 1 WHERE id = :id`.

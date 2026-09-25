@@ -418,7 +418,13 @@
   }
 
   // ── Open / Close ───────────────────────────────────────────────────────────
+  // Lot 1 (pré-lancement) : messagerie cachée tant que WATT_LAUNCH.messagerie
+  // est faux. Neutraliser open() ici neutralise TOUS les boutons qui l'appellent
+  // (topbar, notification « message », « Négocier »…). Drapeau absent → caché.
+  function _msgOn() { return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie); }
+
   function _open(userId) {
+    if (!_msgOn()) return;
     if (!_auth()) {
       if (window.openAuthModal) window.openAuthModal('login');
       return;
@@ -442,6 +448,7 @@
   }
 
   function _toggle(userId) {
+    if (!_msgOn()) return;
     _s.open ? _close() : _open(userId);
   }
 

@@ -27,6 +27,8 @@ au contraire OBSERVER les grants → helpers locaux clean.
 import uuid
 
 import pytest
+
+from app.config import settings
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select, text
 
@@ -44,6 +46,14 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.achievements import check_and_grant_achievements
 from app.services.users import create_user
+
+
+@pytest.fixture(autouse=True)
+def _rallume_lot1(monkeypatch):
+    """Lot 1 : les trophées sont cachés au lancement par défaut. Ce module teste la
+    mécanique elle-même → on la rallume (même modèle que SHOW_TROC ailleurs)."""
+    monkeypatch.setattr(settings, "SHOW_TROPHEES", True)
+
 
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")

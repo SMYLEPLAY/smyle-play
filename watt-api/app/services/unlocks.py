@@ -37,6 +37,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.credits import buyer_promo_part, credit_sale_revenue, promo_share
 from app.models.adn import Adn
 from app.models.owned_adn import OwnedAdn
 from app.models.owned_playlist_adn import OwnedPlaylistAdn
@@ -48,6 +49,7 @@ from app.models.transaction import (
     TransactionType,
 )
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.treasury import begin_commission, credit_commission
 from app.services.credits import (
     _acquire_user_locks,
     artist_pct_for_user,
@@ -152,11 +154,47 @@ class _UnlockAdnResult:
 # UNLOCK PROMPT
 # -----------------------------------------------------------------------------
 
+async def _effective_prompt_price(
+    db: AsyncSession, *, buyer_id: UUID, prompt_row: Prompt
+) -> tuple[int, bool, object]:
+    """Prix effectif d'un prompt pour cet acheteur (perks pyramide en cascade).
+    Renvoie (prix, perk_profil_appliqué, perk_playlist). Lecture seule ; à
+    appeler SOUS les verrous (valeurs stables pendant l'achat)."""
+    artist_id = prompt_row.artist_id
+    # Perks PYRAMIDE en cascade (cumul multiplicatif) :
+    #    - profil  : buyer possède l'ADN de l'artiste → -30%
+    #    - playlist: buyer possède l'ADN d'une playlist contenant ce son → -20%
+    #
+    # Le perk PROFIL -30% a deux sources selon le type de produit :
+    #    - product_type='image' → ADN VISUEL de l'artiste (OwnedVisualAdn)
+    #    - sinon (recette/beat)  → ADN MUSICAL de l'artiste (OwnedAdn)
+    # Un détenteur d'ADN musical ne réduit donc PAS les images, et
+    # réciproquement (chaque génome cible son médium).
+    is_image = getattr(prompt_row, "product_type", "recipe") == "image"
+    if is_image:
+        from app.services.visual_adn import user_owns_artist_visual_adn
+        perk_applied = await user_owns_artist_visual_adn(
+            db, user_id=buyer_id, artist_id=artist_id
+        )
+    else:
+        perk_applied = await user_owns_artist_adn(
+            db, user_id=buyer_id, artist_id=artist_id
+        )
+    from app.services.marketplace import user_owns_playlist_adn_for_prompt
+    playlist_perk = await user_owns_playlist_adn_for_prompt(
+        db, user_id=buyer_id, prompt_id=prompt_row.id
+    )
+    # Pricing entier (cumul -30% puis -20% si les deux).
+    paid = compute_effective_price(prompt_row.price_credits, perk_applied, playlist_perk)
+    return paid, perk_applied, playlist_perk
+
+
 async def unlock_prompt_atomic(
     db: AsyncSession,
     *,
     buyer_id: UUID,
     prompt_id: UUID,
+    _oeuvre: dict | None = None,
 ) -> _UnlockPromptResult:
     """
     Achète un prompt pour le compte de `buyer_id`.
@@ -173,6 +211,13 @@ async def unlock_prompt_atomic(
       9. UPDATE seller balance += artist_revenue + earned_total += artist_revenue
      10. INSERT UnlockedPrompt → IntegrityError attrapée → AlreadyUnlocked
      11. UPDATE Transaction COMPLETED
+
+    `_oeuvre` (usage INTERNE, achat d'une Œuvre entière — Lot 3) : la moitié
+    est achetée DANS le savepoint et sous les verrous déjà pris par
+    `buy_oeuvre_atomic` : {"treasury_id", "discount", "oeuvre_id"}. La remise
+    de l'Œuvre est retranchée du prix effectif de la moitié, qui suit ensuite
+    son circuit normal (barème, Pionnier, trésorerie, part vendeur, promo).
+    Les trophées sont alors calculés par l'appelant.
     """
     # 1. Prompt cible (sans lock, juste pour récupérer artist_id et price)
     prompt_row = (await db.execute(
@@ -180,6 +225,15 @@ async def unlock_prompt_atomic(
     )).scalar_one_or_none()
     if prompt_row is None or not prompt_row.is_published:
         raise PromptNotPurchasable("Prompt not found or not published")
+
+    # Lot 1 : un BEAT s'achète par cette même route (c'est une ligne `prompts`,
+    # product_type='beat'). Beats cachés au lancement → refus, avec le même 404
+    # qu'un contenu introuvable (on ne révèle pas la fonction masquée).
+    if getattr(prompt_row, "product_type", "recipe") == "beat":
+        from app.config import settings  # import local : pas de cycle
+
+        if not settings.launch_flags_dict()["beats"]:
+            raise PromptNotPurchasable("Beats indisponibles pendant le lancement")
 
     # Stock-out : édition limitée épuisée (sold_count d'UnlockedPrompt vs
     # max_supply). Même mécanique que les ADN. NULL = illimité → pas de check.
@@ -203,36 +257,28 @@ async def unlock_prompt_atomic(
             "An artist cannot unlock their own prompt"
         )
 
-    async with db.begin_nested():
+    from contextlib import nullcontext
+
+    async with (db.begin_nested() if _oeuvre is None else nullcontext()):
         # 3. Locks ordonnés (tri UUID dans _acquire_user_locks)
-        await _acquire_user_locks(db, [buyer_id, artist_id])
-
-        # 4. Perks PYRAMIDE en cascade (cumul multiplicatif) :
-        #    - profil  : buyer possède l'ADN de l'artiste → -30%
-        #    - playlist: buyer possède l'ADN d'une playlist contenant ce son → -20%
-        #
-        # Le perk PROFIL -30% a deux sources selon le type de produit :
-        #    - product_type='image' → ADN VISUEL de l'artiste (OwnedVisualAdn)
-        #    - sinon (recette/beat)  → ADN MUSICAL de l'artiste (OwnedAdn)
-        # Un détenteur d'ADN musical ne réduit donc PAS les images, et
-        # réciproquement (chaque génome cible son médium).
-        is_image = getattr(prompt_row, "product_type", "recipe") == "image"
-        if is_image:
-            from app.services.visual_adn import user_owns_artist_visual_adn
-            perk_applied = await user_owns_artist_visual_adn(
-                db, user_id=buyer_id, artist_id=artist_id
-            )
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        if _oeuvre is None:
+            treasury_id = await begin_commission(db)
+            await _acquire_user_locks(db, [buyer_id, artist_id])
         else:
-            perk_applied = await user_owns_artist_adn(
-                db, user_id=buyer_id, artist_id=artist_id
-            )
-        from app.services.marketplace import user_owns_playlist_adn_for_prompt
-        playlist_perk = await user_owns_playlist_adn_for_prompt(
-            db, user_id=buyer_id, prompt_id=prompt_id
-        )
+            treasury_id = _oeuvre["treasury_id"]  # verrous déjà pris
 
-        # 5. Pricing entier (cumul -30% puis -20% si les deux).
-        paid = compute_effective_price(base_price, perk_applied, playlist_perk)
+        # 4-5. Perks pyramide + prix effectif (cf. _effective_prompt_price).
+        paid, perk_applied, playlist_perk = await _effective_prompt_price(
+            db, buyer_id=buyer_id, prompt_row=prompt_row
+        )
+        # Lot 3 — achat d'une Œuvre entière : part de la remise de 10 %
+        # imputée à cette moitié (prorata calculé par buy_oeuvre_atomic).
+        remise_oeuvre = int(_oeuvre["discount"]) if _oeuvre else 0
+        if remise_oeuvre:
+            paid = max(1, paid - remise_oeuvre)
         # C6 : commission selon le PALIER de l'artiste vendeur (80/88/95).
         # Standard = 80% = comportement historique.
         artist_pct = await artist_pct_for_user(db, artist_id)
@@ -252,12 +298,19 @@ async def unlock_prompt_atomic(
             raise InsufficientCredits(required=paid, available=buyer_balance)
 
         # 7. Transaction PENDING
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=artist_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -265,6 +318,8 @@ async def unlock_prompt_atomic(
                 "artist_id": str(artist_id),
                 "base_price": base_price,
                 "perk_applied": perk_applied,
+                **({"oeuvre_id": str(_oeuvre["oeuvre_id"]), "remise_oeuvre": remise_oeuvre}
+                   if _oeuvre else {}),
             },
         )
         db.add(tx)
@@ -285,16 +340,11 @@ async def unlock_prompt_atomic(
         )
 
         # 9. Credit seller (balance + earned_total)
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": artist_id},
-        )
+        await credit_sale_revenue(db, artist_id, artist_revenue, vendeur_promo)
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         # 10. #X/N — numéro d'édition pour les éditions LIMITÉES uniquement.
         #     Compté SOUS LOCK : le verrou sur la ligne artiste (acquis en
@@ -345,6 +395,16 @@ async def unlock_prompt_atomic(
         ):
             prompt_row.is_published = False
             await db.flush()
+
+    if _oeuvre is not None:
+        # Achat d'Œuvre : trophées calculés une fois par l'appelant.
+        return _UnlockPromptResult(
+            unlocked_prompt=unlocked,
+            transaction=tx,
+            perk_applied=perk_applied,
+            base_price=base_price,
+            paid=paid,
+        )
 
     # 12. Phase 9.6 — Hook achievements (HORS du savepoint principal).
     # Appelé après le COMPLETED pour que les counts soient à jour.
@@ -427,6 +487,10 @@ async def unlock_adn_atomic(
         )
 
     async with db.begin_nested():
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
         # C6 : commission selon le palier de l'artiste (80/88/95).
@@ -444,12 +508,19 @@ async def unlock_adn_atomic(
         if buyer_balance < paid:
             raise InsufficientCredits(required=paid, available=buyer_balance)
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=artist_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -474,16 +545,11 @@ async def unlock_adn_atomic(
             ),
             {"paid": paid, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": artist_id},
-        )
+        await credit_sale_revenue(db, artist_id, artist_revenue, vendeur_promo)
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = OwnedAdn(user_id=buyer_id, adn_id=adn_id)
         db.add(owned)
@@ -580,6 +646,10 @@ async def unlock_playlist_adn_atomic(
     paid = _eff_price(paid, profil_perk)
 
     async with db.begin_nested():
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
@@ -600,12 +670,19 @@ async def unlock_playlist_adn_atomic(
         if int(buyer_row.credits_balance) < paid:
             raise InsufficientCredits(required=paid, available=int(buyer_row.credits_balance))
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=owner_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -625,16 +702,11 @@ async def unlock_playlist_adn_atomic(
             ),
             {"paid": paid, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": owner_id},
-        )
+        await credit_sale_revenue(db, owner_id, artist_revenue, vendeur_promo)
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = OwnedPlaylistAdn(user_id=buyer_id, playlist_id=playlist_id)
         db.add(owned)
@@ -725,6 +797,10 @@ async def unlock_album_adn_atomic(
     paid = _eff_price(paid, profil_perk)
 
     async with db.begin_nested():
+        # Brique 1 — la tresorerie se verrouille EN PREMIER (avant tout
+        # verrou user) : regle d'ordre globale qui rend le deadlock
+        # impossible sur cette ligne chaude. No-op si la brique est OFF.
+        treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
@@ -745,12 +821,19 @@ async def unlock_album_adn_atomic(
         if int(buyer_row.credits_balance) < paid:
             raise InsufficientCredits(required=paid, available=int(buyer_row.credits_balance))
 
+        # Lot 3 — fuite « Smyles offerts → argent réel » : part payée par l'acheteur
+        # en Smyles promo (lue sous verrou) → la part vendeur qu'elle finance est
+        # créditée NON retirable (bucket promo). Tracée au ledger (audit).
+        promo_paye = await buyer_promo_part(db, buyer_id, paid)
+        vendeur_promo = promo_share(artist_revenue, promo_paye, paid)
         tx = Transaction(
             type=TransactionType.UNLOCK,
             status=TransactionStatus.PENDING,
             buyer_id=buyer_id,
             seller_id=owner_id,
             credits_amount=paid,
+            promo_paid=promo_paye,
+            promo_non_retirable=vendeur_promo,
             artist_revenue=artist_revenue,
             platform_fee=platform_fee,
             metadata_json={
@@ -770,16 +853,11 @@ async def unlock_album_adn_atomic(
             ),
             {"paid": paid, "uid": buyer_id},
         )
-        await db.execute(
-            text(
-                "UPDATE users "
-                "SET credits_balance = credits_balance + :rev, "
-                "    smyles_gagnes = smyles_gagnes + :rev, "
-                "    credits_earned_total = credits_earned_total + :rev "
-                "WHERE id = :uid"
-            ),
-            {"rev": artist_revenue, "uid": owner_id},
-        )
+        await credit_sale_revenue(db, owner_id, artist_revenue, vendeur_promo)
+
+        # Brique 1 — la commission plateforme est encaissee par la societe
+        # (bucket NON retirable). No-op tant que FEATURE_MARKET_SMYLES est OFF.
+        await credit_commission(db, treasury_id, platform_fee)
 
         owned = OwnedAlbumAdn(user_id=buyer_id, album_id=album_id)
         db.add(owned)

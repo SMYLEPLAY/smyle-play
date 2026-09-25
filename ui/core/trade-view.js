@@ -96,7 +96,8 @@
 
     // Négocier : ouvre un fil de messagerie avec l'autre partie si dispo.
     const otherId   = isSeller ? o.buyer_id : o.seller_id;
-    const negotiate = otherId
+    // Lot 1 : pas de « Négocier » tant que la messagerie est cachée.
+    const negotiate = (otherId && window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie)
       ? `<button onclick="if(window.SmyleMessaging){document.getElementById('smyle-tradeview').remove();SmyleMessaging.open('${_esc(otherId)}');}" style="width:100%;margin-top:8px;padding:9px;border:1px solid rgba(204,136,255,.4);border-radius:8px;background:rgba(204,136,255,.1);color:#cdb4ff;cursor:pointer;font-size:13px">💬 Négocier</button>`
       : '';
 

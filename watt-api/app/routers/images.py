@@ -375,7 +375,7 @@ def _image_public_dict(
         "createdAt":        p.created_at.isoformat() if p.created_at else None,
         # C4 « Oeuvre complete » : flag + partenaire son. linkedSound est
         # rempli a posteriori par _enrich_linked_sounds (requete Track groupee).
-        "isOeuvreComplete": p.linked_prompt_id is not None,
+        "isOeuvreComplete": p.linked_prompt_id is not None or p.linked_track_id is not None,
         "linkedSound":      None,
         # Nature du lien : True = « ne ensemble » (cette image ne s'affiche
         # PAS en carte individuelle sur les surfaces publiques ; les listings
@@ -425,6 +425,28 @@ async def _enrich_linked_sounds(
     """
     from app.models.track import Track
 
+    # Lot 2 (0093) — images liées directement à un MORCEAU (sans recette) :
+    # le « son » est le morceau (titre + pochette), sans prix (écoute libre).
+    track_ids = [p.linked_track_id for p in prompts
+                 if p.linked_track_id is not None and p.linked_prompt_id is None]
+    if track_ids:
+        trk_rows = (await db.execute(
+            select(Track).where(Track.id.in_(track_ids), Track.is_deleted.is_(False))
+        )).scalars().all()
+        trk_by_id = {t.id: t for t in trk_rows}
+        for p, d in zip(prompts, dicts):
+            if p.linked_prompt_id is None and p.linked_track_id is not None:
+                t = trk_by_id.get(p.linked_track_id)
+                d["isOeuvreComplete"] = t is not None
+                d["linkedSound"] = ({
+                    "id":           None,
+                    "trackId":      str(t.id),
+                    "title":        t.title,
+                    "coverUrl":     t.cover_url or "",
+                    "priceCredits": None,
+                    "productType":  "track",
+                } if t is not None else None)
+
     # Map image_id -> linked_prompt_id (le son partenaire), pour les images liees.
     son_ids = [p.linked_prompt_id for p in prompts if p.linked_prompt_id is not None]
     if not son_ids:
@@ -447,7 +469,9 @@ async def _enrich_linked_sounds(
     cover_by_son = {pid: (cu or "") for pid, cu in cover_rows}
 
     for p, d in zip(prompts, dicts):
-        son = son_by_id.get(p.linked_prompt_id) if p.linked_prompt_id else None
+        if p.linked_prompt_id is None:
+            continue  # lien au morceau (déjà traité ci-dessus) ou pas de lien
+        son = son_by_id.get(p.linked_prompt_id)
         if son is None:
             d["isOeuvreComplete"] = False
             continue
@@ -471,7 +495,7 @@ async def _owner_read_with_link(db: AsyncSession, image: Prompt) -> ImageOwnerRe
     from app.services.links import linked_sound_payload
 
     model = ImageOwnerRead.model_validate(image)
-    model.isOeuvreComplete = image.linked_prompt_id is not None
+    model.isOeuvreComplete = image.linked_prompt_id is not None or image.linked_track_id is not None
     model.linkedSound = await linked_sound_payload(db, image)
     # Taxonomie visuelle : la CSV stockée (image_tags) → liste pour le front.
     # model_validate a déjà renseigné `style` via l'alias image_style ; `tags`
@@ -998,9 +1022,6 @@ async def list_oeuvres(
         .order_by(desc(Prompt.created_at))
         .limit(_MAX_IMAGE_RESULTS)
     )).scalars().all()
-    if not son_rows:
-        return {"count": 0, "oeuvres": []}
-
     # Cover du son = cover_url du Track qui pointe ce prompt (requête groupée).
     son_ids = [s.id for s in son_rows]
     cover_rows = (await db.execute(
@@ -1008,7 +1029,7 @@ async def list_oeuvres(
             Track.prompt_id.in_(son_ids),
             Track.is_deleted.is_(False),
         )
-    )).all()
+    )).all() if son_ids else []
     cover_by_son = {pid: (cu or "") for pid, cu in cover_rows}
 
     oeuvres = []
@@ -1017,7 +1038,9 @@ async def list_oeuvres(
         img_payload = await linked_image_payload(db, son)
         if img_payload is None:
             continue  # partenaire manquant / supprimé / pas une image → on saute
-        oeuvres.append({
+        oeuvres.append((son.created_at, {
+            # Lot 2 : identifiant de l'Œuvre = celui de son image → page /o/{id}.
+            "oeuvreId": img_payload["id"],
             "sound": {
                 "id":           str(son.id),
                 "title":        son.title,
@@ -1026,10 +1049,44 @@ async def list_oeuvres(
                 "productType":  son.product_type,
             },
             "image": img_payload,  # {id, previewKey, priceCredits}
-        })
-        if len(oeuvres) >= limit:
-            break
+        }))
 
+    # Lot 2 — Œuvres liées au niveau du MORCEAU, sans recette (0093).
+    track_imgs = (await db.execute(
+        select(Prompt, Track)
+        .join(Track, Prompt.linked_track_id == Track.id)
+        .join(User, Prompt.artist_id == User.id)
+        .where(
+            Prompt.product_type == "image",
+            Prompt.linked_prompt_id.is_(None),
+            Prompt.is_published.is_(True),
+            Prompt.is_deleted.is_(False),
+            Track.is_deleted.is_(False),
+            User.profile_public.is_(True),
+        )
+        .order_by(desc(Prompt.created_at))
+        .limit(_MAX_IMAGE_RESULTS)
+    )).all()
+    for img, trk in track_imgs:
+        oeuvres.append((img.created_at, {
+            "oeuvreId": str(img.id),
+            "sound": {
+                "id":           None,
+                "trackId":      str(trk.id),
+                "title":        trk.title,
+                "coverUrl":     trk.cover_url or "",
+                "priceCredits": None,
+                "productType":  "track",
+            },
+            "image": {
+                "id":           str(img.id),
+                "previewKey":   img.preview_r2_key or "",
+                "priceCredits": img.price_credits,
+            },
+        }))
+
+    oeuvres.sort(key=lambda x: x[0], reverse=True)
+    oeuvres = [o for _, o in oeuvres[:limit]]
     return {"count": len(oeuvres), "oeuvres": oeuvres}
 
 

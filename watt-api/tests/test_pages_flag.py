@@ -89,7 +89,7 @@ def test_launch_flags_endpoint_no_cache():
 
 def test_index_et_shells():
     c = _client()
-    for path in ("/", "/sons", "/beats", "/artistes"):
+    for path in ("/", "/sons", "/artistes"):
         r = c.get(path)
         assert r.status_code == 200, path
         assert "text/html" in r.headers["content-type"], path
@@ -107,13 +107,30 @@ def test_profil_u_et_arobase():
     assert c.get("/@tom").status_code == 200
 
 
-def test_oeuvre_page_servie():
+def test_oeuvre_page_servie(monkeypatch):
     # L-03 (reprise PR #489) : la route de page /oeuvre/<slug> avait disparu
-    # à la sortie de Flask (P0-b) → 404 sur LA page qu'un créateur partage.
-    # Slug inconnu ⇒ page brute (aucune méta injectée), mais toujours 200.
+    # à la sortie de Flask (P0-b). Lot 2 : ce regroupement playlist + album
+    # s'appelle « Collection » → page /collection/<slug>, l'ancienne adresse
+    # redirige (liens déjà partagés conservés). Cachée avec les albums.
+    monkeypatch.setattr(settings, "SHOW_ALBUMS", True)
     r = _client().get("/oeuvre/slug-inexistant-l03")
+    assert r.status_code == 301 and r.headers["location"] == "/collection/slug-inexistant-l03"
+    r = _client().get("/collection/slug-inexistant-l03")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
+
+
+def test_collection_cachee_avec_les_albums(monkeypatch):
+    monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
+    monkeypatch.setattr(settings, "SHOW_ALBUMS", False)
+    r = _client().get("/collection/un-slug")
+    assert r.status_code == 302 and r.headers["location"] == "/"
+
+
+def test_page_oeuvre_son_image_servie():
+    # Lot 2 — /o/<id> : page à partager d'une Œuvre (1 son + 1 image).
+    r = _client().get("/o/00000000-0000-0000-0000-000000000000")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
 
 
 def test_comment_ca_marche_servie():
@@ -138,6 +155,18 @@ def test_offres_gate_paliers(monkeypatch):
     assert r.status_code == 302 and r.headers["location"] == "/"
     monkeypatch.setattr(settings, "SHOW_PALIERS", True)
     assert _client().get("/offres").status_code == 200
+
+
+def test_beats_gate(monkeypatch):
+    # Lot 1 (pré-lancement) : l'étagère /beats redirige vers l'accueil tant
+    # que SHOW_BEATS est éteint, et redevient une page normale au rallumage.
+    monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
+    monkeypatch.setattr(settings, "SHOW_BEATS", False)
+    r = _client().get("/beats")
+    assert r.status_code == 302 and r.headers["location"] == "/"
+    monkeypatch.setattr(settings, "SHOW_BEATS", True)
+    r = _client().get("/beats")
+    assert r.status_code == 200 and "text/html" in r.headers["content-type"]
 
 
 def test_voix_gate(monkeypatch):

@@ -322,11 +322,12 @@
         '<div class="imgl-oeuvre-linked">' +
           candThumb({ coverUrl: s.coverUrl }) +
           '<span class="imgl-oeuvre-linked-title">🔗 ' + esc(s.title || 'Son lié') + '</span>' +
+          '<a class="imgl-oeuvre-unlink" href="/o/' + encodeURIComponent(img.id) + '" target="_blank" rel="noopener" style="text-decoration:none">Voir l\'œuvre</a>' +
           '<button type="button" class="imgl-oeuvre-unlink">Délier</button>' +
         '</div>' +
         '<span class="imgl-oeuvre-hint">Les deux produits restent vendables séparément.</span>';
-      box.querySelector('.imgl-oeuvre-unlink').addEventListener('click', function () {
-        var b = box.querySelector('.imgl-oeuvre-unlink');
+      box.querySelector('button.imgl-oeuvre-unlink').addEventListener('click', function () {
+        var b = box.querySelector('button.imgl-oeuvre-unlink');
         b.disabled = true;
         window.apiFetch('/artist/me/prompts/' + encodeURIComponent(img.id) + '/link',
           { method: 'DELETE', raw: true })
@@ -358,23 +359,32 @@
             return;
           }
           cands.innerHTML = list.map(function (c) {
-            return '<button type="button" class="imgl-oeuvre-cand" data-cand="' + esc(c.id) + '">' +
+            // Lot 2 : kind « track » = morceau sans recette (écoute libre).
+            return '<button type="button" class="imgl-oeuvre-cand" data-cand="' + esc(c.id) + '" data-kind="' + esc(c.kind || 'prompt') + '">' +
               candThumb(c) +
               '<span class="imgl-oeuvre-cand-title">' + esc(c.title || 'Sans titre') + '</span>' +
-              '<span class="imgl-oeuvre-cand-price">' + esc(String(c.priceCredits)) + ' Smyles</span>' +
+              '<span class="imgl-oeuvre-cand-price">' +
+                (c.priceCredits != null ? esc(String(c.priceCredits)) + ' Smyles' : 'Écoute libre') +
+              '</span>' +
             '</button>';
           }).join('');
           Array.prototype.forEach.call(cands.querySelectorAll('.imgl-oeuvre-cand'), function (cb) {
             cb.addEventListener('click', function () {
               var otherId = cb.getAttribute('data-cand');
+              var kind = cb.getAttribute('data-kind');
               Array.prototype.forEach.call(cands.querySelectorAll('.imgl-oeuvre-cand'),
                 function (x) { x.disabled = true; });
               // bundle_exclusive=false EN DUR (lien rétroactif).
-              window.apiFetch('/artist/me/prompts/' + encodeURIComponent(img.id) + '/link', {
-                method: 'POST',
-                json: { other_prompt_id: otherId, bundle_exclusive: false },
-                raw: true,
-              })
+              var req = (kind === 'track')
+                ? window.apiFetch('/artist/me/tracks/' + encodeURIComponent(otherId) + '/link', {
+                    method: 'POST', json: { image_id: img.id, bundle_exclusive: false },
+                  })
+                : window.apiFetch('/artist/me/prompts/' + encodeURIComponent(img.id) + '/link', {
+                    method: 'POST',
+                    json: { other_prompt_id: otherId, bundle_exclusive: false },
+                    raw: true,
+                  });
+              req
                 .then(function () {
                   toast('Œuvre complète créée ✓', 'success');
                   img.isOeuvreComplete = true;

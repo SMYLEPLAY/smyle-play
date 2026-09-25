@@ -298,10 +298,11 @@ function renderAuthArea() {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           WATT BOARD
         </a>
+${_launchItemOn('serie') ? `
         <button class="user-menu-item" onclick="openStreakModal()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8.5 14.5A2.5 2.5 0 0011 17c2 0 3.5-1.5 3.5-4 0-3-2-4.5-2-7 0 0-3 1.5-3 5 0-1.5-.5-2.5-1.5-3.5-.5 1.5-1 2.5-1 4.5a4 4 0 002 3z"/></svg>
           Récompense du jour
-        </button>
+        </button>` : ''}
         <button class="user-menu-item" onclick="openReferralModal()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
           Parrainage
@@ -563,6 +564,8 @@ function _ensureStreakModal() {
 }
 
 async function openStreakModal() {
+  // Lot 1 : série quotidienne cachée au lancement (drapeau absent → caché).
+  if (!_launchItemOn('serie')) return;
   _closeUserMenu();
   const modal = _ensureStreakModal();
   modal.style.display = 'flex';
@@ -598,6 +601,7 @@ function closeStreakModal() {
 }
 
 async function claimStreak() {
+  if (!_launchItemOn('serie')) return;  // Lot 1
   const body = document.getElementById('streakBody');
   try {
     const r = await apiFetch('/streak/checkin', { method: 'POST' });
@@ -621,6 +625,8 @@ async function claimStreak() {
 // l'utilisateur garde l'accès via le menu « Récompense du jour ». Le flag se
 // réinitialise à la fermeture du navigateur (nouvelle journée → nouveau push).
 async function _maybeNudgeStreak() {
+  // Lot 1 : série cachée → aucune ouverture automatique, aucune requête.
+  if (!_launchItemOn('serie')) return;
   try {
     let alreadyOpened = false;
     try { alreadyOpened = sessionStorage.getItem('smyle_streak_autoopened') === '1'; } catch (_) {}

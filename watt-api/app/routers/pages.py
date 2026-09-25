@@ -17,8 +17,10 @@ Parité route par route (source : OBSIDIAN/05_TECH/Flask_routes_inventory.md) :
   /comment-ca-marche         comment-ca-marche.html (lien de l'onboarding)
   /offres                    gate « paliers » : 302 → / si masqué
   /u/{slug} /@{slug}         artiste.html (profil) ; /artiste/{slug} 301 → /u/
-  /oeuvre/{slug}             oeuvre.html (fiche œuvre) — rétablie par F1-1 / L-03,
-                             avec aperçu social (Open Graph) comme /u/{slug}
+  /collection/{slug}         oeuvre.html (Collection = playlist + album, C3),
+                             aperçu social ; cachée avec les albums (Lot 2)
+  /oeuvre/{slug}             301 → /collection/{slug} (ancienne adresse C3)
+  /o/{id}                    o.html — Œuvre 1 son + 1 image (C4), aperçu social
   /sons /beats /artistes     shell index.html (vue pilotée par marketplace.js)
   /voix                      gate « voix » : 302 → / si masqué, sinon shell
 
@@ -250,7 +252,7 @@ async def _oeuvre_meta(slug: str, request: Request) -> dict | None:
             desc = _clip(
                 getattr(album, "dna_description", None)
                 or getattr(playlist, "dna_description", None)
-            ) or f"\u0152uvre \u00ab {title} \u00bb sur {_BRAND}."
+            ) or f"Collection \u00ab {title} \u00bb sur {_BRAND}."
             image = None
             cover_prompt_id = getattr(album, "cover_prompt_id", None)
             if cover_prompt_id is not None:
@@ -266,10 +268,52 @@ async def _oeuvre_meta(slug: str, request: Request) -> dict | None:
             return {
                 "title": f"{title} \u2014 {_BRAND}",
                 "description": desc,
-                "url": f"{_base_url(request)}/oeuvre/{slug}",
+                "url": f"{_base_url(request)}/collection/{slug}",
                 "image": image or _DEFAULT_OG_IMAGE,
                 "page_type": "article",
             }
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _preview_image_url(request: Request, key: str | None) -> str | None:
+    """URL ABSOLUE de l'aperçu d'une image (jamais l'original) : R2 public si
+    configuré, sinon le proxy same-origin /watt/images/{key}."""
+    if not key:
+        return None
+    base = settings.effective_r2_public_base_url
+    if base:
+        return f"{base.rstrip('/')}/{str(key).lstrip('/')}"
+    return _absolute(request, f"/watt/images/{str(key).lstrip('/')}")
+
+
+async def _oeuvre_c4_meta(oeuvre_id: str, request: Request) -> dict | None:
+    """Metadonnees sociales d'une ŒUVRE (1 son + 1 image, Lot 2). None si
+    introuvable / non publique → page brute, aucune fuite."""
+    try:
+        import uuid as _uuid
+
+        from app.services.links import public_oeuvre
+
+        oid = _uuid.UUID(str(oeuvre_id))
+        async with SessionLocal() as db:
+            data = await public_oeuvre(db, oid)
+        if data is None:
+            return None
+        title = (data.get("title") or "\u0152uvre").strip()
+        name = (data["creator"].get("name") or "").strip()
+        desc = (
+            f"\u0152uvre de {name} sur {_BRAND} \u2014 un son et une image."
+            if name else f"\u0152uvre sur {_BRAND} \u2014 un son et une image."
+        )
+        return {
+            "title": f"{title} \u2014 {name}" if name else f"{title} \u2014 {_BRAND}",
+            "description": desc,
+            "url": f"{_base_url(request)}/o/{data['id']}",
+            "image": _preview_image_url(request, data["image"].get("previewKey"))
+            or _DEFAULT_OG_IMAGE,
+            "page_type": "music.song",
+        }
     except Exception:  # noqa: BLE001
         return None
 
@@ -355,16 +399,41 @@ async def user_page_at(slug: str, request: Request):
     return _page_social("artiste.html", **meta)
 
 
-@router.get("/oeuvre/{slug}", include_in_schema=False)
-async def oeuvre_page(slug: str, request: Request):
-    # ROUTE MANQUANTE (regression P0-b) : oeuvre.js sert /oeuvre/<slug> et
-    # appelle GET /watt/oeuvre/<slug>, mais aucune route de page ne servait
-    # oeuvre.html → 404 sur la page meme d'une oeuvre. Retablie ici, avec
-    # son apercu social (c'est LA page qu'un createur partage).
+@router.get("/collection/{slug}", include_in_schema=False)
+async def collection_page(slug: str, request: Request):
+    # Lot 2 (décision 23/09) : le regroupement playlist + album (C3) s'appelle
+    # « Collection » ; « Œuvre » = uniquement 1 son + 1 image (/o/{id}).
+    # Page servie par oeuvre.html (même fichier, libellés « Collection »),
+    # avec son aperçu social. Cachée avec les albums (SHOW_ALBUMS).
+    if not settings.launch_flags_dict()["albums"]:
+        return RedirectResponse("/", status_code=302)
     meta = await _oeuvre_meta(slug, request)
     if meta is None:
         return _page("oeuvre.html")
     return _page_social("oeuvre.html", **meta)
+
+
+@router.get("/oeuvre/{slug}", include_in_schema=False)
+async def oeuvre_page_legacy(slug: str):
+    # Ancienne adresse des collections (C3) : liens déjà partagés conservés.
+    return RedirectResponse(f"/collection/{slug}", status_code=301)
+
+
+@router.get("/o/{oeuvre_id}", include_in_schema=False)
+async def oeuvre_c4_page(oeuvre_id: str, request: Request):
+    # Lot 2 — page à partager d'une ŒUVRE (1 son + 1 image). C'est le lien
+    # que le créateur poste : aperçu social (image + titre) injecté ici.
+    meta = await _oeuvre_c4_meta(oeuvre_id, request)
+    if meta is None:
+        return _page("o.html")
+    return _page_social("o.html", **meta)
+
+
+@router.get("/pret-a-sortir", include_in_schema=False)
+async def pret_a_sortir_page():
+    # Lot 2 — tableau admin « Prêt à sortir ». La page est publique mais vide :
+    # ses données viennent de GET /admin/pret-a-sortir (réservé à l'admin).
+    return _page("pret-a-sortir.html")
 
 
 @router.get("/artiste/{slug}", include_in_schema=False)
@@ -404,6 +473,10 @@ async def sons_page():
 
 @router.get("/beats", include_in_schema=False)
 async def beats_page():
+    # Lot 1 — BEATS masqués : 302 accueil tant que non VISIBLE (même modèle
+    # que /voix).
+    if not settings.launch_flags_dict()["beats"]:
+        return RedirectResponse("/", status_code=302)
     return _page("index.html")
 
 

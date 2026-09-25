@@ -83,7 +83,8 @@
         _updateNotifBadge();
       }
     } catch (_) {}
-    try {
+    // Lot 1 : messagerie cachée → aucune requête (drapeau absent → caché).
+    if (window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie) try {
       const r = await fetch('/messages/threads', { headers: _hdr(), credentials: 'same-origin' });
       if (r.ok) {
         const data = await r.json();
@@ -230,6 +231,7 @@
 
   window.__pageToggleMsg = function(ev) {
     if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie)) return;  // Lot 1
     _closeNotifPanel();
     _s.msgOpen ? _closeMsgPanel() : _renderMsgPanel();
   };
@@ -260,7 +262,17 @@
 
   // ── Boot ──────────────────────────────────────────────────────────────────
 
+  // Lot 1 : messagerie cachée au lancement → on retire l'enveloppe (les
+  // pages index/dashboard la déclarent en HTML statique). Drapeau absent → caché.
+  function _hideMsgIfOff() {
+    if (window.WATT_LAUNCH && window.WATT_LAUNCH.messagerie) return;
+    const btn = document.getElementById('page-msg-btn');
+    const wrap = btn && btn.closest('.page-icon-wrap');
+    if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+  }
+
   async function _boot() {
+    _hideMsgIfOff();
     if (!_auth()) return;
     const services  = document.getElementById('page-icon-services');
     const logoutBtn = document.getElementById('header-logout-btn');

@@ -15,6 +15,10 @@ class CreditPack(BaseModel):
 
 class CreditPacksResponse(BaseModel):
     packs: list[CreditPack]
+    # Lot 3 — mention légale à afficher sous les prix (franchise de TVA), ou None.
+    mention_tva: str | None = None
+    # Lot 3 — paiement par carte réellement disponible (clé Stripe posée).
+    paiement_carte: bool = False
 
 
 class GrantCreditsRequest(BaseModel):

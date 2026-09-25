@@ -179,7 +179,7 @@
     opts = opts || {};
     const son = opts.son || null;
     const visuel = opts.visuel || null;
-    const title = opts.title || 'Œuvre';
+    const title = opts.title || 'Collection';
 
     // Cover centrée : aperçu de la face visuelle, sinon bloc coloré (couleur
     // de la face son si dispo, sinon violet du thème).

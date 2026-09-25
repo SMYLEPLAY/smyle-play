@@ -74,4 +74,9 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Compte suspendu.",
         )
+    # Lot 2 — activité par jour (mesures « prêt à sortir ») : au plus une
+    # écriture par compte et par jour, en tâche de fond, jamais bloquante.
+    from app.services.activity import note_activity
+
+    note_activity(user.id)
     return user

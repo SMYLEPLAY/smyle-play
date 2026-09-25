@@ -8,6 +8,7 @@ Endpoints :
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.core.ratelimit import LIMIT_CHECKIN, limiter
 from app.database import get_db
@@ -15,7 +16,13 @@ from app.models.user import User
 from app.schemas.streak import StreakClaim, StreakStatus
 from app.services.streak import claim_daily_checkin, get_streak_status
 
-router = APIRouter(prefix="/streak", tags=["streak"])
+router = APIRouter(
+    prefix="/streak",
+    tags=["streak"],
+    # Lot 1 : cachée au lancement. Cette route est le SEUL point qui crédite
+    # la série quotidienne → la couper rend la mécanique inerte.
+    dependencies=[Depends(require_launch_item("serie"))],
+)
 
 
 @router.get("/me", response_model=StreakStatus)

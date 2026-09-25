@@ -341,3 +341,147 @@ async def beta_dashboard(
     renvoyé avec `mesurable: false` et sa raison, jamais avec un chiffre inventé.
     """
     return await beta_dashboard_data(db, days=days, limit=limit)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Brique 2 — Programme PIONNIER : rattrapage en DEUX TEMPS (2026-09-23)
+#
+# Les créateurs qui ont publié AVANT l'activation doivent recevoir leur rang,
+# dans l'ordre de leur première œuvre. Ce n'est PAS une migration automatique :
+# on ne voit pas les données de prod, et certains comptes (ex. un compte de test)
+# ne doivent pas prendre une place. Donc :
+#
+#   POST /admin/pioneer/retro/preview  { exclude_ids }                 → n'écrit RIEN
+#   POST /admin/pioneer/retro/confirm  { exclude_ids, expected_user_ids } → écrit
+#
+# La confirmation n'écrit que si la liste recalculée est EXACTEMENT celle que
+# l'admin a vue (sinon 409 : relancer l'aperçu). Les exclusions sont PERSISTÉES :
+# un compte exclu ne recevra jamais de rang, ni ici ni plus tard en direct.
+# Idempotent. Utilisable flag FEATURE_PIONEER OFF (ordre recommandé : rattrapage
+# PUIS activation, pour que les rangs suivent l'ordre réel de publication).
+# ─────────────────────────────────────────────────────────────────────────────
+
+from app.services.pioneer import (  # noqa: E402 — regroupé avec la section
+    PioneerNotHeld,
+    PioneerRetroConflict,
+    list_revocations,
+    pioneer_stats,
+    retro_candidates,
+    retro_confirm,
+    revoke_pioneer,
+)
+
+
+class PioneerRetroPreviewIn(BaseModel):
+    exclude_ids: list[UUID] = Field(default_factory=list, max_length=500)
+
+
+class PioneerRetroConfirmIn(BaseModel):
+    exclude_ids: list[UUID] = Field(default_factory=list, max_length=500)
+    expected_user_ids: list[UUID] = Field(default_factory=list, max_length=100)
+
+
+@router.post("/pioneer/retro/preview")
+async def pioneer_retro_preview(
+    payload: PioneerRetroPreviewIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """APERÇU — n'écrit rien. Liste ordonnée des comptes qui recevraient un
+    rang Pionnier si l'on confirmait maintenant (exclusions appliquées)."""
+    return {
+        "places": await pioneer_stats(db),
+        "candidats": await retro_candidates(db, payload.exclude_ids),
+        "ecrit": False,
+    }
+
+
+@router.post("/pioneer/retro/confirm")
+async def pioneer_retro_confirm(
+    payload: PioneerRetroConfirmIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """CONFIRMATION — écrit les rangs de la liste vue à l'aperçu."""
+    try:
+        result = await retro_confirm(
+            db,
+            exclude_ids=payload.exclude_ids,
+            expected_user_ids=payload.expected_user_ids,
+        )
+    except PioneerRetroConflict as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(e))
+    await db.commit()
+    return result
+
+
+# ── Anti-squat Pionnier (Lot 2, « à vie sauf fraude ») ──────────────────────
+
+class PioneerRevokeIn(BaseModel):
+    # Motif OBLIGATOIRE : il est journalisé (pioneer_revocations).
+    reason: str = Field(min_length=3, max_length=500)
+
+
+@router.post("/pioneer/{user_id}/revoke")
+async def pioneer_revoke(
+    user_id: UUID,
+    payload: PioneerRevokeIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Révoque un rang Pionnier (fraude / squat), motif obligatoire, et remet
+    la place en jeu : elle revient au prochain créateur éligible, sous le même
+    verrou sans course que l'attribution. Le compte révoqué est exclu à vie."""
+    try:
+        result = await revoke_pioneer(
+            db, user_id=user_id, reason=payload.reason, revoked_by=admin.id
+        )
+    except PioneerNotHeld as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    await db.commit()
+    return result
+
+
+@router.get("/pioneer/revocations")
+async def pioneer_revocations(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Journal des révocations de rang Pionnier (le plus récent d'abord)."""
+    return {"revocations": await list_revocations(db)}
+
+
+# ── « Prêt à sortir » (Lot 2) — base du futur agent analytique ──────────────
+
+@router.get("/pret-a-sortir")
+async def pret_a_sortir(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Une ligne par sortie mensuelle (M1…M6) : critère, valeur actuelle, feu
+    vert / orange / rouge, fiabilité. Chiffres tirés de la base uniquement."""
+    from app.services.launch_readiness import readiness
+
+    return await readiness(db)
+
+
+# ── Trophées : préparation du rallumage (Lot 3, décision Tom 23/09) ─────────
+
+@router.post("/trophees/preparer-rallumage")
+async def trophees_preparer_rallumage(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """À lancer juste AVANT de passer SHOW_TROPHEES à true : enregistre, sans
+    aucun Smyle, les paliers déjà atteints. Après le rallumage, seuls les
+    paliers franchis ensuite créditent. Idempotent, sans risque de le relancer."""
+    from app.services.achievements import enregistrer_paliers_sans_recompense
+
+    out = await enregistrer_paliers_sans_recompense(db)
+    await db.commit()
+    return out

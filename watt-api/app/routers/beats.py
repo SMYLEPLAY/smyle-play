@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.config import settings
@@ -47,6 +48,8 @@ _AUDIO_MIME_BY_EXT = {
     "/artist/me/beats",
     response_model=BeatRead,
     status_code=status.HTTP_201_CREATED,
+    # Lot 1 : création de beats cachée au lancement.
+    dependencies=[Depends(require_launch_item("beats"))],
 )
 async def create_my_beat(
     payload: BeatCreate,
@@ -69,7 +72,12 @@ async def create_my_beat(
     return BeatRead.model_validate(beat)
 
 
-@router.post("/pack/{track_id}/buy", response_model=PackBuyResult)
+@router.post(
+    "/pack/{track_id}/buy",
+    response_model=PackBuyResult,
+    # Lot 1 : le pack recette + beat est caché avec les beats.
+    dependencies=[Depends(require_launch_item("beats"))],
+)
 @limiter.limit(LIMIT_PURCHASE)
 async def buy_pack(
     track_id: UUID,
@@ -127,6 +135,8 @@ async def buy_pack(
     return PackBuyResult(**result)
 
 
+# Lot 1 : téléchargement NON gaté — universel (recettes comprises),
+# un acheteur ne perd jamais l'accès à un exemplaire déjà payé.
 @router.get("/products/{beat_id}/download")
 @router.get("/beats/{beat_id}/download")
 async def download_beat(
