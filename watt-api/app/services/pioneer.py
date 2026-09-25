@@ -385,6 +385,33 @@ async def revoke_pioneer(
     }
 
 
+async def liste_pionniers(db: AsyncSession) -> list[dict]:
+    """Pionniers actuels, par rang : pseudo, date d'attribution, première
+    œuvre encore en ligne (pour l'écran admin « Révoquer un Pionnier »)."""
+    rows = (await db.execute(
+        text(
+            "WITH o AS (" + SQL_OEUVRES_EN_LIGNE + "), "
+            "p AS (SELECT uid, MIN(created_at) AS premiere, count(*) AS n FROM o GROUP BY uid) "
+            "SELECT u.id, u.artist_name, u.email, u.pioneer_rank, u.pioneer_awarded_at, "
+            "p.premiere, COALESCE(p.n, 0) AS oeuvres "
+            "FROM users u LEFT JOIN p ON p.uid = u.id "
+            "WHERE u.pioneer_rank IS NOT NULL ORDER BY u.pioneer_rank"
+        )
+    )).all()
+    return [
+        {
+            "user_id": str(r.id),
+            "rang": int(r.pioneer_rank),
+            "pseudo": r.artist_name or "(sans pseudo)",
+            "email_masque": _mask_email(r.email),
+            "pionnier_depuis": r.pioneer_awarded_at.isoformat() if r.pioneer_awarded_at else None,
+            "premiere_oeuvre": r.premiere.isoformat() if r.premiere else None,
+            "oeuvres_en_ligne": int(r.oeuvres),
+        }
+        for r in rows
+    ]
+
+
 async def list_revocations(db: AsyncSession, limit: int = 100) -> list[dict]:
     """Journal des révocations, le plus récent d'abord (lecture admin)."""
     rows = (await db.execute(

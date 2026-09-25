@@ -1054,6 +1054,19 @@ function openBoutiqueDrawer(type, dataStr) {
     }
   }
 
+  // Étape 2 — « Signaler » sur les fiches ADN, ADN visuel et voix (comme
+  // sur les autres contenus). Pas sur son propre contenu.
+  const _reportType = { 'adn-artist': 'adn', 'visual-adn': 'visual_adn', 'voix': 'voix' }[type];
+  if (_reportType && data.id && !isSelf) {
+    const _safeId = String(data.id).replace(/[^0-9a-fA-F-]/g, '');
+    html += `<div style="margin-top:12px;text-align:right">
+      <button class="mp-report-btn" type="button" data-report-type="${_reportType}" data-report-id="${_safeId}"
+              data-report-title="${_apImgEsc(nameLabel || typeLabel)}"
+              title="Signaler ce contenu" aria-label="Signaler ce contenu"
+              style="background:none;border:none;color:#8b86a3;font-size:12px;cursor:pointer">⚑ Signaler</button>
+    </div>`;
+  }
+
   body.innerHTML = html;
   // C4 Œuvre complète — clic sur le visuel lié → drawer image (achat séparé).
   const liEl = body.querySelector('.bd-linked-image');

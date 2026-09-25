@@ -187,7 +187,7 @@ async def list_reports(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ReportRead]:
-    if not current_user.is_official:
+    if not _is_admin(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Réservé à l'administration")
     q = select(ContentReport)
@@ -208,7 +208,7 @@ async def patch_report(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ReportRead:
-    if not current_user.is_official:
+    if not _is_admin(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Réservé à l'administration")
     report = (await db.execute(
@@ -249,8 +249,19 @@ class ModerationResult(BaseModel):
     detail: str
 
 
+def _is_admin(user: User) -> bool:
+    from app.auth.dependencies import is_admin_user
+
+    return is_admin_user(user)
+
+
 def _require_official(current_user: User) -> None:
-    if not current_user.is_official:
+    # Étape 2 : même règle que partout ailleurs (K-01) — compte officiel OU
+    # administrateur. Avant, seul le compte vitrine (mot de passe inconnu)
+    # pouvait modérer.
+    from app.auth.dependencies import is_admin_user
+
+    if not is_admin_user(current_user):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Réservé à l'administration")
 
@@ -312,7 +323,8 @@ async def takedown_reported_content(
                             detail="Signalement introuvable")
 
     result = await takedown_content(
-        db, report.target_type, report.target_id, payload.reason
+        db, report.target_type, report.target_id, payload.reason,
+        admin_id=current_user.id,
     )
     if not result["ok"]:
         await db.rollback()
@@ -383,7 +395,8 @@ async def takedown_direct(
     from app.services.moderation import takedown_content
 
     result = await takedown_content(
-        db, payload.target_type, payload.target_id, payload.reason
+        db, payload.target_type, payload.target_id, payload.reason,
+        admin_id=current_user.id,
     )
     if not result["ok"]:
         await db.rollback()
