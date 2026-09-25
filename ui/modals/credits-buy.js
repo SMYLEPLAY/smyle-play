@@ -378,6 +378,30 @@
     try {
       const data = await apiFetch('/credits/packs');
       const packs = (data && data.packs) || [];
+      // Étape 2 : paiement non proposé à ce compte (clé Stripe de test hors
+      // admin, ou achat par carte suspendu) → on le dit, sans bouton.
+      const _ouvert = !!(data && data.paiement_carte);
+      ['creditsConsent', 'creditsPayBtn'].forEach((id) => {
+        const el = document.getElementById(id);
+        const box = el && (el.closest('label') || el);
+        if (box) box.style.display = _ouvert ? '' : 'none';
+      });
+      const _legal = document.querySelector('#creditsBuyBlock .credits-buy__legal');
+      if (_legal) _legal.style.display = _ouvert ? '' : 'none';
+      let _msg = document.getElementById('creditsBuyMsg');
+      if (!_ouvert) {
+        if (!_msg) {
+          _msg = document.createElement('p');
+          _msg.id = 'creditsBuyMsg';
+          _msg.className = 'credits-buy__legal';
+          const blk = document.getElementById('creditsBuyBlock');
+          if (blk) blk.appendChild(_msg);
+        }
+        _msg.textContent = (data && data.message) || "L'achat par carte arrive bientôt.";
+        _msg.style.display = '';
+      } else if (_msg) {
+        _msg.style.display = 'none';
+      }
       const tva = document.getElementById('creditsTva');
       if (tva) {
         tva.hidden = !(data && data.mention_tva);

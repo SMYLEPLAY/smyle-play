@@ -19,6 +19,8 @@ class CreditPacksResponse(BaseModel):
     mention_tva: str | None = None
     # Lot 3 — paiement par carte réellement disponible (clé Stripe posée).
     paiement_carte: bool = False
+    # Étape 2 — pourquoi le paiement n'est pas proposé (texte pour l'écran).
+    message: str | None = None
 
 
 class GrantCreditsRequest(BaseModel):

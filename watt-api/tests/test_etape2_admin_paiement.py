@@ -5,6 +5,11 @@ Couvre :
   2. contenus retirés : journal du retrait (motif, état d'avant), liste,
      restauration par le SEUL chemin admin (la base refuse toute autre voie),
      motif obligatoire, état d'avant remis, journal de la restauration ;
+  3. clé Stripe de TEST : achat réservé aux admins, Smyles marqués dans le
+     registre et comptés à part dans les chiffres ;
+  4. remboursement de Smyles déjà dépensés : compte bloqué pour l'achat par
+     carte, signalé avec le manque, débloquable par l'admin avec motif ;
+     aucun solde touché ;
   5. modération accessible aux administrateurs ; bouton « Signaler » sur les
      fiches ADN / ADN visuel / voix ; identifiants de migration ≤ 32 caractères.
 """
@@ -210,6 +215,135 @@ async def test_retrait_ancien_sans_journal_revient_en_ligne(client, test_user, a
             assert (await db.get(Prompt, pid)).is_published is True
     finally:
         await _cleanup(uid)
+
+
+# ─── 3. Clé Stripe de TEST : réservé aux admins ────────────────────────────────
+
+@pytest.fixture
+def stripe_test(monkeypatch):
+    monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", True)
+    monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", CLE_DE_TEST)
+    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", SECRET_WH)
+
+    async def _faux(path, data):
+        sid = "cs_test_" + uuid.uuid4().hex
+        return {"id": sid, "url": f"https://checkout.stripe.com/c/pay/{sid}"}
+
+    monkeypatch.setattr(stripe_payments, "_stripe_post", _faux)
+
+
+def _sig(corps: bytes) -> str:
+    ts = int(time.time())
+    return f"t={ts},v1=" + hmac.new(SECRET_WH.encode(), f"{ts}.".encode() + corps, hashlib.sha256).hexdigest()
+
+
+async def _webhook(client, evt):
+    corps = json.dumps(evt).encode()
+    return await client.post("/stripe/webhook", content=corps, headers={"Stripe-Signature": _sig(corps)})
+
+
+async def _preseed(uid, achetes=0):
+    async with SessionLocal() as db:
+        await db.execute(text("UPDATE users SET credits_balance = :a, smyles_achetes = :a, "
+                              "smyles_gagnes = 0, smyles_promo = 0 WHERE id = :u"), {"a": achetes, "u": uid})
+        for ach in (await db.execute(select(Achievement))).scalars().all():
+            db.add(UserAchievement(user_id=uid, achievement_id=ach.id))
+        await db.commit()
+
+
+BODY = {"pack_id": "pack_10", "renonce_retractation": True}
+
+
+async def test_cle_de_test_achat_reserve_aux_admins(client, test_user, auth_headers, stripe_test):
+    await _preseed(test_user["id"])
+    r = await client.post("/credits/checkout", headers=auth_headers, json=BODY)
+    assert r.status_code == 503                                    # client ordinaire
+    d = (await client.get("/credits/packs", headers=auth_headers)).json()
+    assert d["paiement_carte"] is False and "bientôt" in d["message"]
+    d = (await client.get("/credits/packs")).json()                # visiteur
+    assert d["paiement_carte"] is False
+    await _admin(test_user)
+    assert (await client.get("/credits/packs", headers=auth_headers)).json()["paiement_carte"] is True
+    r = await client.post("/credits/checkout", headers=auth_headers, json=BODY)
+    assert r.status_code == 200, r.text
+
+
+async def test_smyles_de_test_marques_et_comptes_a_part(client, test_user, auth_headers, stripe_test):
+    await _admin(test_user)
+    await _preseed(test_user["id"])
+    async with SessionLocal() as db:
+        from app.services.beta_dashboard import beta_dashboard_data
+        avant = (await beta_dashboard_data(db))["masse_smyles"]["crees"]
+    sid = (await client.post("/credits/checkout", headers=auth_headers, json=BODY)).json()["session_id"]
+    async with SessionLocal() as db:
+        assert (await db.execute(text("SELECT mode_test FROM stripe_payments WHERE session_id = :s"),
+                                 {"s": sid})).scalar_one() is True
+    evt = {"id": f"evt_{uuid.uuid4().hex}", "type": "checkout.session.completed",
+           "data": {"object": {"id": sid, "payment_status": "paid", "amount_total": 800,
+                               "currency": "eur", "payment_intent": f"pi_{uuid.uuid4().hex}"}}}
+    assert (await _webhook(client, evt)).json()["statut"] == "credite"
+    async with SessionLocal() as db:
+        meta = (await db.execute(text(
+            "SELECT metadata_json FROM transactions WHERE idempotency_key = :k"),
+            {"k": f"stripe_session:{sid}"})).scalar_one()
+        apres = (await beta_dashboard_data(db))["masse_smyles"]["crees"]
+    assert meta["stripe_test"] is True
+    assert apres["achats_carte_de_test"] == avant["achats_carte_de_test"] + 10
+    assert apres["achats_de_packs"] == avant["achats_de_packs"]    # pas un vrai achat
+
+
+# ─── 4. Remboursement de Smyles déjà dépensés : blocage + déblocage ────────────
+
+async def test_manque_bloque_l_achat_carte_puis_deblocage_admin(client, test_user, auth_headers, monkeypatch):
+    monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", True)
+    monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "sk_live_" + "e" * 24)   # factice
+    monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", SECRET_WH)
+
+    async def _faux(path, data):
+        sid = "cs_live_" + uuid.uuid4().hex
+        return {"id": sid, "url": f"https://checkout.stripe.com/c/pay/{sid}"}
+
+    monkeypatch.setattr(stripe_payments, "_stripe_post", _faux)
+    uid = test_user["id"]
+    await _preseed(uid)
+    sid = (await client.post("/credits/checkout", headers=auth_headers, json=BODY)).json()["session_id"]
+    pi = f"pi_{uuid.uuid4().hex}"
+    await _webhook(client, {"id": f"evt_{uuid.uuid4().hex}", "type": "checkout.session.completed",
+                            "data": {"object": {"id": sid, "payment_status": "paid", "amount_total": 800,
+                                                "currency": "eur", "payment_intent": pi}}})
+    # Il dépense tout (les 10 achetés passent en gagnés chez un tiers : simulé).
+    async with SessionLocal() as db:
+        await db.execute(text("UPDATE users SET smyles_achetes = 0, smyles_gagnes = 10, "
+                              "credits_balance = 10 WHERE id = :u"), {"u": uid})
+        await db.commit()
+    r = await _webhook(client, {"id": f"evt_{uuid.uuid4().hex}", "type": "charge.dispute.created",
+                                "data": {"object": {"payment_intent": pi, "amount": 800}}})
+    assert r.json()["statut"] == "signale"
+    async with SessionLocal() as db:
+        u = await db.get(User, uid)
+        assert u.achat_carte_bloque_at is not None and "10 Smyles" in u.achat_carte_bloque_motif
+        assert (u.smyles_gagnes, u.smyles_gagnes_bloque) == (10, 0)    # rien gelé, rien touché
+    # Bloqué : plus d'achat par carte, message clair.
+    r = await client.post("/credits/checkout", headers=auth_headers, json=BODY)
+    assert r.status_code == 403 and "suspendu" in r.json()["detail"]
+    assert "suspendu" in (await client.get("/credits/packs", headers=auth_headers)).json()["message"]
+    # L'admin le voit et débloque (motif obligatoire, journalisé).
+    await _admin(test_user)
+    r = await client.get("/admin/achats-carte/bloques", headers=auth_headers)
+    mine = [c for c in r.json()["comptes"] if c["user_id"] == str(uid)]
+    assert mine and mine[0]["smyles_non_repris"] == 10
+    url = f"/admin/achats-carte/{uid}/debloquer"
+    assert (await client.post(url, headers=auth_headers, json={"reason": ""})).status_code == 422
+    assert (await client.post(url, headers=auth_headers, json={"reason": "Remboursé à l'amiable"})).status_code == 200
+    assert (await client.post(url, headers=auth_headers, json={"reason": "encore"})).status_code == 404
+    async with SessionLocal() as db:
+        u = await db.get(User, uid)
+        assert u.achat_carte_bloque_at is None and u.credits_balance == 10
+        j = (await db.execute(text(
+            "SELECT motif FROM admin_journal WHERE action = 'deblocage_achat_carte' AND cible_id = :c"),
+            {"c": str(uid)})).scalar_one()
+        assert j == "Remboursé à l'amiable"
+        assert await count_bucket_inconsistencies(db) == 0
 
 
 # ─── 5. Divers ─────────────────────────────────────────────────────────────────

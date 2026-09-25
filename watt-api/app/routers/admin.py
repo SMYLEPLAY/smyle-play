@@ -537,3 +537,35 @@ async def contenu_restaurer(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     await db.commit()
     return out
+
+
+@router.get("/achats-carte/bloques")
+async def achats_carte_bloques(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Comptes bloqués pour l'achat par carte (remboursement / litige alors que
+    les Smyles étaient déjà dépensés), avec le manque chiffré."""
+    from app.services.stripe_payments import comptes_bloques
+
+    return {"comptes": await comptes_bloques(db)}
+
+
+@router.post("/achats-carte/{user_id}/debloquer")
+async def achats_carte_debloquer(
+    user_id: UUID,
+    payload: MotifIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Débloque l'achat par carte d'un compte (motif obligatoire, journalisé).
+    Ne touche à AUCUN solde."""
+    from app.services.stripe_payments import CompteNonBloque, debloquer_achat_carte
+
+    try:
+        await debloquer_achat_carte(db, admin_id=admin.id, user_id=user_id, motif=payload.reason)
+    except CompteNonBloque as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(e))
+    await db.commit()
+    return {"ok": True, "detail": "Achat par carte débloqué."}
