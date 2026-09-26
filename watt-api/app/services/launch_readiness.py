@@ -56,26 +56,45 @@ async def _debut_verification(db: AsyncSession) -> datetime | None:
     )).scalar_one_or_none()
 
 
+# Définition UNIQUE d'un « actif » (Étape 3 : réutilisée telle quelle par
+# l'objectif collectif, le seuil d'abonnés pour vendre et les quêtes de
+# parrainage — jamais dupliquée). CTE `actifs(id)` ; paramètres :j et :debut.
+SQL_CTE_ACTIFS = (
+    "actions AS ( "
+    "  SELECT uid FROM (" + SQL_OEUVRES_EN_LIGNE + ") o "
+    "    WHERE o.created_at >= now() - make_interval(days => :j) "
+    "  UNION SELECT user_id FROM user_activity_days "
+    "    WHERE listened AND day >= CURRENT_DATE - :j "
+    "  UNION SELECT follower_id FROM user_follows "
+    "    WHERE created_at >= now() - make_interval(days => :j) "
+    "  UNION SELECT buyer_id FROM transactions "
+    "    WHERE type = 'unlock' AND status = 'completed' "
+    "    AND created_at >= now() - make_interval(days => :j) "
+    "), actifs AS ( "
+    "  SELECT u.id FROM users u JOIN actions a ON a.uid = u.id "
+    "  WHERE " + _EXCLUSIONS + " "
+    "  AND (u.email_verified OR CAST(:debut AS timestamptz) IS NULL "
+    "       OR u.created_at < CAST(:debut AS timestamptz)) "
+    ")"
+)
+
+
+async def params_actifs(db: AsyncSession) -> dict:
+    """Paramètres de SQL_CTE_ACTIFS (fenêtre + date de mise en place de la
+    vérification d'email)."""
+    return {"j": _FENETRE_JOURS, "debut": await _debut_verification(db)}
+
+
+async def compter_actifs(db: AsyncSession) -> int:
+    """Nombre d'actifs au sens strict (même chiffre que « Prêt à sortir »)."""
+    return (await _actifs(db, await _debut_verification(db)))["actifs"]
+
+
 async def _actifs(db: AsyncSession, debut_verif: datetime | None) -> dict:
     """Nombre d'actifs (définition stricte) + abonnements faits par ces actifs."""
     row = (await db.execute(
         text(
-            "WITH actions AS ( "
-            "  SELECT uid FROM (" + SQL_OEUVRES_EN_LIGNE + ") o "
-            "    WHERE o.created_at >= now() - make_interval(days => :j) "
-            "  UNION SELECT user_id FROM user_activity_days "
-            "    WHERE listened AND day >= CURRENT_DATE - :j "
-            "  UNION SELECT follower_id FROM user_follows "
-            "    WHERE created_at >= now() - make_interval(days => :j) "
-            "  UNION SELECT buyer_id FROM transactions "
-            "    WHERE type = 'unlock' AND status = 'completed' "
-            "    AND created_at >= now() - make_interval(days => :j) "
-            "), actifs AS ( "
-            "  SELECT u.id FROM users u JOIN actions a ON a.uid = u.id "
-            "  WHERE " + _EXCLUSIONS + " "
-            "  AND (u.email_verified OR CAST(:debut AS timestamptz) IS NULL "
-            "       OR u.created_at < CAST(:debut AS timestamptz)) "
-            ") "
+            "WITH " + SQL_CTE_ACTIFS + " "
             "SELECT (SELECT count(*) FROM actifs) AS n, "
             "       (SELECT count(*) FROM user_follows f "
             "          WHERE f.follower_id IN (SELECT id FROM actifs)) AS abonnements"
