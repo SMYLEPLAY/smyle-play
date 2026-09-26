@@ -48,7 +48,8 @@
 <body>
 <div class="wrap">
   <h1>Modération</h1>
-  <p class="sub">Signalements DSA · retirer un contenu ou suspendre un compte · réservé au compte officiel</p>
+  <p class="sub">Signalements DSA · retirer un contenu ou suspendre un compte · réservé à l'administration</p>
+  <p class="sub"><a href="/gestion" style="color:#cdbcff">→ Gestion : Pionniers, contenus retirés (remise en ligne), achats par carte</a></p>
   <div class="row">
     <label style="font-size:13px;color:var(--mut)">Afficher</label>
     <select id="filter">
@@ -111,7 +112,8 @@
   };
   var TYPES = {
     track:'Morceau', prompt:'Recette', image:'Image',
-    profil:'Profil', playlist:'Playlist', album:'Album'
+    profil:'Profil', playlist:'Playlist', album:'Album',
+    adn:'ADN musical', visual_adn:'ADN visuel', voix:'Voix'
   };
 
   function card(r){

@@ -19,7 +19,7 @@ router = APIRouter(prefix="/credits", tags=["credits"])
 
 
 @router.get("/packs", response_model=CreditPacksResponse)
-async def list_packs():
+async def list_packs(request: Request, db: AsyncSession = Depends(get_db)):
     """Liste publique des packs de crédits disponibles.
 
     S-11 (2026-09-04, annexe A §M5) : la grille n'est servie que si l'item de
@@ -40,13 +40,43 @@ async def list_packs():
         )
         for p in CREDIT_PACKS
     ]
-    from app.services.stripe_payments import TVA_MENTION, is_configured
+    from app.services.stripe_payments import TVA_MENTION, achat_carte_ouvert_pour
 
+    # Étape 2 : paiement proposé seulement s'il est réellement ouvert pour CE
+    # visiteur (clé de test → admins seulement ; compte bloqué → message).
+    viewer = await _optional_viewer(request, db)
+    ouvert = achat_carte_ouvert_pour(viewer)
+    message = None
+    if not ouvert:
+        message = "L'achat par carte arrive bientôt."
+    elif viewer is not None and viewer.achat_carte_bloque_at is not None:
+        ouvert = False
+        message = "L'achat par carte est suspendu sur ton compte. Contacte-nous pour le rétablir."
     return CreditPacksResponse(
         packs=packs,
         mention_tva=TVA_MENTION if settings.MENTION_TVA_FRANCHISE else None,
-        paiement_carte=is_configured(),
+        paiement_carte=ouvert,
+        message=message,
     )
+
+
+async def _optional_viewer(request: Request, db: AsyncSession) -> User | None:
+    auth = request.headers.get("authorization") or ""
+    if not auth.lower().startswith("bearer "):
+        return None
+    try:
+        from sqlalchemy import select
+
+        from app.auth.jwt import decode_access_token
+
+        email = decode_access_token(auth[7:].strip())
+        if not email:
+            return None
+        return (await db.execute(
+            select(User).where(User.email == email, User.is_banned.is_(False))
+        )).scalar_one_or_none()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 @router.post("/grant", response_model=TransactionRead, status_code=status.HTTP_201_CREATED)

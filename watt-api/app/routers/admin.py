@@ -365,6 +365,7 @@ from app.services.pioneer import (  # noqa: E402 — regroupé avec la section
     PioneerNotHeld,
     PioneerRetroConflict,
     list_revocations,
+    liste_pionniers,
     pioneer_stats,
     retro_candidates,
     retro_confirm,
@@ -485,3 +486,86 @@ async def trophees_preparer_rallumage(
     out = await enregistrer_paliers_sans_recompense(db)
     await db.commit()
     return out
+
+
+# ── Étape 2 — écrans admin : Pionniers, contenus retirés, achats par carte ──
+
+@router.get("/pioneer/liste")
+async def pioneer_liste(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Pionniers actuels, par rang (écran « Pionniers » de la page admin)."""
+    return {"places": await pioneer_stats(db), "pionniers": await liste_pionniers(db)}
+
+
+class MotifIn(BaseModel):
+    # Motif OBLIGATOIRE, journalisé.
+    reason: str = Field(min_length=3, max_length=500)
+
+
+@router.get("/contenus-retires")
+async def contenus_retires_liste(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Contenus retirés par la modération (écran « Contenus retirés »)."""
+    from app.services.moderation import contenus_retires
+
+    return {"contenus": await contenus_retires(db)}
+
+
+@router.post("/contenus-retires/{cible_type}/{cible_id}/restaurer")
+async def contenu_restaurer(
+    cible_type: str,
+    cible_id: str,
+    payload: MotifIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Restaure un contenu retiré (motif obligatoire, journalisé). Seul chemin
+    autorisé à lever un retrait : la base refuse toute autre voie."""
+    from app.services.moderation import RestaurationImpossible, restaurer_contenu
+
+    try:
+        out = await restaurer_contenu(
+            db, admin_id=admin.id, cible_type=cible_type, cible_id=cible_id,
+            motif=payload.reason,
+        )
+    except RestaurationImpossible as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    await db.commit()
+    return out
+
+
+@router.get("/achats-carte/bloques")
+async def achats_carte_bloques(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Comptes bloqués pour l'achat par carte (remboursement / litige alors que
+    les Smyles étaient déjà dépensés), avec le manque chiffré."""
+    from app.services.stripe_payments import comptes_bloques
+
+    return {"comptes": await comptes_bloques(db)}
+
+
+@router.post("/achats-carte/{user_id}/debloquer")
+async def achats_carte_debloquer(
+    user_id: UUID,
+    payload: MotifIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Débloque l'achat par carte d'un compte (motif obligatoire, journalisé).
+    Ne touche à AUCUN solde."""
+    from app.services.stripe_payments import CompteNonBloque, debloquer_achat_carte
+
+    try:
+        await debloquer_achat_carte(db, admin_id=admin.id, user_id=user_id, motif=payload.reason)
+    except CompteNonBloque as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(e))
+    await db.commit()
+    return {"ok": True, "detail": "Achat par carte débloqué."}

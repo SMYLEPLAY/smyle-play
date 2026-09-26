@@ -32,7 +32,9 @@ from app.services import stripe_payments
 from app.services.credits import count_bucket_inconsistencies
 
 SECRET_TEST = "whsec_" + "t" * 24          # fabriqué pour les tests, jamais une vraie clé
-CLE_TEST = "sk_test_" + "x" * 24
+# Étape 2 : avec une clé de TEST, l'achat est réservé aux admins. Ces tests
+# couvrent le parcours d'un client ordinaire : clé « réelle » FACTICE.
+CLE_TEST = "sk_live_" + "x" * 24
 
 
 @pytest.fixture(autouse=True)

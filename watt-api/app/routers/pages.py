@@ -429,6 +429,14 @@ async def oeuvre_c4_page(oeuvre_id: str, request: Request):
     return _page_social("o.html", **meta)
 
 
+@router.get("/gestion", include_in_schema=False)
+async def gestion_page():
+    # Étape 2 — page admin « Gestion » (Pionniers, contenus retirés, achats
+    # par carte). Page vide sans compte admin : les données viennent des
+    # routes /admin/… (réservées).
+    return _page("gestion.html")
+
+
 @router.get("/pret-a-sortir", include_in_schema=False)
 async def pret_a_sortir_page():
     # Lot 2 — tableau admin « Prêt à sortir ». La page est publique mais vide :

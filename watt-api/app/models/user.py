@@ -270,6 +270,13 @@ class User(Base):
     smyles_promo_gagnes: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    # Étape 2 (migration 0098) — compte BLOQUÉ pour les achats par carte
+    # (remboursement / litige alors que les Smyles étaient déjà dépensés).
+    # Débloquable par l'admin (bouton, avec motif, journalisé).
+    achat_carte_bloque_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    achat_carte_bloque_motif: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # --- Parrainage (mécanique 1) ---
     # Code unique partageable par l'utilisateur. Généré à l'inscription et

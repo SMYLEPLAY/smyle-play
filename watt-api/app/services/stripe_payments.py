@@ -60,8 +60,36 @@ class StripeSignatureError(Exception):
     """Webhook non authentifié (signature absente, fausse ou trop ancienne)."""
 
 
+class AchatCarteBloque(Exception):
+    """Compte bloqué pour les achats par carte (remboursement / litige alors
+    que les Smyles étaient déjà dépensés). → 403."""
+
+
+class CompteNonBloque(Exception):
+    """Déblocage demandé pour un compte qui n'est pas bloqué."""
+
+
 def is_configured() -> bool:
     return bool(settings.STRIPE_SECRET_KEY)
+
+
+def is_test_mode() -> bool:
+    """Clé Stripe de TEST (sk_test_…) : aucun vrai argent. Étape 2 : sur le
+    vrai site, l'achat en mode test est RÉSERVÉ aux admins (sinon n'importe qui
+    obtiendrait des Smyles avec une carte de test), et les Smyles ainsi
+    crédités sont marqués dans le registre et exclus des chiffres."""
+    return str(settings.STRIPE_SECRET_KEY or "").startswith("sk_test_")
+
+
+def achat_carte_ouvert_pour(user) -> bool:
+    """L'achat par carte est-il proposé à ce compte (None = visiteur) ?"""
+    if not settings.launch_flags_dict()["achatSmyles"] or not is_configured():
+        return False
+    if is_test_mode():
+        from app.auth.dependencies import is_admin_user
+
+        return user is not None and is_admin_user(user)
+    return True
 
 
 # ── Appels Stripe (remplacés par un simulateur dans les tests) ──────────────
@@ -91,7 +119,7 @@ async def _stripe_post(path: str, data: dict) -> dict:
 async def create_checkout(
     db: AsyncSession,
     *,
-    user_id: UUID,
+    user,
     pack_id: str,
     consent: bool,
     base_url: str,
@@ -101,10 +129,18 @@ async def create_checkout(
     Rien n'est crédité ici : seul le webhook `checkout.session.completed`
     crédite. La renonciation au droit de rétractation est OBLIGATOIRE et
     horodatée (preuve)."""
+    user_id = user.id
     if not settings.launch_flags_dict()["achatSmyles"]:
         raise StripeUnavailable("L'achat de Smyles n'est pas encore ouvert.")
     if not is_configured():
         raise StripeUnavailable("Le paiement par carte n'est pas encore configuré.")
+    if not achat_carte_ouvert_pour(user):
+        # Clé de test sur le vrai site : réservé aux admins.
+        raise StripeUnavailable("L'achat par carte n'est pas encore ouvert.")
+    if getattr(user, "achat_carte_bloque_at", None) is not None:
+        raise AchatCarteBloque(
+            "L'achat par carte est suspendu sur ton compte. Contacte-nous pour le rétablir."
+        )
     pack = get_pack_by_id(pack_id)
     if pack is None:
         raise StripeRequestError("Pack inconnu.")
@@ -141,11 +177,11 @@ async def create_checkout(
     await db.execute(
         text(
             "INSERT INTO stripe_payments (id, user_id, session_id, pack_id, credits, "
-            "amount_cents, currency, status, consent_immediate_at) "
-            "VALUES (:id, :u, :s, :p, :c, :a, 'eur', 'created', now())"
+            "amount_cents, currency, status, consent_immediate_at, mode_test) "
+            "VALUES (:id, :u, :s, :p, :c, :a, 'eur', 'created', now(), :t)"
         ),
         {"id": payment_id, "u": user_id, "s": session["id"], "p": pack["id"],
-         "c": pack["credits"], "a": pack["price_eur_cents"]},
+         "c": pack["credits"], "a": pack["price_eur_cents"], "t": is_test_mode()},
     )
     return {"url": session["url"], "session_id": session["id"]}
 
@@ -248,7 +284,10 @@ async def _on_paid(db: AsyncSession, session: dict) -> str:
         reason="achat_smyles_carte",
         tx_type=TransactionType.CREDIT_PURCHASE,        # → bucket `achetes`
         metadata={"stripe_session": row.session_id, "pack_id": row.pack_id,
-                  "euro_cents": int(row.amount_cents)},
+                  "euro_cents": int(row.amount_cents),
+                  # Étape 2 : Smyles obtenus avec une carte de TEST (aucun
+                  # vrai argent) — distingués et exclus des chiffres.
+                  **({"stripe_test": True} if row.mode_test else {})},
         idempotency_key=f"stripe_session:{row.session_id}",
     )
     await db.execute(
@@ -313,6 +352,22 @@ async def _on_recovery(db: AsyncSession, event_id: str, payment_intent, amount_c
         {"st": statut, "r": repris, "m": manque, "i": row.id},
     )
     if manque > 0:
+        # Étape 2 (partie prudente de la règle, non destructive) : le compte
+        # est BLOQUÉ pour les achats par carte et signalé avec le manque. Les
+        # `gagnes` ne sont PAS gelés : décision de Tom, au cas par cas.
+        if row.user_id is not None:
+            motif_blocage = (f"{motif.capitalize()} : {manque} Smyles déjà dépensés "
+                             f"n'ont pas pu être repris (paiement de {int(row.amount_cents) / 100:.2f} €).")
+            await db.execute(
+                text("UPDATE users SET achat_carte_bloque_at = COALESCE(achat_carte_bloque_at, now()), "
+                     "achat_carte_bloque_motif = :m WHERE id = :u"),
+                {"m": motif_blocage, "u": row.user_id},
+            )
+            from app.services.moderation import journaliser
+
+            await journaliser(db, admin_id=None, action="blocage_achat_carte", cible_type="compte",
+                              cible_id=str(row.user_id), motif=motif_blocage,
+                              details={"paiement_id": str(row.id), "manque": manque})
         await _signaler_admin(db, row, manque, motif)
         return "signale"
     return "repris"
@@ -360,3 +415,42 @@ async def paiements_signales(db: AsyncSession, limit: int = 100) -> list[dict]:
         }
         for r in rows
     ]
+
+
+async def comptes_bloques(db: AsyncSession) -> list[dict]:
+    """Comptes bloqués pour l'achat par carte, avec le manque total non repris."""
+    rows = (await db.execute(text(
+        "SELECT u.id, u.artist_name, u.achat_carte_bloque_at, u.achat_carte_bloque_motif, "
+        "COALESCE((SELECT sum(p.shortfall) FROM stripe_payments p WHERE p.user_id = u.id), 0) AS manque, "
+        "u.smyles_gagnes, u.credits_balance "
+        "FROM users u WHERE u.achat_carte_bloque_at IS NOT NULL "
+        "ORDER BY u.achat_carte_bloque_at DESC"
+    ))).all()
+    return [
+        {
+            "user_id": str(r.id),
+            "pseudo": r.artist_name or "(sans pseudo)",
+            "bloque_le": r.achat_carte_bloque_at.isoformat() if r.achat_carte_bloque_at else None,
+            "motif": r.achat_carte_bloque_motif,
+            "smyles_non_repris": int(r.manque),
+            "solde_actuel": int(r.credits_balance),
+            "dont_gagnes": int(r.smyles_gagnes),
+        }
+        for r in rows
+    ]
+
+
+async def debloquer_achat_carte(db: AsyncSession, *, admin_id: UUID, user_id: UUID, motif: str) -> None:
+    """Rétablit l'achat par carte (motif obligatoire, journalisé). Ne touche à
+    aucun solde. Le caller commit."""
+    res = await db.execute(
+        text("UPDATE users SET achat_carte_bloque_at = NULL, achat_carte_bloque_motif = NULL "
+             "WHERE id = :u AND achat_carte_bloque_at IS NOT NULL RETURNING id"),
+        {"u": user_id},
+    )
+    if res.first() is None:
+        raise CompteNonBloque("Ce compte n'est pas bloqué.")
+    from app.services.moderation import journaliser
+
+    await journaliser(db, admin_id=admin_id, action="deblocage_achat_carte", cible_type="compte",
+                      cible_id=str(user_id), motif=motif)

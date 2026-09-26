@@ -19,6 +19,7 @@ from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
 from app.models.user import User
 from app.services.stripe_payments import (
+    AchatCarteBloque,
     StripeRequestError,
     StripeSignatureError,
     StripeUnavailable,
@@ -49,7 +50,7 @@ async def credits_checkout(
     base = os.getenv("PUBLIC_BASE_URL") or str(request.base_url)
     try:
         out = await create_checkout(
-            db, user_id=current_user.id, pack_id=payload.pack_id,
+            db, user=current_user, pack_id=payload.pack_id,
             consent=payload.renonce_retractation, base_url=base,
         )
     except StripeRequestError as e:
@@ -58,6 +59,9 @@ async def credits_checkout(
     except StripeUnavailable as e:
         await db.rollback()
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except AchatCarteBloque as e:
+        await db.rollback()
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(e))
     await db.commit()
     return out
 

@@ -185,8 +185,18 @@ async def beta_dashboard_data(
     # platform_fee` (vrai pour UNLOCK comme pour RESALE, où la part revendeur
     # et la royaltie d'origine se partagent ce reste). Seule la commission
     # sort de la circulation.
-    attendu = crees - commission
+    # Étape 2 : les Smyles DÉTRUITS hors commission (frais de troc, reprise
+    # après remboursement / litige Stripe — type BURN) sortent aussi.
+    brules = par_type.get("burn", {}).get("smyles", 0)
+    attendu = crees - commission - brules
     constate = int(c.solde)
+    # Étape 2 : achats faits avec une carte de TEST Stripe (aucun vrai argent),
+    # comptés à part — ils ne doivent jamais passer pour des ventes réelles.
+    achats_test = int((await db.execute(text(
+        "SELECT COALESCE(sum(credits_amount), 0) FROM transactions "
+        "WHERE type = 'credit_purchase' AND status = 'completed' "
+        "AND metadata_json->>'stripe_test' = 'true'"
+    ))).scalar_one())
 
     return {
         "genere_le": datetime.now(timezone.utc).isoformat(),
@@ -237,9 +247,11 @@ async def beta_dashboard_data(
                     "smyles", 0
                 ),
                 "credits_administratifs": par_type.get("grant", {}).get("smyles", 0),
+                # Achats RÉELS uniquement (hors carte de test Stripe).
                 "achats_de_packs": par_type.get("credit_purchase", {}).get(
                     "smyles", 0
-                ),
+                ) - achats_test,
+                "achats_carte_de_test": achats_test,
                 "gains_credites_directement": par_type.get("earning", {}).get(
                     "smyles", 0
                 ),
@@ -249,6 +261,7 @@ async def beta_dashboard_data(
             "depenses_par_les_acheteurs": ventes_smyles,
             "redistribues_aux_createurs": ventes_smyles - commission,
             "detruits_en_commission": commission,
+            "detruits_hors_commission": brules,
             "en_circulation": {
                 "achetes": int(c.achetes),
                 "gagnes": int(c.gagnes),

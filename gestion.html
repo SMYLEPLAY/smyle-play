@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>Gestion · WATT</title>
+<!-- Étape 2 — page admin « Gestion » (/gestion). Tout ce que Tom doit pouvoir
+     faire passe par un bouton, avec des mots simples et une confirmation :
+       • Pionniers : liste + « Retirer le statut » (motif obligatoire) + historique ;
+       • Contenus retirés : liste + « Remettre en ligne » (motif obligatoire) ;
+       • Achats par carte : comptes bloqués + « Débloquer » (motif), paiements signalés.
+     Données : routes /admin/… réservées aux administrateurs. -->
+<style>
+  :root { --bg:#0a0712; --card:#0d0a16; --line:#2c2440; --text:#eeeaf7; --mut:#a59dbb;
+          --vio:#8b6cf6; --red:#ff6b81; --green:#37d39b; --gold:#ffb627; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding:24px 16px 60px; }
+  .wrap { max-width:920px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  .sub { color:var(--mut); font-size:14px; margin:0 0 16px; line-height:1.5; }
+  .links { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+  .links a { color:var(--text); text-decoration:none; font-size:13px; border:1px solid var(--line); border-radius:999px; padding:6px 12px; }
+  .links a:hover, .links a:focus-visible { border-color:var(--vio); outline:none; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--line); margin-bottom:16px; }
+  .tab { background:none; border:none; color:var(--mut); font-size:15px; font-weight:700; padding:10px 12px; cursor:pointer; border-bottom:3px solid transparent; }
+  .tab[aria-selected="true"] { color:var(--text); border-bottom-color:var(--vio); }
+  .tab:focus-visible { outline:2px solid var(--vio); outline-offset:2px; }
+  .panel[hidden] { display:none; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:10px; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .who { font-weight:700; font-size:15px; }
+  .rank { display:inline-block; min-width:44px; font-weight:800; color:var(--gold); }
+  .meta { color:var(--mut); font-size:12.5px; margin-top:4px; line-height:1.5; }
+  .motif { font-size:13px; margin-top:6px; color:#d9d3ea; }
+  .kind { font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--vio); }
+  button.act { border-radius:10px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; background:var(--card); color:var(--text); border:1px solid var(--line); }
+  button.act.danger { color:#ffc2cc; border-color:#5a2a3a; }
+  button.act.ok { color:#bff3dc; border-color:#1f5a43; }
+  button.act:hover { border-color:var(--vio); }
+  button.act:focus-visible { outline:2px solid var(--vio); outline-offset:2px; }
+  h2 { font-size:15px; color:var(--mut); text-transform:uppercase; letter-spacing:.08em; margin:22px 0 10px; }
+  .msg { color:var(--mut); font-size:14px; padding:18px 0; }
+  .err { color:var(--red); }
+  .count { font-size:14px; color:var(--mut); margin:0 0 12px; }
+  /* Boîte de dialogue */
+  .dlg-back { position:fixed; inset:0; background:rgba(5,3,10,.7); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .dlg-back[hidden] { display:none; }
+  .dlg { width:100%; max-width:460px; background:#151024; border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .dlg h3 { margin:0 0 8px; font-size:18px; }
+  .dlg p { margin:0 0 12px; font-size:14px; color:#d9d3ea; line-height:1.5; }
+  .dlg label { display:block; font-size:13px; color:var(--mut); margin-bottom:6px; }
+  .dlg textarea { width:100%; min-height:80px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font-size:14px; font-family:inherit; }
+  .dlg .btns { display:flex; gap:10px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap; }
+  .dlg .hint { font-size:12px; color:var(--mut); margin-top:6px; }
+  .flash { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#151024; border:1px solid var(--line); border-radius:10px; padding:10px 16px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:60; max-width:92vw; }
+  .flash.show { opacity:1; } .flash.ok { border-color:var(--green); } .flash.ko { border-color:var(--red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gestion</h1>
+  <p class="sub">Les actions sensibles de WATT, en quelques clics. Chaque action demande un motif et une confirmation, et reste enregistrée.</p>
+  <nav class="links" aria-label="Autres pages admin">
+    <a href="/admin-moderation.html">⚑ Signalements</a>
+    <a href="/pret-a-sortir">🚦 Prêt à sortir</a>
+    <a href="/analytics.html">📈 Fréquentation</a>
+  </nav>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-pio" aria-controls="p-pio" aria-selected="true">Pionniers</button>
+    <button class="tab" role="tab" id="t-ret" aria-controls="p-ret" aria-selected="false">Contenus retirés</button>
+    <button class="tab" role="tab" id="t-pay" aria-controls="p-pay" aria-selected="false">Achats par carte</button>
+  </div>
+
+  <section class="panel" id="p-pio" role="tabpanel" aria-labelledby="t-pio">
+    <p class="sub">Les 100 premiers créateurs gardent une commission réduite à vie, sauf fraude. Si un compte a pris une place en trichant (œuvres bâclées, faux compte…), retire-lui le statut : sa place revient automatiquement au créateur suivant.</p>
+    <p class="count" id="pio-count"></p>
+    <div id="pio-list"><p class="msg">Chargement…</p></div>
+    <h2>Statuts retirés</h2>
+    <div id="pio-hist"><p class="msg">Chargement…</p></div>
+  </section>
+
+  <section class="panel" id="p-ret" role="tabpanel" aria-labelledby="t-ret" hidden>
+    <p class="sub">Les contenus retirés par la modération. Si un retrait était une erreur, « Remettre en ligne » les rétablit comme avant, et l'auteur est prévenu.</p>
+    <div id="ret-list"><p class="msg">Chargement…</p></div>
+  </section>
+
+  <section class="panel" id="p-pay" role="tabpanel" aria-labelledby="t-pay" hidden>
+    <p class="sub">Quand un paiement par carte est remboursé ou contesté alors que les Smyles ont déjà été dépensés, le compte ne peut plus acheter par carte. Tu peux le débloquer après avoir vérifié. Aucun solde n'est modifié par ces boutons.</p>
+    <h2>Comptes bloqués</h2>
+    <div id="pay-blocked"><p class="msg">Chargement…</p></div>
+    <h2>Paiements à examiner</h2>
+    <div id="pay-flagged"><p class="msg">Chargement…</p></div>
+  </section>
+</div>
+
+<div class="dlg-back" id="dlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <h3 id="dlg-title"></h3>
+    <p id="dlg-text"></p>
+    <label for="dlg-motif">Motif (obligatoire, il sera enregistré)</label>
+    <textarea id="dlg-motif" maxlength="500"></textarea>
+    <p class="hint" id="dlg-hint">Écris au moins quelques mots.</p>
+    <div class="btns">
+      <button class="act" type="button" id="dlg-cancel">Annuler</button>
+      <button class="act danger" type="button" id="dlg-ok" disabled>Confirmer</button>
+    </div>
+  </div>
+</div>
+<div class="flash" id="flash" role="status" aria-live="polite"></div>
+
+<script src="/ui/core/api.js"></script>
+<script>
+(function () {
+  'use strict';
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"'`]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+    });
+  }
+  function date(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); }
+    catch (_) { return iso; }
+  }
+  var flashEl = document.getElementById('flash'), _t;
+  function flash(msg, ok) {
+    flashEl.textContent = msg;
+    flashEl.className = 'flash show ' + (ok ? 'ok' : 'ko');
+    clearTimeout(_t); _t = setTimeout(function () { flashEl.className = 'flash'; }, 4200);
+  }
+  function erreur(el, e) {
+    var s = e && e.status;
+    el.innerHTML = '<p class="msg err">' + (s === 401 || s === 403
+      ? 'Cette page est réservée à l\'administration. Connecte-toi avec ton compte admin.'
+      : 'Chargement impossible pour le moment. Réessaie.') + '</p>';
+  }
+  function detail(e, def) {
+    var d = e && e.body && e.body.detail;
+    return typeof d === 'string' ? d : def;
+  }
+
+  // ── Boîte de dialogue « motif + confirmation » ─────────────────────────
+  var dlg = document.getElementById('dlg'), motif = document.getElementById('dlg-motif'),
+      okBtn = document.getElementById('dlg-ok'), _onOk = null, _last = null;
+  function demander(titre, texte, bouton, onOk) {
+    _last = document.activeElement;
+    document.getElementById('dlg-title').textContent = titre;
+    document.getElementById('dlg-text').textContent = texte;
+    okBtn.textContent = bouton;
+    motif.value = ''; okBtn.disabled = true; _onOk = onOk;
+    dlg.hidden = false; motif.focus();
+  }
+  function fermer() { dlg.hidden = true; _onOk = null; if (_last) try { _last.focus(); } catch (_) {} }
+  motif.addEventListener('input', function () { okBtn.disabled = motif.value.trim().length < 3; });
+  document.getElementById('dlg-cancel').addEventListener('click', fermer);
+  dlg.addEventListener('click', function (e) { if (e.target === dlg) fermer(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !dlg.hidden) fermer(); });
+  okBtn.addEventListener('click', function () {
+    var m = motif.value.trim(), fn = _onOk;
+    if (m.length < 3 || !fn) return;
+    okBtn.disabled = true;
+    fn(m).then(fermer, function () { okBtn.disabled = false; });
+  });
+
+  // ── Onglets ────────────────────────────────────────────────────────────
+  var tabs = [['t-pio', 'p-pio', chargerPionniers], ['t-ret', 'p-ret', chargerRetires], ['t-pay', 'p-pay', chargerPaiements]];
+  tabs.forEach(function (t) {
+    document.getElementById(t[0]).addEventListener('click', function () {
+      tabs.forEach(function (u) {
+        document.getElementById(u[0]).setAttribute('aria-selected', u[0] === t[0] ? 'true' : 'false');
+        document.getElementById(u[1]).hidden = u[0] !== t[0];
+      });
+      t[2]();
+    });
+  });
+
+  // ── Pionniers ──────────────────────────────────────────────────────────
+  function chargerPionniers() {
+    var list = document.getElementById('pio-list'), hist = document.getElementById('pio-hist');
+    apiFetch('/admin/pioneer/liste').then(function (d) {
+      var pl = d.places || {};
+      document.getElementById('pio-count').textContent =
+        (pl.attribuees || 0) + ' places attribuées sur ' + (pl.total || 100) + ' — ' + (pl.restantes || 0) + ' encore libres.';
+      var p = d.pionniers || [];
+      list.innerHTML = p.length ? p.map(function (x) {
+        return '<div class="card"><div class="row"><div>' +
+          '<span class="rank">n°' + esc(x.rang) + '</span> <span class="who">' + esc(x.pseudo) + '</span>' +
+          '<div class="meta">Pionnier depuis le ' + esc(date(x.pionnier_depuis)) +
+          ' · première œuvre le ' + esc(date(x.premiere_oeuvre)) +
+          ' · ' + esc(x.oeuvres_en_ligne) + ' œuvre(s) en ligne</div></div>' +
+          '<button class="act danger" type="button" data-revoke="' + esc(x.user_id) + '" data-rang="' + esc(x.rang) +
+          '" data-pseudo="' + esc(x.pseudo) + '">Retirer le statut</button></div></div>';
+      }).join('') : '<p class="msg">Aucun Pionnier pour l\'instant.</p>';
+    }).catch(function (e) { erreur(list, e); });
+    apiFetch('/admin/pioneer/revocations').then(function (d) {
+      var r = d.revocations || [];
+      hist.innerHTML = r.length ? r.map(function (x) {
+        return '<div class="card"><span class="who">' + esc(x.pseudo || 'Compte supprimé') + '</span> — rang n°' + esc(x.rang) +
+          '<div class="motif">Motif : ' + esc(x.motif) + '</div>' +
+          '<div class="meta">Le ' + esc(date(x.date)) + (x.reattribue_a ? ' · place donnée au créateur suivant' : ' · place restée libre') + '</div></div>';
+      }).join('') : '<p class="msg">Aucun statut retiré.</p>';
+    }).catch(function (e) { erreur(hist, e); });
+  }
+  document.getElementById('pio-list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-revoke]');
+    if (!b) return;
+    var id = b.getAttribute('data-revoke'), pseudo = b.getAttribute('data-pseudo'), rang = b.getAttribute('data-rang');
+    demander('Retirer le statut Pionnier ?',
+      pseudo + ' perdra le rang n°' + rang + ' et ne pourra plus jamais le récupérer. Sa place ira au prochain créateur. Ses ventes passées ne changent pas.',
+      'Retirer le statut',
+      function (m) {
+        return apiFetch('/admin/pioneer/' + encodeURIComponent(id) + '/revoke', { method: 'POST', json: { reason: m } })
+          .then(function (r) {
+            flash(r && r.reattribue ? 'Statut retiré. La place n°' + r.reattribue.rang + ' est allée à ' + (r.reattribue.pseudo || 'un créateur') + '.' : 'Statut retiré. La place reste libre pour l\'instant.', true);
+            chargerPionniers();
+          }, function (e2) { flash(detail(e2, 'Impossible de retirer le statut.'), false); throw e2; });
+      });
+  });
+
+  // ── Contenus retirés ───────────────────────────────────────────────────
+  function chargerRetires() {
+    var list = document.getElementById('ret-list');
+    apiFetch('/admin/contenus-retires').then(function (d) {
+      var c = d.contenus || [];
+      list.innerHTML = c.length ? c.map(function (x) {
+        return '<div class="card"><div class="row"><div>' +
+          '<div class="kind">' + esc(x.type_libelle) + '</div>' +
+          '<span class="who">' + esc(x.titre) + '</span>' +
+          '<div class="meta">par ' + esc(x.auteur) + ' · retiré le ' + esc(date(x.retire_le)) + '</div>' +
+          '<div class="motif">Motif du retrait : ' + esc(x.motif) + '</div></div>' +
+          '<button class="act ok" type="button" data-restore-type="' + esc(x.type) + '" data-restore-id="' + esc(x.id) +
+          '" data-titre="' + esc(x.titre) + '">Remettre en ligne</button></div></div>';
+      }).join('') : '<p class="msg">Aucun contenu retiré.</p>';
+    }).catch(function (e) { erreur(list, e); });
+  }
+  document.getElementById('ret-list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-restore-id]');
+    if (!b) return;
+    var t = b.getAttribute('data-restore-type'), id = b.getAttribute('data-restore-id');
+    demander('Remettre ce contenu en ligne ?',
+      '« ' + b.getAttribute('data-titre') + ' » redeviendra visible comme avant son retrait, et son auteur sera prévenu.',
+      'Remettre en ligne',
+      function (m) {
+        return apiFetch('/admin/contenus-retires/' + encodeURIComponent(t) + '/' + encodeURIComponent(id) + '/restaurer',
+          { method: 'POST', json: { reason: m } })
+          .then(function () { flash('Contenu remis en ligne.', true); chargerRetires(); },
+                function (e2) { flash(detail(e2, 'Impossible de remettre ce contenu en ligne.'), false); throw e2; });
+      });
+  });
+
+  // ── Achats par carte ───────────────────────────────────────────────────
+  function chargerPaiements() {
+    var bl = document.getElementById('pay-blocked'), fl = document.getElementById('pay-flagged');
+    apiFetch('/admin/achats-carte/bloques').then(function (d) {
+      var c = d.comptes || [];
+      bl.innerHTML = c.length ? c.map(function (x) {
+        return '<div class="card"><div class="row"><div>' +
+          '<span class="who">' + esc(x.pseudo) + '</span>' +
+          '<div class="meta">Bloqué le ' + esc(date(x.bloque_le)) + ' · ' + esc(x.smyles_non_repris) +
+          ' Smyles déjà dépensés non récupérés · solde actuel : ' + esc(x.solde_actuel) + ' Smyles</div>' +
+          '<div class="motif">' + esc(x.motif || '') + '</div></div>' +
+          '<button class="act ok" type="button" data-unblock="' + esc(x.user_id) + '" data-pseudo="' + esc(x.pseudo) +
+          '">Débloquer</button></div></div>';
+      }).join('') : '<p class="msg">Aucun compte bloqué.</p>';
+    }).catch(function (e) { erreur(bl, e); });
+    apiFetch('/admin/paiements/signales').then(function (d) {
+      var p = d.paiements || [];
+      fl.innerHTML = p.length ? p.map(function (x) {
+        return '<div class="card"><span class="who">' + esc(x.pseudo || 'Compte supprimé') + '</span> — ' +
+          esc(x.smyles) + ' Smyles pour ' + esc(x.euros) + ' €' +
+          '<div class="meta">Signalé le ' + esc(date(x.signale_le)) + ' · ' + esc(x.smyles_repris) + ' repris, ' +
+          esc(x.smyles_non_repris) + ' non récupérés</div></div>';
+      }).join('') : '<p class="msg">Aucun paiement à examiner.</p>';
+    }).catch(function (e) { erreur(fl, e); });
+  }
+  document.getElementById('pay-blocked').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-unblock]');
+    if (!b) return;
+    var id = b.getAttribute('data-unblock');
+    demander('Débloquer l\'achat par carte ?',
+      b.getAttribute('data-pseudo') + ' pourra de nouveau acheter des Smyles par carte. Son solde ne change pas.',
+      'Débloquer',
+      function (m) {
+        return apiFetch('/admin/achats-carte/' + encodeURIComponent(id) + '/debloquer', { method: 'POST', json: { reason: m } })
+          .then(function () { flash('Compte débloqué.', true); chargerPaiements(); },
+                function (e2) { flash(detail(e2, 'Impossible de débloquer ce compte.'), false); throw e2; });
+      });
+  });
+
+  chargerPionniers();
+})();
+</script>
+</body>
+</html>
