@@ -1,6 +1,7 @@
 """A2 — escrow des gains : maturation (depuis le ledger) + gel.
 
-withdrawable = min(gagnés détenus non gelés, gains maturés > EARNINGS_MATURITY_DAYS).
+withdrawable = min(gagnés détenus non gelés − gains encore en maturation,
+                   gains maturés > EARNINGS_MATURITY_DAYS).
 """
 import uuid
 
@@ -110,5 +111,39 @@ async def test_non_mature_pas_retirable():
         await _insert_earning(uid, 100, days_ago=0)  # pas encore maturé
         async with SessionLocal() as db:
             assert await withdrawable_gagnes(db, uid) == 0
+    finally:
+        await _cleanup(uid)
+
+
+async def test_fenetre_de_maturation_est_de_30_jours():
+    """Pricing v2 (30/09) : 7 → 30 jours. Un gain de 10 jours n'est plus mûr."""
+    from app.services.escrow import EARNINGS_MATURITY_DAYS
+
+    assert EARNINGS_MATURITY_DAYS == 30
+    uid = await _new_user()
+    try:
+        await _set_gagnes(uid, 100)
+        await _insert_earning(uid, 100, days_ago=10)
+        async with SessionLocal() as db:
+            assert await matured_gagnes(db, uid) == 0
+            assert await withdrawable_gagnes(db, uid) == 0
+    finally:
+        await _cleanup(uid)
+
+
+async def test_gain_recent_pas_couvert_par_anciens_gains_reclasses():
+    """Après le reclassement de la bêta (migration 0099 : gagnés → promo), les
+    anciennes ventes restent au ledger comme « maturées ». Un gain d'aujourd'hui
+    ne doit PAS devenir retirable grâce à elles (fenêtre de 30 j respectée)."""
+    uid = await _new_user()
+    try:
+        await _insert_earning(uid, 100, days_ago=60)  # vieux gain, reclassé en promo
+        await _set_gagnes(uid, 8)                     # seul le nouveau gain est en gagnés
+        await _insert_earning(uid, 8, days_ago=0)     # la nouvelle vente
+        async with SessionLocal() as db:
+            assert await matured_gagnes(db, uid) == 100
+            assert await withdrawable_gagnes(db, uid) == 0
+            st = await gagnes_status(db, uid)
+        assert st["en_attente"] == 8
     finally:
         await _cleanup(uid)

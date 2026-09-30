@@ -6,7 +6,7 @@ Règles actées :
     fois : trésorerie puis acheteur/créateur) ;
   - la remise est répartie AU PRORATA sur chaque moitié, puis chaque moitié
     suit son circuit normal (`unlock_prompt_atomic`) : barème du vendeur
-    20/12/5, taux Pionnier au plus favorable, commission vers la trésorerie,
+    20/12/10, taux Pionnier au plus favorable, commission vers la trésorerie,
     part vendeur, part payée en Smyles offerts non retirable ;
   - si l'acheteur possède déjà une moitié : il achète l'autre au PRIX PLEIN,
     sans remise ;

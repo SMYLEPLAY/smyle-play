@@ -20,8 +20,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Fenêtre de maturation des gains avant qu'ils deviennent retirables
-# (anti-fraude + délai de contestation / chargeback). Ajustable.
-EARNINGS_MATURITY_DAYS = 7
+# (anti-fraude + délai de contestation / chargeback). Pricing v2 (30/09) :
+# 7 → 30 jours. (La retenue de 10 % gardée 120 jours reste à coder avant
+# l'ouverture des retraits.)
+EARNINGS_MATURITY_DAYS = 30
 
 
 async def matured_gagnes(db: AsyncSession, user_id: UUID) -> int:
@@ -39,11 +41,35 @@ async def matured_gagnes(db: AsyncSession, user_id: UUID) -> int:
     return int(row.m)
 
 
+async def _gains_recents(db: AsyncSession, user_id: UUID) -> int:
+    """Gains (artist_revenue) reçus il y a MOINS de EARNINGS_MATURITY_DAYS —
+    encore en maturation. Majorant de ce qui, dans les gagnés détenus, n'est
+    pas encore retirable."""
+    row = (await db.execute(
+        text(
+            "SELECT COALESCE(SUM(artist_revenue), 0) AS r FROM transactions "
+            "WHERE seller_id = :uid AND artist_revenue > 0 "
+            "AND status = 'completed' "
+            "AND created_at > now() - (:d * interval '1 day')"
+        ),
+        {"uid": user_id, "d": EARNINGS_MATURITY_DAYS},
+    )).first()
+    return int(row.r)
+
+
 async def withdrawable_gagnes(db: AsyncSession, user_id: UUID) -> int:
-    """Gains RETIRABLES = min(gagnés détenus non gelés, gains maturés).
+    """Gains RETIRABLES = min(gagnés détenus non gelés − gains encore en
+    maturation, gains maturés).
 
     Conservateur : on ne peut jamais retirer plus que ce qu'on détient
     actuellement en gagnés (net des dépenses), ni plus que ce qui a maturé.
+
+    Pricing v2 (migration 0099) : les gagnés de la bêta ont été reclassés en
+    promo, mais leurs lignes de vente restent au ledger (append-only) et
+    comptent comme « maturées ». Sans la soustraction des gains récents, un
+    nouveau gain d'aujourd'hui serait couvert par ces anciens gains maturés et
+    deviendrait retirable immédiatement (fenêtre de 30 jours contournée). On
+    retire donc des gagnés détenus tout ce qui a été gagné pendant la fenêtre.
     """
     row = (await db.execute(
         text(
@@ -55,7 +81,8 @@ async def withdrawable_gagnes(db: AsyncSession, user_id: UUID) -> int:
     if row is None:
         return 0
     held_unblocked = int(row.smyles_gagnes) - int(row.smyles_gagnes_bloque)
-    return max(0, min(held_unblocked, await matured_gagnes(db, user_id)))
+    held_matured = held_unblocked - await _gains_recents(db, user_id)
+    return max(0, min(held_matured, await matured_gagnes(db, user_id)))
 
 
 async def gagnes_status(db: AsyncSession, user_id: UUID) -> dict:

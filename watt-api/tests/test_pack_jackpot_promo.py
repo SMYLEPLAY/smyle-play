@@ -1,10 +1,13 @@
-"""Cas A — le versement « prix fort » d'un tirage rare/mythique en pack est
-RETIRABLE : il atterrit dans le bucket smyles_gagnes (et non smyles_promo).
+"""Pricing v2 (30/09, option A) — le versement « prix fort » d'un tirage
+rare/mythique en pack est NON RETIRABLE : il atterrit dans le bucket
+smyles_promo (annule le « cas A », #539).
 
-Décision Tom 2026-09-20 : ce top-up est du revenu créateur lié à la
-consommation de son œuvre → retirable. On prouve ici :
-  - Δsmyles_gagnes de l'artiste == PRIX PLEIN du prompt (part normale + top-up) ;
-  - Δsmyles_promo == 0 (plus rien ne tombe en promo pour ce versement) ;
+Ce top-up est financé par la plateforme, pas par un acheteur : il n'est adossé
+à aucun argent réel. On prouve ici :
+  - Δsmyles_gagnes de l'artiste == SA PART NORMALE de la vente (payée par
+    l'acheteur avec des Smyles achetés → retirable) ;
+  - Δsmyles_promo == le TOP-UP (prix plein − part normale), non retirable ;
+  - la ligne de ledger reste de type BONUS, avec une clé d'idempotence ;
   - l'invariant de somme (achetes+gagnes+promo == credits_balance) tient après.
 """
 import uuid
@@ -90,14 +93,14 @@ async def _cleanup(*uids: uuid.UUID) -> None:
         await db.commit()
 
 
-async def test_topup_jackpot_atterrit_en_gagnes_retirable():
-    """Un son legendary (≤10 ex.) tiré en pack : l'artiste touche le PRIX PLEIN,
-    ENTIÈREMENT en gagnes (retirable), rien en promo."""
+async def test_topup_jackpot_atterrit_en_promo_non_retirable():
+    """Un son legendary (≤10 ex.) tiré en pack : l'artiste touche toujours le
+    PRIX PLEIN, mais le top-up plateforme est en promo (non retirable)."""
     artist = await _make_user_consistent(0, artist_name="JackpotArtist")
     buyer = await _make_user_consistent(100)
     full_price = 80
     try:
-        await _make_prompt(artist, price=full_price, max_supply=5)  # legendary
+        pid = await _make_prompt(artist, price=full_price, max_supply=5)  # legendary
 
         before = await _buckets(artist)
         async with SessionLocal() as db:
@@ -108,18 +111,34 @@ async def test_topup_jackpot_atterrit_en_gagnes_retirable():
         # Le tirage porte bien sur le prompt de l'artiste (seul éligible).
         assert res["rarity"] == "epique"
 
-        # Part normale (déjà en gagnes) + top-up (désormais en gagnes) = prix plein.
         normal_share = compute_split(MYSTERY_PACK_PRICE, PRIMARY_MARKET_ARTIST_PCT)[0]
         topup = full_price - normal_share
         assert topup > 0
 
-        assert after["gagnes"] - before["gagnes"] == full_price   # 100 % retirable
-        assert after["promo"] - before["promo"] == 0              # plus rien en promo
-        assert after["balance"] - before["balance"] == full_price
+        assert after["gagnes"] - before["gagnes"] == normal_share  # part payée par l'acheteur
+        assert after["promo"] - before["promo"] == topup           # top-up NON retirable
+        assert after["balance"] - before["balance"] == full_price  # prix plein inchangé
 
         # Invariant de somme tenu (achetes + gagnes + promo == credits_balance).
         assert (
             after["achetes"] + after["gagnes"] + after["promo"] == after["balance"]
         )
+
+        # Ledger : ligne BONUS conservée, idempotente (clé liée au tirage).
+        async with SessionLocal() as db:
+            row = (await db.execute(
+                text(
+                    "SELECT type, credits_amount, idempotency_key, "
+                    "metadata_json->>'bucket' AS bucket FROM transactions "
+                    "WHERE buyer_id = :a AND metadata_json->>'reason' = 'pack_limited_topup' "
+                    "AND metadata_json->>'prompt_id' = :p"
+                ),
+                {"a": artist, "p": str(pid)},
+            )).first()
+        assert row is not None
+        assert row.type == "bonus"
+        assert int(row.credits_amount) == topup
+        assert row.idempotency_key and row.idempotency_key.startswith("pack_topup:")
+        assert row.bucket == "promo"
     finally:
         await _cleanup(artist, buyer)

@@ -6,8 +6,12 @@ Un palier supérieur débloque DEUX choses (décision Tom 2026-06-26) :
   1. une COMMISSION réduite sur chaque vente (la plateforme prélève moins) ;
   2. plus d'EMPLACEMENTS de vente simultanés + de la VISIBILITÉ (mise en avant).
 
-Barème commission (ce que la plateforme prélève) : 20 / 12 / 5.
-  → la part artiste = 100 - commission = 80 / 88 / 95.
+Barème commission (ce que la plateforme prélève) : 20 / 12 / 10.
+  → la part artiste = 100 - commission = 80 / 88 / 90.
+Pricing v2 (validé le 30/09) : Mythique 5 % → 10 %. PLANCHER de 10 % pour
+TOUS (paliers et Pionnier) : aucune vente ne rapporte moins de 10 % à la
+plateforme — sinon la marge devient négative une fois les frais Stripe et la
+valeur de retrait (0,50 €) pris en compte. Test d'invariant : tests/test_tiers.py.
 Le palier Standard (80%) reproduit EXACTEMENT le comportement historique
 (`PRIMARY_MARKET_ARTIST_PCT = 80`) : tant que personne n'est Premium/Mythique,
 aucune vente ne change. Le mécanisme est donc neutre à l'activation.
@@ -33,8 +37,12 @@ DEFAULT_TIER = UserTier.STANDARD
 TIER_COMMISSION_PCT: dict[UserTier, int] = {
     UserTier.STANDARD: 20,
     UserTier.PREMIUM: 12,
-    UserTier.MYTHIQUE: 5,
+    UserTier.MYTHIQUE: 10,
 }
+
+# Plancher de commission (pricing v2) : aucune commission effective — palier,
+# Pionnier, combinaison — ne descend sous cette valeur.
+COMMISSION_PLANCHER_PCT = 10
 
 # Emplacements de vente simultanés autorisés (None = illimité).
 TIER_LISTING_SLOTS: dict[UserTier, int | None] = {
@@ -84,7 +92,7 @@ def commission_pct_for_tier(tier: object) -> int:
 
 
 def artist_pct_for_tier(tier: object) -> int:
-    """Part artiste (%) = 100 - commission. 80 / 88 / 95."""
+    """Part artiste (%) = 100 - commission. 80 / 88 / 90."""
     return 100 - commission_pct_for_tier(tier)
 
 
@@ -100,8 +108,11 @@ def commission_pct_for(tier: object, is_pioneer: bool) -> int:
 
         standard (20) + pionnier -> 10   (le pionnier gagne)
         premium  (12) + pionnier -> 10   (le pionnier gagne)
-        mythique  (5) + pionnier ->  5   (le palier reste meilleur)
+        mythique (10) + pionnier -> 10   (égalité : le plancher)
         n'importe quel palier, non pionnier -> barème inchangé
+
+    Plancher (pricing v2) : le résultat n'est JAMAIS sous
+    COMMISSION_PLANCHER_PCT, quelle que soit la combinaison.
 
     N'est PAS utilisé par la revente : celle-ci garde son split fixe
     (royaltie 30 / plateforme 20 / vendeur 50), décision explicite de Tom.
@@ -109,7 +120,7 @@ def commission_pct_for(tier: object, is_pioneer: bool) -> int:
     pct = commission_pct_for_tier(tier)
     if is_pioneer:
         pct = min(pct, PIONEER_COMMISSION_PCT)
-    return pct
+    return max(pct, COMMISSION_PLANCHER_PCT)
 
 
 def artist_pct_for(tier: object, is_pioneer: bool) -> int:

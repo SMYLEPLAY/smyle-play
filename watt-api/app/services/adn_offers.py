@@ -258,7 +258,7 @@ async def accept_adn_offer_atomic(db, *, offer) -> _AcceptAdnOfferResult:
         await _acquire_user_locks(db, [buyer_id, target.seller_id])
 
         # K-06 (2026-09-04, annexe B §1.9a) : la commission suit le PALIER du
-        # VENDEUR (80/88/95), comme services/unlocks.py. Avant, compute_split
+        # VENDEUR (80/88/90), comme services/unlocks.py. Avant, compute_split
         # était appelé sans palier → 80 % en dur : un vendeur Premium touchait
         # 80 sur 100 au lieu de 88, alors que la page Offres promet 12 %.
         # Lecture DANS la section lockée (le vendeur est déjà verrouillé par

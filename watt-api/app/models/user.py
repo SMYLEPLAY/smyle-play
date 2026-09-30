@@ -205,8 +205,8 @@ class User(Base):
     )
 
     # C6 paliers créateur (migration 0069). 'standard' (gratuit, défaut) /
-    # 'premium' / 'mythique'. Détermine la COMMISSION de vente (20/12/5 → part
-    # artiste 80/88/95, cf. app/services/tiers.py), le nombre d'EMPLACEMENTS
+    # 'premium' / 'mythique'. Détermine la COMMISSION de vente (20/12/10 → part
+    # artiste 80/88/90, cf. app/services/tiers.py), le nombre d'EMPLACEMENTS
     # de vente, et la VISIBILITÉ. Défaut 'standard' = comportement historique
     # inchangé. L'activation Premium/Mythique (paiement) viendra avec Stripe.
     tier: Mapped[str] = mapped_column(

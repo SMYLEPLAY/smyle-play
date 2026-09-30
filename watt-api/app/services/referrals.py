@@ -8,7 +8,8 @@ action du filleul (1er son posté OU 1er achat), via `maybe_reward_referral`.
 Cet ancrage sur une action réelle est l'anti-faux-compte : créer 1000
 comptes vides ne rapporte rien.
 
-Barème ancré sur l'économie réelle (1 Smyle ≈ 0,70 €, bonus de bienvenue
+Barème ancré sur l'économie réelle (1 Smyle s'achète ≈ 0,70 € ; un Smyle
+GAGNÉ se retire 0,50 € — pricing v2 ; bonus de bienvenue
 = 10 Smyles). Voir [[2026-06-07]] et [[project_mechanics_before_stripe]].
 """
 import secrets

@@ -201,7 +201,11 @@ class UserRead(BaseModel):
     @computed_field
     @property
     def euro_equivalent_earned(self) -> float:
-        return round(self.credits_earned_total * 0.70, 2)
+        # Valeur de RETRAIT d'un Smyle gagné (pricing v2 : 0,50 €), lue à la
+        # source unique (reserve.PAYOUT_RATE_CENTS) — jamais en dur.
+        from app.services.reserve import PAYOUT_RATE_CENTS
+
+        return round(self.credits_earned_total * PAYOUT_RATE_CENTS / 100, 2)
 
     @computed_field
     @property

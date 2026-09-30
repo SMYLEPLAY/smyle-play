@@ -2,7 +2,8 @@
 FAVORABLE (Brique 1).
 
   - un Pionnier ne paie jamais plus de 10 % ;
-  - mais il ne perd pas un meilleur taux acquis par son palier (Mythique = 5 %) ;
+  - il ne perd jamais un meilleur taux acquis par son palier — depuis le
+    pricing v2 (30/09) Mythique = 10 % = plancher pour tous, donc égalité ;
   - et le taux Pionnier ne s'applique PAS a la revente (decision Tom) : celle-ci
     garde son split fixe royaltie 30 / plateforme 20 / vendeur 50.
 
@@ -48,8 +49,8 @@ from app.services.users import create_user
         ("standard", True, 10),   # le pionnier ameliore
         ("premium", False, 12),
         ("premium", True, 10),    # le pionnier ameliore
-        ("mythique", False, 5),
-        ("mythique", True, 5),    # le palier reste MEILLEUR -> on le garde
+        ("mythique", False, 10),  # pricing v2 : 5 -> 10 (plancher)
+        ("mythique", True, 10),   # egalite : le plancher
         (None, False, 20),        # palier inconnu -> standard (historique)
         (None, True, 10),
     ],
@@ -163,8 +164,8 @@ async def test_vente_dun_pionnier_commission_10_pct(monkeypatch):
         await _cleanup(buyer, seller)
 
 
-async def test_vente_dun_mythique_pionnier_garde_5_pct(monkeypatch):
-    """Le pionnier ne DEGRADE pas un meilleur taux : Mythique reste a 5 %."""
+async def test_vente_dun_mythique_pionnier_paie_le_plancher_10_pct(monkeypatch):
+    """Pricing v2 : Mythique = 10 % = plancher ; Pionnier + Mythique = 10 %."""
     monkeypatch.setattr(settings, "FEATURE_PIONEER", True)
     price = 100
     buyer = await _user(1000)
@@ -176,8 +177,8 @@ async def test_vente_dun_mythique_pionnier_garde_5_pct(monkeypatch):
             res = await unlock_prompt_atomic(db, buyer_id=buyer, prompt_id=pid)
             await db.commit()
             commission = int(res.transaction.platform_fee)
-        assert commission == 5                       # 5 %, le palier reste meilleur
-        assert await _gagnes(seller) - g_av == 95
+        assert commission == 10                      # plancher 10 % (pricing v2)
+        assert await _gagnes(seller) - g_av == 90
     finally:
         await _cleanup(buyer, seller)
 
