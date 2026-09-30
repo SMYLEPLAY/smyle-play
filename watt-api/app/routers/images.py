@@ -211,6 +211,13 @@ async def create_my_image(
             },
         )
 
+    # ── Étape 3 — seuil d'abonnés pour vendre (no-op si FEATURE_SELL_GATE OFF).
+    # Une image publiée est EN VENTE (prix >= 3) : on filtre la mise en vente,
+    # pas le brouillon.
+    if is_published:
+        from app.services.droit_de_vendre import exiger_droit_de_vendre
+        await exiger_droit_de_vendre(db, current_user)
+
     # ── Parse image_settings (JSON string → dict) ───────────────────────────
     settings_dict = None
     if image_settings:
@@ -1238,6 +1245,10 @@ async def update_my_image(
         db, image_id=image_id, owner_id=current_user.id
     )
     data = payload.model_dump(exclude_unset=True)
+    # Étape 3 — publier un brouillon = le mettre en vente → seuil d'abonnés.
+    if data.get("is_published") is True and not image.is_published:
+        from app.services.droit_de_vendre import exiger_droit_de_vendre
+        await exiger_droit_de_vendre(db, current_user)
     if "title" in data and data["title"] is not None:
         image.title = data["title"]
     if "description" in data:

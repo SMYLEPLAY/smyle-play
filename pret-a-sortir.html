@@ -96,8 +96,24 @@
     '</div>';
   }
 
+  // Étape 3 — deux chiffres de contrôle, en tête de page (lecture seule).
+  function controlesHtml(liste) {
+    if (!liste || !liste.length) return '';
+    return '<section class="card" aria-label="Contrôles"><div class="head">' +
+      '<span class="sortie">Contrôles</span></div>' +
+      liste.map(function (c) {
+        var etat = c.ok === true ? '<span class="etat"><i class="dot vert"></i>OK</span>'
+          : (c.ok === false ? '<span class="etat"><i class="dot rouge"></i>À vérifier</span>' : '');
+        return '<div class="crit"><div class="crit-top"><span>' + esc(c.libelle) + '</span>' +
+          '<span><span class="crit-val">' + esc(c.valeur) + '</span>' +
+          (c.attendu == null ? '' : ' <span class="crit-cible">(attendu : ' + esc(c.attendu) + ')</span>') +
+          ' ' + etat + '</span></div>' +
+          (c.note ? '<p class="note">' + esc(c.note) + '</p>' : '') + '</div>';
+      }).join('') + '</section>';
+  }
+
   function render(d) {
-    var html = (d.sorties || []).map(function (s) {
+    var html = controlesHtml(d.controles) + (d.sorties || []).map(function (s) {
       return '<section class="card" aria-label="' + esc(s.mois + ' — ' + s.sortie) + '">' +
         '<div class="head"><span class="mois">' + esc(s.mois) + '</span>' +
         '<span class="sortie">' + esc(s.sortie) + '</span>' +

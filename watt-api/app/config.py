@@ -251,6 +251,48 @@ class Settings(BaseSettings):
     # sortir » (critère « 6 mois depuis le lancement » de la sortie M6).
     DATE_LANCEMENT: str = "2026-11-01"
 
+    # ══ Étape 3 — moteurs de croissance (chaque brique OFF par défaut) ════
+    # Tous les comptages d'« actifs » utilisent la définition UNIQUE de
+    # `launch_readiness.SQL_CTE_ACTIFS` (même chiffre que « Prêt à sortir »).
+
+    # ── Objectif collectif « 1000 actifs » (Brique 3) ─────────────────────
+    # false : l'endpoint public /objectif/actifs répond 404 et la barre de
+    # progression reste masquée. true : barre publique (accueil + tableau de
+    # bord). Franchir un palier n'ouvre AUCUN retrait : simple affichage.
+    FEATURE_GOAL: bool = False
+    GOAL_CIBLE_ACTIFS: int = 1000
+    GOAL_PALIERS: list[int] = [500, 1000, 2500]
+    # Date limite annoncée publiquement pour l'ouverture du retrait en euros.
+    GOAL_RETRAIT_AU_PLUS_TARD: str = "2027-05-01"
+
+    # ── Seuil d'abonnés pour vendre (Brique 4) ────────────────────────────
+    # false : tout le monde peut mettre en vente (comportement actuel).
+    # true : pour METTRE EN VENTE un contenu payant, il faut un nombre
+    # d'abonnés RÉELS qui dépend de la taille de la plateforme (en actifs).
+    # Paliers [actifs minimum, abonnés requis], lus du plus grand au plus petit.
+    FEATURE_SELL_GATE: bool = False
+    SELL_GATE_PALIERS: list[tuple[int, int]] = [
+        (0, 5), (500, 15), (2000, 30), (10000, 50),
+    ]
+    # Jour d'activation du seuil (AAAA-MM-JJ). DROITS ACQUIS : un créateur qui
+    # avait déjà un contenu payant créé AVANT cette date garde le droit de
+    # vendre. À renseigner le jour où FEATURE_SELL_GATE passe à true. Vide =
+    # « maintenant » (tout contenu payant existant donne le droit).
+    SELL_GATE_DEPUIS: str = ""
+
+    # ── Quêtes de parrainage (Brique 2, volet quêtes) ─────────────────────
+    # false : aucune quête versée, progression masquée. true : paliers de
+    # filleuls ACTIFS → Smyles PROMO (non retirables), une seule fois par
+    # palier et par parrain. [filleuls actifs requis, Smyles versés].
+    FEATURE_QUETES_PARRAINAGE: bool = False
+    QUETES_PARRAINAGE_PALIERS: list[tuple[int, int]] = [(3, 10), (10, 50), (25, 150)]
+    # Palier qui donne le badge « Ambassadeur ».
+    QUETES_PARRAINAGE_PALIER_AMBASSADEUR: int = 25
+    # Plafond GLOBAL anti-abus : Smyles de quêtes versés sur 24 h glissantes,
+    # toute la plateforme confondue. Au-delà, le versement attend (il sera
+    # repris à la visite suivante du parrain, rien n'est perdu).
+    QUETES_PARRAINAGE_PLAFOND_24H: int = 3000
+
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
         explicitement rallumé via son drapeau SHOW_*."""

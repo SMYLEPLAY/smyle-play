@@ -261,6 +261,10 @@ async def update_voice(
     _ensure_owner(voice, current_user)
 
     data = payload.model_dump(exclude_unset=True)
+    # Étape 3 — publier une voix = la mettre en vente → seuil d'abonnés.
+    if data.get("is_published") is True and not voice.is_published:
+        from app.services.droit_de_vendre import exiger_droit_de_vendre
+        await exiger_droit_de_vendre(db, current_user)
     # HttpUrl → str pour le stockage
     if "sample_url" in data and data["sample_url"] is not None:
         data["sample_url"] = str(data["sample_url"])

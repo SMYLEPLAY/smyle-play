@@ -113,6 +113,16 @@ async def update_track(
     """
     from app.services.tracks import BeatLinkInvalid
 
+    # Étape 3 — fixer le prix d'un pack recette + beat = le mettre en vente →
+    # seuil d'abonnés (seulement à la première mise en vente).
+    if payload.pack_price_credits is not None:
+        from app.models.track import Track
+        from app.services.droit_de_vendre import exiger_droit_de_vendre
+        courant = await db.get(Track, track_id)
+        if courant is not None and courant.artist_id == current_user.id \
+                and courant.pack_price_credits is None:
+            await exiger_droit_de_vendre(db, current_user)
+
     try:
         track = await patch_track(
             db, track_id=track_id, user=current_user, payload=payload
