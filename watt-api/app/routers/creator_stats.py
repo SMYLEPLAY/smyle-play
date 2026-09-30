@@ -14,6 +14,7 @@ from app.database import get_db
 from app.models.track import Track
 from app.models.transaction import Transaction, TransactionStatus
 from app.models.user import User
+from app.services.reserve import PAYOUT_RATE_CENTS
 
 router = APIRouter(tags=["creator-stats"])
 
@@ -76,4 +77,14 @@ async def creator_stats(
         "revenue_non_retirable_smyles": non_retirable,
         # Ceux encore sur le compte (le promo se dépense en premier).
         "gagnes_non_retirables_detenus": int(current_user.smyles_promo_gagnes or 0),
+        # Pricing v2 — portefeuille en deux parts, pour le tableau de bord :
+        #   retirables = Smyles GAGNÉS en vendant (0,50 € pièce à l'ouverture
+        #                des retraits) ;
+        #   bonus      = Smyles offerts + achetés : dépensables, non retirables.
+        "portefeuille": {
+            "retirables": int(current_user.smyles_gagnes or 0),
+            "bonus": int(current_user.smyles_promo or 0)
+            + int(current_user.smyles_achetes or 0),
+            "valeur_retrait_cents": PAYOUT_RATE_CENTS,
+        },
     }
