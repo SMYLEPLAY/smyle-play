@@ -14,9 +14,10 @@ from app.schemas.track import (
     TrackWithDNA,
 )
 from app.services.tracks import (
+    MediaOwnershipError,
+    PromptLinkInvalid,
     create_track_with_dna,
     delete_track,
-    get_tracks,
     get_user_tracks,
     patch_track,
 )
@@ -50,6 +51,14 @@ async def create(
         )
     try:
         track, dna = await create_track_with_dna(db, current_user, data)
+    except (MediaOwnershipError, PromptLinkInvalid) as e:
+        # Lot A — fichier qui ne vient pas d'un envoi de ce compte, ou recette
+        # d'un autre artiste : 422, rien n'est créé.
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
     except Exception:
         # 2026-06-09 — on ne fuite plus le détail d'exception au client
         # (sécurité + propreté). Le diagnostic passe désormais par le log
@@ -81,9 +90,9 @@ async def create(
     )
 
 
-@router.get("/", response_model=list[TrackRead])
-async def list_tracks(db: AsyncSession = Depends(get_db)):
-    return await get_tracks(db)
+# Lot A (2026-10-07) — `GET /tracks/` (table entière, brouillons compris)
+# supprimée : aucun écran ne l'appelait. Les listes publiques passent par
+# /watt/tracks-recent, /watt/artists/{slug}, /watt/search… (filtrées).
 
 
 @router.get("/me", response_model=list[TrackRead])
@@ -127,7 +136,8 @@ async def update_track(
         track = await patch_track(
             db, track_id=track_id, user=current_user, payload=payload
         )
-    except BeatLinkInvalid as e:
+    except (BeatLinkInvalid, PromptLinkInvalid, MediaOwnershipError) as e:
+        await db.rollback()
         # C1 — beat_id fourni mais invalide (inexistant / pas un beat /
         # pas à l'artiste courant). 422 = payload sémantiquement invalide.
         raise HTTPException(

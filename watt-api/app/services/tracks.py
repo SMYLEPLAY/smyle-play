@@ -1,15 +1,66 @@
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dna import DNA
 from app.models.track import Track
 from app.models.user import User
 from app.schemas.track import TrackCreate
+from app.services.media_ownership import (
+    MediaOwnershipError,
+    assert_track_media_owned,
+    media_url_owned_or_external,
+)
 
 
 class BeatLinkInvalid(Exception):
     """beat_id fourni au PATCH track invalide : inexistant, pas un beat,
     supprimé, ou appartenant à un autre artiste. → 422 côté router."""
+
+
+class PromptLinkInvalid(Exception):
+    """prompt_id fourni (création ou PATCH d'un son) invalide : recette
+    inexistante, supprimée, ou appartenant à un autre artiste. → 422."""
+
+
+__all__ = [
+    "BeatLinkInvalid",
+    "MediaOwnershipError",
+    "PromptLinkInvalid",
+    "create_track_with_dna",
+    "delete_track",
+    "get_user_tracks",
+    "patch_track",
+    "soft_delete_track",
+    "visible_track_clause",
+]
+
+
+def visible_track_clause():
+    """Lot A (E3) — condition « son visible publiquement » : ni supprimé par
+    son créateur, ni retiré par la modération. À poser sur TOUTE liste ou
+    page publique qui lit `tracks`."""
+    return and_(Track.is_deleted.is_(False), Track.taken_down_at.is_(None))
+
+
+async def _assert_prompt_owned(
+    db: AsyncSession, *, user: User, prompt_id, current_prompt_id=None
+) -> None:
+    """Lot A (E2) — un son ne peut porter que la recette de SON créateur.
+
+    Recette inexistante / supprimée / d'un autre artiste → PromptLinkInvalid.
+    Seule tolérance : renvoyer inchangée la recette déjà liée (anciens
+    éditeurs du tableau de bord qui renvoient tous les champs), à condition
+    qu'elle soit bien à ce compte.
+    """
+    from app.models.prompt import Prompt
+
+    p = (await db.execute(
+        select(Prompt).where(Prompt.id == prompt_id)
+    )).scalar_one_or_none()
+    if p is None or p.artist_id != user.id:
+        raise PromptLinkInvalid("Recette introuvable ou pas à toi.")
+    if p.is_deleted and prompt_id != current_prompt_id:
+        raise PromptLinkInvalid("Recette introuvable ou pas à toi.")
 
 
 async def create_track_with_dna(
@@ -30,6 +81,17 @@ async def create_track_with_dna(
     Mais on accepte aussi le cas POST direct avec prompt_id (si le
     prompt préexiste) pour réduire le nombre de round-trips.
     """
+    # Lot A (C1) — les fichiers désignés (clé R2, URL audio, pochette) doivent
+    # venir d'envois de CE compte ; (E2) la recette liée doit être la sienne.
+    assert_track_media_owned(
+        user.id,
+        r2_key=data.r2_key,
+        audio_url=data.audio_url,
+        cover_url=data.cover_url,
+    )
+    if data.prompt_id is not None:
+        await _assert_prompt_owned(db, user=user, prompt_id=data.prompt_id)
+
     # Étape 2 — la couleur est optionnelle : si l'artiste n'en a pas choisi,
     # on la laisse à NULL et le front retombera sur sa brandColor.
     track = Track(
@@ -105,6 +167,23 @@ async def patch_track(
     # envoyés. Le caller envoie uniquement ce qu'il veut changer.
     data = payload.model_dump(exclude_unset=True)
 
+    # Lot A (E2) — la recette liée doit appartenir au créateur du son.
+    if data.get("prompt_id") is not None:
+        await _assert_prompt_owned(
+            db, user=user, prompt_id=data["prompt_id"],
+            current_prompt_id=track.prompt_id,
+        )
+
+    # Lot A (C1) — nouvelle pochette : fichier envoyé par ce compte (ou URL
+    # externe). La pochette déjà posée peut être renvoyée telle quelle.
+    new_cover = data.get("cover_url")
+    if (
+        new_cover is not None
+        and new_cover != track.cover_url
+        and not media_url_owned_or_external(new_cover, user.id)
+    ):
+        raise MediaOwnershipError("Image non reconnue pour ce compte.")
+
     # C1 (2026-06-10) — liaison beat : on ne lie JAMAIS un beat qui
     # n'appartient pas à l'artiste courant (sinon n'importe qui pourrait
     # vampiriser le beat d'un autre en pointant son track dessus).
@@ -131,6 +210,59 @@ async def patch_track(
     return track
 
 
+async def soft_delete_track(db: AsyncSession, track: Track) -> None:
+    """
+    Lot A (C1) — suppression DOUCE d'un son par son créateur. Ne commit pas.
+
+    - `is_deleted=True` : le son disparaît des listes publiques, du profil et
+      du tableau de bord. La ligne et le fichier audio sont CONSERVÉS
+      (aucune purge du stockage) : l'opération reste réversible.
+    - Recette liée (prompt_id / beat_id) : si elle appartient au créateur et
+      n'est portée par AUCUN autre de ses sons visibles, elle est retirée de
+      la vente (`is_published=False`, pas supprimée). Ceux qui l'ont déjà
+      achetée la gardent dans leur bibliothèque.
+    - Œuvre (son + image) : le lien est défait des deux côtés et l'image
+      redevient visible et vendable seule (jamais de produit fantôme).
+    """
+    from app.models.prompt import Prompt
+    from app.services.links import detach_partner_on_removal
+
+    track.is_deleted = True
+
+    # Image posée directement sur ce morceau (0093) → redevient autonome.
+    imgs = (await db.execute(
+        select(Prompt).where(Prompt.linked_track_id == track.id)
+    )).scalars().all()
+    for img in imgs:
+        img.linked_track_id = None
+        img.bundle_exclusive = False
+
+    for pid in {track.prompt_id, track.beat_id} - {None}:
+        autre = (await db.execute(
+            select(Track.id).where(
+                or_(Track.prompt_id == pid, Track.beat_id == pid),
+                Track.id != track.id,
+                Track.artist_id == track.artist_id,
+                visible_track_clause(),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if autre is not None:
+            continue
+        recette = (await db.execute(
+            select(Prompt).where(
+                Prompt.id == pid,
+                Prompt.artist_id == track.artist_id,
+                Prompt.is_deleted.is_(False),
+            )
+        )).scalar_one_or_none()
+        if recette is None:
+            continue
+        if recette.is_published:
+            recette.is_published = False
+        await detach_partner_on_removal(db, prompt=recette)
+    await db.flush()
+
+
 async def delete_track(
     db: AsyncSession,
     *,
@@ -138,9 +270,8 @@ async def delete_track(
     user: User,
 ) -> Track | None:
     """
-    Soft-delete d'un track (migration 0028).
+    Soft-delete d'un track (migration 0028) — voir soft_delete_track.
 
-    - is_deleted=True → disparaît des listings publics et du dashboard.
     - Idempotent : déjà supprimé → None (le router retourne 404).
     - Le DNA associé reste en DB (archivage).
     """
@@ -155,19 +286,10 @@ async def delete_track(
     if track is None:
         return None
 
-    track.is_deleted = True
+    await soft_delete_track(db, track)
     await db.commit()
     await db.refresh(track)
     return track
-
-
-async def get_tracks(db: AsyncSession) -> list[Track]:
-    result = await db.execute(
-        select(Track)
-        .where(Track.is_deleted.is_(False))
-        .order_by(Track.created_at.desc())
-    )
-    return list(result.scalars().all())
 
 
 async def get_user_tracks(db: AsyncSession, user: User) -> list[Track]:

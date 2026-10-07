@@ -114,11 +114,17 @@ async def maybe_reward_referral(db: AsyncSession, referred_user_id: UUID) -> boo
     Verse `reward_credits` au parrain ET au filleul via BONUS, puis passe le
     lien en REWARDED. Le caller commit.
     """
+    # Lot A — VERROU sur la ligne de parrainage (FOR UPDATE) : deux actions
+    # simultanées du filleul (1er son + 1er achat dans la même seconde) ne
+    # peuvent plus verser deux fois. La 2e attend la 1re, puis relit la
+    # ligne : elle n'est plus PENDING → rien n'est versé.
     referral = await db.scalar(
-        select(Referral).where(
+        select(Referral)
+        .where(
             Referral.referred_id == referred_user_id,
             Referral.status == ReferralStatus.PENDING,
         )
+        .with_for_update()
     )
     if referral is None:
         return False

@@ -61,22 +61,11 @@ async def list_packs(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 async def _optional_viewer(request: Request, db: AsyncSession) -> User | None:
-    auth = request.headers.get("authorization") or ""
-    if not auth.lower().startswith("bearer "):
-        return None
-    try:
-        from sqlalchemy import select
+    """Viewer optionnel — LECTURE seulement (Lot A, M1 : version de jeton et
+    compte suspendu vérifiés comme get_current_user)."""
+    from app.auth.jwt import bearer_from_request, resolve_optional_user
 
-        from app.auth.jwt import decode_access_token
-
-        email = decode_access_token(auth[7:].strip())
-        if not email:
-            return None
-        return (await db.execute(
-            select(User).where(User.email == email, User.is_banned.is_(False))
-        )).scalar_one_or_none()
-    except Exception:  # noqa: BLE001
-        return None
+    return await resolve_optional_user(db, bearer_from_request(request))
 
 
 @router.post("/grant", response_model=TransactionRead, status_code=status.HTTP_201_CREATED)

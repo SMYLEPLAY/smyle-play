@@ -17,6 +17,7 @@ PRINCIPES (non négociables) :
 """
 from __future__ import annotations
 
+import html as _html
 import logging
 
 import httpx
@@ -34,6 +35,14 @@ _SURFACE = "#14101f"
 _TEXT = "#e8e8f0"
 _MUTED = "rgba(255,255,255,.66)"
 _GOLD = "#ffd700"
+
+
+def esc(value) -> str:
+    """Lot A — échappe un texte saisi par un utilisateur (titre, nom, détail)
+    avant de l'insérer dans le HTML d'un email : un titre « <a href=…> » ne
+    doit jamais devenir un lien ou une mise en forme dans la boîte du
+    destinataire."""
+    return _html.escape("" if value is None else str(value), quote=True)
 
 
 def emails_enabled() -> bool:
@@ -121,10 +130,10 @@ async def send_sale_email(
     buyer_name: str | None = None,
 ) -> None:
     """💸 À l'artiste : un de ses produits vient de se vendre."""
-    who = f"<strong style='color:{_TEXT};'>{buyer_name}</strong> a acheté" if buyer_name else "Quelqu'un a acheté"
+    who = f"<strong style='color:{_TEXT};'>{esc(buyer_name)}</strong> a acheté" if buyer_name else "Quelqu'un a acheté"
     body = f"""\
     <p style="color:{_MUTED};font-size:14px;line-height:1.6;margin:0 0 16px;">
-      {who} « <strong style="color:{_TEXT};">{item_title}</strong> ».
+      {who} « <strong style="color:{_TEXT};">{esc(item_title)}</strong> ».
     </p>
     <p style="font-size:26px;font-weight:800;color:{_GOLD};margin:0 0 16px;">
       +{amount} Smyles
@@ -150,7 +159,7 @@ async def send_receipt_email(
     <table style="width:100%;border-collapse:collapse;margin:0 0 16px;">
       <tr>
         <td style="color:{_TEXT};font-size:14px;padding:8px 0;
-                   border-bottom:1px solid rgba(255,255,255,.08);">{item_title}</td>
+                   border-bottom:1px solid rgba(255,255,255,.08);">{esc(item_title)}</td>
         <td style="color:{_GOLD};font-size:14px;font-weight:700;text-align:right;
                    border-bottom:1px solid rgba(255,255,255,.08);">−{amount} Smyles</td>
       </tr>
@@ -292,7 +301,7 @@ async def send_verification_email(to: str, *, link: str) -> bool:
 
 async def send_welcome_email(to: str, *, name: str | None = None) -> None:
     """Bienvenue à l'inscription."""
-    hello = f"Bienvenue {name} ⚡" if name else "Bienvenue ⚡"
+    hello = f"Bienvenue {esc(name)} ⚡" if name else "Bienvenue ⚡"
     body = f"""\
     <p style="color:{_MUTED};font-size:14px;line-height:1.7;margin:0 0 14px;">
       Ton compte WATT est prêt. Ici, chaque son est généré par IA et chaque

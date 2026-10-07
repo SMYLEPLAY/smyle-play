@@ -21,13 +21,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import ADMIN_FORBIDDEN_DETAIL, is_admin_user
-from app.auth.jwt import decode_access_token, get_current_user
+from app.auth.jwt import get_current_user
 from app.core.ratelimit import limiter
 from app.database import get_db
 from app.models.analytics_event import AnalyticsEvent
 from app.models.user import User
 from app.services.analytics import ALLOWED_EVENTS, MAX_BATCH, MAX_STR, funnel_data
-from app.services.users import get_user_by_email
 
 router = APIRouter(tags=["telemetry"])
 
@@ -45,19 +44,14 @@ class EventsBatch(BaseModel):
 
 
 async def _user_id_from_request(request: Request, db: AsyncSession):
-    """Résout l'utilisateur depuis le Bearer SANS exiger l'auth (best-effort)."""
-    auth = request.headers.get("authorization") or ""
-    if not auth.lower().startswith("bearer "):
-        return None
-    token = auth[7:].strip()
-    email = decode_access_token(token)
-    if not email:
-        return None
-    try:
-        user = await get_user_by_email(db, email)
-        return user.id if user else None
-    except Exception:
-        return None
+    """Résout l'utilisateur depuis le Bearer SANS exiger l'auth (best-effort).
+
+    Lot A (M1) : jeton vérifié comme get_current_user (version de jeton,
+    compte suspendu) ; sinon l'événement reste anonyme."""
+    from app.auth.jwt import bearer_from_request, resolve_optional_user
+
+    user = await resolve_optional_user(db, bearer_from_request(request))
+    return user.id if user else None
 
 
 def _trunc(s: str | None) -> str | None:

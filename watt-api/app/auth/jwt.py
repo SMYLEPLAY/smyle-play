@@ -80,3 +80,38 @@ async def get_current_user(
 
     note_activity(user.id)
     return user
+
+
+async def resolve_optional_user(db: AsyncSession, token: str | None) -> User | None:
+    """Lot A (M1) — utilisateur courant OPTIONNEL, pour les LECTURES publiques.
+
+    Mêmes contrôles que `get_current_user` (signature, `tv` = version de
+    jeton, compte non suspendu) mais renvoie None au lieu de lever : la page
+    reste servie comme à un visiteur. Ne JAMAIS s'en servir pour autoriser
+    une écriture : utiliser `get_current_user`.
+    """
+    if not token:
+        return None
+    claims = _decode_claims(token)
+    email = claims.get("sub") if claims else None
+    if not email:
+        return None
+    try:
+        user = await get_user_by_email(db, email)
+    except Exception:  # noqa: BLE001 — une lecture publique ne casse jamais
+        return None
+    if user is None:
+        return None
+    if int(claims.get("tv", 0) or 0) != int(user.token_version or 0):
+        return None
+    if user.is_banned:
+        return None
+    return user
+
+
+def bearer_from_request(request) -> str | None:
+    """Jeton Bearer de l'en-tête Authorization, ou None."""
+    auth = request.headers.get("authorization") or ""
+    if not auth.lower().startswith("bearer "):
+        return None
+    return auth[7:].strip() or None

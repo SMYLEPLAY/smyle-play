@@ -32,7 +32,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.launch import require_launch_item
 from app.auth.dependencies import get_current_user
-from app.auth.jwt import decode_access_token
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.core.slug import slugify
 from app.database import get_db
@@ -43,7 +42,6 @@ from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
-from app.services.users import get_user_by_email
 
 # Préfixe /watt : convention des LECTURES PUBLIQUES (cf. /watt/playlists,
 # /watt/albums, /watt/images…). CRITIQUE pour le routing : `main.py` monte
@@ -80,12 +78,11 @@ async def _optional_user(
 ) -> User | None:
     """Renvoie l'utilisateur courant si un token valide est présent, sinon None
     (jamais d'exception — la route reste accessible aux visiteurs)."""
-    if not token:
-        return None
-    email = decode_access_token(token)
-    if not email:
-        return None
-    return await get_user_by_email(db, email)
+    # Lot A (M1) : mêmes contrôles que get_current_user (version de jeton,
+    # compte suspendu) — lecture seulement.
+    from app.auth.jwt import resolve_optional_user
+
+    return await resolve_optional_user(db, token)
 
 
 async def _owned_prompt_ids(
@@ -122,7 +119,12 @@ async def _son_payload(
             .select_from(PlaylistTrack)
             .join(Track, Track.id == PlaylistTrack.track_id)
             .join(Prompt, Prompt.id == Track.prompt_id, isouter=True)
-            .where(PlaylistTrack.playlist_id == p.id)
+            .where(
+                PlaylistTrack.playlist_id == p.id,
+                # Lot A (E3) : ni sons supprimés ni sons retirés.
+                Track.is_deleted.is_(False),
+                Track.taken_down_at.is_(None),
+            )
             .order_by(PlaylistTrack.position.asc())
         )
     ).all()

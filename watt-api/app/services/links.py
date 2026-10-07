@@ -525,9 +525,13 @@ async def link_image_to_track(
     img.linked_track_id = track.id
     img.bundle_exclusive = bundle_exclusive
     if track.prompt_id is not None:
+        # Lot A (E2) : on n'écrit JAMAIS sur la recette d'un autre artiste,
+        # même si le morceau pointe (anciennement) vers elle.
         recipe = (await db.execute(
             select(Prompt).where(
-                Prompt.id == track.prompt_id, Prompt.is_deleted.is_(False)
+                Prompt.id == track.prompt_id,
+                Prompt.artist_id == owner_id,
+                Prompt.is_deleted.is_(False),
             )
         )).scalar_one_or_none()
         if recipe is not None and _is_sound(recipe) and recipe.linked_prompt_id is None:
@@ -653,34 +657,39 @@ async def public_oeuvre(db: AsyncSession, image_id: _uuid.UUID) -> dict | None:
     if artist is None or not artist.profile_public or artist.is_banned:
         return None
 
+    # Lot A : son et recette d'une Œuvre = ceux du MÊME créateur que l'image
+    # (E2), jamais supprimés ni retirés par la modération (E3).
     track = None
     recipe = None
+    _track_ok = (
+        Track.is_deleted.is_(False),
+        Track.taken_down_at.is_(None),
+        Track.artist_id == img.artist_id,
+    )
+    _recipe_ok = (
+        Prompt.is_published.is_(True),
+        Prompt.is_deleted.is_(False),
+        Prompt.taken_down_at.is_(None),
+        Prompt.artist_id == img.artist_id,
+    )
     if img.linked_track_id is not None:
         track = (await db.execute(
-            select(Track).where(Track.id == img.linked_track_id, Track.is_deleted.is_(False))
+            select(Track).where(Track.id == img.linked_track_id, *_track_ok)
         )).scalar_one_or_none()
     if img.linked_prompt_id is not None:
         recipe = (await db.execute(
-            select(Prompt).where(
-                Prompt.id == img.linked_prompt_id,
-                Prompt.is_published.is_(True),
-                Prompt.is_deleted.is_(False),
-            )
+            select(Prompt).where(Prompt.id == img.linked_prompt_id, *_recipe_ok)
         )).scalar_one_or_none()
         if recipe is not None and not _is_sound(recipe):
             recipe = None
         if track is None and recipe is not None:
             track = (await db.execute(
-                select(Track).where(Track.prompt_id == recipe.id, Track.is_deleted.is_(False))
+                select(Track).where(Track.prompt_id == recipe.id, *_track_ok)
                 .order_by(Track.created_at.asc()).limit(1)
             )).scalar_one_or_none()
     if track is not None and recipe is None and track.prompt_id is not None:
         recipe = (await db.execute(
-            select(Prompt).where(
-                Prompt.id == track.prompt_id,
-                Prompt.is_published.is_(True),
-                Prompt.is_deleted.is_(False),
-            )
+            select(Prompt).where(Prompt.id == track.prompt_id, *_recipe_ok)
         )).scalar_one_or_none()
     if track is None and recipe is None:
         return None

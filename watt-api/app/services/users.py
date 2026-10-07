@@ -19,7 +19,15 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    raw = password.encode("utf-8")
+    # Lot A — bcrypt 5 lève au-delà de 72 octets : aucun mot de passe valide
+    # n'est aussi long (refusé à l'inscription), donc « ne correspond pas ».
+    if len(raw) > 72:
+        return False
+    try:
+        return bcrypt.checkpw(raw, hashed.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:

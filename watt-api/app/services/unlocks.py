@@ -189,6 +189,21 @@ async def _effective_prompt_price(
     return paid, perk_applied, playlist_perk
 
 
+async def _assert_prompt_in_stock(db: AsyncSession, prompt_row: Prompt) -> None:
+    """Lève PromptNotPurchasable si l'édition limitée est épuisée."""
+    if prompt_row.max_supply is None:
+        return
+    sold = (await db.execute(
+        select(func.count(UnlockedPrompt.id)).where(
+            UnlockedPrompt.prompt_id == prompt_row.id
+        )
+    )).scalar_one()
+    if int(sold) >= int(prompt_row.max_supply):
+        raise PromptNotPurchasable(
+            f"Prompt sold out ({sold}/{prompt_row.max_supply})"
+        )
+
+
 async def unlock_prompt_atomic(
     db: AsyncSession,
     *,
@@ -237,16 +252,9 @@ async def unlock_prompt_atomic(
 
     # Stock-out : édition limitée épuisée (sold_count d'UnlockedPrompt vs
     # max_supply). Même mécanique que les ADN. NULL = illimité → pas de check.
-    if prompt_row.max_supply is not None:
-        sold_count = (await db.execute(
-            select(func.count(UnlockedPrompt.id)).where(
-                UnlockedPrompt.prompt_id == prompt_id
-            )
-        )).scalar_one()
-        if int(sold_count) >= int(prompt_row.max_supply):
-            raise PromptNotPurchasable(
-                f"Prompt sold out ({sold_count}/{prompt_row.max_supply})"
-            )
+    # Contrôle rapide hors verrou (évite de verrouiller pour rien) ; le
+    # contrôle qui FAIT FOI est refait sous verrou plus bas (Lot A, M2).
+    await _assert_prompt_in_stock(db, prompt_row)
 
     artist_id = prompt_row.artist_id
     base_price = prompt_row.price_credits
@@ -269,6 +277,13 @@ async def unlock_prompt_atomic(
             await _acquire_user_locks(db, [buyer_id, artist_id])
         else:
             treasury_id = _oeuvre["treasury_id"]  # verrous déjà pris
+
+        # Lot A (M2) — stock RECOMPTÉ SOUS VERROU. Le contrôle ci-dessus est
+        # lu avant les verrous : deux clics simultanés sur une édition 1/1
+        # le passaient tous les deux. Tous les acheteurs d'un même produit
+        # verrouillent la ligne du vendeur → ce recomptage voit l'achat
+        # concurrent déjà validé, et l'édition épuisée lève l'erreur métier.
+        await _assert_prompt_in_stock(db, prompt_row)
 
         # 4-5. Perks pyramide + prix effectif (cf. _effective_prompt_price).
         paid, perk_applied, playlist_perk = await _effective_prompt_price(
@@ -492,6 +507,18 @@ async def unlock_adn_atomic(
         # impossible sur cette ligne chaude. No-op si la brique est OFF.
         treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
+
+        # Lot A (M2) — même recomptage sous verrou que pour les recettes.
+        if adn_row.max_supply is not None:
+            sold_now = (await db.execute(
+                select(func.count(OwnedAdn.adn_id)).where(
+                    OwnedAdn.adn_id == adn_id
+                )
+            )).scalar_one()
+            if int(sold_now) >= int(adn_row.max_supply):
+                raise AdnNotPurchasable(
+                    f"ADN sold out ({sold_now}/{adn_row.max_supply})"
+                )
 
         # C6 : commission selon le palier de l'artiste (80/88/90).
         artist_pct = await artist_pct_for_user(db, artist_id)
