@@ -53,6 +53,12 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: str = "development"
 
+    # Lot A (2026-10-07) — documentation interactive de l'API (/docs, /redoc,
+    # /openapi.json). FERMÉE par défaut, donc en production : elle listait
+    # toutes les routes publiquement. À mettre à true seulement en local
+    # (`API_DOCS_ENABLED=true` dans le .env de développement).
+    API_DOCS_ENABLED: bool = False
+
     DATABASE_URL: str
 
     # Clerk : optionnel — non utilisé en prod actuelle (auth via JWT interne).
