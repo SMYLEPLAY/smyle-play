@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE — Page Offres créateur (C6). La page /offres se charge et présente les
-// trois paliers avec leur commission (20 / 12 / 5). Rendu statique : stable même
+// trois paliers avec leur commission (20 / 12 / 10, pricing v2). Rendu statique : stable même
 // base vide (le surlignage du palier courant dépend de /users/me, non testé ici).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -20,5 +20,5 @@ test('la page /offres se charge avec les 3 paliers', async ({ page }) => {
   // Les trois commissions du barème sont visibles.
   await expect(page.getByText('20%', { exact: false }).first()).toBeVisible();
   await expect(page.getByText('12%', { exact: false }).first()).toBeVisible();
-  await expect(page.getByText('5%', { exact: false }).first()).toBeVisible();
+  await expect(page.getByText('10%', { exact: false }).first()).toBeVisible();
 });

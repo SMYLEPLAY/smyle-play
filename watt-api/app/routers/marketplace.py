@@ -45,6 +45,7 @@ from app.schemas.visual_adn import (
     VisualAdnRead,
     VisualAdnUpdate,
 )
+from app.services.droit_de_vendre import exiger_droit_de_vendre
 from app.services.marketplace import (
     AdnAlreadyExists,
     AdnNotFound,
@@ -163,6 +164,12 @@ async def update_my_adn(
     db: AsyncSession = Depends(get_db),
 ):
     data = payload.model_dump(exclude_unset=True)
+    # Étape 3 — publier l'ADN = le mettre en vente → seuil d'abonnés (avant le
+    # try : un 403 ne doit pas être transformé en 500).
+    if data.get("is_published") is True:
+        courant = await get_adn_by_artist(db, current_user.id)
+        if courant is not None and not courant.is_published:
+            await exiger_droit_de_vendre(db, current_user)
     try:
         adn = await update_adn(
             db=db, artist_id=current_user.id, payload=data
@@ -280,6 +287,11 @@ async def update_my_visual_adn(
     db: AsyncSession = Depends(get_db),
 ):
     data = payload.model_dump(exclude_unset=True)
+    # Étape 3 — publier l'ADN visuel = le mettre en vente → seuil d'abonnés.
+    if data.get("is_published") is True:
+        courant = await get_visual_adn_by_artist(db, current_user.id)
+        if courant is not None and not courant.is_published:
+            await exiger_droit_de_vendre(db, current_user)
     try:
         visual_adn = await update_visual_adn(
             db=db, artist_id=current_user.id, payload=data
@@ -362,6 +374,9 @@ async def create_my_prompt(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Étape 3 — créer un prompt publié = le mettre en vente → seuil d'abonnés.
+    if payload.is_published:
+        await exiger_droit_de_vendre(db, current_user)
     try:
         prompt = await create_prompt(
             db=db,
@@ -418,6 +433,13 @@ async def update_my_prompt(
     db: AsyncSession = Depends(get_db),
 ):
     data = payload.model_dump(exclude_unset=True)
+    # Étape 3 — publier un brouillon = le mettre en vente → seuil d'abonnés.
+    if data.get("is_published") is True:
+        courant = await get_prompt_for_artist(
+            db, artist_id=current_user.id, prompt_id=prompt_id
+        )
+        if courant is not None and not courant.is_published:
+            await exiger_droit_de_vendre(db, current_user)
     try:
         prompt = await update_prompt(
             db=db,

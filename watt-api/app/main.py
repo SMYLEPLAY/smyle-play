@@ -373,6 +373,10 @@ def create_app() -> FastAPI:
 
     from app.routers.creator_stats import router as creator_stats_router
     app.include_router(creator_stats_router)
+    # Étape 3 — objectif « 1000 actifs » (public, 404 si FEATURE_GOAL OFF) +
+    # statut du seuil d'abonnés pour vendre (FEATURE_SELL_GATE).
+    from app.routers.croissance import router as croissance_router
+    app.include_router(croissance_router)
 
     # ── Pages + statiques (P0-c : Flask supprimé, plus de drapeau) ───────
     # Enregistrés en TOUT DERNIER : toutes les routes API ci-dessus gardent

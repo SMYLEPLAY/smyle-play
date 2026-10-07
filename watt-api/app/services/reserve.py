@@ -21,9 +21,12 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Taux de remboursement d'un Smyle en cents (doctrine : ~0,70 €). Sert à
-# valoriser la dette encaissable. Ajustable.
-PAYOUT_RATE_CENTS = 70
+# Valeur de retrait d'un Smyle GAGNÉ, en cents. Pricing v2 (validé le 30/09) :
+# 0,50 € — règle d'or « on ne rachète jamais un Smyle plus cher que le prix net
+# le plus bas auquel on le vend » (pack de 200 = 0,49 € net après TVA + Stripe).
+# Sert à valoriser la dette encaissable (et donc la réserve de sécurité). Les
+# prix des packs (8 / 35 / 120 €) ne dépendent PAS de cette valeur.
+PAYOUT_RATE_CENTS = 50
 
 _POCHES = ("payout", "tax", "refund", "cash")
 

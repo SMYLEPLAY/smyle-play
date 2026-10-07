@@ -4611,6 +4611,40 @@ function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── 15. INITIALISATION ────────────────────────────────────────────────────────
 
+// Pricing v2 — portefeuille en deux parts : Smyles RETIRABLES (gagnés en
+// vendant) et Smyles BONUS (offerts + achetés : dépensables, non retirables).
+// Valeurs numériques uniquement (aucun texte serveur injecté).
+function _portefeuilleHtml(p, tile) {
+  if (!p || typeof p !== 'object') return '';
+  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 8px">' +
+    tile('💶', 'Smyles retirables', Number(p.retirables) || 0) +
+    tile('🎁', 'Smyles bonus', Number(p.bonus) || 0) +
+    '</div>' +
+    '<p style="margin:0 0 16px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.5">' +
+    '1 Smyle gagné en vendant = 0,50 € quand les retraits s\'ouvriront ' +
+    '(à 1000 actifs, et au plus tard le 1er mai 2027). ' +
+    'Les Smyles bonus se dépensent sur WATT mais ne se retirent pas.</p>';
+}
+
+// Étape 3 — seuil d'abonnés pour vendre. Affiche « Encore X abonnés pour
+// pouvoir vendre » UNIQUEMENT si le seuil est actif et pas encore atteint.
+// Échec silencieux (encart masqué). Texte inséré via textContent.
+async function loadDroitDeVendre() {
+  const el = document.getElementById('droitDeVendreNotice');
+  if (!el || typeof apiFetch !== 'function') return;
+  const tok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!tok) return;
+  try {
+    const d = await apiFetch('/me/droit-de-vendre');
+    if (d && d.actif && d.peut_vendre === false && d.message) {
+      el.textContent = d.message;
+      el.hidden = false;
+    } else {
+      el.hidden = true;
+    }
+  } catch (_) { el.hidden = true; }
+}
+
 // Section 3 — stats créateur (écoutes / ventes / Smyles gagnés).
 // Lecture seule via GET /me/creator-stats ; échec silencieux (strip masquée).
 async function loadCreatorStats() {
@@ -4648,7 +4682,8 @@ async function loadCreatorStats() {
         ? '<p style="margin:-8px 0 16px;font-size:12px;color:rgba(255,255,255,.55)">' +
           '« Non retirables » : la part de tes ventes payée par les acheteurs avec des Smyles offerts. ' +
           'Tu peux les dépenser sur WATT, mais pas les retirer en euros.</p>'
-        : '');
+        : '') +
+      _portefeuilleHtml(s.portefeuille, tile);
     el.style.display = 'block';
   } catch (_) { /* non connecté / erreur → strip masquée */ }
 }
@@ -4677,6 +4712,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStats();
   renderRanking();
   loadCreatorStats();   // Section 3 — écoutes / ventes / revenus
+  loadDroitDeVendre();  // Étape 3 — « Encore X abonnés pour pouvoir vendre »
   renderMyTracks();   // initialise compteur freemium + état zone upload
   initTrackEditor();  // cellule édition catalogue (section 1a)
 

@@ -83,7 +83,7 @@ pydantic-settings==2.14.2
     # via -r requirements.in
 pydub==0.25.1
     # via -r requirements.in
-pyjwt==2.13.0
+pyjwt==2.15.1
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via botocore
@@ -128,7 +128,7 @@ typing-inspection==0.4.2
     #   fastapi
     #   pydantic
     #   pydantic-settings
-urllib3==2.7.0
+urllib3==2.8.0
     # via
     #   botocore
     #   sentry-sdk

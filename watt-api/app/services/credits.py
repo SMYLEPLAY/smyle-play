@@ -191,10 +191,10 @@ def compute_split(
 async def artist_pct_for_user(db: AsyncSession, user_id: UUID) -> int:
     """Part artiste (%) selon le PALIER du vendeur (C6) ET son statut PIONNIER.
 
-    Lit `users.tier` (80 / 88 / 95 = commission 20 / 12 / 5) et `users.is_pioneer`
-    (Brique 1) puis applique la règle du **taux le plus favorable** : un Pionnier
-    ne paie jamais plus de 10 % de commission, mais un Mythique Pionnier garde
-    ses 5 %. Tout palier inconnu / NULL (comptes pré-migration 0069) retombe sur
+    Lit `users.tier` (80 / 88 / 90 = commission 20 / 12 / 10, pricing v2) et
+    `users.is_pioneer` (Brique 1) puis applique la règle du **taux le plus
+    favorable** : un Pionnier ne paie jamais plus de 10 % de commission — et
+    personne ne paie moins de 10 % (plancher, cf. tiers.COMMISSION_PLANCHER_PCT). Tout palier inconnu / NULL (comptes pré-migration 0069) retombe sur
     Standard (80%) = comportement historique. À appeler DANS la section lockée
     d'un flux de vente, juste avant `compute_split`.
 

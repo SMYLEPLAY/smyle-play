@@ -202,6 +202,15 @@ async def update_album_endpoint(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AlbumRead:
+    # Étape 3 — passer l'ADN d'album « en vente » (adn_for_sale ET public)
+    # → seuil d'abonnés. Couvre aussi « privé → public ».
+    if patch.adn_for_sale is True or patch.visibility == "public":
+        from app.models.album import Album
+        from app.services.droit_de_vendre import exiger_droit_de_vendre, passe_en_vente
+        courant = await db.get(Album, album_id)
+        if courant is not None and courant.owner_id == current_user.id \
+                and passe_en_vente(courant, patch):
+            await exiger_droit_de_vendre(db, current_user)
     try:
         album = await svc.update_album(db, current_user, album_id, patch)
     except svc.AlbumNotFound:

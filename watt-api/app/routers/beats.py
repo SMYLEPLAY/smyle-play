@@ -57,6 +57,9 @@ async def create_my_beat(
     db: AsyncSession = Depends(get_db),
 ):
     """Crée un beat vendable. Aucun pré-requis ADN (décision 2026-06-09)."""
+    if payload.is_published:  # Étape 3 — seuil d'abonnés pour vendre
+        from app.services.droit_de_vendre import exiger_droit_de_vendre
+        await exiger_droit_de_vendre(db, current_user)
     beat = await create_beat(
         db,
         artist_id=current_user.id,

@@ -105,6 +105,9 @@ async def create_playlist_endpoint(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PlaylistRead:
+    if data.adn_for_sale and data.visibility == "public":  # Étape 3 — ADN en vente → seuil
+        from app.services.droit_de_vendre import exiger_droit_de_vendre
+        await exiger_droit_de_vendre(db, current_user)
     playlist = await svc.create_playlist(db, current_user, data)
     return PlaylistRead.model_validate(playlist)
 
@@ -188,6 +191,16 @@ async def update_playlist_endpoint(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PlaylistRead:
+    # Étape 3 — passer l'ADN « en vente » (en vente = adn_for_sale ET
+    # publique) → seuil d'abonnés, seulement si ce n'était pas déjà le cas et
+    # seulement pour le propriétaire. Couvre aussi « privée → publique ».
+    if patch.adn_for_sale is True or patch.visibility == "public":
+        from app.models.playlist import Playlist
+        from app.services.droit_de_vendre import exiger_droit_de_vendre, passe_en_vente
+        courante = await db.get(Playlist, playlist_id)
+        if courante is not None and courante.owner_id == current_user.id \
+                and passe_en_vente(courante, patch):
+            await exiger_droit_de_vendre(db, current_user)
     try:
         playlist = await svc.update_playlist(db, current_user, playlist_id, patch)
     except svc.PlaylistNotFound:

@@ -206,7 +206,7 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         await _acquire_user_locks(db, [artist_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
-        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # (80/88/90), comme unlock_prompt_atomic. Avant, compute_split était
         # appelé sans palier → 20 % en dur sur ce flux, alors que la page
         # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
         # Lu DANS la section lockée (le vendeur est déjà verrouillé).
@@ -297,19 +297,20 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
         already_paid = compute_split(price, artist_pct)[0]  # part déjà versée
         topup = int(pick.price_credits) - already_paid
         if topup > 0:
-            # Cas A (décision Tom 2026-09-20) : ce versement « prix fort » est un
-            # REVENU CRÉATEUR lié à la consommation de son œuvre → il doit être
-            # RETIRABLE. On le crédite donc dans le bucket smyles_GAGNES (et non
-            # smyles_promo comme le ferait grant_credits_atomic(BONUS)). Doctrine
-            # « retirable = gagné en vendant ».
+            # Pricing v2 (30/09, option A) — ANNULE le « cas A » (#539) : ce
+            # versement « prix fort » est financé par la PLATEFORME, pas par un
+            # acheteur → il n'est adossé à aucun argent réel. Il va donc dans le
+            # bucket smyles_PROMO (dépensable sur WATT, NON retirable), comme
+            # tout autre Smyle offert. Doctrine : « retirable = gagné en vendant,
+            # payé par un acheteur ».
             #
-            # On garde le TYPE de ligne BONUS (financé par la plateforme, pas par
-            # un acheteur — distinction conservée au ledger et dans les
-            # dashboards) : SEUL le bucket change. La ligne reste idempotente au
-            # sens historique (aucune clé posée ici, comme avant) et l'invariant
-            # de somme est tenu par credit_bucket (bucket + credits_balance dans
-            # le même UPDATE). Versement hors du savepoint principal → on pose
-            # notre propre savepoint + verrou artiste.
+            # On garde le TYPE de ligne BONUS (distinction conservée au ledger et
+            # dans les dashboards), son propre savepoint + verrou artiste (hors
+            # du savepoint principal), et l'invariant de somme tenu par
+            # credit_bucket (bucket + credits_balance dans le même UPDATE).
+            # Idempotence : clé liée à la transaction de tirage (unique par
+            # ouverture) — un rejeu ne peut jamais verser deux fois le top-up
+            # (filet : index UNIQUE partiel uq_transactions_idempotency_key).
             async with db.begin_nested():
                 await _acquire_user_locks(db, [artist_id])
                 topup_tx = Transaction(
@@ -317,17 +318,19 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
                     status=TransactionStatus.PENDING,
                     buyer_id=artist_id,  # bénéficiaire du versement
                     credits_amount=topup,
+                    idempotency_key=f"pack_topup:{tx.id}",
                     metadata_json={
                         "reason": "pack_limited_topup",
                         "prompt_id": str(pick.id),
                         "tier": rarity,
                         "source": "mystery_pack",
+                        "bucket": "promo",
                     },
                 )
                 db.add(topup_tx)
                 await db.flush()
-                # RETIRABLE : bucket gagnes (au lieu de promo).
-                await credit_bucket(db, artist_id, topup, bucket="gagnes")
+                # NON retirable : bucket promo (pricing v2).
+                await credit_bucket(db, artist_id, topup, bucket="promo")
                 topup_tx.status = TransactionStatus.COMPLETED
                 topup_tx.completed_at = func.now()
                 await db.flush()

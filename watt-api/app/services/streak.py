@@ -4,7 +4,8 @@ Service streak de connexion (mécanique 2).
 Boucle d'expérience client : revenir chaque jour = Smyles. Crée l'habitude,
 deuxième source de Smyles (avec le parrainage) qui alimente le sink (packs).
 
-Barème ancré sur l'économie réelle (1 Smyle ≈ 0,70 €, bonus de bienvenue
+Barème ancré sur l'économie réelle (1 Smyle s'achète ≈ 0,70 € ; un Smyle
+GAGNÉ se retire 0,50 € — pricing v2 ; bonus de bienvenue
 = 10 Smyles) — volontairement conservateur pour ne pas inonder l'économie :
   - +1 Smyle par jour réclamé.
   - +3 (au lieu de +1) tous les 7 jours consécutifs (J7, J14, …).

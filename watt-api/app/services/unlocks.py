@@ -279,7 +279,7 @@ async def unlock_prompt_atomic(
         remise_oeuvre = int(_oeuvre["discount"]) if _oeuvre else 0
         if remise_oeuvre:
             paid = max(1, paid - remise_oeuvre)
-        # C6 : commission selon le PALIER de l'artiste vendeur (80/88/95).
+        # C6 : commission selon le PALIER de l'artiste vendeur (80/88/90).
         # Standard = 80% = comportement historique.
         artist_pct = await artist_pct_for_user(db, artist_id)
         artist_revenue, platform_fee = compute_split(paid, artist_pct)
@@ -493,7 +493,7 @@ async def unlock_adn_atomic(
         treasury_id = await begin_commission(db)
         await _acquire_user_locks(db, [buyer_id, artist_id])
 
-        # C6 : commission selon le palier de l'artiste (80/88/95).
+        # C6 : commission selon le palier de l'artiste (80/88/90).
         artist_pct = await artist_pct_for_user(db, artist_id)
         artist_revenue, platform_fee = compute_split(paid, artist_pct)
         assert artist_revenue + platform_fee == paid
@@ -653,7 +653,7 @@ async def unlock_playlist_adn_atomic(
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
-        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # (80/88/90), comme unlock_prompt_atomic. Avant, compute_split était
         # appelé sans palier → 20 % en dur sur ce flux, alors que la page
         # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
         # Lu DANS la section lockée (le vendeur est déjà verrouillé).
@@ -804,7 +804,7 @@ async def unlock_album_adn_atomic(
         await _acquire_user_locks(db, [buyer_id, owner_id])
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
-        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # (80/88/90), comme unlock_prompt_atomic. Avant, compute_split était
         # appelé sans palier → 20 % en dur sur ce flux, alors que la page
         # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
         # Lu DANS la section lockée (le vendeur est déjà verrouillé).

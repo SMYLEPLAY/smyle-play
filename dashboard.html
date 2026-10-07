@@ -678,6 +678,17 @@
     <div data-pioneer-counter hidden
          style="margin:10px 0 14px;padding:10px 14px;border:1px solid rgba(255,182,39,.45);border-radius:10px;background:rgba(255,182,39,.08);color:#f3e7c7;font-size:13px;line-height:1.45"></div>
 
+    <!-- Étape 3 — objectif « 1000 actifs » (même principe que le compteur
+         Pionnier : masqué tant que /objectif/actifs répond 404). -->
+    <div data-goal-bar hidden
+         style="margin:0 0 14px;padding:10px 14px;border:1px solid rgba(139,108,246,.45);border-radius:10px;background:rgba(139,108,246,.08);color:#e9e4f7"></div>
+
+    <!-- Étape 3 — seuil d'abonnés pour vendre. Masqué par défaut ; affiché
+         par dashboard.js (loadDroitDeVendre) seulement si le seuil est actif
+         ET pas encore atteint : « Encore X abonnés pour pouvoir vendre ». -->
+    <div id="droitDeVendreNotice" hidden
+         style="margin:0 0 14px;padding:10px 14px;border:1px solid rgba(229,86,107,.45);border-radius:10px;background:rgba(229,86,107,.08);color:#f7dde2;font-size:13px;line-height:1.45"></div>
+
     <!-- Sous-titre produit : 1a Poster un morceau -->
     <div class="dash-subhdr">
       <span class="dash-subhdr-num">1a</span>
@@ -3070,6 +3081,7 @@
 <script src="/ui/core/trade-view.js?v=20260708adn2" defer></script>
 <script src="/ui/core/page-services.js" defer></script>
 <script src="/ui/pioneer-counter.js" defer></script>
+<script src="/ui/goal-bar.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
 <script src="/ui/core/legal-footer.js" defer></script>
 <script src="/ui/player/mini-bar.js?v=20260707player" defer></script>

@@ -111,7 +111,7 @@ async def buy_pack_atomic(
             raise InsufficientCredits(required=price, available=buyer_balance)
 
         # K-07 (2026-09-04, tâche B-M8) : commission au PALIER du vendeur
-        # (80/88/95), comme unlock_prompt_atomic. Avant, compute_split était
+        # (80/88/90), comme unlock_prompt_atomic. Avant, compute_split était
         # appelé sans palier → 20 % en dur sur ce flux, alors que la page
         # Offres promet 12 % / 5 %. Standard = 80 % = comportement historique.
         # Lu DANS la section lockée (le vendeur est déjà verrouillé).

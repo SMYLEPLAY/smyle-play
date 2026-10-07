@@ -144,15 +144,60 @@
           <div style="flex:1;background:#0d0a16;border-radius:10px;padding:10px;"><div style="font-size:20px;font-weight:700;">${rewarded}</div><div style="font-size:11px;color:#9990ad;">validés</div></div>
           <div style="flex:1;background:#0d0a16;border-radius:10px;padding:10px;"><div style="font-size:20px;font-weight:700;">${earned}</div><div style="font-size:11px;color:#9990ad;">Smyles gagnés</div></div>
         </div>
-        ${pending ? `<p style="margin:12px 0 0;font-size:12px;color:#9990ad;text-align:center;">${pending} filleul${pending > 1 ? 's' : ''} en attente de leur 1ère action.</p>` : ''}`;
+        ${pending ? `<p style="margin:12px 0 0;font-size:12px;color:#9990ad;text-align:center;">${pending} filleul${pending > 1 ? 's' : ''} en attente de leur 1ère action.</p>` : ''}
+        <div id="egRefQuetes"></div>`;
       const c1 = document.getElementById('egRefCopyCode');
       const c2 = document.getElementById('egRefCopyLink');
       if (c1) c1.addEventListener('click', () => _copy(code));
       if (c2) c2.addEventListener('click', () => _copy(link));
+      _renderQuetes();
     } catch (e) {
       body.innerHTML = `<p style="color:#e58;">Impossible de charger ton parrainage. ${(e && e.status === 401) ? 'Reconnecte-toi.' : 'Réessaie.'}</p>`;
     }
   }
+  // ── Étape 3 — quêtes de parrainage (filleuls ACTIFS → Smyles bonus) ─────
+  // POST /referrals/quetes verse les paliers atteints (idempotent) et renvoie
+  // la progression. 404 = quêtes pas encore lancées → rien n'est affiché.
+  // Seules des valeurs numériques du serveur sont insérées dans le HTML.
+  async function _renderQuetes() {
+    const box = document.getElementById('egRefQuetes');
+    if (!box) return;
+    let q;
+    try { q = await _api('/referrals/quetes', { method: 'POST' }); } catch (_) { return; }
+    if (!q || !q.actif || !Array.isArray(q.paliers)) return;
+    const n = Number(q.filleuls_actifs) || 0;
+    const lignes = q.paliers.map((p) => {
+      const seuil = Number(p.seuil) || 0;
+      const smyles = Number(p.smyles) || 0;
+      const pct = seuil ? Math.min(100, Math.round((n / seuil) * 100)) : 0;
+      const etat = p.verse ? '✓ reçu' : `${Math.min(n, seuil)} / ${seuil}`;
+      return `<div style="margin-top:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span>${seuil} filleuls actifs → +${smyles} Smyles bonus</span><span style="color:#9990ad;">${etat}</span>
+          </div>
+          <div style="height:6px;background:#0d0a16;border-radius:999px;overflow:hidden;margin-top:4px;">
+            <i style="display:block;height:100%;width:${p.verse ? 100 : pct}%;background:${p.verse ? '#2fbf71' : '#6c4cf0'};"></i>
+          </div>
+        </div>`;
+    }).join('');
+    const prochain = q.prochain
+      ? `<p style="margin:10px 0 0;font-size:12px;color:#9990ad;">Encore ${Number(q.prochain.manquants) || 0} filleul${Number(q.prochain.manquants) > 1 ? 's' : ''} actif${Number(q.prochain.manquants) > 1 ? 's' : ''} pour le prochain palier.</p>`
+      : '';
+    box.innerHTML = `
+      <div style="margin-top:16px;border-top:1px solid #2c2440;padding-top:12px;">
+        <div style="font-size:14px;font-weight:700;">Quêtes de parrainage ${q.ambassadeur ? '<span style="font-size:11px;background:#3a2c10;color:#f3c76b;border-radius:6px;padding:2px 7px;margin-left:6px;">Ambassadeur</span>' : ''}</div>
+        <p style="margin:4px 0 0;font-size:12px;color:#9990ad;">Un filleul compte quand il est actif sur WATT (il écoute, publie, suit ou débloque ce mois-ci). Les Smyles bonus se dépensent sur WATT mais ne se retirent pas.</p>
+        ${lignes}
+        ${prochain}
+      </div>`;
+    const nouveaux = Array.isArray(q.nouveaux_versements) ? q.nouveaux_versements : [];
+    if (nouveaux.length) {
+      const total = nouveaux.reduce((a, v) => a + (Number(v.smyles) || 0), 0);
+      _toast(`Quête réussie : +${total} Smyles bonus`, { type: 'success', duration: 3500 });
+      _refreshBalance();
+    }
+  }
+
   function _openRef() {
     _ensureRef().style.display = 'flex';
     _renderRef();

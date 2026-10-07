@@ -56,26 +56,45 @@ async def _debut_verification(db: AsyncSession) -> datetime | None:
     )).scalar_one_or_none()
 
 
+# Définition UNIQUE d'un « actif » (Étape 3 : réutilisée telle quelle par
+# l'objectif collectif, le seuil d'abonnés pour vendre et les quêtes de
+# parrainage — jamais dupliquée). CTE `actifs(id)` ; paramètres :j et :debut.
+SQL_CTE_ACTIFS = (
+    "actions AS ( "
+    "  SELECT uid FROM (" + SQL_OEUVRES_EN_LIGNE + ") o "
+    "    WHERE o.created_at >= now() - make_interval(days => :j) "
+    "  UNION SELECT user_id FROM user_activity_days "
+    "    WHERE listened AND day >= CURRENT_DATE - :j "
+    "  UNION SELECT follower_id FROM user_follows "
+    "    WHERE created_at >= now() - make_interval(days => :j) "
+    "  UNION SELECT buyer_id FROM transactions "
+    "    WHERE type = 'unlock' AND status = 'completed' "
+    "    AND created_at >= now() - make_interval(days => :j) "
+    "), actifs AS ( "
+    "  SELECT u.id FROM users u JOIN actions a ON a.uid = u.id "
+    "  WHERE " + _EXCLUSIONS + " "
+    "  AND (u.email_verified OR CAST(:debut AS timestamptz) IS NULL "
+    "       OR u.created_at < CAST(:debut AS timestamptz)) "
+    ")"
+)
+
+
+async def params_actifs(db: AsyncSession) -> dict:
+    """Paramètres de SQL_CTE_ACTIFS (fenêtre + date de mise en place de la
+    vérification d'email)."""
+    return {"j": _FENETRE_JOURS, "debut": await _debut_verification(db)}
+
+
+async def compter_actifs(db: AsyncSession) -> int:
+    """Nombre d'actifs au sens strict (même chiffre que « Prêt à sortir »)."""
+    return (await _actifs(db, await _debut_verification(db)))["actifs"]
+
+
 async def _actifs(db: AsyncSession, debut_verif: datetime | None) -> dict:
     """Nombre d'actifs (définition stricte) + abonnements faits par ces actifs."""
     row = (await db.execute(
         text(
-            "WITH actions AS ( "
-            "  SELECT uid FROM (" + SQL_OEUVRES_EN_LIGNE + ") o "
-            "    WHERE o.created_at >= now() - make_interval(days => :j) "
-            "  UNION SELECT user_id FROM user_activity_days "
-            "    WHERE listened AND day >= CURRENT_DATE - :j "
-            "  UNION SELECT follower_id FROM user_follows "
-            "    WHERE created_at >= now() - make_interval(days => :j) "
-            "  UNION SELECT buyer_id FROM transactions "
-            "    WHERE type = 'unlock' AND status = 'completed' "
-            "    AND created_at >= now() - make_interval(days => :j) "
-            "), actifs AS ( "
-            "  SELECT u.id FROM users u JOIN actions a ON a.uid = u.id "
-            "  WHERE " + _EXCLUSIONS + " "
-            "  AND (u.email_verified OR CAST(:debut AS timestamptz) IS NULL "
-            "       OR u.created_at < CAST(:debut AS timestamptz)) "
-            ") "
+            "WITH " + SQL_CTE_ACTIFS + " "
             "SELECT (SELECT count(*) FROM actifs) AS n, "
             "       (SELECT count(*) FROM user_follows f "
             "          WHERE f.follower_id IN (SELECT id FROM actifs)) AS abonnements"
@@ -114,6 +133,56 @@ async def _stock_tirable(db: AsyncSession) -> int:
             "     WHERE up.prompt_id = p.id) < p.max_supply)"
         )
     )).scalar_one())
+
+
+# Étape 3 — une « Œuvre » (Lot 2/3) = 1 image + 1 son liés (C4). En ligne =
+# l'image ET le son sont publiés, non supprimés, non retirés par la modération.
+# Même définition que l'achat d'Œuvre (`oeuvre_c4_purchase._resolve`) : le son
+# est un prompt recette/beat (linked_prompt_id) ou un morceau sans recette
+# (linked_track_id, Lot 2).
+SQL_OEUVRES_SON_IMAGE_EN_LIGNE = (
+    "SELECT count(*) FROM prompts i "
+    "WHERE i.product_type = 'image' AND i.is_published AND NOT i.is_deleted "
+    "AND i.taken_down_at IS NULL AND ( "
+    "  EXISTS (SELECT 1 FROM prompts s WHERE s.id = i.linked_prompt_id "
+    "          AND s.product_type IN ('recipe', 'beat') AND s.is_published "
+    "          AND NOT s.is_deleted AND s.taken_down_at IS NULL) "
+    "  OR EXISTS (SELECT 1 FROM tracks t WHERE t.id = i.linked_track_id "
+    "          AND NOT t.is_deleted AND t.taken_down_at IS NULL) )"
+)
+
+
+async def _oeuvres_son_image_en_ligne(db: AsyncSession) -> int:
+    return int((await db.execute(text(SQL_OEUVRES_SON_IMAGE_EN_LIGNE))).scalar_one())
+
+
+async def _controles(db: AsyncSession) -> list[dict]:
+    """Deux chiffres lisibles sans rien taper (Étape 3). LECTURE SEULE."""
+    from app.services.credits import count_bucket_inconsistencies
+
+    oeuvres = await _oeuvres_son_image_en_ligne(db)
+    incoherents = await count_bucket_inconsistencies(db)
+    return [
+        {
+            "cle": "oeuvres_en_ligne",
+            "libelle": "Œuvres en ligne (un son + une image, publiés et non retirés)",
+            "valeur": oeuvres,
+            "attendu": None,
+            "ok": None,
+            "note": None,
+        },
+        {
+            "cle": "soldes_incoherents",
+            "libelle": "Comptes dont les soldes ne tombent pas juste",
+            "valeur": incoherents,
+            "attendu": 0,
+            "ok": incoherents == 0,
+            "note": (
+                "Doit rester à 0 : pour chaque compte, Smyles achetés + gagnés + bonus "
+                "= solde total. Si ce n'est pas 0, préviens Claude avant toute autre action."
+            ),
+        },
+    ]
 
 
 async def _signalements(db: AsyncSession) -> dict:
@@ -335,8 +404,11 @@ async def readiness(db: AsyncSession) -> dict:
         s["fiabilite"] = "fiable" if all(c["fiabilite"] == "fiable" for c in crits) else "partielle"
         del s["mode"]
 
+    controles = await _controles(db)
+
     return {
         "genere_le": datetime.now(timezone.utc).isoformat(),
+        "controles": controles,
         "source": "base de données uniquement (jamais la télémétrie)",
         "definitions": {
             "actif": ("Compte vérifié (ou créé avant la vérification d'email) qui a, "
@@ -353,6 +425,8 @@ async def readiness(db: AsyncSession) -> dict:
             "createurs_actifs": createurs,
             "deblocages_cumules": deblocages,
             "stock_tirable": stock,
+            "oeuvres_en_ligne": controles[0]["valeur"],
+            "soldes_incoherents": controles[1]["valeur"],
             "signalements": sig,
             "retention_j7": ret,
             "verification_email_depuis": debut_verif.isoformat() if debut_verif else None,

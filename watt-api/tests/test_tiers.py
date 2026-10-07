@@ -27,13 +27,13 @@ from app.services.users import create_user
 def test_commission_bareme():
     assert commission_pct_for_tier(UserTier.STANDARD) == 20
     assert commission_pct_for_tier(UserTier.PREMIUM) == 12
-    assert commission_pct_for_tier(UserTier.MYTHIQUE) == 5
+    assert commission_pct_for_tier(UserTier.MYTHIQUE) == 10  # pricing v2 (30/09)
 
 
 def test_artist_pct_complement():
     assert artist_pct_for_tier("standard") == 80
     assert artist_pct_for_tier("premium") == 88
-    assert artist_pct_for_tier("mythique") == 95
+    assert artist_pct_for_tier("mythique") == 90
 
 
 def test_listing_slots():
@@ -70,10 +70,34 @@ def test_tier_public_info_shape():
 
 
 def test_split_par_palier():
-    # 100 crédits : Standard 80/20, Premium 88/12, Mythique 95/5.
+    # 100 crédits : Standard 80/20, Premium 88/12, Mythique 90/10 (pricing v2).
     assert compute_split(100, artist_pct_for_tier("standard")) == (80, 20)
     assert compute_split(100, artist_pct_for_tier("premium")) == (88, 12)
-    assert compute_split(100, artist_pct_for_tier("mythique")) == (95, 5)
+    assert compute_split(100, artist_pct_for_tier("mythique")) == (90, 10)
+
+
+def test_invariant_aucune_commission_sous_10_pct():
+    """Pricing v2 — plancher : AUCUNE commission effective (tous paliers,
+    Pionnier ou non, valeurs inconnues comprises) n'est inférieure à 10 %,
+    et le Pionnier reste à 10 % au plus favorable."""
+    from app.services.tiers import (
+        COMMISSION_PLANCHER_PCT,
+        PIONEER_COMMISSION_PCT,
+        TIER_COMMISSION_PCT,
+        commission_pct_for,
+    )
+
+    assert COMMISSION_PLANCHER_PCT == 10
+    assert PIONEER_COMMISSION_PCT == 10
+    assert min(TIER_COMMISSION_PCT.values()) >= COMMISSION_PLANCHER_PCT
+    for tier in (*UserTier, "standard", "premium", "mythique", None, "", "inconnu"):
+        for pionnier in (False, True):
+            pct = commission_pct_for(tier, pionnier)
+            assert pct >= 10, (tier, pionnier, pct)
+            if pionnier:
+                assert pct == 10, (tier, pct)  # le plus favorable = le plancher
+        # et la part artiste ne dépasse jamais 90 %
+        assert artist_pct_for_tier(tier) <= 90
 
 
 # --- Helper DB : palier du vendeur --------------------------------------
@@ -96,7 +120,7 @@ async def test_artist_pct_for_user_lit_le_palier():
             await db.commit()
         async with SessionLocal() as db:
             assert await artist_pct_for_user(db, uid) == 88
-        # Mythique → 95%
+        # Mythique → 90% (pricing v2)
         async with SessionLocal() as db:
             await db.execute(
                 text("UPDATE users SET tier = 'mythique' WHERE id = :id"),
@@ -104,7 +128,7 @@ async def test_artist_pct_for_user_lit_le_palier():
             )
             await db.commit()
         async with SessionLocal() as db:
-            assert await artist_pct_for_user(db, uid) == 95
+            assert await artist_pct_for_user(db, uid) == 90
     finally:
         async with SessionLocal() as db:
             await db.execute(delete(User).where(User.id == uid))
