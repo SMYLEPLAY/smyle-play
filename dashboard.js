@@ -532,8 +532,10 @@ function checkAccess() {
   // On bloque si getAuthToken n'est pas encore défini (api.js non chargé)
   // OU si le token est absent — évite l'accès au dashboard sans auth.
   if (typeof getAuthToken !== 'function' || !getAuthToken()) {
-    const returnUrl = encodeURIComponent('/dashboard');
-    window.location.href = `/?auth=login&return=${returnUrl}`;
+    // Parcours V1 : publier = une action → inscription (connexion en lien
+    // secondaire), retour ensuite sur le WATT BOARD.
+    const returnUrl = encodeURIComponent('/dashboard' + (location.hash || ''));
+    window.location.href = `/?auth=signup&return=${returnUrl}`;
     return false;
   }
   const guardEl = document.getElementById('dash-guard');
@@ -1803,7 +1805,16 @@ function handleFileSelect(e) {
   if (file) showUploadForm(file);
 }
 
+// Parcours V1 — même limite que le serveur (UPLOAD_MAX_AUDIO_MB = 50 Mo).
+const DASH_AUDIO_MAX_MB = 50;
+
 function showUploadForm(file) {
+  if (file && file.size > DASH_AUDIO_MAX_MB * 1024 * 1024) {
+    dashToast(`⚠ Fichier trop lourd (${(file.size / 1048576).toFixed(1)} Mo) — ${DASH_AUDIO_MAX_MB} Mo au maximum.`);
+    const inp = document.getElementById('dashAudioInput');
+    if (inp) inp.value = '';
+    return;
+  }
   _pendingFile = file;
   const sizeStr = file.size > 1048576
     ? (file.size / 1048576).toFixed(1) + ' MB'
@@ -2182,6 +2193,39 @@ async function uploadTrack() {
     };
   }
 
+  // ── Parcours V1 — la RECETTE et le DROIT DE VENDRE sont vérifiés AVANT
+  // toute publication (avant : le son partait en ligne, puis la recette
+  // était refusée → « Son publié, prompt non créé »). Rien n'est envoyé
+  // tant que tout n'est pas bon.
+  {
+    const _pt = (document.getElementById('dashPromptText')?.value || '').trim();
+    const _pr = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
+    const _errs = [];
+    if (_pt.length < 100)  _errs.push('une recette d\'au moins 100 caractères');
+    if (_pt.length > 1000) _errs.push('une recette de 1000 caractères au plus');
+    if (!Number.isInteger(_pr) || _pr < 10 || _pr > 150) _errs.push('un prix entre 10 et 150 Smyles');
+    if (!(document.getElementById('dashPromptWeirdness')?.value || '').trim())      _errs.push('le réglage « weirdness »');
+    if (!(document.getElementById('dashPromptStyleInfluence')?.value || '').trim()) _errs.push('le réglage « style influence »');
+    if (!(document.getElementById('dashPromptVocalGender')?.value || '').trim())    _errs.push('la voix (homme, femme ou instrumental)');
+    if (_errs.length) {
+      dashToast('⚠ Avant de publier, il manque : ' + _errs.join(', ') + '.');
+      return;
+    }
+  }
+  try {
+    const _dv = await apiFetch('/me/droit-de-vendre');
+    if (_dv && _dv.actif && _dv.peut_vendre === false) {
+      dashToast('⚠ ' + (_dv.message || 'Tu ne peux pas encore vendre : il te faut plus d\'abonnés.'));
+      return;
+    }
+  } catch (e) {
+    if (e && e.status === 401) {
+      dashToast('Ta session a expiré. Reconnecte-toi pour publier.');
+      return;
+    }
+    /* autre erreur : le serveur revérifie de toute façon à la publication */
+  }
+
   // ── Vérification limite freemium (comptes officiels exemptés) ───────────
   const _existing = getMyTracks();
   if (_existing.length >= FREE_LIMIT && !_isOfficialAccount()) {
@@ -2222,6 +2266,10 @@ async function uploadTrack() {
   let durationSecs = null;  // P2 — durée calculée serveur à l'upload
 
   // ── 1. Upload fichier audio vers R2 ─────────────────────────────────────
+  // Parcours V1 : un son se publie TOUJOURS avec son fichier audio. Si
+  // l'envoi échoue, on s'arrête ici : rien n'est enregistré, et l'artiste
+  // sait pourquoi (avant : le son était créé sans audio, en silence).
+  let _upErr = null;
   try {
     const fd = new FormData();
     fd.append('file',   _pendingFile);
@@ -2237,8 +2285,26 @@ async function uploadTrack() {
       r2Key     = data.key  || null;
       durationSecs = (typeof data.duration_seconds === 'number') ? data.duration_seconds : null;
       setProgress(70, 'Enregistrement…');
+    } else {
+      let detail = '';
+      try { const j = await res.json(); detail = (j && typeof j.detail === 'string') ? j.detail : ''; } catch (_) {}
+      _upErr = res.status === 413
+        ? `Fichier trop lourd — ${DASH_AUDIO_MAX_MB} Mo au maximum.`
+        : res.status === 429
+          ? 'Trop d\'envois d\'affilée — attends une minute puis réessaie.'
+          : (detail || 'Le serveur a refusé le fichier audio.');
     }
-  } catch (_) { /* mode hors-ligne */ }
+  } catch (_) {
+    _upErr = 'Connexion interrompue pendant l\'envoi du fichier audio.';
+  }
+  if (!r2Key) {
+    setProgress(100, '⚠ Fichier audio non envoyé');
+    dashToast('⚠ Ton son n\'a pas été publié : ' + (_upErr || 'le fichier audio n\'a pas pu être envoyé.') +
+      ' Vérifie ta connexion et réessaie.');
+    const pw = document.getElementById('dashProgressWrap');
+    setTimeout(() => { if (pw) pw.style.display = 'none'; }, 2500);
+    return;
+  }
 
   await wait(300);
   setProgress(80, 'Pochette…');
@@ -4505,6 +4571,7 @@ async function dashDeleteAccount() {
   try { clearCurrentUser(); } catch (_) {}
   try { safeStorage.removeItem('smyle_watt_profile'); } catch (_) {}
   try { safeStorage.removeItem('smyle_watt_tracks'); } catch (_) {}
+  try { if (window.smyleClearPersonalData) window.smyleClearPersonalData(); } catch (_) {}
   window.location.href = '/';
 }
 
@@ -4512,6 +4579,8 @@ function dashLogout() {
   clearCurrentUser();
   // Vide le JWT (localStorage, partagé entre onglets) et notifie les autres composants
   if (typeof clearAuthToken === 'function') clearAuthToken();
+  // Parcours V1 : données personnelles du navigateur (cache des sons inclus).
+  try { if (window.smyleClearPersonalData) window.smyleClearPersonalData(); } catch (_) {}
   if (window.SmyleEvents) SmyleEvents.emit('smyle:auth-changed', { loggedIn: false });
   window.location.href = '/';
 }

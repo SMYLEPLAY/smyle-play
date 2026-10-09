@@ -669,8 +669,10 @@
     <div class="dash-section-hdr">
       <div class="dash-section-num">02</div>
       <h2 class="dash-section-title">Création</h2>
-      <span class="dash-section-sub">Poste un son · publie ton ADN · WAV · MP3 · FLAC · AAC · M4A · max 100&nbsp;MB</span>
+      <span class="dash-section-sub">Poste un son · publie ton ADN · WAV · MP3 · FLAC · AAC · M4A · max 50&nbsp;Mo</span>
     </div>
+    <!-- Parcours V1 — accès direct à l'écran « Mes Œuvres ». -->
+    <a href="/mes-oeuvres" class="dash-btn-secondary" style="display:inline-block;margin:0 0 12px">Gérer mes Œuvres (masquer, prix, modifier) →</a>
 
     <!-- Brique 2 — compteur Pionnier. Masqué par défaut ; affiché par
          /ui/pioneer-counter.js UNIQUEMENT si /pioneer/places répond (programme
@@ -767,7 +769,7 @@
           </svg>
         </div>
         <div class="dash-dropzone-text">Glisse ton fichier ici</div>
-        <div class="dash-dropzone-sub">ou clique pour parcourir</div>
+        <div class="dash-dropzone-sub">ou clique pour parcourir · 50 Mo au maximum</div>
       </div>
       <input type="file" id="dashAudioInput" accept=".wav,.mp3,.flac,.aac,.m4a,.ogg" style="display:none" onchange="handleFileSelect(event)" />
 
@@ -2633,6 +2635,8 @@
 </div>
 
 <script src="ui/core/api.js"></script>
+<script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
+<script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
 <script src="ui/core/consent.js"></script>
 <script src="ui/core/telemetry.js"></script>
 <script src="ui/core/events.js"></script>
