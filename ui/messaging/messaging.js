@@ -426,7 +426,8 @@
   function _open(userId) {
     if (!_msgOn()) return;
     if (!_auth()) {
-      if (window.openAuthModal) window.openAuthModal('login');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else if (window.openAuthModal) window.openAuthModal('signup');
       return;
     }
     _s.open = true;

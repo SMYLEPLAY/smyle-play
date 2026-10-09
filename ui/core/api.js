@@ -78,6 +78,37 @@ function setAuthToken(token) {
   } catch (_) { /* quota / mode privé → silent */ }
 }
 
+// Parcours V1 — déconnexion : vide les données personnelles gardées par le
+// navigateur (stockage local et de session, cache local des sons) de CE
+// compte. Seul le choix de mesure d'audience est conservé. Appelée par
+// toutes les déconnexions (menu, barre du haut, WATT BOARD, autre onglet).
+const _KEEP_ON_LOGOUT = { smyle_consent: 1 };
+function smyleClearPersonalData() {
+  [window.localStorage, window.sessionStorage].forEach(function (store) {
+    try {
+      const keys = [];
+      for (let i = 0; i < store.length; i++) keys.push(store.key(i));
+      keys.forEach(function (k) { if (k && !_KEEP_ON_LOGOUT[k]) store.removeItem(k); });
+    } catch (_) { /* mode privé — silent */ }
+  });
+  // Cache local des sons / réponses gardé par l'application (version
+  // installable) : purgé, et le service worker éventuel est prévenu.
+  try {
+    if (window.caches && caches.keys) {
+      caches.keys().then(function (names) {
+        names.forEach(function (n) {
+          if (/(audio|son|sound|track|media|stream|api|user|perso|data)/i.test(n)) caches.delete(n);
+        });
+      }).catch(function () {});
+    }
+  } catch (_) {}
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'watt:logout' });
+    }
+  } catch (_) {}
+}
+
 function clearAuthToken() {
   setAuthToken(null);
   // Diffuse le logout à tous les autres onglets du même site (cross-tab sync).
@@ -100,6 +131,7 @@ function clearAuthToken() {
         try { localStorage.removeItem(_TOKEN_KEY); } catch (_) {}
         try { sessionStorage.removeItem(_TOKEN_KEY); } catch (_) {}
         try { localStorage.removeItem('smyle_current_user'); } catch (_) {}
+        try { smyleClearPersonalData(); } catch (_) {}
         window.location.href = '/';
       }
     };
@@ -288,6 +320,14 @@ async function apiFetch(path, options = {}) {
     // que l'UI écoute pour afficher un toast "Session expirée". L'event
     // n'est émis qu'une fois par "fenêtre" de 10s — évite le spam si
     // plusieurs requêtes parallèles se prennent le même 401 simultanément.
+    // Parcours V1 — filet de sécurité « visiteur » : une ACTION (POST, PUT,
+    // PATCH, DELETE) refusée en 401 alors qu'aucun compte n'est connecté
+    // ouvre l'inscription (retour ensuite sur cette page).
+    const _method = String(rest.method || 'GET').toUpperCase();
+    if (resp.status === 401 && auth && !getAuthToken() && _method !== 'GET'
+        && typeof window !== 'undefined' && window.SmyleGate) {
+      try { window.SmyleGate.requireAccount(); } catch (_) { /* noop */ }
+    }
     if (resp.status === 401 && auth) {
       const hadToken = !!getAuthToken();
       if (hadToken) clearAuthToken();
@@ -328,6 +368,7 @@ async function apiFetch(path, options = {}) {
 if (typeof window !== 'undefined') {
   window.API_BASE        = API_BASE;
   window.apiFetch        = apiFetch;
+  window.smyleClearPersonalData = smyleClearPersonalData;
   window.ApiError        = ApiError;
   window.getAuthToken    = getAuthToken;
   window.setAuthToken    = setAuthToken;

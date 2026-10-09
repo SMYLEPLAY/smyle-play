@@ -2562,7 +2562,8 @@
         const status = err && err.status;
         if (status === 401) {
           _close();
-          if (window.showToast) window.showToast('Connecte-toi pour débloquer ce contenu.');
+          if (window.SmyleGate) window.SmyleGate.requireAccount();
+          else if (window.showToast) window.showToast('Crée ton compte pour débloquer ce contenu.');
         } else if (status === 402) {
           const d = err.body && err.body.detail;
           const msg = (d && typeof d === 'object')

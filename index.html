@@ -191,6 +191,10 @@
   <span class="support-btn-label">Support</span>
 </button>
 
+<!-- Parcours V1 — bandeau d'inscription du visiteur (ui/core/visitor-gate.js).
+     Vide et masqué une fois connecté. -->
+<div id="smyle-visitor-banner" hidden></div>
+
 <!-- ═══════════════════════════════════════════════════════════ HERO MARKETPLACE -->
 <!-- Phase 2 refonte : le hero de l'accueil EST la marketplace. Deux barres
      de recherche distinctes (DNA pour les sons, CONNECT pour les profils)
@@ -573,13 +577,15 @@
 <div class="modal-overlay" id="authModal">
   <div class="modal-box">
     <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    <!-- Parcours V1 : l'inscription d'abord, la connexion en second. -->
     <div class="modal-tabs">
-      <button id="tab-login"  class="modal-tab active" onclick="switchAuthTab('login')">Connexion</button>
-      <button id="tab-signup" class="modal-tab"        onclick="switchAuthTab('signup')">S'inscrire</button>
+      <button id="tab-signup" class="modal-tab active" onclick="switchAuthTab('signup')">Créer un compte</button>
+      <button id="tab-login"  class="modal-tab"        onclick="switchAuthTab('login')">Connexion</button>
     </div>
+    <p class="modal-reason" id="authReason" hidden></p>
 
     <!-- Connexion -->
-    <form id="form-login" onsubmit="submitLogin(); return false;">
+    <form id="form-login" style="display:none" onsubmit="submitLogin(); return false;">
       <input class="modal-input" id="login-email"    type="email"    placeholder="Email" required autocomplete="email" />
       <div class="modal-pwd-wrap">
         <input class="modal-input" id="login-password" type="password" placeholder="Mot de passe" required autocomplete="current-password" />
@@ -591,12 +597,15 @@
          font-size:.78rem;color:rgba(255,255,255,.55);text-decoration:none;">
         Mot de passe oublié ?
       </a>
+      <p class="modal-switch">Pas encore de compte ?
+        <a href="#" onclick="switchAuthTab('signup'); return false;">Créer un compte gratuit</a></p>
     </form>
 
     <!-- Inscription — email + password uniquement.
          Le profil artiste (artist_name, slug, bio) se crée depuis le WATT board
          après connexion. Pas de friction au signup. -->
-    <form id="form-signup" style="display:none" onsubmit="submitSignup(); return false;">
+    <form id="form-signup" onsubmit="submitSignup(); return false;">
+      <p class="modal-signup-pitch">Crée ton compte gratuit — <b>30 Smyles offerts</b></p>
       <input class="modal-input" id="signup-email"    type="email"    placeholder="Email" required autocomplete="email" />
       <div class="modal-pwd-wrap">
         <input class="modal-input" id="signup-password" type="password" placeholder="Mot de passe (min 8 car.)" required autocomplete="new-password" minlength="8" />
@@ -615,6 +624,8 @@
         <span>Je confirme avoir 15 ans ou plus.</span>
       </label>
       <button type="submit" class="modal-submit">Créer mon compte</button>
+      <p class="modal-switch">Déjà un compte ?
+        <a href="#" onclick="switchAuthTab('login'); return false;">Se connecter</a></p>
     </form>
 
     <p class="modal-msg" id="authMsg"></p>
@@ -733,6 +744,7 @@
 <script src="ui/core/telemetry.js"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
+<script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
 <script src="ui/core/state.js"></script>
 <script src="ui/core/dom.js"></script>
 <script src="ui/core/storage.js"></script>
@@ -774,6 +786,7 @@
 <script src="/ui/core/page-services.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
 <script src="/ui/core/legal-footer.js" defer></script>
+<script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
 <script src="/ui/goal-bar.js" defer></script>
 </body>
 </html>

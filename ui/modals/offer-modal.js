@@ -159,8 +159,9 @@
         var detail = (err && err.body && err.body.detail);
         var msg;
         if (st === 401) {
-          msg = 'Connecte-toi pour faire une offre.';
-          if (typeof window.openAuthModal === 'function') { close(); window.openAuthModal(); return; }
+          msg = 'Crée ton compte pour faire une offre.';
+          if (window.SmyleGate) { close(); window.SmyleGate.requireAccount(); return; }
+          if (typeof window.openAuthModal === 'function') { close(); window.openAuthModal('signup'); return; }
         } else if (st === 402) {
           msg = 'Tu n’as pas assez de Smyles pour couvrir cette offre.';
         } else if (st === 422) {

@@ -546,10 +546,11 @@ async function _setupFollowButton(artist) {
   if (msgBtn && artist.id && _msgOn) {
     msgBtn.style.display = '';
     msgBtn.onclick = () => {
+      if (window.SmyleGate && !window.SmyleGate.requireAccount()) return;
       if (window.SmyleMessaging) {
         window.SmyleMessaging.open(artist.id);
       } else if (window.openAuthModal) {
-        window.openAuthModal('login');
+        window.openAuthModal('signup');
       }
     };
   }
@@ -595,6 +596,8 @@ async function _setupFollowButton(artist) {
   }
   _setBtnState(following);
   btn.onclick = async () => {
+    // Parcours V1 : suivre = une action → inscription pour un visiteur.
+    if (window.SmyleGate && !window.SmyleGate.requireAccount()) return;
     const wasFollowing = btn.dataset.following === '1';
     btn.disabled = true;
     btn.style.opacity = '.6';
@@ -1815,7 +1818,8 @@ function renderPrompts(artist) {
 async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, receiverName }) {
   // Vérifie auth
   if (typeof window.getAuthToken === 'function' && !window.getAuthToken()) {
-    if (window.openAuthModal) window.openAuthModal('login');
+    if (window.SmyleGate) window.SmyleGate.requireAccount();
+    else if (window.openAuthModal) window.openAuthModal('signup');
     return;
   }
 
@@ -1939,7 +1943,8 @@ async function openTradeModalProfile() {
   if (artist.isSelf) { alert("C'est ton profil — tu ne peux pas échanger avec toi-même."); return; }
 
   if (typeof window.getAuthToken === 'function' && !window.getAuthToken()) {
-    if (window.openAuthModal) window.openAuthModal('login');
+    if (window.SmyleGate) window.SmyleGate.requireAccount();
+    else if (window.openAuthModal) window.openAuthModal('signup');
     return;
   }
 
@@ -2484,7 +2489,7 @@ async function unlockPromptFromProfile(promptId, btn) {
   // Redirige vers la connexion si l'utilisateur n'est pas authentifié
   if (typeof getAuthToken === 'function' && !getAuthToken()) {
     const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/?auth=login&return=${returnUrl}`;
+    window.location.href = `/?auth=signup&return=${returnUrl}`;
     return;
   }
   if (btn) btn.disabled = true;
@@ -2606,7 +2611,8 @@ function renderResale(items) {
       } catch (e) {
         btn.disabled = false; btn.textContent = orig;
         const st = e && e.status;
-        const msg = st === 401 ? 'Connecte-toi pour acheter.' : st === 402 ? 'Smyles insuffisants.' : st === 409 ? 'Tu possèdes déjà cette recette.' : 'Erreur lors de l’achat.';
+        if (st === 401 && window.SmyleGate) window.SmyleGate.requireAccount();
+        const msg = st === 401 ? 'Crée ton compte pour acheter.' : st === 402 ? 'Smyles insuffisants.' : st === 409 ? 'Tu possèdes déjà cette recette.' : 'Erreur lors de l’achat.';
         if (window.showToast) window.showToast(msg);
       }
     });
@@ -3099,7 +3105,7 @@ async function unlockVoiceFromProfile(voiceId, btn) {
   // Redirige vers la connexion si non authentifié
   if (typeof getAuthToken === 'function' && !getAuthToken()) {
     const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/?auth=login&return=${returnUrl}`;
+    window.location.href = `/?auth=signup&return=${returnUrl}`;
     return;
   }
   if (btn) btn.disabled = true;
@@ -3129,7 +3135,8 @@ async function unlockVoiceFromProfile(voiceId, btn) {
 function handleUnlockError(err) {
   console.error('[artiste.js] unlock error', err);
   if (err && err.status === 401) {
-    toast('Connecte-toi pour débloquer ce contenu.');
+    if (window.SmyleGate) window.SmyleGate.requireAccount();
+    else toast('Crée ton compte pour débloquer ce contenu.');
     return;
   }
   if (err && err.status === 402) {

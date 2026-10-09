@@ -49,8 +49,15 @@
 
   var _data = null;
 
+  // Parcours V1 : un visiteur qui tente une action ouvre l'inscription
+  // (retour ensuite sur cette Œuvre).
+  function _gate() {
+    return !window.SmyleGate || window.SmyleGate.requireAccount();
+  }
+
   function _buy(kind) {
     if (!_data) return;
+    if (!_gate()) return;
     if (!window.PurchaseDrawer || typeof window.PurchaseDrawer.open !== 'function') {
       _toast('Module d\'achat indisponible — recharge la page.', 'error');
       return;
@@ -65,12 +72,7 @@
   }
 
   function _buyBundle(btn) {
-    var token = (typeof window.getAuthToken === 'function') ? window.getAuthToken() : null;
-    if (!token) {
-      if (typeof window.openAuthModal === 'function') window.openAuthModal('login');
-      else _toast('Connecte-toi pour acheter cette œuvre.', 'info');
-      return;
-    }
+    if (!_gate()) return;
     if (!_data || !_data.bundle) return;
     var prix = _data.bundle.priceCredits;
     if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles ?')) return;
@@ -146,7 +148,15 @@
     // Achat de l'Œuvre entière (Lot 3) : son + image − 10 %.
     var bundle = document.getElementById('o-bundle');
     var b = d.bundle;
-    if (b && b.mode === 'possedee') {
+    var repSon = document.getElementById('o-report-son');
+    if (repSon) repSon.hidden = !(snd && snd.trackId);
+    if (d.masquee) {
+      // Parcours V1 : Œuvre masquée par son créateur — visible ici seulement
+      // par lui et ceux qui l'ont achetée.
+      bundle.hidden = false;
+      bundle.innerHTML = '<p class="o-bundle-note">Cette œuvre est masquée : seuls son créateur et ceux qui l\'ont achetée la voient.</p>';
+      document.querySelectorAll('[data-o-buy]').forEach(function (n) { n.remove(); });
+    } else if (b && b.mode === 'possedee') {
       bundle.hidden = false;
       bundle.innerHTML = '<p class="o-bundle-note">Tu possèdes cette œuvre — retrouve-la dans ta bibliothèque.</p>';
     } else if (b && b.priceCredits != null) {
@@ -176,7 +186,14 @@
         return;
       }
       if (ev.target.closest('#o-report')) {
-        if (window.ReportModal && _data) window.ReportModal.open({ targetType: 'image', targetId: _data.image.id });
+        if (window.ReportModal && _data) window.ReportModal.open({ targetType: 'image', targetId: _data.image.id, title: _data.image.title });
+        return;
+      }
+      // Parcours V1 : le son de l'Œuvre est signalable lui aussi.
+      if (ev.target.closest('#o-report-son')) {
+        if (window.ReportModal && _data && _data.sound && _data.sound.trackId) {
+          window.ReportModal.open({ targetType: 'track', targetId: _data.sound.trackId, title: _data.sound.title });
+        }
         return;
       }
       if (ev.target.closest('#o-share')) {

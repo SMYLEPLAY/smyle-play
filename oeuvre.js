@@ -62,7 +62,10 @@
       })
       .catch(function (err) {
         var s = err && err.status;
-        if (s === 401) { _toast('Connecte-toi pour acheter la collection.', 'error'); }
+        if (s === 401) {
+          if (window.SmyleGate) window.SmyleGate.requireAccount();
+          else _toast('Crée ton compte pour acheter la collection.', 'error');
+        }
         else if (s === 402) { _toast('Solde de Smyles insuffisant.', 'error'); }
         else if (s === 409) { _toast('Tu possèdes déjà cette collection.', 'info'); }
         else if (s === 404) { _toast('Le pack « collection » arrive bientôt.', 'info'); }

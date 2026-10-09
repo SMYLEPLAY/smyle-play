@@ -49,6 +49,9 @@ async function _fetchMeAndSync() {
       name: me.artist_name || me.display_name || (me.email || '').split('@')[0],
       artist_name: me.artist_name || null,
       credits_balance: (typeof me.credits_balance === 'number') ? me.credits_balance : 0,
+      // Parcours V1 — bandeau « vérifie ta boîte mail » + guide d'accueil.
+      email_verified: me.email_verified !== false,
+      onboarding_done_at: me.onboarding_done_at || null,
     };
     setCurrentUser(user);
     return user;
@@ -164,6 +167,10 @@ async function doLogin(email, password, { onAttempt } = {}) {
 function doLogout() {
   clearAuthToken();
   clearCurrentUser();
+  // Parcours V1 : données personnelles du navigateur (cache des sons inclus).
+  if (typeof window.smyleClearPersonalData === 'function') {
+    try { window.smyleClearPersonalData(); } catch (_) { /* noop */ }
+  }
   _closeUserMenu();
   // Logout volontaire : on efface aussi le cache "dernier solde connu"
   // pour ne pas afficher les Smyles de l'ancien user au prochain rechargement.
@@ -300,6 +307,14 @@ function renderAuthArea() {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           WATT BOARD
         </a>
+        <a class="user-menu-item" href="/mes-oeuvres" role="menuitem">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Mes Œuvres
+        </a>
+        <button class="user-menu-item" onclick="_closeUserMenu(); window.SmyleOnboarding && window.SmyleOnboarding.open()" role="menuitem">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Guide
+        </button>
 ${_launchItemOn('serie') ? `
         <button class="user-menu-item" onclick="openStreakModal()" role="menuitem">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8.5 14.5A2.5 2.5 0 0011 17c2 0 3.5-1.5 3.5-4 0-3-2-4.5-2-7 0 0-3 1.5-3 5 0-1.5-.5-2.5-1.5-3.5-.5 1.5-1 2.5-1 4.5a4 4 0 002 3z"/></svg>
@@ -322,9 +337,10 @@ ${_launchItemOn('serie') ? `
       </div>
     `;
   } else {
+    // Parcours V1 : l'inscription d'abord, la connexion en lien secondaire.
     area.innerHTML = `
-      <button class="auth-btn" onclick="openAuthModal('login')">Connexion</button>
-      <button class="auth-btn" onclick="openAuthModal('signup')" style="margin-left:6px">S'inscrire</button>
+      <button class="auth-btn auth-btn-primary" onclick="openAuthModal('signup')">Créer un compte</button>
+      <button class="auth-btn auth-btn-link" onclick="openAuthModal('login')" style="margin-left:6px">Connexion</button>
     `;
   }
 }
@@ -342,6 +358,10 @@ function openAuthModal(tab) {
     try { localStorage.removeItem('smyle_current_user'); } catch (_) { /* */ }
     if (typeof renderAuthArea === 'function') renderAuthArea();
   }
+  // Parcours V1 : l'inscription est proposée par défaut.
+  if (tab !== 'login') tab = 'signup';
+  const _reason = document.getElementById('authReason');
+  if (_reason) { _reason.textContent = ''; _reason.hidden = true; }
   document.getElementById('authModal').classList.add('open');
   switchAuthTab(tab);
   // Focus auto sur le premier champ après l'anim d'ouverture
@@ -356,6 +376,8 @@ function openAuthModal(tab) {
 function closeAuthModal() {
   document.getElementById('authModal').classList.remove('open');
   document.getElementById('authMsg').textContent = '';
+  // Fermé sans se connecter : le retour prévu par la barrière est oublié.
+  window.__smyleReturnPath = null;
 }
 
 function switchAuthTab(tab) {
@@ -397,12 +419,28 @@ async function submitLogin() {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
   const result = await doLogin(email, password, { onAttempt });
-  if (result.ok) {
-    closeAuthModal();
-    renderAuthArea();
-    if (window.SmylePageServices) window.SmylePageServices.refresh();
-    _consumeReturnParam();
-  } else msg.textContent = result.msg;
+  if (result.ok) _afterAuthSuccess();
+  else msg.textContent = result.msg;
+}
+
+// Parcours V1 — après inscription ou connexion : retour EXACT à la page de
+// départ (paramètre return= ou barrière « visiteur » de cette page), puis
+// bandeau visiteur retiré, guide d'accueil (une fois) et rappel email.
+function _afterAuthSuccess() {
+  const back = window.__smyleReturnPath || null;
+  closeAuthModal();
+  renderAuthArea();
+  if (window.SmylePageServices) window.SmylePageServices.refresh();
+  if (window.SmyleEvents) {
+    try { window.SmyleEvents.emit('smyle:auth-changed', { loggedIn: true }); } catch (_) {}
+  }
+  if (_consumeReturnParam()) return;
+  if (back) {
+    const here = location.pathname + location.search + location.hash;
+    if (back !== here) { window.location.href = back; return; }
+  }
+  if (window.SmyleGate) window.SmyleGate.refresh();
+  if (window.SmyleOnboarding) window.SmyleOnboarding.check();
 }
 
 // Consomme ?return=/chemin après un login/signup réussi : l'utilisateur
@@ -412,14 +450,24 @@ async function submitLogin() {
 // n'accepte que les chemins relatifs internes ("/...") — jamais une URL
 // absolue ou protocol-relative ("//evil.com") pour interdire toute
 // redirection ouverte vers un site externe.
+// Parcours V1 : validation stricte partagée (SmyleGate.safeReturn) — refuse
+// aussi « /\hote » et les caractères de contrôle. Renvoie true si une
+// navigation est lancée.
 function _consumeReturnParam() {
   try {
     const params = new URLSearchParams(location.search || '');
-    const target = params.get('return') || '';
-    if (target && target.startsWith('/') && !target.startsWith('//')) {
-      window.location.href = target;
-    }
+    const raw = params.get('return') || '';
+    if (!raw) return false;
+    const target = (window.SmyleGate && window.SmyleGate.safeReturn)
+      ? window.SmyleGate.safeReturn(raw)
+      : ((/^\/(?![\/\\])/.test(raw) && !/[\\\u0000-\u001f]/.test(raw)) ? raw : null);
+    if (target) { window.location.href = target; return true; }
+    // Paramètre refusé : on le retire de l'adresse, on reste ici.
+    params.delete('return'); params.delete('auth');
+    const q = params.toString();
+    history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
   } catch (_) { /* noop */ }
+  return false;
 }
 
 async function submitSignup() {
@@ -446,12 +494,8 @@ async function submitSignup() {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
   const result = await doSignup(email, password, { onAttempt, referralCode, acceptTerms, ageConfirmed });
-  if (result.ok) {
-    closeAuthModal();
-    renderAuthArea();
-    if (window.SmylePageServices) window.SmylePageServices.refresh();
-    _consumeReturnParam();
-  } else msg.textContent = result.msg;
+  if (result.ok) _afterAuthSuccess();
+  else msg.textContent = result.msg;
 }
 
 // ── Parrainage (mécanique 1) — modal "Mon parrainage" ───────────────────────
@@ -851,6 +895,9 @@ function _maybeAutoOpenFromQuery() {
     let tab = params.get('auth');
     if (ref) tab = 'signup';
     if (tab !== 'login' && tab !== 'signup') return;
+    // Arrivée depuis une autre page (barrière visiteur) : chemin de retour.
+    const back = window.SmyleGate ? window.SmyleGate.safeReturn(params.get('return') || '') : null;
+    if (back) window.__smyleReturnPath = back;
     // Attend un micro-tick pour laisser le DOM du modal être injecté.
     setTimeout(() => {
       if (typeof openAuthModal === 'function') openAuthModal(tab);

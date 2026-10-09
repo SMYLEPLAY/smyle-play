@@ -187,8 +187,9 @@
   function _onPackCardClick() {
     if (!_isLoggedIn()) {
       _closeBoutique();
-      if (typeof window.openAuthModal === 'function') window.openAuthModal('login');
-      else _toast('Connecte-toi pour accéder à la boutique', { type: 'info', duration: 3000 });
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else if (typeof window.openAuthModal === 'function') window.openAuthModal('signup');
+      else _toast('Crée ton compte pour accéder à la boutique', { type: 'info', duration: 3000 });
       return;
     }
     _openPack();
@@ -386,7 +387,8 @@
   async function _buyResale(unlockedId) {
     if (!_isLoggedIn()) {
       _closeBoutique();
-      if (typeof window.openAuthModal === 'function') window.openAuthModal('login');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else if (typeof window.openAuthModal === 'function') window.openAuthModal('signup');
       return;
     }
     try {
