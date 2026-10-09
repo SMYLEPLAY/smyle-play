@@ -554,10 +554,16 @@ async def test_e3_listes_publiques_et_proxy_audio(client, monkeypatch):
         assert [t["id"] for t in r.json()["tracks"]] == [str(vis)]
 
         # Proxy audio : clé d'un son retiré → 404 ; son visible → passe le
-        # filtre (503 ici car le stockage n'est pas configuré en test).
+        # filtre. Lot E : redirection 302 vers l'objet R2 public (sans
+        # domaine public configuré : repli proxy, 503 sans stockage).
         monkeypatch.setattr(r2, "is_configured", lambda: False)
         assert (await client.get(f"/watt/stream/tracks/{a['id']}/s.wav")).status_code == 404
         assert (await client.get(f"/watt/stream/tracks/{a['id']}/r.wav")).status_code == 404
+        r = await client.get(f"/watt/stream/tracks/{a['id']}/v.wav")
+        assert r.status_code == 302
+        assert r.headers["location"].endswith(f"/tracks/{a['id']}/v.wav")
+        from app.config import settings as _s
+        monkeypatch.setattr(_s, "R2_PUBLIC_BASE_URL", "")
         assert (await client.get(f"/watt/stream/tracks/{a['id']}/v.wav")).status_code == 503
 
         # Écoute d'un son retiré : pas comptée.
@@ -586,7 +592,7 @@ async def test_e3_inventaire_des_requetes_track():
         "oeuvre.py": 2,        # collection : filtrée ; calcul de possession
         "search.py": 2,        # recherche + compteurs : visible_track_clause
         "trades.py": 1,        # échange : is_deleted
-        "watt_compat.py": 13,  # listes filtrées ; plays/suppression par id
+        "watt_compat.py": 12,  # listes filtrées ; plays/suppression par id (Lot E : /watt/adns retirée)
     }, trouve
 
 

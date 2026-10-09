@@ -71,22 +71,14 @@ def _assert_no_leak(item: dict, leak_keys: set[str]) -> None:
     assert "SECRET" not in blob, blob
 
 
-async def test_watt_adns_list_has_no_genome(client):
-    user_id, adn_id, _ = await _seed_artist_with_adn()
+async def test_watt_adns_list_retiree(client):
+    """Lot E : la liste publique /watt/adns (inutilisée par le front, N+1)
+    est retirée → 404, et ne sert donc plus aucun génome."""
+    user_id, _adn_id, _ = await _seed_artist_with_adn()
     try:
         r = await client.get("/watt/adns")
-        assert r.status_code == 200, r.text
-        adns = r.json()["adns"]
-        mine = [a for a in adns if a["id"] == str(adn_id)]
-        assert len(mine) == 1
-        for item in adns:
-            _assert_no_leak(item, _CAMEL_LEAK)
-            assert "characterCount" in item
-            assert "hasUsageGuide" in item and "hasExampleOutputs" in item
-        assert mine[0]["characterCount"] == len(_GENOME)
-        assert mine[0]["hasUsageGuide"] is True
-        assert mine[0]["hasExampleOutputs"] is True
-        assert mine[0]["priceCredits"] == 50
+        assert r.status_code == 404, r.text
+        assert "SECRET" not in r.text
     finally:
         await _cleanup(user_id)
 

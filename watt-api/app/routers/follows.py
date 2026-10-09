@@ -163,8 +163,7 @@ async def _hydrate_artist_cards(
 ) -> list[dict]:
     """
     Pour chaque user, calcule trackCount + plays + isFollowing (si viewer_id).
-    Une seule passe par user pour rester simple — N+1 acceptable pour < 100
-    cartes par appel (dashboard ne charge que les top liens).
+    Lot E : requêtes groupées (2 au plus), quel que soit le nombre de cartes.
 
     Règle réseau : on n'hydrate PAS les cartes des users dont le profil
     n'est pas publié. Exception : le viewer peut voir sa propre carte
@@ -195,14 +194,25 @@ async def _hydrate_artist_cards(
             row for row in (await db.execute(stmt)).scalars().all()
         }
 
-    for u in users:
-        # plays + tracks par artiste
-        stmt = select(
+    # Lot E — plays + nombre de sons de TOUS les artistes en une requête
+    # groupée (avant : une requête par carte, jusqu'à 200 par appel).
+    stmt = (
+        select(
             func.coalesce(func.sum(Track.plays), 0),
             func.count(Track.id),
-        ).where(Track.artist_id == u.id,
-                Track.is_deleted.is_(False), Track.taken_down_at.is_(None))
-        plays, track_count = (await db.execute(stmt)).one()
+            Track.artist_id,
+        )
+        .where(Track.artist_id.in_({u.id for u in users}),
+               Track.is_deleted.is_(False), Track.taken_down_at.is_(None))
+        .group_by(Track.artist_id)
+    )
+    stats = {
+        artist_id: (plays, track_count)
+        for plays, track_count, artist_id in (await db.execute(stmt)).all()
+    }
+
+    for u in users:
+        plays, track_count = stats.get(u.id, (0, 0))
         cards.append(
             _serialize_artist_card(
                 u,

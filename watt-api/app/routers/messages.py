@@ -103,32 +103,49 @@ async def list_threads(
         .order_by(MessageThread.last_message_at.desc().nullslast())
     )).scalars().all()
 
+    # Lot E — plus de N+1 : avant, 3 requêtes PAR conversation (interlocuteur,
+    # dernier message, non-lus). Désormais 3 requêtes groupées au total,
+    # quel que soit le nombre de conversations.
+    if not threads:
+        return []
+    thread_ids = [t.id for t in threads]
+    other_of = {
+        t.id: (t.participant_b if t.participant_a == current_user.id else t.participant_a)
+        for t in threads
+    }
+
+    others = {
+        row.id: row
+        for row in (await db.execute(
+            select(User.id, User.artist_name, User.avatar_url)
+            .where(User.id.in_(set(other_of.values())))
+        )).all()
+    }
+
+    # Dernier message de chaque fil (DISTINCT ON, PostgreSQL).
+    last_by_thread = dict((await db.execute(
+        select(Message.thread_id, Message.content)
+        .where(Message.thread_id.in_(thread_ids))
+        .order_by(Message.thread_id, Message.created_at.desc())
+        .distinct(Message.thread_id)
+    )).all())
+
+    # Messages reçus (envoyés par l'autre) non lus, par fil.
+    unread_by_thread = dict((await db.execute(
+        select(Message.thread_id, func.count())
+        .where(
+            Message.thread_id.in_(thread_ids),
+            Message.sender_id != current_user.id,
+            Message.read_at.is_(None),
+        )
+        .group_by(Message.thread_id)
+    )).all())
+
     result = []
     for t in threads:
-        other_id = t.participant_b if t.participant_a == current_user.id else t.participant_a
-
-        other = (await db.execute(
-            select(User.artist_name, User.avatar_url).where(User.id == other_id)
-        )).first()
-
-        # Dernier message (preview)
-        last_msg = (await db.execute(
-            select(Message.content)
-            .where(Message.thread_id == t.id)
-            .order_by(Message.created_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
-
-        # Compteur unread (messages que l'autre a envoyés, non lus)
-        unread = (await db.execute(
-            select(func.count())
-            .where(
-                Message.thread_id == t.id,
-                Message.sender_id != current_user.id,
-                Message.read_at.is_(None),
-            )
-        )).scalar_one()
-
+        other_id = other_of[t.id]
+        other = others.get(other_id)
+        last_msg = last_by_thread.get(t.id)
         result.append(ThreadRead(
             id=t.id,
             other_user_id=other_id,
@@ -136,7 +153,7 @@ async def list_threads(
             other_user_avatar=other.avatar_url if other else None,
             last_message_at=t.last_message_at,
             last_message_preview=last_msg[:60] if last_msg else None,
-            unread_count=unread,
+            unread_count=int(unread_by_thread.get(t.id, 0)),
             created_at=t.created_at,
         ))
 
