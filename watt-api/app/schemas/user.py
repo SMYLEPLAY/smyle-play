@@ -115,9 +115,23 @@ ROLE_CODES: tuple[str, ...] = (
 )
 
 
+# Lot A — bcrypt (v5) refuse au-delà de 72 OCTETS (il levait une erreur
+# serveur 500). Bornes : 72 caractères (formulaire) ET 72 octets UTF-8
+# (un caractère accentué compte 2 octets).
+PASSWORD_MAX_LENGTH = 72
+
+
+def _password_max_bytes(v: str) -> str:
+    if len(v.encode("utf-8")) > PASSWORD_MAX_LENGTH:
+        raise ValueError(
+            "Mot de passe trop long (72 caractères maximum, accents comptés double)."
+        )
+    return v
+
+
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=PASSWORD_MAX_LENGTH)
     # Code de parrainage optionnel saisi à l'inscription (mécanique 1).
     # Best-effort : un code invalide n'empêche pas l'inscription.
     referral_code: str | None = Field(default=None, max_length=16)
@@ -127,10 +141,14 @@ class UserCreate(BaseModel):
     accept_terms: bool = False
     age_confirmed: bool = False
 
+    _pw_bytes = field_validator("password")(_password_max_bytes)
+
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    # Au-delà de 72, aucun compte ne peut correspondre (bcrypt) : refus net
+    # au lieu d'une erreur serveur.
+    password: str = Field(max_length=PASSWORD_MAX_LENGTH)
 
 
 # ── Reset mot de passe (mission Tier 1, 2026-06-10) ─────────────────────
@@ -141,8 +159,10 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=10, max_length=128)
-    # Mêmes règles que l'inscription (min 8).
-    new_password: str = Field(min_length=8)
+    # Mêmes règles que l'inscription (min 8, max 72 — Lot A).
+    new_password: str = Field(min_length=8, max_length=PASSWORD_MAX_LENGTH)
+
+    _pw_bytes = field_validator("new_password")(_password_max_bytes)
 
 
 # ── Vérification d'email (Phase A — ouverture gratuite) ─────────────────

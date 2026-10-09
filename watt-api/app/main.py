@@ -169,7 +169,16 @@ def create_app() -> FastAPI:
     # affectée. Prod + smoke-test posent une vraie clé → démarrage normal.
     assert_secret_key_strong(settings.SECRET_KEY)
 
-    app = FastAPI(title="Smyle Play API", version="1.0.0")
+    # Lot A — /docs, /redoc et /openapi.json servis seulement si
+    # API_DOCS_ENABLED=true (développement local) ; 404 sinon.
+    _docs = bool(settings.API_DOCS_ENABLED)
+    app = FastAPI(
+        title="Smyle Play API",
+        version="1.0.0",
+        docs_url="/docs" if _docs else None,
+        redoc_url="/redoc" if _docs else None,
+        openapi_url="/openapi.json" if _docs else None,
+    )
 
     # ── Rate-limiting (Tier 1 sécurité) ──────────────────────────────────
     # Limiteur global exposé sur app.state (requis par slowapi) + handler

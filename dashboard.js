@@ -1679,6 +1679,10 @@ async function _saveTrackEdit() {
 async function deleteTrack(id) {
   const tracks    = getMyTracks();
   const trackToDelete = tracks.find(t => t.id === id);
+  // Lot A (2026-10-07) — confirmation (il n'y en avait pas) avec le même
+  // texte que le profil, aligné sur la suppression douce côté serveur.
+  const _tname = (trackToDelete && (trackToDelete.name || trackToDelete.title)) || 'ce son';
+  if (!confirm(`Supprimer "${_tname}" ?\n\nLe son disparaît de ton profil, des playlists et de la recherche. Sa recette, si elle n'accompagne que ce son, est retirée de la vente (ceux qui l'ont déjà achetée la gardent). Si le son formait une Œuvre avec une image, l'image reste en vente seule.`)) return;
 
   // Supprimer en localStorage immédiatement
   saveMyTracks(tracks.filter(t => t.id !== id));

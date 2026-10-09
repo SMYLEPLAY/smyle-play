@@ -377,7 +377,11 @@ async def list_user_library_prompts(
     # NULL si aucun track lié → frontend masque le player.
     audio_url_subq = (
         select(Track.audio_url)
-        .where(Track.prompt_id == Prompt.id, Track.is_deleted.is_(False))
+        .where(
+            Track.prompt_id == Prompt.id,
+            Track.artist_id == Prompt.artist_id,  # Lot A (E2)
+            Track.is_deleted.is_(False),
+        )
         .order_by(Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)
@@ -385,7 +389,11 @@ async def list_user_library_prompts(
     )
     cover_url_subq = (
         select(Track.cover_url)
-        .where(Track.prompt_id == Prompt.id, Track.is_deleted.is_(False))
+        .where(
+            Track.prompt_id == Prompt.id,
+            Track.artist_id == Prompt.artist_id,  # Lot A (E2)
+            Track.is_deleted.is_(False),
+        )
         .order_by(Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)
@@ -395,7 +403,11 @@ async def list_user_library_prompts(
     # Couleur du track lié — repère visuel cohérent avec la marketplace.
     track_color_subq = (
         select(Track.color)
-        .where(Track.prompt_id == Prompt.id, Track.is_deleted.is_(False))
+        .where(
+            Track.prompt_id == Prompt.id,
+            Track.artist_id == Prompt.artist_id,  # Lot A (E2)
+            Track.is_deleted.is_(False),
+        )
         .order_by(Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)

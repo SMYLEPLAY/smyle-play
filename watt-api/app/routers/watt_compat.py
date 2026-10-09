@@ -63,7 +63,7 @@ _AUDIO_MIME_BY_EXT = {
 
 
 @router.get("/stream/{key:path}")
-async def stream_r2_audio(key: str):
+async def stream_r2_audio(key: str, db: AsyncSession = Depends(get_db)):
     """
     Proxy le fichier audio R2 par sa clé en streaming.
 
@@ -107,6 +107,16 @@ async def stream_r2_audio(key: str):
     # extension. Évalué AVANT la config R2 → 404 déterministe.
     ext = _k.rsplit(".", 1)[-1] if "." in _k else ""
     if ext not in _AUDIO_MIME_BY_EXT:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ressource introuvable.",
+        )
+
+    # Lot A (E3) — un son supprimé par son créateur ou retiré par la
+    # modération ne s'écoute plus, même par sa clé. Refus si la clé n'est
+    # portée QUE par des sons retirés (une clé qu'aucun son ne référence —
+    # univers officiels, voix, vidéos de playlist — reste servie).
+    if await _key_only_on_removed_tracks(db, key):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ressource introuvable.",
@@ -174,6 +184,30 @@ async def stream_r2_audio(key: str):
         media_type=mime,
         headers=headers,
     )
+
+
+async def _key_only_on_removed_tracks(db: AsyncSession, key: str) -> bool:
+    """True si des sons portent cette clé audio et qu'AUCUN n'est visible."""
+    from sqlalchemy import or_ as _or
+
+    from app.services.tracks import visible_track_clause
+
+    k = key.lstrip("/")
+    porte = _or(Track.r2_key == k, Track.audio_url == f"/watt/stream/{k}")
+    total, visibles = (await db.execute(
+        select(
+            func.count(Track.id),
+            func.count(Track.id).filter(visible_track_clause()),
+        ).where(porte)
+    )).one()
+    return int(total or 0) > 0 and int(visibles or 0) == 0
+
+
+def _visible():
+    """Lot A (E3) — raccourci : son ni supprimé ni retiré (listes publiques)."""
+    from app.services.tracks import visible_track_clause
+
+    return visible_track_clause()
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -433,13 +467,13 @@ async def _enrich_tracks_dualite(db: AsyncSession, tracks_out: list, rows: list)
 
 
 async def _count_tracks_for_artist(db: AsyncSession, artist_id) -> int:
-    stmt = select(func.count(Track.id)).where(Track.artist_id == artist_id)
+    stmt = select(func.count(Track.id)).where(Track.artist_id == artist_id, _visible())
     return int((await db.execute(stmt)).scalar() or 0)
 
 
 async def _sum_plays_for_artist(db: AsyncSession, artist_id) -> int:
     stmt = select(func.coalesce(func.sum(Track.plays), 0)).where(
-        Track.artist_id == artist_id
+        Track.artist_id == artist_id, _visible()
     )
     return int((await db.execute(stmt)).scalar() or 0)
 
@@ -455,13 +489,14 @@ async def _optional_current_user(
     token: str | None = Depends(_optional_oauth),
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
-    if not token:
-        return None
-    email = decode_access_token(token)
-    if not email:
-        return None
-    stmt = select(User).where(User.email == email)
-    return (await db.execute(stmt)).scalar_one_or_none()
+    """Viewer optionnel — LECTURE seulement (Lot A, M1).
+
+    Mêmes contrôles que get_current_user (version de jeton, compte suspendu)
+    mais None au lieu d'une erreur. Toute écriture utilise get_current_user.
+    """
+    from app.auth.jwt import resolve_optional_user
+
+    return await resolve_optional_user(db, token)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -488,7 +523,7 @@ async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
     """
     stmt = (
         select(Track)
-        .where(Track.universe.is_not(None))
+        .where(Track.universe.is_not(None), _visible())
         .order_by(Track.universe, Track.title)
     )
     tracks = (await db.execute(stmt)).scalars().all()
@@ -535,6 +570,7 @@ async def list_artists(db: AsyncSession = Depends(get_db)) -> dict:
             func.coalesce(func.sum(Track.plays), 0).label("total_plays"),
             func.count(Track.id).label("track_count"),
         )
+        .where(_visible())
         .group_by(Track.artist_id)
         .subquery()
     )
@@ -675,9 +711,11 @@ async def build_artist_detail_payload(
     is_self = viewer is not None and viewer.id == target.id
 
     # Tracks de l'artiste
+    # Lot A (E3) : ni les sons supprimés ni les sons retirés par la
+    # modération — même pour le créateur (ils ont quitté son profil).
     stmt_tracks = (
         select(Track)
-        .where(Track.artist_id == target.id)
+        .where(Track.artist_id == target.id, _visible())
         .order_by(desc(Track.created_at))
         .limit(200)
     )
@@ -719,6 +757,7 @@ async def build_artist_detail_payload(
             Track.artist_id,
             func.coalesce(func.sum(Track.plays), 0).label("tp"),
         )
+        .where(_visible())
         .group_by(Track.artist_id)
         .subquery()
     )
@@ -1176,7 +1215,7 @@ async def tracks_recent(
     stmt = (
         select(Track, User)
         .join(User, User.id == Track.artist_id)
-        .where(User.profile_public.is_(True))
+        .where(User.profile_public.is_(True), _visible())
         .order_by(desc(Track.created_at))
         .limit(safe_limit)
     )
@@ -1272,24 +1311,53 @@ async def tracks_recent(
 
 async def _note_listen(request: Request, db: AsyncSession) -> None:
     try:
-        auth = request.headers.get("authorization") or ""
-        if not auth.lower().startswith("bearer "):
-            return
-        from app.auth.jwt import decode_access_token
+        from app.auth.jwt import bearer_from_request, resolve_optional_user
         from app.services.activity import note_activity
 
-        email = decode_access_token(auth[7:].strip())
-        if not email:
+        user = await resolve_optional_user(db, bearer_from_request(request))
+        if user is None:
             return
-        uid = (await db.execute(
-            select(User.id).where(User.email == email, User.is_banned.is_(False))
-        )).scalar_one_or_none()
-        note_activity(uid, listened=True)
+        note_activity(user.id, listened=True)
     except Exception:  # noqa: BLE001
         return
 
 
+# Lot A — anti-gonflage des écoutes : limite par IP (limiteur partagé de
+# l'API) + dédoublonnage court IP + son. Import ici (pas en tête) pour garder
+# le bloc d'imports du module inchangé.
+from app.core.ratelimit import client_ip as _client_ip  # noqa: E402
+from app.core.ratelimit import limiter as _limiter  # noqa: E402
+
+LIMIT_PLAYS = "60/minute"
+# Une même IP qui relance le même son dans cette fenêtre ne compte qu'une
+# fois (en mémoire, par worker : filet anti-boucle, pas une comptabilité).
+PLAY_DEDUP_SECONDS = 30
+_PLAY_DEDUP_MAX = 20000
+_recent_plays: dict[tuple[str, str], float] = {}
+
+
+def _play_already_counted(ip: str, track_id: str) -> bool:
+    """Vrai si (ip, son) a déjà compté une écoute dans la fenêtre ; sinon
+    enregistre l'écoute et renvoie False."""
+    import time
+
+    now = time.monotonic()
+    if len(_recent_plays) > _PLAY_DEDUP_MAX:
+        limite = now - PLAY_DEDUP_SECONDS
+        for k in [k for k, t in _recent_plays.items() if t < limite]:
+            _recent_plays.pop(k, None)
+        if len(_recent_plays) > _PLAY_DEDUP_MAX:
+            _recent_plays.clear()
+    cle = (ip, track_id)
+    vu = _recent_plays.get(cle)
+    if vu is not None and now - vu < PLAY_DEDUP_SECONDS:
+        return True
+    _recent_plays[cle] = now
+    return False
+
+
 @router.post("/plays/{public_id}")
+@_limiter.limit(LIMIT_PLAYS)
 async def increment_plays(
     public_id: str, request: Request, db: AsyncSession = Depends(get_db)
 ) -> dict:
@@ -1328,7 +1396,8 @@ async def increment_plays(
         except (ValueError, AttributeError):
             track = None
 
-    if track is None:
+    if track is None or track.is_deleted or track.taken_down_at is not None:
+        # Lot A (E3) : un son retiré ne compte plus d'écoutes.
         return {"ok": False, "plays": 0}
 
     # Lot 2 — « écouter en étant connecté » compte comme action d'un actif.
@@ -1336,6 +1405,11 @@ async def increment_plays(
     # (user_activity_days.listened) est posé si un jeton valide accompagne la
     # requête. Best-effort, jamais bloquant.
     await _note_listen(request, db)
+
+    # Lot A — même IP + même son dans la fenêtre courte : pas de +1 (le
+    # drapeau d'activité ci-dessus reste posé : l'écoute a bien eu lieu).
+    if _play_already_counted(_client_ip(request), str(track.id)):
+        return {"ok": True, "plays": int(track.plays or 0)}
 
     # Incrément arithmétique direct (anti-race) — équivalent à
     # `UPDATE tracks SET plays = COALESCE(plays, 0) + 1 WHERE id = :id`.
@@ -1386,14 +1460,9 @@ async def my_plays_history(
 
     # Auth manuelle (le router watt-compat n'a pas de dépendance auth
     # globale) : token requis, résolu par email comme partout.
-    if not token:
-        return {"days": 0, "since": None, "series": []}
-    email = decode_access_token(token)
-    if email is None:
-        return {"days": 0, "since": None, "series": []}
-    user = (await db.execute(
-        select(User).where(User.email == email)
-    )).scalar_one_or_none()
+    from app.auth.jwt import resolve_optional_user
+
+    user = await resolve_optional_user(db, token)
     if user is None:
         return {"days": 0, "since": None, "series": []}
 
@@ -1433,16 +1502,16 @@ async def global_stats(db: AsyncSession = Depends(get_db)) -> dict:
     Compteurs globaux WATT pour les widgets d'accueil.
     """
     total_tracks = int(
-        (await db.execute(select(func.count(Track.id)))).scalar() or 0
+        (await db.execute(select(func.count(Track.id)).where(_visible()))).scalar() or 0
     )
     total_artists = int(
         (await db.execute(
-            select(func.count(func.distinct(Track.artist_id)))
+            select(func.count(func.distinct(Track.artist_id))).where(_visible())
         )).scalar() or 0
     )
     total_plays = int(
         (await db.execute(
-            select(func.coalesce(func.sum(Track.plays), 0))
+            select(func.coalesce(func.sum(Track.plays), 0)).where(_visible())
         )).scalar() or 0
     )
     return {
@@ -1475,6 +1544,7 @@ async def my_stats(
             Track.artist_id,
             func.coalesce(func.sum(Track.plays), 0).label("tp"),
         )
+        .where(_visible())
         .group_by(Track.artist_id)
         .subquery()
     )
@@ -1496,30 +1566,21 @@ async def my_stats(
 @router.delete("/tracks/{public_id}")
 async def delete_track(
     public_id: str,
-    user: User | None = Depends(_optional_current_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Équivalent de `DELETE /api/watt/tracks/<id>` (P1-F5 — port complet).
+    Équivalent de `DELETE /api/watt/tracks/<id>` — suppression depuis le
+    profil (artiste.js).
 
-    Supprime une track côté DB ET côté R2 (sample audio). L'auth est requise
-    (sinon un curl anonyme pourrait tout effacer) et l'appelant doit être
-    propriétaire de la track.
-
-    Ordre des opérations :
-      1. Lookup track (par legacy_id puis fallback UUID)
-      2. Authz : owner check
-      3. Capture la `r2_key` AVANT le delete DB (sinon Python perd la
-         référence à la row détachée)
-      4. Delete DB + commit
-      5. Delete R2 (best-effort — un échec R2 ne rollback pas la DB ; on
-         préfère une row supprimée + un orphelin R2 (cleanup batch)
-         qu'une track qui réapparaît mystérieusement après un échec
-         réseau côté R2). Cohérent avec le comportement Flask historique
-         (logger.warning + swallow).
+    Lot A (2026-10-07) : suppression DOUCE, identique à `DELETE /tracks/{id}`
+    du tableau de bord (services.tracks.soft_delete_track) : le son quitte
+    toutes les listes, la recette liée est retirée de la vente si elle n'est
+    portée par aucun autre son, et RIEN n'est effacé du stockage (plus aucune
+    purge R2 ici). Auth complète (get_current_user : version de jeton,
+    compte suspendu) ; seul le créateur peut supprimer.
     """
-    if user is None:
-        raise HTTPException(status_code=401, detail="Auth requise")
+    from app.services.tracks import soft_delete_track
 
     stmt = select(Track).where(Track.legacy_id == public_id)
     track = (await db.execute(stmt)).scalar_one_or_none()
@@ -1532,24 +1593,14 @@ async def delete_track(
         except (ValueError, AttributeError):
             track = None
 
-    if track is None:
+    if track is None or track.is_deleted:
         raise HTTPException(status_code=404, detail="Track introuvable")
 
     if track.artist_id != user.id:
         raise HTTPException(status_code=403, detail="Pas ton son")
 
-    # Capture la r2_key avant que la row soit détachée par db.delete()
-    r2_key_to_purge = track.r2_key
-
-    await db.delete(track)
+    await soft_delete_track(db, track)
     await db.commit()
-
-    # Delete R2 best-effort (P1-F5). Lazy import pour éviter de tirer
-    # boto3 dans tous les imports du router quand R2 n'est pas utilisé.
-    if r2_key_to_purge:
-        from app.services.r2 import delete_r2_object
-        await delete_r2_object(r2_key_to_purge)
-
     return {"ok": True}
 
 
@@ -1592,7 +1643,7 @@ async def list_adns(db: AsyncSession = Depends(get_db)) -> dict:
         # Univers = universe slug de la premiere track de l'artiste
         univ_stmt = (
             select(Track.universe)
-            .where(Track.artist_id == artist.id)
+            .where(Track.artist_id == artist.id, _visible())
             .limit(1)
         )
         universe = (await db.execute(univ_stmt)).scalar_one_or_none()
@@ -1665,7 +1716,7 @@ async def get_adn(slug: str, db: AsyncSession = Depends(get_db)) -> dict:
     # Tracks exemples (20 plus recentes)
     tracks_stmt = (
         select(Track)
-        .where(Track.artist_id == target.id)
+        .where(Track.artist_id == target.id, _visible())
         .order_by(desc(Track.created_at))
         .limit(20)
     )
@@ -1733,7 +1784,9 @@ async def list_prompts(
         # que les prompts dont l'artiste possede au moins une track dans
         # l'univers demande (ce qui colle parce qu'on a 1 user-univers).
         univ_artists_stmt = (
-            select(Track.artist_id).where(Track.universe == universe).distinct()
+            select(Track.artist_id)
+            .where(Track.universe == universe, _visible())
+            .distinct()
         )
         univ_artists = (await db.execute(univ_artists_stmt)).scalars().all()
         if not univ_artists:
@@ -1909,9 +1962,13 @@ async def upload_image(
     mime = _IMAGE_MIME[ext]
 
     # ── Clé R2 unique par kind ────────────────────────────────────────────────
+    # Lot A (C1) : dossier au nom du compte → la propriété du fichier se
+    # vérifie ensuite côté serveur (services.media_ownership). Les dossiers
+    # réservés (originaux payants, aperçus) ne sont jamais choisissables.
+    from app.services.media_ownership import image_prefix
+
     uid = _uuid_module.uuid4().hex
-    safe_kind = re.sub(r"[^a-z0-9\-]", "", (kind or "image").lower()) or "image"
-    r2_key = f"images/{safe_kind}/{uid}.{ext}"
+    r2_key = f"{image_prefix(kind, current_user.id)}/{uid}.{ext}"
 
     # ── Upload R2 (boto3 sync → executor) ────────────────────────────────────
     client = get_r2_client()
@@ -2241,7 +2298,14 @@ async def upload_audio(
     Remplace Flask /api/watt/upload.
     Retourne { url, key, mock }.
     """
-    result = await _upload_audio_to_r2(file, name, r2_prefix="tracks", max_bytes=_AUDIO_MAX_BYTES)
+    # Lot A (C1) : fichier rangé sous tracks/<id du compte>/ — seule une clé
+    # de ce dossier sera acceptée à la création du son (POST /tracks/).
+    from app.services.media_ownership import track_audio_prefix
+
+    result = await _upload_audio_to_r2(
+        file, name, r2_prefix=track_audio_prefix(current_user.id),
+        max_bytes=_AUDIO_MAX_BYTES,
+    )
     return result
 
 

@@ -503,23 +503,55 @@ async def artistes_page():
 
 # ── Statiques (mount "/" en dernier) ───────────────────────────────────────
 
-# Liste blanche : uniquement des assets front. Tout le reste (sources .py,
-# configs, dumps, dotfiles…) répond 404 au lieu d'être téléchargeable.
-_ALLOWED_STATIC_SUFFIXES = {
-    ".html", ".css", ".js", ".mjs", ".map", ".json",
+# Lot A (2026-10-07) — LISTE BLANCHE DE CHEMINS (et plus seulement
+# d'extensions). Avant : toute la racine du dépôt était servie dès que
+# l'extension était autorisée — y compris `.json` (données internes,
+# scripts, tests e2e…). Désormais seuls sont publics :
+#   - les pages et assets front À LA RACINE (un seul segment) : .html, .css,
+#     .js — sauf les pages de démonstration et les pages masquées ;
+#   - le dossier `ui/` (modules front) : .js, .css et images/polices.
+# Tout le reste répond 404 : dossiers `data/`, `e2e/`, `scripts/`,
+# `agents/`, `watt-api/`, `assets/`, fichiers `.json` (aucun n'est lu par le
+# front : le catalogue passe par /watt/tracks-catalog), sources, dotfiles.
+_ROOT_STATIC_SUFFIXES = {".html", ".css", ".js"}
+_UI_STATIC_SUFFIXES = {
+    ".js", ".mjs", ".css",
     ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico",
-    ".woff", ".woff2", ".ttf", ".otf", ".eot",
-    ".mp3", ".wav", ".ogg", ".m4a", ".webm", ".mp4",
-    ".webmanifest", ".xml",
+    ".woff", ".woff2", ".ttf", ".otf",
 }
+_PUBLIC_STATIC_DIRS = {"ui"}
+# Pages jamais publiques (démo interne).
+_DENIED_ROOT_FILES = {"banner-demo.html"}
+# Pages derrière un interrupteur de lancement : l'accès direct au fichier
+# suit la même règle que la route de page (/tarifs, /offres, /collection).
+_GATED_ROOT_FILES = {
+    "tarifs.html": "euros",
+    "offres.html": "paliers",
+    "oeuvre.html": "albums",
+}
+
+
+def static_path_allowed(path: str) -> bool:
+    """Le chemin (relatif à la racine du dépôt) est-il public ?"""
+    p = Path(path)
+    parts = p.parts
+    if not parts or any(part.startswith(".") or part == ".." for part in parts):
+        return False
+    suffix = p.suffix.lower()
+    if len(parts) == 1:
+        name = parts[0]
+        if name in _DENIED_ROOT_FILES or suffix not in _ROOT_STATIC_SUFFIXES:
+            return False
+        flag = _GATED_ROOT_FILES.get(name)
+        if flag is not None and not settings.launch_flags_dict()[flag]:
+            return False
+        return True
+    return parts[0] in _PUBLIC_STATIC_DIRS and suffix in _UI_STATIC_SUFFIXES
 
 
 class _AllowlistStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
-        p = Path(path)
-        hidden = any(part.startswith(".") for part in p.parts)
-        allowed = p.suffix.lower() in _ALLOWED_STATIC_SUFFIXES
-        if hidden or not allowed:
+        if not static_path_allowed(path):
             raise HTTPException(status_code=404)
         return await super().get_response(path, scope)
 

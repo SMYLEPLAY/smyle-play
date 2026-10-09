@@ -169,19 +169,21 @@ async def test_post_tracks_with_trapped_audio_url_is_422(client, test_user, auth
     assert r2.status_code == 422, r2.text
 
     # Cas légitime (ce que le dashboard envoie après POST /watt/upload) → 201.
+    # Lot A : les clés envoyées sont rangées sous le dossier du compte.
+    uid = test_user["id"]
     r3 = await client.post(
         "/tracks/",
         json={
             "title": "Légitime",
             "full_prompt": "deep house 128bpm",
-            "audio_url": "/watt/stream/tracks/legitime-0123abcd4567.wav",
-            "r2_key": "tracks/legitime-0123abcd4567.wav",
-            "cover_url": "/watt/images/images/track-cover/abc.jpg",
+            "audio_url": f"/watt/stream/tracks/{uid}/legitime-0123abcd4567.wav",
+            "r2_key": f"tracks/{uid}/legitime-0123abcd4567.wav",
+            "cover_url": f"/watt/images/images/track-cover/{uid}/abc.jpg",
             "platform": "suno",
         },
         headers=auth_headers,
     )
     assert r3.status_code == 201, r3.text
     body = r3.json()
-    assert body["track"]["audio_url"] == "/watt/stream/tracks/legitime-0123abcd4567.wav"
+    assert body["track"]["audio_url"] == f"/watt/stream/tracks/{uid}/legitime-0123abcd4567.wav"
     assert body["track"]["platform"] == "suno"

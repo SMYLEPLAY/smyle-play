@@ -169,7 +169,10 @@ class TrackRead(BaseModel):
     id: UUID
     title: str
     audio_url: str | None
-    r2_key: str | None = None       # exposé pour que le front puisse construire /watt/stream/{r2_key}
+    # Lot A (2026-10-07) — clé de stockage interne : lue pour calculer
+    # `stream_url`, mais JAMAIS renvoyée au navigateur (exclude=True). Le
+    # front écoute via `stream_url` (ou `audio_url`).
+    r2_key: str | None = Field(default=None, exclude=True)
     color: str | None
     cover_url: str | None = None
     prompt_id: UUID | None = None

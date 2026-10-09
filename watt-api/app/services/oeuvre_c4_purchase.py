@@ -84,9 +84,13 @@ async def _resolve(db: AsyncSession, oeuvre_id: UUID) -> tuple[Prompt, Prompt | 
         raise OeuvreIntrouvable("Œuvre introuvable.")
     recipe_id = img.linked_prompt_id
     if recipe_id is None and img.linked_track_id is not None:
+        # Lot A : morceau du même créateur que l'image, ni supprimé ni retiré.
         recipe_id = (await db.execute(
             select(Track.prompt_id).where(
-                Track.id == img.linked_track_id, Track.is_deleted.is_(False)
+                Track.id == img.linked_track_id,
+                Track.is_deleted.is_(False),
+                Track.taken_down_at.is_(None),
+                Track.artist_id == img.artist_id,
             )
         )).scalar_one_or_none()
     recipe = None
@@ -100,6 +104,13 @@ async def _resolve(db: AsyncSession, oeuvre_id: UUID) -> tuple[Prompt, Prompt | 
                 Prompt.product_type.in_(("recipe", "beat")),
             )
         )).scalar_one_or_none()
+        # Lot A (E2) — le vendeur de la recette DOIT être le créateur de
+        # l'image : sinon la moitié son serait vendue sous les verrous du
+        # mauvais vendeur. Une Œuvre incohérente n'est pas vendable groupée.
+        if recipe is not None and recipe.artist_id != img.artist_id:
+            raise OeuvreNotBundlable(
+                "Cette œuvre ne peut pas être achetée en une fois."
+            )
     return img, recipe
 
 
@@ -112,7 +123,7 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
     """
     try:
         img, recipe = await _resolve(db, oeuvre_id)
-    except OeuvreIntrouvable:
+    except (OeuvreIntrouvable, OeuvreNotBundlable):
         return None
     if recipe is None or recipe.product_type == "beat":
         return None

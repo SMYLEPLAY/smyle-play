@@ -219,22 +219,12 @@ async def get_public_oeuvre(
 
 
 async def _optional_viewer_id(request: Request, db: AsyncSession):
-    auth = request.headers.get("authorization") or ""
-    if not auth.lower().startswith("bearer "):
-        return None
-    try:
-        from sqlalchemy import select as _select
+    """Id du viewer optionnel — LECTURE seulement (Lot A, M1 : version de
+    jeton et compte suspendu vérifiés comme get_current_user)."""
+    from app.auth.jwt import bearer_from_request, resolve_optional_user
 
-        from app.auth.jwt import decode_access_token
-
-        email = decode_access_token(auth[7:].strip())
-        if not email:
-            return None
-        return (await db.execute(
-            _select(User.id).where(User.email == email, User.is_banned.is_(False))
-        )).scalar_one_or_none()
-    except Exception:  # noqa: BLE001
-        return None
+    user = await resolve_optional_user(db, bearer_from_request(request))
+    return user.id if user is not None else None
 
 
 @router.post("/watt/oeuvres/{oeuvre_id}/acheter", status_code=status.HTTP_201_CREATED)

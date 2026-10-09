@@ -75,6 +75,12 @@ async def buy_pack_atomic(
         or not recipe.is_published or not beat.is_published
     ):
         raise PackNotPurchasable("Un produit du pack n'est plus disponible")
+    # Lot A (E2) — le pack est vendu (prix fixé, revenu versé) par le créateur
+    # du morceau : ses DEUX produits doivent lui appartenir, sinon refus.
+    if recipe.artist_id != track.artist_id or beat.artist_id != track.artist_id:
+        raise PackNotPurchasable("Aucune offre pack sur ce morceau")
+    if track.taken_down_at is not None:
+        raise PackNotPurchasable("Aucune offre pack sur ce morceau")
 
     artist_id = track.artist_id
     price = int(track.pack_price_credits)

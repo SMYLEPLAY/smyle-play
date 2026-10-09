@@ -200,7 +200,8 @@ async def _hydrate_artist_cards(
         stmt = select(
             func.coalesce(func.sum(Track.plays), 0),
             func.count(Track.id),
-        ).where(Track.artist_id == u.id)
+        ).where(Track.artist_id == u.id,
+                Track.is_deleted.is_(False), Track.taken_down_at.is_(None))
         plays, track_count = (await db.execute(stmt)).one()
         cards.append(
             _serialize_artist_card(
@@ -479,7 +480,8 @@ async def my_network(
     stmt_me = select(
         func.coalesce(func.sum(Track.plays), 0),
         func.count(Track.id),
-    ).where(Track.artist_id == current_user.id)
+    ).where(Track.artist_id == current_user.id,
+             Track.is_deleted.is_(False), Track.taken_down_at.is_(None))
     me_plays, me_tracks = (await db.execute(stmt_me)).one()
 
     me_card = _serialize_artist_card(

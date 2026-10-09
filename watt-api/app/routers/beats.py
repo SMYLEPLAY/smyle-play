@@ -190,9 +190,12 @@ async def download_beat(
     # beat_id (produit beat legacy). Le plus récent si plusieurs.
     from sqlalchemy import or_ as _or
 
+    # Lot A (E2) : seul un morceau du CRÉATEUR du produit fait foi — un autre
+    # compte ne peut pas glisser son fichier derrière la recette d'autrui.
     track = (await db.execute(
         select(Track).where(
             _or(Track.prompt_id == beat_id, Track.beat_id == beat_id),
+            Track.artist_id == product.artist_id,
             Track.is_deleted.is_(False),
         ).order_by(Track.created_at.desc()).limit(1)
     )).scalar_one_or_none()

@@ -2349,7 +2349,9 @@ function renderTracks(artist) {
       ev.stopPropagation();
       const tid = delBtn.dataset.trackId;
       const tname = delBtn.dataset.trackName || 'ce son';
-      if (tid && confirm(`Supprimer "${tname}" ?\n\nCette action est définitive (le fichier audio R2 + la recette liée seront aussi supprimés).`)) {
+      // Lot A (2026-10-07) — texte aligné sur le comportement réel du serveur
+      // (suppression douce, services/tracks.py::soft_delete_track).
+      if (tid && confirm(`Supprimer "${tname}" ?\n\nLe son disparaît de ton profil, des playlists et de la recherche. Sa recette, si elle n'accompagne que ce son, est retirée de la vente (ceux qui l'ont déjà achetée la gardent). Si le son formait une Œuvre avec une image, l'image reste en vente seule.`)) {
         deleteTrackFromProfile(tid, delBtn);
       }
       return;
@@ -2440,18 +2442,18 @@ async function unlockVisualDnaFromProfile() {
 
 // ── Suppression d'un track depuis le profil (owner uniquement) ────────
 // Utilise l'endpoint FastAPI DELETE /watt/tracks/{public_id} (router
-// watt_compat) qui purge aussi le fichier R2 + le row tracks FastAPI (CASCADE depuis la
-// PR Sprint 1 PR3 R2 cleanup). Le backend vérifie l'owner — un visiteur
-// qui invoquerait l'endpoint reçoit 403, le bouton est juste caché côté
-// front pour ne pas exposer une action qui ne marcherait pas.
+// watt_compat). Lot A (2026-10-07) : suppression DOUCE, comme le tableau de
+// bord — le son est masqué partout, rien n'est effacé du stockage, la
+// recette liée est retirée de la vente si elle n'accompagne que ce son.
+// Le backend vérifie l'owner — un visiteur qui invoquerait l'endpoint
+// reçoit 403, le bouton est juste caché côté front.
 async function deleteTrackFromProfile(trackId, btn) {
   if (!trackId) return;
   if (btn) btn.disabled = true;
   try {
     if (typeof apiFetch === 'function') {
       // Endpoint FastAPI DELETE /watt/tracks/<id> (router watt_compat) :
-      // supprime à la fois en DB et en R2. (Commentaire corrigé 2026-07-30 :
-      // il mentionnait à tort l'endpoint Flask legacy, mort depuis.)
+      // suppression douce (Lot A) — aucune purge du fichier audio.
       // Note : l'ID public peut être un UUID FastAPI ou un int legacy.
       // Le fetch direct gère les 2.
       const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;

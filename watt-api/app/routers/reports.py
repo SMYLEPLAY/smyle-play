@@ -22,7 +22,6 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
-from app.auth.jwt import decode_access_token
 from app.core.ratelimit import limiter
 from app.database import get_db
 from app.models.content_report import ContentReport, ReportReason, ReportStatus
@@ -75,17 +74,11 @@ class ReportPatch(BaseModel):
 async def _optional_user(request: Request, db: AsyncSession) -> User | None:
     """Auth OPTIONNELLE : le DSA impose un mécanisme accessible à tous,
     y compris sans compte. On décode le Bearer si présent, sinon None."""
-    auth = request.headers.get("authorization") or ""
-    if not auth.lower().startswith("bearer "):
-        return None
-    email = decode_access_token(auth[7:].strip())
-    if not email:
-        return None
-    from app.services.users import get_user_by_email
-    try:
-        return await get_user_by_email(db, email)
-    except Exception:
-        return None
+    # Lot A (M1) : jeton vérifié comme get_current_user (version, compte
+    # suspendu) ; sinon le signalement est simplement anonyme.
+    from app.auth.jwt import bearer_from_request, resolve_optional_user
+
+    return await resolve_optional_user(db, bearer_from_request(request))
 
 
 @router.post("/reports", response_model=ReportRead,
@@ -149,7 +142,7 @@ async def create_report(
     # Emails best-effort APRÈS commit : modérateur + accusé de réception.
     try:
         import os
-        from app.services.emails import _layout, _send
+        from app.services.emails import _layout, _send, esc
         notify = os.environ.get("REPORT_NOTIFY_EMAIL")
         if notify:
             await _send(
@@ -157,10 +150,11 @@ async def create_report(
                 f"⚑ Signalement {payload.reason.value} — {payload.target_type}",
                 _layout(
                     "Nouveau signalement",
-                    (f"<p>Motif : <b>{payload.reason.value}</b> · cible : "
-                     f"<b>{payload.target_type}</b> ({payload.target_id}).</p>"
-                     f"<p>{(payload.detail or '')[:500]}</p>"
-                     f"<p>Réf : {report.id}</p>"),
+                    # Lot A : tout texte venu du formulaire est échappé.
+                    (f"<p>Motif : <b>{esc(payload.reason.value)}</b> · cible : "
+                     f"<b>{esc(payload.target_type)}</b> ({esc(payload.target_id)}).</p>"
+                     f"<p>{esc((payload.detail or '')[:500])}</p>"
+                     f"<p>Réf : {esc(report.id)}</p>"),
                 ),
             )
         if report.reporter_email:

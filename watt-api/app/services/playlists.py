@@ -114,7 +114,13 @@ async def count_tracks_by_playlists(
         return {}
     stmt = (
         select(PlaylistTrack.playlist_id, func.count())
-        .where(PlaylistTrack.playlist_id.in_(playlist_ids))
+        .join(Track, Track.id == PlaylistTrack.track_id)
+        .where(
+            PlaylistTrack.playlist_id.in_(playlist_ids),
+            # Lot A (E3) : même filtre que list_playlist_tracks.
+            Track.is_deleted.is_(False),
+            Track.taken_down_at.is_(None),
+        )
         .group_by(PlaylistTrack.playlist_id)
     )
     res = await db.execute(stmt)
@@ -171,7 +177,14 @@ async def add_track(
     if playlist.owner_id != owner.id:
         raise PlaylistForbidden()
 
-    track_res = await db.execute(select(Track).where(Track.id == track_id))
+    # Lot A (E3) : un son supprimé ou retiré ne s'ajoute plus à une playlist.
+    track_res = await db.execute(
+        select(Track).where(
+            Track.id == track_id,
+            Track.is_deleted.is_(False),
+            Track.taken_down_at.is_(None),
+        )
+    )
     track = track_res.scalar_one_or_none()
     if track is None:
         raise TrackNotFound()
@@ -243,7 +256,13 @@ async def list_playlist_tracks(
     stmt = (
         select(Track)
         .join(PlaylistTrack, PlaylistTrack.track_id == Track.id)
-        .where(PlaylistTrack.playlist_id == playlist_id)
+        .where(
+            PlaylistTrack.playlist_id == playlist_id,
+            # Lot A (E3) : un son supprimé ou retiré disparaît de toutes les
+            # playlists (publiques comme privées) sans toucher aux liens.
+            Track.is_deleted.is_(False),
+            Track.taken_down_at.is_(None),
+        )
         .order_by(PlaylistTrack.position.asc(), PlaylistTrack.added_at.asc())
     )
     res = await db.execute(stmt)
