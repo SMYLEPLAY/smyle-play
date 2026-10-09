@@ -49,6 +49,10 @@ class R2NotConfigured(RuntimeError):
     """R2 indisponible (secrets manquants). → HTTP 503."""
 
 
+class R2Unavailable(R2NotConfigured):
+    """Lot E — R2 injoignable ou en erreur pendant l'envoi. → HTTP 503."""
+
+
 class ImageUploadError(RuntimeError):
     """Échec d'upload R2 ou de génération d'aperçu. → HTTP 500."""
 
@@ -80,6 +84,9 @@ def _generate_preview(data: bytes) -> bytes:
     """
     from PIL import Image
 
+    from app.core.fichiers import appliquer_plafond_pillow
+
+    appliquer_plafond_pillow()
     with Image.open(io.BytesIO(data)) as img:
         img = img.convert("RGBA") if img.mode in ("P", "LA") else img
         if img.mode in ("RGBA", "LA"):
@@ -129,35 +136,33 @@ async def upload_image_assets(
     # le caractère SECRET + aléatoire de sa clé (jamais transmise).
     public_bucket = settings.R2_BUCKET
 
-    loop = asyncio.get_event_loop()
-
-    # Aperçu (CPU/mémoire-bound → executor)
+    # Aperçu (CPU/mémoire-bound → thread)
     try:
-        preview_bytes = await loop.run_in_executor(None, _generate_preview, data)
+        preview_bytes = await asyncio.to_thread(_generate_preview, data)
     except Exception as exc:  # noqa: BLE001
         raise ImageUploadError(
             f"Préview impossible : {type(exc).__name__}: {str(exc)[:200]}"
         ) from exc
 
-    def _sync_put_original() -> None:
-        # ORIGINAL → bucket PUBLIC, mais clé SECRÈTE (uid aléatoire séparé,
-        # jamais renvoyée par l'API) → inatteignable sans achat.
-        client.put_object(
-            Bucket=public_bucket, Key=image_r2_key, Body=data, ContentType=mime
-        )
-
-    def _sync_put_preview() -> None:
-        # APERÇU → bucket PUBLIC (inchangé).
-        client.put_object(
-            Bucket=public_bucket, Key=preview_r2_key, Body=preview_bytes, ContentType="image/jpeg"
-        )
+    # ORIGINAL → bucket PUBLIC, mais clé SECRÈTE (uid aléatoire séparé,
+    # jamais renvoyée par l'API) → inatteignable sans achat.
+    # APERÇU → bucket PUBLIC (inchangé).
+    # Lot E : envois hors boucle asyncio, délais courts ; panne R2 → 503.
+    from app.services.r2 import R2Absent, R2Indisponible, appel_r2
 
     try:
-        await loop.run_in_executor(None, _sync_put_original)
-        await loop.run_in_executor(None, _sync_put_preview)
-    except Exception as exc:  # noqa: BLE001
-        raise ImageUploadError(
-            f"Upload R2 échoué : {type(exc).__name__}: {str(exc)[:200]}"
+        await appel_r2(
+            client.put_object, Bucket=public_bucket, Key=image_r2_key,
+            Body=data, ContentType=mime, operation="put_object", key=image_r2_key,
+        )
+        await appel_r2(
+            client.put_object, Bucket=public_bucket, Key=preview_r2_key,
+            Body=preview_bytes, ContentType="image/jpeg",
+            operation="put_object", key=preview_r2_key,
+        )
+    except (R2Indisponible, R2Absent) as exc:
+        raise R2Unavailable(
+            "Stockage des fichiers momentanément indisponible. Réessaie dans un instant."
         ) from exc
 
     return image_r2_key, preview_r2_key

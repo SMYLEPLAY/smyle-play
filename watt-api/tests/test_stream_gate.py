@@ -40,15 +40,16 @@ async def test_stream_key_sans_extension_refusee(client: AsyncClient):
 
 
 async def test_stream_extension_audio_passe_la_liste_blanche(client: AsyncClient):
-    """Une clé audio légitime dépasse la garde d'extension : sans R2 configuré
-    en test on obtient 503 (config), jamais le 404 de la liste blanche."""
-    from app.services.r2 import is_configured
+    """Une clé audio légitime dépasse la garde d'extension. Lot E : elle est
+    alors redirigée (302) vers l'objet R2 public, jamais le 404 de la liste
+    blanche."""
+    from app.config import settings
     for key in ("tracks/mon-son-0123abcd4567.wav", "tracks/a.MP3", "voices/v.webm",
                 "tracks/Mon Son.m4a"):
         r = await client.get(f"/watt/stream/{key}", follow_redirects=False)
-        if is_configured():
-            # Objet inexistant sur un vrai bucket → 404 « introuvable » (R2),
-            # pas la garde : on ne peut pas distinguer ici, on tolère.
-            assert r.status_code in (200, 404), (key, r.status_code)
+        if settings.effective_r2_public_base_url:
+            assert r.status_code == 302, (key, r.status_code)
+            assert r.headers["location"].startswith(settings.effective_r2_public_base_url + "/")
+            assert r.headers.get("cache-control") == "no-store"
         else:
-            assert r.status_code == 503, (key, r.text)
+            assert r.status_code in (200, 404, 503), (key, r.status_code)

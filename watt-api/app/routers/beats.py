@@ -205,47 +205,20 @@ async def download_beat(
             detail="Fichier audio indisponible pour cet exemplaire.",
         )
 
-    from app.services.r2 import get_r2_client, is_configured
-
-    if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 storage not configured",
-        )
-    client = get_r2_client()
-    if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 client unavailable",
-        )
+    from app.services.r2 import flux_objet, ouvrir_objet
 
     key = track.r2_key
-    try:
-        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ressource introuvable.",
-        )
+    # Lot E : lecture hors boucle asyncio ; R2 en panne → 503, absent → 404.
+    obj = await ouvrir_objet(key)
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = _AUDIO_MIME_BY_EXT.get(ext, "application/octet-stream")
     safe_name = (product.title or "exemplaire").replace('"', "").strip() or "exemplaire"
     filename = f"{safe_name}.{ext}" if ext else safe_name
 
-    def _iter_chunks():
-        try:
-            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
-                yield chunk
-        finally:
-            try:
-                obj["Body"].close()
-            except Exception:
-                pass
-
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)
 
-    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+    return StreamingResponse(flux_objet(obj), media_type=mime, headers=headers)
