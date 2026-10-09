@@ -10,6 +10,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.config import assert_secret_key_strong, settings
+from app.core.logging import configurer_logs
+
+# Lot E — logs posés AVANT l'import des routeurs : les avertissements émis à
+# l'import (limiteur, R2…) sortent déjà horodatés, au bon format.
+configurer_logs()
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +175,10 @@ def create_app() -> FastAPI:
     # importent app.config mais PAS app.main → la CI migrations n'est pas
     # affectée. Prod + smoke-test posent une vraie clé → démarrage normal.
     assert_secret_key_strong(settings.SECRET_KEY)
+
+    # Lot E — logs applicatifs : INFO, horodatés, une ligne JSON par message
+    # (lisible par Railway), emails masqués. Idempotent (déjà posé à l'import).
+    configurer_logs()
 
     # Lot A — /docs, /redoc et /openapi.json servis seulement si
     # API_DOCS_ENABLED=true (développement local) ; 404 sinon.

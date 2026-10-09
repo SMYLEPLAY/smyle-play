@@ -23,10 +23,14 @@ import logging
 import httpx
 
 from app.config import settings
+from app.core.logging import masquer_email
 
 logger = logging.getLogger(__name__)
 
 _RESEND_URL = "https://api.resend.com/emails"
+
+# Avertissement « emails désactivés » émis une seule fois par worker.
+_averti_desactive = False
 
 # Palette WATT (miroir de ui/core/tokens.css — un email ne charge pas de CSS
 # externe, tout est inline).
@@ -82,7 +86,16 @@ async def _send(to: str, subject: str, html: str) -> bool:
     avant, la fonction ne renvoyait rien et l'appelant ne pouvait pas savoir
     qu'un email n'était pas parti. Le mot de passe oublié en dépend.
     """
-    if not emails_enabled() or not to:
+    if not to:
+        return False
+    if not emails_enabled():
+        global _averti_desactive
+        if not _averti_desactive:
+            _averti_desactive = True
+            logger.warning(
+                "[emails] RESEND_API_KEY absente : aucun email n'est envoyé "
+                "(bienvenue, vérification, mot de passe oublié, ventes)."
+            )
         return False
     try:
         async with httpx.AsyncClient(timeout=6.0) as client:
@@ -100,18 +113,23 @@ async def _send(to: str, subject: str, html: str) -> bool:
                 },
             )
             if resp.status_code >= 400:
-                # Cas attendu en mode test (destinataire ≠ compte Resend) :
-                # on logge en INFO, pas en erreur — c'est un état normal
-                # tant que le domaine n'est pas vérifié. L'appelant, lui,
-                # reçoit False et décide s'il faut alerter (cf. reset MDP).
-                logger.info(
-                    "[emails] envoi refusé (%s) vers %s : %s",
-                    resp.status_code, to, resp.text[:200],
+                # Refus de Resend (domaine non vérifié, quota, adresse
+                # invalide…). Lot E : niveau WARNING (visible dans Railway),
+                # adresse masquée. L'appelant reçoit False et décide s'il
+                # faut alerter davantage (cf. reset MDP).
+                logger.warning(
+                    "[emails] envoi refusé par Resend (HTTP %s) vers %s, sujet « %s » : %s",
+                    resp.status_code, masquer_email(to), subject[:80],
+                    resp.text[:200],
                 )
                 return False
+            logger.info("[emails] envoyé vers %s, sujet « %s »", masquer_email(to), subject[:80])
             return True
     except Exception:
-        logger.warning("[emails] échec d'envoi vers %s", to, exc_info=True)
+        logger.warning(
+            "[emails] échec d'envoi vers %s (Resend injoignable ?)",
+            masquer_email(to), exc_info=True,
+        )
         try:
             import sentry_sdk
             sentry_sdk.capture_exception()
@@ -261,7 +279,7 @@ async def send_password_reset_email(to: str, *, link: str) -> bool:
             "[emails] lien de réinitialisation NON ENVOYÉ à %s "
             "(emails_enabled=%s). Secours bêta : "
             "cd watt-api && python tools/reset_link.py <email>",
-            to, emails_enabled(),
+            masquer_email(to), emails_enabled(),
         )
     return delivered
 
