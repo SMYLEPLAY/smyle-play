@@ -1,5 +1,8 @@
 /* Parcours V1 — écran « Mes Œuvres ». Thème sombre de WATT (tokens.css). */
-body.mo-page { margin: 0; background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
+/* La barre partagée déborde encore à 375 px (version mobile en cours,
+   chantier séparé) : on empêche ce débordement de décaler la page. */
+html:has(body.mo-page) { overflow-x: clip; }
+body.mo-page { overflow-x: clip; margin: 0; background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 .mo-main { max-width: 1040px; margin: 0 auto; padding: 88px 16px 80px; box-sizing: border-box; }
 .mo-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }

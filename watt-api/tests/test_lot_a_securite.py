@@ -610,12 +610,13 @@ async def test_e3_inventaire_des_requetes_track():
         if n:
             trouve[f.name] = n
     assert trouve == {
-        "beats.py": 1,         # téléchargement payé : is_deleted + créateur
+        "beats.py": 1,         # téléchargement payé : créateur ; supprimé OK pour l'acheteur (Parcours V1)
         "images.py": 3,        # cartes image / Œuvres : is_deleted
         "oeuvre.py": 2,        # collection : filtrée ; calcul de possession
         "search.py": 2,        # recherche + compteurs : visible_track_clause
         "trades.py": 1,        # échange : is_deleted
-        "watt_compat.py": 12,  # listes filtrées ; plays/suppression par id (Lot E : /watt/adns retirée)
+        "watt_compat.py": 13,  # listes filtrées ; plays/suppression par id (Lot E : /watt/adns retirée) ;
+                               # + Parcours V1 : retrait modération (proxy audio)
     }, trouve
 
 
