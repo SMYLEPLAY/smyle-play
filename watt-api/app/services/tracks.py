@@ -8,6 +8,8 @@ from app.schemas.track import TrackCreate
 from app.services.media_ownership import (
     MediaOwnershipError,
     assert_track_media_owned,
+    audio_present_sur_stockage,
+    exiger_audio_du_compte,
     media_url_owned_or_external,
 )
 
@@ -31,15 +33,23 @@ __all__ = [
     "get_user_tracks",
     "patch_track",
     "soft_delete_track",
+    "public_track_clause",
     "visible_track_clause",
 ]
 
 
 def visible_track_clause():
-    """Lot A (E3) — condition « son visible publiquement » : ni supprimé par
-    son créateur, ni retiré par la modération. À poser sur TOUTE liste ou
-    page publique qui lit `tracks`."""
+    """Lot A (E3) — condition « son pas retiré » : ni supprimé par son
+    créateur, ni retiré par la modération. Sert au lecteur audio (un son
+    masqué reste écoutable par son propriétaire et ses acheteurs)."""
     return and_(Track.is_deleted.is_(False), Track.taken_down_at.is_(None))
+
+
+def public_track_clause():
+    """Parcours V1 — condition « son affiché publiquement » : pas retiré ET
+    pas masqué par son créateur (« Mes Œuvres »). À poser sur TOUTE liste ou
+    page publique qui lit `tracks`."""
+    return and_(visible_track_clause(), Track.hidden_at.is_(None))
 
 
 async def _assert_prompt_owned(
@@ -89,6 +99,15 @@ async def create_track_with_dna(
         audio_url=data.audio_url,
         cover_url=data.cover_url,
     )
+    # Parcours V1 — pas de son sans fichier audio valide envoyé par ce compte
+    # (et présent sur le stockage quand celui-ci est configuré).
+    cle_audio = exiger_audio_du_compte(
+        user.id, r2_key=data.r2_key, audio_url=data.audio_url
+    )
+    if await audio_present_sur_stockage(cle_audio) is False:
+        raise MediaOwnershipError(
+            "Le fichier audio est introuvable : renvoie le fichier, puis publie."
+        )
     if data.prompt_id is not None:
         await _assert_prompt_owned(db, user=user, prompt_id=data.prompt_id)
 
@@ -101,7 +120,7 @@ async def create_track_with_dna(
         # Sprint 1 PR2 — fields ajoutés pour la migration POST Flask→FastAPI
         audio_url=data.audio_url,
         duration_seconds=data.duration_seconds,
-        r2_key=data.r2_key,
+        r2_key=cle_audio,
         cover_url=data.cover_url,
         prompt_id=data.prompt_id,
         # Tags/moods (migration 0038) — étaient silencieusement perdus à la

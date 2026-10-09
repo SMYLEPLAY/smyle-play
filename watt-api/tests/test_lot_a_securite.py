@@ -142,6 +142,12 @@ class _FakeR2:
     def put_object(self, **kw):
         self.puts.append(kw["Key"])
 
+    def head_object(self, **kw):
+        # Parcours V1 : la publication d'un son vérifie que l'audio existe.
+        if kw["Key"] not in self.puts:
+            raise KeyError(kw["Key"])
+        return {}
+
 
 # ═══ C1 — propriété des fichiers (sans base) ════════════════════════════════
 
@@ -206,9 +212,11 @@ async def test_c1_creation_refuse_les_fichiers_d_autrui(client):
         tr = r.json()["track"]
         assert "r2_key" not in tr
         assert tr["stream_url"] == f"/watt/stream/{mine}"
+        # Parcours V1 : un son se publie avec SON fichier audio envoyé sur
+        # WATT — une URL externe seule est refusée.
         r = await client.post("/tracks/", json={
             **base, "audio_url": "https://cdn.exemple.org/son.mp3"}, headers=h)
-        assert r.status_code == 201, r.text
+        assert r.status_code == 422, r.text
 
         r = await client.get("/tracks/me", headers=h)
         assert r.status_code == 200
@@ -270,7 +278,14 @@ async def test_c1_parcours_createur_complet(client, monkeypatch):
         assert r.status_code == 200, r.text
         assert fake.puts[-1].startswith(f"images/image/{a['id']}/")
 
-        # 3. Publication du son avec ces fichiers.
+        # 3. Publication du son avec ces fichiers. Parcours V1 : le serveur
+        #    vérifie que l'audio existe sur le stockage (absent → refus).
+        r = await client.post("/tracks/", headers=h, json={
+            "title": "Mon son", "full_prompt": "deep house",
+            "audio_url": f"/watt/stream/{key}", "r2_key": key, "cover_url": cover,
+        })
+        assert r.status_code == 422, r.text
+        fake.puts.append(key)  # le fichier audio est bien sur le stockage
         r = await client.post("/tracks/", headers=h, json={
             "title": "Mon son", "full_prompt": "deep house",
             "audio_url": f"/watt/stream/{key}", "r2_key": key, "cover_url": cover,
@@ -382,10 +397,14 @@ async def test_e1_liste_blanche_des_statiques(monkeypatch):
         "/tracks.json", "/e2e/package.json", "/e2e/playwright.config.js",
         "/scripts/attach_recipes.py", "/agents/orchestrator.py",
         "/assets/the-plan/cover.png", "/watt-api/app/main.py",
-        "/banner-demo.html", "/tarifs.html", "/offres.html", "/oeuvre.html",
+        "/banner-demo.html",
         "/.github/workflows/ci.yml", "/ui/../tracks.json",
     ):
         assert c.get(path).status_code == 404, path
+    # Parcours V1 — pages masquées : redirection vers l'accueil (plus de 404).
+    for path in ("/tarifs.html", "/offres.html", "/oeuvre.html"):
+        r = c.get(path)
+        assert r.status_code == 302 and r.headers["location"] == "/", path
     for path in ("/index.html", "/style.css", "/dashboard.js", "/artiste.js",
                  "/ui/core/api.js", "/ui/core/tokens.css", "/o.html", "/legal.html"):
         assert c.get(path).status_code == 200, path
@@ -393,8 +412,11 @@ async def test_e1_liste_blanche_des_statiques(monkeypatch):
     monkeypatch.setattr(settings, "SHOW_EUROS", True)
     monkeypatch.setattr(settings, "SHOW_PALIERS", True)
     monkeypatch.setattr(settings, "SHOW_ALBUMS", True)
-    for path in ("/tarifs.html", "/offres.html", "/oeuvre.html"):
-        assert c.get(path).status_code == 200, path
+    # Rouvertes : l'adresse directe mène à la page officielle.
+    assert c.get("/tarifs.html").headers["location"] == "/tarifs"
+    assert c.get("/offres.html").headers["location"] == "/offres"
+    assert c.get("/oeuvre.html").headers["location"] == "/"
+    assert c.get("/tarifs").status_code == 200 and c.get("/offres").status_code == 200
 
 
 async def test_e1_recettes_retirees_du_depot():
@@ -425,7 +447,8 @@ async def test_e2_son_ne_porte_que_ses_recettes(client):
     tid = await _track(a["id"])
     try:
         h = await _login(client, a["email"])
-        base = {"title": "Son", "full_prompt": "x"}
+        base = {"title": "Son", "full_prompt": "x",
+                "r2_key": f"tracks/{a['id']}/son-0123abcd.wav"}
         r = await client.post("/tracks/", json={**base, "prompt_id": str(rec_b)}, headers=h)
         assert r.status_code == 422, r.text
         r = await client.post("/tracks/", json={**base, "prompt_id": str(uuid.uuid4())}, headers=h)
