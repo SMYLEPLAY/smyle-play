@@ -25,9 +25,19 @@ env:
 
 jobs:
   smoke:
-    name: Smoke storefront (Playwright)
+    name: Smoke storefront (Playwright) — ${{ matrix.config }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    # Deux variantes du MÊME job (moins coûteux qu'un job dupliqué) :
+    #   - actuelle : interrupteurs par défaut (ce qui tourne en prod aujourd'hui) ;
+    #   - jour-j   : TOUS les interrupteurs du lancement du 1er novembre allumés
+    #                (cf. étape « Configuration jour J »). Si elle est rouge, le
+    #                lancement casse quelque chose : ne pas basculer en prod.
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [actuelle, jour-j]
 
     services:
       postgres:
@@ -78,6 +88,27 @@ jobs:
         working-directory: watt-api
         run: alembic upgrade head
 
+      - name: Configuration jour J (interrupteurs du 1er novembre)
+        if: matrix.config == 'jour-j'
+        run: |
+          {
+            echo "REQUIRE_EMAIL_VERIFIED=true"
+            echo "FEATURE_PIONEER=true"
+            echo "FEATURE_MARKET_SMYLES=true"
+            echo "MODE_LANCEMENT=true"
+            echo "FEATURE_GOAL=true"
+            echo "FEATURE_QUETES_PARRAINAGE=true"
+            echo "FEATURE_SELL_GATE=true"
+            echo "SELL_GATE_DEPUIS=2026-11-01"
+            echo "E2E_JOUR_J=1"
+          } >> "$GITHUB_ENV"
+
+      - name: Fixture jour J (comptes de test vérifiés, base CI uniquement)
+        if: matrix.config == 'jour-j'
+        # Pas de boîte mail en CI : les comptes « e2e-… » sont marqués vérifiés
+        # à la création (sauf « e2e-nonverifie-… »). Base éphémère seulement.
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f e2e/fixtures/jour-j.sql
+
       - name: Start app (FastAPI — API + front)
         run: |
           # Entrée prod : FastAPI sert l'API, les pages et les statiques.
@@ -118,7 +149,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v5
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.config }}
           path: |
             e2e/playwright-report
             /tmp/uvicorn.log

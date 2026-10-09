@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
-const { bootSessionAuthentifiee } = require('./_helpers');
+const { bootSessionAuthentifiee, qualifierPourVendre } = require('./_helpers');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE — ACHAT RÉEL, DE BOUT EN BOUT, SANS AUCUN MOCK (K-10, annexe B §6).
@@ -71,6 +71,8 @@ async function _seedProduit(request, token) {
     data: { artist_name: _uniq('E2E Vendeur') },
   });
   expect(patch.status(), `patch users/me: ${await patch.text()}`).toBe(200);
+  // Jour J (seuil d'abonnés pour vendre) : sans effet en configuration actuelle.
+  await qualifierPourVendre(request, token);
 
   // Un prompt exige un ADN préexistant (même non publié). Description ≥ 200.
   const adn = await request.post('/artist/me/adn', {
@@ -199,6 +201,7 @@ test('achat réel : solde insuffisant → refus sans débit', async ({ request }
     headers: _auth(vendeur.token),
     data: { artist_name: _uniq('E2E Vendeur cher') },
   });
+  await qualifierPourVendre(request, vendeur.token);
   await request.post('/artist/me/adn', {
     headers: _auth(vendeur.token),
     data: {

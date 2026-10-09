@@ -48,4 +48,47 @@ async function bootSessionAuthentifiee(page, token) {
   }, [TOKEN_KEY, token, STREAK_NUDGE_KEY]);
 }
 
-module.exports = { TOKEN_KEY, STREAK_NUDGE_KEY, bootSessionAuthentifiee };
+/**
+ * Configuration « jour J » (FEATURE_SELL_GATE allumé, cf. e2e.yml) : pour
+ * METTRE EN VENTE, un créateur doit avoir N abonnés réels (emails vérifiés).
+ * Ce helper donne au vendeur de test exactement les abonnés qui lui manquent,
+ * comme dans la vraie vie : profil publié, puis N comptes qui le suivent.
+ * Sans seuil (configuration actuelle), il ne fait RIEN.
+ * Prérequis : le vendeur a déjà un nom d'artiste (PATCH /users/me).
+ *
+ * @param {import('@playwright/test').APIRequestContext} request
+ * @param {string} token JWT du vendeur
+ */
+async function qualifierPourVendre(request, token) {
+  const { expect } = require('@playwright/test');
+  const auth = { Authorization: `Bearer ${token}` };
+  const r = await request.get('/me/droit-de-vendre', { headers: auth });
+  expect(r.status(), `droit-de-vendre: ${await r.text()}`).toBe(200);
+  const etat = await r.json();
+  if (etat.peut_vendre) return etat;
+
+  const pub = await request.post('/watt/me/profile/publish', { headers: auth });
+  expect(pub.status(), `publication du profil: ${await pub.text()}`).toBe(200);
+  const { artistSlug } = await pub.json();
+
+  for (let i = 0; i < (etat.manquants || 0); i += 1) {
+    const email = `e2e-abonne-${Date.now()}-${Math.floor(Math.random() * 1e6)}@smyleplay.example`;
+    const password = 'Test123456';
+    const reg = await request.post('/auth/register', {
+      data: { email, password, accept_terms: true, age_confirmed: true },
+    });
+    expect(reg.status(), `abonné register: ${await reg.text()}`).toBe(201);
+    const login = await request.post('/auth/login', { data: { email, password } });
+    expect(login.status(), `abonné login: ${await login.text()}`).toBe(200);
+    const { access_token } = await login.json();
+    const f = await request.post(`/watt/artists/${artistSlug}/follow`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    expect([200, 201], `follow: ${await f.text()}`).toContain(f.status());
+  }
+  const apres = await (await request.get('/me/droit-de-vendre', { headers: auth })).json();
+  expect(apres.peut_vendre, `seuil de vente atteint : ${JSON.stringify(apres)}`).toBe(true);
+  return apres;
+}
+
+module.exports = { TOKEN_KEY, STREAK_NUDGE_KEY, bootSessionAuthentifiee, qualifierPourVendre };
