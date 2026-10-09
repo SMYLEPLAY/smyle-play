@@ -21,6 +21,13 @@ const TOKEN_KEY = 'smyle_api_token';
 // « Récompense du jour » (ui/modals/auth.js, `_maybeNudgeStreak`).
 const STREAK_NUDGE_KEY = 'smyle_streak_autoopened';
 
+// Parcours V1 — guide d'accueil (ouvert une fois pour un compte neuf) et
+// rappel « vérifie ta boîte mail » : deux surcouches que l'app elle-même
+// referme pour la session avec ces drapeaux. Les smokes qui ne testent pas
+// ces écrans les posent pour que rien ne recouvre l'en-tête.
+const ONBOARDING_SEEN_KEY = 'smyle_onboarding_vu';
+const VERIFY_CLOSED_KEY = 'smyle_verify_ferme';
+
 /**
  * Prépare une session connectée AVANT le boot des scripts de la page :
  *   1. pose le JWT, comme le ferait une vraie connexion ;
@@ -41,11 +48,15 @@ const STREAK_NUDGE_KEY = 'smyle_streak_autoopened';
  * @param {import('@playwright/test').Page} page
  * @param {string} token JWT obtenu par /auth/login
  */
-async function bootSessionAuthentifiee(page, token) {
-  await page.addInitScript(([tokenKey, tok, streakKey]) => {
+async function bootSessionAuthentifiee(page, token, { guide = false } = {}) {
+  await page.addInitScript(([tokenKey, tok, streakKey, obKey, vKey, showGuide]) => {
     try { localStorage.setItem(tokenKey, tok); } catch (e) { /* */ }
     try { sessionStorage.setItem(streakKey, '1'); } catch (e) { /* */ }
-  }, [TOKEN_KEY, token, STREAK_NUDGE_KEY]);
+    if (!showGuide) {
+      try { sessionStorage.setItem(obKey, '1'); } catch (e) { /* */ }
+      try { sessionStorage.setItem(vKey, '1'); } catch (e) { /* */ }
+    }
+  }, [TOKEN_KEY, token, STREAK_NUDGE_KEY, ONBOARDING_SEEN_KEY, VERIFY_CLOSED_KEY, guide]);
 }
 
 /**
@@ -91,4 +102,7 @@ async function qualifierPourVendre(request, token) {
   return apres;
 }
 
-module.exports = { TOKEN_KEY, STREAK_NUDGE_KEY, bootSessionAuthentifiee, qualifierPourVendre };
+module.exports = {
+  TOKEN_KEY, STREAK_NUDGE_KEY, ONBOARDING_SEEN_KEY, VERIFY_CLOSED_KEY,
+  bootSessionAuthentifiee, qualifierPourVendre,
+};
