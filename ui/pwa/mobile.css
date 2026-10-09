@@ -1,0 +1,191 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   WATT — ui/pwa/mobile.css · correctifs d'affichage TÉLÉPHONE (Lot E).
+
+   Injecté par le serveur dans TOUTES les pages HTML, en dernier dans <head>
+   (app/routers/pages.py) : il passe après les feuilles de chaque page.
+   Règle : uniquement des correctifs de ce qui CASSE sur un écran de 375 px
+   (contenu qui déborde, boutons inaccessibles). Pas de refonte du design.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 1. Barre du haut des pages profil / Œuvre (topbar.css).
+      topbar.css masque la navigation centrale sous 720 px… puis la réaffiche
+      quelques lignes plus bas (règle de base déclarée APRÈS la media query,
+      qui l'emporte). Résultat : la page devenait plus large que l'écran et
+      défilait de côté. On rétablit le masquage prévu (les liens restent
+      accessibles par le logo et le menu du compte). */
+@media (max-width: 720px) {
+  .stb-root .stb-nav { display: none; }
+}
+/* … et sous 540 px les actions (boutique, panier, connexion / compte) ont
+   leur propre ligne, comme avant, au lieu de déborder à droite du logo. */
+@media (max-width: 540px) {
+  .stb-root .stb-right {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: 100%;
+  }
+  /* Le menu du compte s'ouvre vers la droite (l'avatar est désormais à
+     gauche de l'écran) au lieu de déborder à gauche. */
+  .stb-root .stb-user-drop {
+    right: auto;
+    left: 0;
+    max-width: calc(100vw - 24px);
+  }
+}
+
+/* 2. En-tête de l'accueil (style.css) : les boutons « Connexion » et
+      « S'inscrire » étaient poussés HORS de l'écran (à droite, inatteignables).
+      Sous 640 px l'en-tête passe sur deux lignes : logo + compte en haut,
+      boutons de navigation en dessous. */
+@media (max-width: 640px) {
+  body > header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  body > header > .header-logo { order: -2; flex: 1 1 auto; min-width: 0; }
+  body > header > #smyle-balance,
+  body > header > #authArea,
+  body > header > #header-logout-btn { order: -1; }
+  body > header > #authArea { margin-right: 0; }
+  /* Menu du compte : ancré à droite au lieu de partir vers la droite de
+     l'avatar (il sortait de l'écran, « Déconnexion » coupé). */
+  body > header #smyle-user-menu {
+    left: auto;
+    right: 0;
+    max-width: calc(100vw - 24px);
+  }
+  body > header > .watt-toggle-btn,
+  body > header > .library-toggle-btn,
+  body > header > .mix-toggle-btn {
+    padding: 6px 7px;
+    font-size: 9px;            /* 8 px sous 390 px : trop petit pour être lu */
+    letter-spacing: .04em;
+  }
+  /* « Connexion » / « S'inscrire » : 9 px → 11 px, et zone tactile ≥ 36 px. */
+  body > header #authArea .auth-btn {
+    font-size: 11px;
+    min-height: 36px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* 3. Barre du haut du WATT BOARD (dashboard.css) : le bouton du compte (menu,
+      déconnexion), les notifications et le solde sortaient de l'écran.
+      Sous 560 px : deux lignes (logo + titre, puis les actions), libellés
+      BIBLIOTHÈQUE / BOUTIQUE réduits à leur icône. La hauteur de la barre
+      (variable --d-topbar-h) suit, donc le contenu n'est pas recouvert. */
+@media (max-width: 560px) {
+  :root { --d-topbar-h: 100px; }
+  .dash-topbar {
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 6px;
+    column-gap: 10px;
+  }
+  .dash-topbar-right {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+  }
+  .dash-topbar-right > a[href="/library"],
+  .dash-topbar-right > button[title="Boutique"] {
+    font-size: 0 !important;      /* garde l'icône, masque le libellé */
+    gap: 0 !important;
+    margin-right: 0 !important;
+    padding: 8px 10px !important;
+  }
+  #dashNavName { display: none; }
+}
+
+/* 4. Application installable (ui/pwa/pwa.js) ─────────────────────────────
+      Bandeau « Installer l'app » (petit, en bas à droite, au-dessus du
+      lecteur audio s'il existe) et fenêtre d'explication iPhone. */
+.watt-pwa-bandeau {
+  position: fixed;
+  right: 12px;
+  bottom: calc(var(--player-h, 0px) + 12px + env(safe-area-inset-bottom, 0px));
+  z-index: 2147482000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(20, 16, 31, .96);
+  border: 1px solid rgba(136, 0, 255, .45);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .55);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.watt-pwa-installer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 14px 4px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #8800ff;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.watt-pwa-installer img { border-radius: 7px; }
+.watt-pwa-fermer {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, .7);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.watt-pwa-aide {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: rgba(0, 0, 0, .6);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.watt-pwa-aide-boite {
+  width: 100%;
+  max-width: 420px;
+  box-sizing: border-box;
+  padding: 22px 20px 18px;
+  border-radius: 18px;
+  background: #14101f;
+  border: 1px solid rgba(255, 255, 255, .12);
+  color: #e8e8f0;
+  text-align: center;
+}
+.watt-pwa-aide-boite img { border-radius: 13px; }
+.watt-pwa-aide-boite h2 { margin: 10px 0 12px; font-size: 18px; }
+.watt-pwa-aide-boite ol { margin: 0 0 12px; padding-left: 22px; text-align: left; font-size: 15px; line-height: 1.6; }
+.watt-pwa-aide-boite p { margin: 0 0 16px; font-size: 14px; color: rgba(255, 255, 255, .72); }
+.watt-pwa-partage { display: inline-flex; vertical-align: -3px; color: #0a84ff; }
+.watt-pwa-ok {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: #8800ff;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 5. Application ouverte depuis l'écran d'accueil (plein écran) : l'en-tête
+      de l'accueil (barre d'état translucide) ne passe plus sous l'heure et
+      la batterie de l'iPhone. */
+@media (display-mode: standalone) {
+  body > header { padding-top: max(12px, env(safe-area-inset-top, 0px)); }
+}
