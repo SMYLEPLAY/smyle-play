@@ -39,11 +39,15 @@ Les bornes CHECK en Smyles suivent (ADN ≥ 300, ADN visuel 300..5000, voix
 500..50000, ADN de collection 1..1 000 000).
 
 PRIX DES RECETTES, IMAGES ET ŒUVRES (table prompts) — nouvelle règle : prix
-libre entre 10 et 150 Smyles. Pour l'existant :
-  - compte officiel (is_official) : ancien 25 ou 30 → 15 ; ancien 80 → 45 ;
-  - tout le reste : ×10, puis ramené dans [10, 150].
-(Il n'existe pas de notion de « mise en vitrine » par produit : la règle
-« vitrine → 30 » n'a rien à cibler.) Chaque prix qui ne vaut pas exactement
+libre entre 10 et 150 Smyles. L'existant (tous comptes) est ramené dans la
+fourchette conseillée de 1 à 3 € (décision de Tom : recettes accessibles) :
+  - ancien prix ≤ 30 → 15 (≈ 1 €) ;
+  - ancien prix 31–60 → 30 (≈ 2 €) ;
+  - ancien prix > 60 → 45 (≈ 3 €).
+Un simple ×10 aurait mis presque tout le catalogue de la bêta (25–80) au
+plafond de 150 (≈ 10 €). Chaque vendeur peut ensuite changer son prix depuis
+« Mes Œuvres ». (Il n'existe pas de notion de « mise en vitrine » par
+produit : la règle « vitrine → 30 » n'a rien à cibler.) Chaque prix qui ne vaut pas exactement
 ancien × 10 est tracé dans admin_journal (action 'redenomination_prix', état
 AVANT) : le downgrade s'en sert pour restaurer le prix exact.
 
@@ -246,9 +250,9 @@ UPGRADE_SQL.append(
 #    suivent pas exactement ×10 (état AVANT), puis la nouvelle valeur.
 _NOUVEAU_PRIX = (
     "CASE "
-    "  WHEN u.is_official AND p.price_credits IN (25, 30) THEN 15 "
-    "  WHEN u.is_official AND p.price_credits = 80 THEN 45 "
-    f"  ELSE LEAST({PRIX_MAX}, GREATEST({PRIX_MIN}, p.price_credits * {FACTEUR})) "
+    "  WHEN p.price_credits <= 30 THEN 15 "
+    "  WHEN p.price_credits <= 60 THEN 30 "
+    "  ELSE 45 "
     "END"
 )
 UPGRADE_SQL.append(
@@ -256,13 +260,10 @@ UPGRADE_SQL.append(
     f"SELECT gen_random_uuid(), NULL, '{ACTION_PRIX}', 'prompt', CAST(p.id AS text), "
     "'Redénomination : prix ramené dans la fourchette 10–150 Smyles.', "
     f"jsonb_build_object('avant', p.price_credits, 'apres', {_NOUVEAU_PRIX}) "
-    "FROM prompts p JOIN users u ON u.id = p.artist_id "
+    "FROM prompts p "
     f"WHERE {_NOUVEAU_PRIX} <> p.price_credits * {FACTEUR}"
 )
-UPGRADE_SQL.append(
-    f"UPDATE prompts p SET price_credits = {_NOUVEAU_PRIX} "
-    "FROM users u WHERE u.id = p.artist_id"
-)
+UPGRADE_SQL.append(f"UPDATE prompts p SET price_credits = {_NOUVEAU_PRIX}")
 
 # 6. Nouvelles bornes.
 for _t, _n, _avant, _apres in _CHECKS:

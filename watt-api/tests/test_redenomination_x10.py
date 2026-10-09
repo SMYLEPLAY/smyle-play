@@ -263,11 +263,11 @@ async def test_migration_0100_sur_base_peuplee():
                     await _exec(db, "UPDATE transactions SET credits_amount = 1 WHERE id = :i",
                                 {"i": ids["tx_bonus"]})
 
-            # Prix : officiels 25/30 → 15, 80 → 45 ; le reste ×10 puis [10, 150].
+            # Prix (tous comptes) : ancien ≤ 30 → 15, 31–60 → 30, > 60 → 45.
             pr = {k: apres["prix"][str(ids[k])] for k in (
                 "p_off25", "p_off30", "p_off80", "p_off12", "p_bas", "p_mid", "p_haut")}
-            assert pr == {"p_off25": 15, "p_off30": 15, "p_off80": 45, "p_off12": 120,
-                          "p_bas": 30, "p_mid": 90, "p_haut": 150}
+            assert pr == {"p_off25": 15, "p_off30": 15, "p_off80": 45, "p_off12": 15,
+                          "p_bas": 15, "p_mid": 15, "p_haut": 30}
             assert apres["adn"] == (450, 400)
             assert apres["voix"] == 1200
             assert apres["paiement"] == ("pack_500", 500, 3500, 100, 50)   # euros inchangés
