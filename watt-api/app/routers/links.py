@@ -208,13 +208,14 @@ async def get_public_oeuvre(
     l'image − 10 %), calculée pour l'acheteur connecté si un jeton accompagne
     la requête (perks, moitié déjà possédée), sinon au prix public. None si
     l'achat groupé n'existe pas (son en écoute libre, beat, propre œuvre)."""
-    data = await public_oeuvre(db, oeuvre_id)
+    viewer = await _optional_viewer_id(request, db)
+    data = await public_oeuvre(db, oeuvre_id, viewer_id=viewer)
     if data is None:
         raise HTTPException(status_code=404, detail="Œuvre introuvable.")
     from app.services.oeuvre_c4_purchase import oeuvre_offer
 
-    viewer = await _optional_viewer_id(request, db)
-    data["bundle"] = await oeuvre_offer(db, oeuvre_id=oeuvre_id, buyer_id=viewer)
+    if not data.get("masquee"):
+        data["bundle"] = await oeuvre_offer(db, oeuvre_id=oeuvre_id, buyer_id=viewer)
     return data
 
 

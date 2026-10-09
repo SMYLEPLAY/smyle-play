@@ -120,6 +120,7 @@ async def count_tracks_by_playlists(
             # Lot A (E3) : même filtre que list_playlist_tracks.
             Track.is_deleted.is_(False),
             Track.taken_down_at.is_(None),
+            Track.hidden_at.is_(None),
         )
         .group_by(PlaylistTrack.playlist_id)
     )
@@ -183,6 +184,7 @@ async def add_track(
             Track.id == track_id,
             Track.is_deleted.is_(False),
             Track.taken_down_at.is_(None),
+            Track.hidden_at.is_(None),
         )
     )
     track = track_res.scalar_one_or_none()
@@ -260,8 +262,10 @@ async def list_playlist_tracks(
             PlaylistTrack.playlist_id == playlist_id,
             # Lot A (E3) : un son supprimé ou retiré disparaît de toutes les
             # playlists (publiques comme privées) sans toucher aux liens.
+            # Parcours V1 : un son masqué par son créateur aussi.
             Track.is_deleted.is_(False),
             Track.taken_down_at.is_(None),
+            Track.hidden_at.is_(None),
         )
         .order_by(PlaylistTrack.position.asc(), PlaylistTrack.added_at.asc())
     )

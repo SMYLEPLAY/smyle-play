@@ -32,6 +32,7 @@ from app.models.prompt import Prompt
 from app.models.prompt_gallery_image import PromptGalleryImage
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.acces_audio import url_acheteur
 from app.models.owned_visual_adn import OwnedVisualAdn
 from app.models.user import User
 from app.models.visual_adn import VisualAdn
@@ -380,9 +381,12 @@ async def list_user_library_prompts(
         .where(
             Track.prompt_id == Prompt.id,
             Track.artist_id == Prompt.artist_id,  # Lot A (E2)
-            Track.is_deleted.is_(False),
+            # Parcours V1 — l'acheteur garde le son même si le créateur l'a
+            # supprimé (pas s'il a été retiré par la modération) ; un son
+            # encore en ligne passe en premier.
+            Track.taken_down_at.is_(None),
         )
-        .order_by(Track.created_at.desc())
+        .order_by(Track.is_deleted.asc(), Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)
         .scalar_subquery()
@@ -392,9 +396,12 @@ async def list_user_library_prompts(
         .where(
             Track.prompt_id == Prompt.id,
             Track.artist_id == Prompt.artist_id,  # Lot A (E2)
-            Track.is_deleted.is_(False),
+            # Parcours V1 — l'acheteur garde le son même si le créateur l'a
+            # supprimé (pas s'il a été retiré par la modération) ; un son
+            # encore en ligne passe en premier.
+            Track.taken_down_at.is_(None),
         )
-        .order_by(Track.created_at.desc())
+        .order_by(Track.is_deleted.asc(), Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)
         .scalar_subquery()
@@ -406,9 +413,12 @@ async def list_user_library_prompts(
         .where(
             Track.prompt_id == Prompt.id,
             Track.artist_id == Prompt.artist_id,  # Lot A (E2)
-            Track.is_deleted.is_(False),
+            # Parcours V1 — l'acheteur garde le son même si le créateur l'a
+            # supprimé (pas s'il a été retiré par la modération) ; un son
+            # encore en ligne passe en premier.
+            Track.taken_down_at.is_(None),
         )
-        .order_by(Track.created_at.desc())
+        .order_by(Track.is_deleted.asc(), Track.created_at.desc())
         .limit(1)
         .correlate(Prompt)
         .scalar_subquery()
@@ -495,7 +505,9 @@ async def list_user_library_prompts(
             "prompt_style_influence": p.prompt_style_influence,
             "prompt_vocal_gender": p.prompt_vocal_gender,
             # P1-B8 — audio + cover du track lié (ou None si pas de track).
-            "audio_url": audio_url,
+            # Parcours V1 : adresse d'écoute signée (son supprimé par son
+            # créateur toujours écoutable par ceux qui l'ont payé).
+            "audio_url": url_acheteur(audio_url),
             "cover_url": cover_url,
             # Couleur du track lié — repère visuel cohérent avec la marketplace.
             "track_color": track_color,

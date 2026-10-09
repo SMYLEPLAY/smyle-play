@@ -207,6 +207,9 @@ class UserRead(BaseModel):
     # affiche l'état « email à confirmer » et le CTA de renvoi. Non bloquant
     # par défaut (cf. settings.REQUIRE_EMAIL_VERIFIED).
     email_verified: bool = False
+    # Parcours V1 (migration 0101) — guide d'accueil vu (NULL = à montrer une
+    # fois, juste après la première connexion d'un nouveau compte).
+    onboarding_done_at: datetime | None = None
     # Chantier "Positionnement fan/artiste" (migration 0018) — casquettes
     # déclarées par l'utilisateur. Liste de codes ROLE_CODES. None = pas
     # encore choisi. Cf. ROLE_CODES au début du module.

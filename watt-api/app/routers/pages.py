@@ -687,6 +687,29 @@ async def artistes_page():
     return _page("index.html")
 
 
+# ── Parcours V1 — anciennes adresses directes des pages masquées ─────────
+# /tarifs.html, /offres.html et /oeuvre.html ne s'ouvrent plus « à la main » :
+# redirection vers l'accueil tant que la page est masquée (ou obsolète), vers
+# son adresse officielle sinon. /oeuvre.html sans identifiant de collection
+# n'affiche rien d'utile : toujours l'accueil.
+
+@router.get("/tarifs.html", include_in_schema=False)
+async def tarifs_html_legacy():
+    cible = "/tarifs" if settings.launch_flags_dict()["euros"] else "/"
+    return RedirectResponse(cible, status_code=302)
+
+
+@router.get("/offres.html", include_in_schema=False)
+async def offres_html_legacy():
+    cible = "/offres" if settings.launch_flags_dict()["paliers"] else "/"
+    return RedirectResponse(cible, status_code=302)
+
+
+@router.get("/oeuvre.html", include_in_schema=False)
+async def oeuvre_html_legacy():
+    return RedirectResponse("/", status_code=302)
+
+
 # ── Statiques (mount "/" en dernier) ───────────────────────────────────────
 
 # Lot A (2026-10-07) — LISTE BLANCHE DE CHEMINS (et plus seulement

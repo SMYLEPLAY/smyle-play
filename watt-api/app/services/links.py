@@ -631,30 +631,37 @@ async def track_images_for_cards(db: AsyncSession, track_ids: list) -> dict:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-async def public_oeuvre(db: AsyncSession, image_id: _uuid.UUID) -> dict | None:
+async def public_oeuvre(
+    db: AsyncSession, image_id: _uuid.UUID, viewer_id: _uuid.UUID | None = None
+) -> dict | None:
     """Œuvre publique (image + son + créateur), ou None.
 
     Filtres : image publiée, non supprimée, non retirée ; créateur au profil
     public et non suspendu ; son = morceau non supprimé (ou, pour une Œuvre
     historique sans morceau, recette publiée). N'expose JAMAIS de champ gaté
     (recette, paroles, original de l'image).
+
+    Parcours V1 — Œuvre MASQUÉE par son créateur (« Mes Œuvres ») : invisible
+    pour tout le monde (None), SAUF pour son propriétaire et ses acheteurs
+    (`viewer_id` possède l'image ou la recette) qui y gardent accès.
     """
     from app.models.track import Track
+    from app.models.unlocked_prompt import UnlockedPrompt
     from app.models.user import User
 
     img = (await db.execute(
         select(Prompt).where(
             Prompt.id == image_id,
             Prompt.product_type == _IMAGE_TYPE,
-            Prompt.is_published.is_(True),
             Prompt.is_deleted.is_(False),
             Prompt.taken_down_at.is_(None),
         )
     )).scalar_one_or_none()
     if img is None:
         return None
+    est_proprietaire = viewer_id is not None and img.artist_id == viewer_id
     artist = (await db.execute(select(User).where(User.id == img.artist_id))).scalar_one_or_none()
-    if artist is None or not artist.profile_public or artist.is_banned:
+    if artist is None or artist.is_banned or (not artist.profile_public and not est_proprietaire):
         return None
 
     # Lot A : son et recette d'une Œuvre = ceux du MÊME créateur que l'image
@@ -667,7 +674,6 @@ async def public_oeuvre(db: AsyncSession, image_id: _uuid.UUID) -> dict | None:
         Track.artist_id == img.artist_id,
     )
     _recipe_ok = (
-        Prompt.is_published.is_(True),
         Prompt.is_deleted.is_(False),
         Prompt.taken_down_at.is_(None),
         Prompt.artist_id == img.artist_id,
@@ -691,6 +697,23 @@ async def public_oeuvre(db: AsyncSession, image_id: _uuid.UUID) -> dict | None:
         recipe = (await db.execute(
             select(Prompt).where(Prompt.id == track.prompt_id, *_recipe_ok)
         )).scalar_one_or_none()
+
+    masquee = (not img.is_published) or (track is not None and track.hidden_at is not None)
+    if masquee:
+        autorise = est_proprietaire
+        if not autorise and viewer_id is not None:
+            ids = [img.id] + ([recipe.id] if recipe is not None else [])
+            autorise = (await db.execute(
+                select(UnlockedPrompt.id).where(
+                    UnlockedPrompt.prompt_id.in_(ids),
+                    UnlockedPrompt.current_owner_id == viewer_id,
+                ).limit(1)
+            )).scalar_one_or_none() is not None
+        if not autorise:
+            return None
+    elif recipe is not None and not recipe.is_published:
+        # Œuvre publique : une recette non publiée n'est jamais montrée.
+        recipe = None
     if track is None and recipe is None:
         return None
 
@@ -728,4 +751,7 @@ async def public_oeuvre(db: AsyncSession, image_id: _uuid.UUID) -> dict | None:
         # Achat de l'Œuvre entière : décision d'argent en attente (prix).
         # Le front réserve l'emplacement ; rien n'est vendable ici.
         "bundle": None,
+        # Parcours V1 : Œuvre masquée par son créateur (visible ici seulement
+        # par lui et ses acheteurs).
+        "masquee": bool(masquee),
     }

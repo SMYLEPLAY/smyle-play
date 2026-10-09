@@ -56,6 +56,23 @@ async def read_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.post("/me/onboarding")
+async def mark_onboarding_done(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Parcours V1 — le guide d'accueil a été vu (fermé ou terminé). La date de
+    la première fois est conservée : rouvrir le guide depuis le menu ne la
+    change pas. Idempotent."""
+    from datetime import datetime, timezone
+
+    if current_user.onboarding_done_at is None:
+        current_user.onboarding_done_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(current_user)
+    return {"onboarding_done_at": current_user.onboarding_done_at.isoformat()}
+
+
 @router.get("/me/listing-slots")
 async def read_my_listing_slots(
     current_user: User = Depends(get_current_user),

@@ -133,6 +133,12 @@ class Track(Base):
     taken_down_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Parcours V1 (migration 0101) — masqué par son créateur depuis « Mes
+    # Œuvres ». Disparaît des listes publiques ; le propriétaire et les
+    # acheteurs y gardent accès. NULL = visible.
+    hidden_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

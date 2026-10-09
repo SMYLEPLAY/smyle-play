@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # watt-api/alembic/ (source de vérité) ; si l'ini est introuvable (paquet
 # installé sans les migrations), on retombe sur la constante ci-dessous — à
 # mettre à jour à chaque nouvelle migration.
-_ALEMBIC_HEAD_FALLBACK = "0100_redenomination_x10"
+_ALEMBIC_HEAD_FALLBACK = "0101_parcours_v1"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 
@@ -100,6 +100,7 @@ from app.routers.resale import router as resale_router
 from app.routers.beats import router as beats_router
 from app.routers.images import router as images_router
 from app.routers.links import router as links_router
+from app.routers.mes_oeuvres import router as mes_oeuvres_router
 from app.routers.the_plan import router as the_plan_router
 from app.routers.telemetry import router as telemetry_router
 from app.routers.albums import (
@@ -340,6 +341,7 @@ def create_app() -> FastAPI:
     app.include_router(beats_router)
     app.include_router(images_router)
     app.include_router(links_router)
+    app.include_router(mes_oeuvres_router)  # Parcours V1 — écran « Mes Œuvres »
     # MODE LANCEMENT — S-08 (2026-09-02) : THE PLAN est monté comme les autres
     # routeurs ; le masquage est porté par la dépendance require_launch_item
     # ("thePlan") posée sur son APIRouter, relue à CHAQUE requête. Avant, le

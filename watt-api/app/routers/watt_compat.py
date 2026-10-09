@@ -72,7 +72,9 @@ _AUDIO_MIME_BY_EXT = {
 
 
 @router.get("/stream/{key:path}")
-async def stream_r2_audio(key: str, db: AsyncSession = Depends(get_db)):
+async def stream_r2_audio(
+    key: str, db: AsyncSession = Depends(get_db), acces: Optional[str] = None,
+):
     """
     Sert un fichier audio R2 par sa clé.
 
@@ -116,11 +118,18 @@ async def stream_r2_audio(key: str, db: AsyncSession = Depends(get_db)):
     # modération ne s'écoute plus, même par sa clé. Refus si la clé n'est
     # portée QUE par des sons retirés (une clé qu'aucun son ne référence —
     # univers officiels, voix, vidéos de playlist — reste servie).
+    # Parcours V1 — exception pour les ACHETEURS : un son supprimé par son
+    # créateur reste écoutable avec l'adresse signée de leur bibliothèque
+    # (app.services.acces_audio). Un son retiré par la modération, jamais.
     if await _key_only_on_removed_tracks(db, key):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ressource introuvable.",
-        )
+        from app.services.acces_audio import verifier
+
+        if not (verifier(key.lstrip("/"), acces)
+                and not await _key_on_moderated_track(db, key)):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ressource introuvable.",
+            )
 
     # Lot E (2026-10-09) — REDIRECTION 302 vers l'objet R2 public, au lieu de
     # streamer le fichier à travers le serveur. Raisons :
@@ -188,11 +197,23 @@ async def _key_only_on_removed_tracks(db: AsyncSession, key: str) -> bool:
     return int(total or 0) > 0 and int(visibles or 0) == 0
 
 
-def _visible():
-    """Lot A (E3) — raccourci : son ni supprimé ni retiré (listes publiques)."""
-    from app.services.tracks import visible_track_clause
+async def _key_on_moderated_track(db: AsyncSession, key: str) -> bool:
+    """True si un son portant cette clé a été retiré par la modération."""
+    from sqlalchemy import or_ as _or
 
-    return visible_track_clause()
+    k = key.lstrip("/")
+    porte = _or(Track.r2_key == k, Track.audio_url == f"/watt/stream/{k}")
+    return (await db.execute(
+        select(Track.id).where(porte, Track.taken_down_at.is_not(None)).limit(1)
+    )).scalar_one_or_none() is not None
+
+
+def _visible():
+    """Lot A (E3) — raccourci : son ni supprimé ni retiré (listes publiques).
+    Parcours V1 : ni masqué par son créateur (« Mes Œuvres »)."""
+    from app.services.tracks import public_track_clause
+
+    return public_track_clause()
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -1922,7 +1943,60 @@ async def upload_playlist_cover(
     # ── Upload R2 (hors boucle asyncio, délais courts — Lot E) ───────────────
     await _envoyer_ou_503(r2_key, data, mime)
 
-    return {"ok": True, "cover_url": f"/watt/stream/{r2_key}", "r2_key": r2_key}
+    return {"ok": True, "cover_url": f"/watt/playlist-video/{r2_key}", "r2_key": r2_key}
+
+
+# Parcours V1 — vidéos de couverture de playlist. Elles étaient renvoyées sur
+# le lecteur AUDIO (/watt/stream), qui refuse tout ce qui n'est pas un son :
+# elles ne s'affichaient jamais. Route dédiée, bornée aux seules vidéos de
+# playlist (dossier PLAYLISTS/<id du compte>/<nom généré>.<mp4|mov|webm>).
+_PLAYLIST_VIDEO_RE = _re_slug.compile(
+    r"^PLAYLISTS/[0-9a-fA-F-]{32,36}/[0-9a-f]{32}\.(mp4|mov|webm)$"
+)
+
+
+@router.get("/playlist-video/{key:path}")
+async def serve_playlist_video(key: str):
+    m = _PLAYLIST_VIDEO_RE.match(key or "")
+    if m is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    public_base = settings.effective_r2_public_base_url
+    if public_base:
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            url=f"{public_base}/{quote(key, safe='/')}",
+            status_code=status.HTTP_302_FOUND,
+        )
+    from app.services.r2 import get_r2_client, is_configured
+
+    client = get_r2_client() if is_configured() else None
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
+        )
+    try:
+        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    ext = m.group(1)
+
+    def _iter_chunks():
+        try:
+            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
+                yield chunk
+        finally:
+            try:
+                obj["Body"].close()
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        _iter_chunks(),
+        media_type=mime_pour(ext, video=True),
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────

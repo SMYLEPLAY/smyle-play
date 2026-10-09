@@ -198,6 +198,12 @@ class User(Base):
         server_default="false",
     )
 
+    # Parcours V1 (migration 0101) — guide d'accueil vu. NULL = jamais vu :
+    # il s'ouvre une fois après la première connexion d'un nouveau compte.
+    onboarding_done_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Révocation des JWT (migration 0084) : recopié dans le claim `tv` du jeton.
     # Un reset de mot de passe l'incrémente → invalide tous les jetons antérieurs.
     token_version: Mapped[int] = mapped_column(

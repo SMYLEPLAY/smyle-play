@@ -196,8 +196,10 @@ async def download_beat(
         select(Track).where(
             _or(Track.prompt_id == beat_id, Track.beat_id == beat_id),
             Track.artist_id == product.artist_id,
-            Track.is_deleted.is_(False),
-        ).order_by(Track.created_at.desc()).limit(1)
+            # Parcours V1 — l'acheteur garde son fichier même si le créateur
+            # a supprimé le son (pas s'il a été retiré par la modération).
+            Track.taken_down_at.is_(None),
+        ).order_by(Track.is_deleted.asc(), Track.created_at.desc()).limit(1)
     )).scalar_one_or_none()
     if track is None or not track.r2_key:
         raise HTTPException(
