@@ -39,7 +39,7 @@ class VisualAdn(Base):
     __table_args__ = (
         UniqueConstraint("artist_id", name="uq_visual_adns_artist_id"),
         CheckConstraint(
-            "price_credits >= 30 AND price_credits <= 500",
+            "price_credits >= 300 AND price_credits <= 5000",
             name="ck_visual_adns_price_credits_range",
         ),
         CheckConstraint(
