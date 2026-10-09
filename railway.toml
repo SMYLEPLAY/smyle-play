@@ -20,7 +20,10 @@ preDeployCommand = "cd watt-api && alembic upgrade head"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+# Lot E (2026-10-09) : redémarrage TOUJOURS. Avec "on_failure" + 3 essais,
+# un process qui plantait une 4e fois (ou qui s'arrêtait avec un code 0)
+# restait ARRÊTÉ jusqu'à une intervention manuelle — site coupé la nuit.
+# (restartPolicyMaxRetries ne s'applique qu'à on_failure : retiré.)
+restartPolicyType = "always"
 
 # railway-rebuild-bump-20260513-183920

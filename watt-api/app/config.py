@@ -341,7 +341,9 @@ class Settings(BaseSettings):
     UPLOAD_MAX_REQUEST_MB: int = 300
     # Garde-fou mémoire : une image de plus de N pixels est refusée (son
     # aperçu serait décodé en entier en mémoire — bombe de décompression).
-    UPLOAD_MAX_IMAGE_PIXELS: int = 90_000_000
+    # Lot E : 40 Mpx (≈ 160 Mo décodée en RGBA, contre 360 Mo à 90 Mpx) —
+    # largement au-dessus d'une photo de téléphone (12 à 24 Mpx).
+    UPLOAD_MAX_IMAGE_PIXELS: int = 40_000_000
 
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
