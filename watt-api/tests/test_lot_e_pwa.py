@@ -72,6 +72,10 @@ async def test_service_worker_route(client, monkeypatch):
     assert "__WATT_SW_" not in r.text
     assert "const ACTIF = true;" in r.text
     assert re.search(r"const VERSION = '[0-9a-f]{12}';", r.text)
+    # HEAD répond comme GET (vérifications de disponibilité, CDN).
+    h = await client.head("/sw.js")
+    assert h.status_code == 200
+    assert h.headers["content-type"].startswith("application/javascript")
 
 
 async def test_service_worker_arret_a_distance(client, monkeypatch):

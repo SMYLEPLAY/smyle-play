@@ -466,7 +466,7 @@ def _sw_corps(mtime_ns: int, actif: bool, commit: str) -> str:
     )
 
 
-@router.get("/sw.js", include_in_schema=False)
+@router.api_route("/sw.js", methods=["GET", "HEAD"], include_in_schema=False)
 async def service_worker() -> Response:
     # Jamais mis en cache par le navigateur : une nouvelle version (ou
     # l'interrupteur d'arrêt) doit être vue dès la visite suivante.
