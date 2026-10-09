@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class ResaleListRequest(BaseModel):
     """Mise en vente d'un prompt possédé."""
 
-    price: int = Field(ge=1, le=100000)
+    price: int = Field(ge=1, le=1_000_000)
 
 
 class ResaleMarketItem(BaseModel):

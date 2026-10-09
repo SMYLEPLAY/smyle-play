@@ -144,11 +144,11 @@ async def test_suppression_user_anonymise_la_tx():
 # D6 — masse monétaire : les frais de troc brûlés doivent laisser une trace.
 # ---------------------------------------------------------------------------
 
-_TRADE_FEE_FLOOR = 2
+_TRADE_FEE_FLOOR = 20
 
 
 def _expected_fee(price: int) -> int:
-    """Réplique la règle de frais du routeur (20 %, plancher 2) — la règle
+    """Réplique la règle de frais du routeur (20 %, plancher 20 Smyles) — la règle
     économique n'est PAS testée ici, on vérifie que la trace correspond au
     montant réellement détruit."""
     return max(_TRADE_FEE_FLOOR, round(price * 0.20))
@@ -205,17 +205,17 @@ async def test_frais_de_troc_brules_tracés_au_ledger(
         )
         receiver_id = receiver.id
 
-    offered_price, requested_price = 50, 30  # frais attendus : 10 et 6
+    offered_price, requested_price = 150, 100  # frais attendus : 30 et 20
     offer_id = None
     try:
         # Les deux parties doivent pouvoir payer leur frais.
         async with SessionLocal() as db:
             await grant_credits_atomic(
-                db, sender_id, 100, "test D6",
+                db, sender_id, 1000, "test D6",
                 tx_type=TransactionType.CREDIT_PURCHASE,
             )
             await grant_credits_atomic(
-                db, receiver_id, 100, "test D6",
+                db, receiver_id, 1000, "test D6",
                 tx_type=TransactionType.CREDIT_PURCHASE,
             )
             await db.commit()

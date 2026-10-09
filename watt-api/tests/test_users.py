@@ -1,7 +1,7 @@
 """
 Tests inscription — bonus de bienvenue (marathon ②, 2026-06-11).
 
-Décision Tom (handoff 0bis.6) : chaque nouveau compte reçoit 10 Smyles
+Décision Tom (handoff 0bis.6) : chaque nouveau compte reçoit 30 Smyles (10 avant la redénomination ×10)
 à l'inscription (prérequis pour tester le circuit d'achat C2).
 Nécessite Postgres réel (voir conftest).
 """
@@ -14,7 +14,7 @@ from sqlalchemy import delete
 from app.database import SessionLocal
 from app.models.user import User
 
-WELCOME_BONUS = 10
+WELCOME_BONUS = 30  # redénomination ×10 du 9/10/2026 (décision Tom)
 
 
 async def test_register_grants_welcome_bonus(client: AsyncClient):

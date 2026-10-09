@@ -4,12 +4,12 @@ Service streak de connexion (mécanique 2).
 Boucle d'expérience client : revenir chaque jour = Smyles. Crée l'habitude,
 deuxième source de Smyles (avec le parrainage) qui alimente le sink (packs).
 
-Barème ancré sur l'économie réelle (1 Smyle s'achète ≈ 0,70 € ; un Smyle
-GAGNÉ se retire 0,50 € — pricing v2 ; bonus de bienvenue
-= 10 Smyles) — volontairement conservateur pour ne pas inonder l'économie :
-  - +1 Smyle par jour réclamé.
-  - +3 (au lieu de +1) tous les 7 jours consécutifs (J7, J14, …).
-  => une semaine pleine = 6×1 + 3 = 9 Smyles.
+Barème ancré sur l'économie réelle (redénomination ×10 du 9/10/2026 :
+1 Smyle s'achète ≈ 0,07 € ; un Smyle GAGNÉ se retire 0,05 € ; bonus de
+bienvenue = 30 Smyles) — volontairement conservateur :
+  - +10 Smyles par jour réclamé.
+  - +30 (au lieu de +10) tous les 7 jours consécutifs (J7, J14, …).
+  => une semaine pleine = 6×10 + 30 = 90 Smyles.
 
 Règles :
   - 1 réclamation par jour (date UTC). Re-checkin le même jour = no-op.
@@ -27,8 +27,8 @@ from app.models.user import User
 from app.services.credits import grant_credits_atomic
 
 # Tous les 7 jours consécutifs, la récompense passe de DAILY à MILESTONE.
-DAILY_REWARD = 1
-MILESTONE_REWARD = 3
+DAILY_REWARD = 10
+MILESTONE_REWARD = 30
 MILESTONE_EVERY = 7
 
 

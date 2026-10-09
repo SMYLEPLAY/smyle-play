@@ -27,7 +27,7 @@ AiReference = Literal[
     "chatgpt", "claude", "grok", "gemini", "mistral", "perplexity", "autre"
 ]
 
-ADN_PRICE_MIN = 30
+ADN_PRICE_MIN = 300
 ADN_PRICE_MAX = 2147483647  # INT32 max — pas de plafond ressenti (Tom 2026-05-13)
 ADN_DESCRIPTION_MIN = 200       # Cohérent avec ck_adns_description_min_length
 ADN_DESCRIPTION_MAX = 20000     # Plafond applicatif (DB n'a pas de max) — marge large évolutive
@@ -37,8 +37,8 @@ ADN_EXAMPLE_OUTPUTS_MAX = 5000
 ADN_MAX_SUPPLY_MIN = 1
 ADN_MAX_SUPPLY_MAX = 2147483647  # INT32 max PostgreSQL — pas de plafond ressenti
 
-PROMPT_PRICE_MIN = 3
-PROMPT_PRICE_MAX = 500          # Cohérent avec ADN (économique)
+PROMPT_PRICE_MIN = 10
+PROMPT_PRICE_MAX = 150          # Décision Tom 9/10/2026 : prix libre 10–150 Smyles
 PROMPT_TITLE_MIN = 5
 PROMPT_TITLE_MAX = 200          # Cohérent avec String(200) en DB
 # Bornes prompt_text resserrées : Suno n'accepte pas plus de 1000 chars en
@@ -80,7 +80,7 @@ class AdnCreate(BaseModel):
         description="Signature créative de l'artiste (200..5000 chars).",
     )
     # OFFRES-ADN étape 5 : plancher CACHÉ posable dès la création. WRITE-ONLY.
-    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=1_000_000)
     usage_guide: str | None = Field(
         default=None, max_length=ADN_USAGE_GUIDE_MAX
     )
@@ -90,7 +90,7 @@ class AdnCreate(BaseModel):
     price_credits: int = Field(
         ge=ADN_PRICE_MIN,
         le=ADN_PRICE_MAX,
-        description=f"Prix en crédits ({ADN_PRICE_MIN}..{ADN_PRICE_MAX}).",
+        description=f"Prix en Smyles ({ADN_PRICE_MIN}..{ADN_PRICE_MAX}).",
     )
     # 2026-05-13 — Provenance IA (badge public sur la card).
     ai_reference: AiReference | None = None
@@ -143,7 +143,7 @@ class AdnUpdate(BaseModel):
     )
     # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY —
     # jamais exposé en lecture. 0 = pas de plancher.
-    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=1_000_000)
 
 
 class AdnRead(BaseModel):

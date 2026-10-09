@@ -75,7 +75,7 @@ def test_adn_create_full_valid():
         description=VALID_DESCRIPTION,
         usage_guide="how to use",
         example_outputs="output samples",
-        price_credits=200,
+        price_credits=2000,
     )
     assert a.usage_guide == "how to use"
 
@@ -83,7 +83,7 @@ def test_adn_create_full_valid():
 # Plafond ADN déverrouillé (commit 347d709 / migration 0031) : plus de max
 # fonctionnel, seule la borne min (30) et la borne technique INT32 s'appliquent.
 # 1000 est désormais un prix VALIDE (prix libre) → retiré des cas rejetés.
-@pytest.mark.parametrize("price", [0, 1, 29, ADN_PRICE_MAX + 1])
+@pytest.mark.parametrize("price", [0, 1, 29, 299, ADN_PRICE_MAX + 1])
 def test_adn_create_rejects_out_of_range_price(price):
     with pytest.raises(ValidationError):
         AdnCreate(**_adn_create_payload(price_credits=price))
@@ -122,8 +122,8 @@ def test_adn_update_empty_is_valid():
 
 
 def test_adn_update_partial_only_price():
-    u = AdnUpdate(price_credits=42)
-    assert u.model_dump(exclude_unset=True) == {"price_credits": 42}
+    u = AdnUpdate(price_credits=420)
+    assert u.model_dump(exclude_unset=True) == {"price_credits": 420}
 
 
 def test_adn_update_partial_only_publish():
@@ -153,7 +153,7 @@ def test_prompt_create_minimal_valid():
     assert p.description is None
 
 
-@pytest.mark.parametrize("price", [0, 1, 2, PROMPT_PRICE_MAX + 1, 9999])
+@pytest.mark.parametrize("price", [0, 1, 2, 9, PROMPT_PRICE_MAX + 1, 9999])
 def test_prompt_create_rejects_out_of_range_price(price):
     with pytest.raises(ValidationError):
         PromptCreate(**_prompt_create_payload(price_credits=price))
@@ -269,14 +269,17 @@ def test_constants_are_consistent_with_db():
     (vérif manuelle ici : c'est de la doc-as-test).
     """
     # ADN : plafond déverrouillé (migration 0031 — ck_adns_price_credits_range
-    # supprimé, remplacé par ck_adns_price_credits_min >= 30). Plus de max
-    # fonctionnel ; seule la borne technique INT32 subsiste.
-    assert ADN_PRICE_MIN == 30
+    # supprimé, remplacé par ck_adns_price_credits_min, ≥ 300 depuis la
+    # redénomination ×10 de 0100). Plus de max fonctionnel ; seule la borne
+    # technique INT32 subsiste.
+    assert ADN_PRICE_MIN == 300
     assert ADN_PRICE_MAX == 2147483647
     # ADN : ck_adns_description_min_length >= 200
     assert ADN_DESCRIPTION_MIN == 200
-    # Prompt : ck_prompts_price_credits_min >= 3
-    assert PROMPT_PRICE_MIN == 3
+    # Prompt : ck_prompts_price_credits_range 10..150 (0100, décision Tom
+    # du 9/10/2026 : prix libre entre 10 et 150 Smyles)
+    assert PROMPT_PRICE_MIN == 10
+    assert PROMPT_PRICE_MAX == 150
     # Prompt : ck_prompts_title_min_length >= 5
     assert PROMPT_TITLE_MIN == 5
     # Prompt : ck_prompts_prompt_text_length BETWEEN 100 AND 1000

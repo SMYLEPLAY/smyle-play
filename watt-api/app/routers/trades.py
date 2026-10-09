@@ -214,7 +214,7 @@ async def create_trade_offer(
         if current_user.credits_balance < payload.credit_supplement:
             raise HTTPException(
                 status.HTTP_402_PAYMENT_REQUIRED,
-                detail=f"Crédits insuffisants (dispo: {current_user.credits_balance},"
+                detail=f"Smyles insuffisants (dispo: {current_user.credits_balance},"
                        f" requis: {payload.credit_supplement})"
             )
 
@@ -355,7 +355,7 @@ async def accept_trade(
 
     # 3. Frais d'échange (BRÛLÉS) + transfert du credit_supplement.
     #
-    # Frais = 20% du prix du prompt REÇU par chaque partie, plancher 2 crédits,
+    # Frais = 20% du prix du prompt REÇU par chaque partie, plancher 20 Smyles,
     # débité de chaque côté et retiré de la circulation (burn). Brûler des
     # crédits pré-achetés en € = la plateforme garde la valeur (rien n'est
     # reversé). Un échange coûte donc bien moins cher qu'acheter les deux
@@ -368,7 +368,7 @@ async def accept_trade(
     # sont inchangés — on rend traçable ce qui existait déjà.
     # Royalties artiste d'origine = phase 2.
     TRADE_FEE_RATE = 0.20
-    TRADE_FEE_FLOOR = 2
+    TRADE_FEE_FLOOR = 20  # Smyles (×10 au 9/10/2026)
 
     def _trade_fee(price: int | None) -> int:
         if not price or price <= 0:
@@ -398,12 +398,12 @@ async def accept_trade(
     if sender.credits_balance < sender_fee + supplement:
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Le sender n'a plus assez de crédits (frais + supplément)",
+            detail="L'expéditeur n'a plus assez de Smyles (frais + supplément)",
         )
     if receiver.credits_balance < receiver_fee:
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Tu n'as pas assez de crédits pour le frais d'échange",
+            detail="Tu n'as pas assez de Smyles pour les frais d'échange",
         )
 
     # Débit des frais (burn) + transfert du supplément — A1.3c : on maintient

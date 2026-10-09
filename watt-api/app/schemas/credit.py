@@ -26,7 +26,7 @@ class CreditPacksResponse(BaseModel):
 class GrantCreditsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    credits: int = Field(gt=0, le=10000, description="Nombre de crédits à accorder")
+    credits: int = Field(gt=0, le=100000, description="Nombre de Smyles à accorder")
     reason: str | None = Field(default=None, max_length=500)
 
 

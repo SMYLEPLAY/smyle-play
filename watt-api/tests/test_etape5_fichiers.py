@@ -297,7 +297,7 @@ async def test_image_ia_svg_refusee(client, auth_headers, test_user, faux_r2):
         await db.commit()
     form = {
         "title": "Test image IA", "image_platform": "chatgpt", "image_model_version": "4o",
-        "prompt_text": "un chat", "price_credits": "5",
+        "prompt_text": "un chat", "price_credits": "15",
     }
     for nom, contenu in (("x.png", SVG), ("x.png", PNG_CASSE), ("x.webp", HTML)):
         r = await client.post(
@@ -368,7 +368,7 @@ async def image_possedee(test_user):
         img = await create_image(
             db, artist_id=test_user["id"], title="Galerie test", description=None,
             prompt_text="un chat", image_platform="chatgpt", image_model_version="4o",
-            image_settings=None, negative_prompt=None, price_credits=5, max_supply=None,
+            image_settings=None, negative_prompt=None, price_credits=15, max_supply=None,
             image_r2_key="images/originals/x.png", preview_r2_key="images/previews/x.jpg",
         )
         await db.commit()

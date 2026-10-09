@@ -115,9 +115,9 @@ async def register(
         await ensure_default_wishlist(db, new_user)
     except Exception:
         await db.rollback()
-    # 10 Smyles de bienvenue : RIEN à faire ici. Le bonus est accordé par
+    # 30 Smyles de bienvenue : RIEN à faire ici. Le bonus est accordé par
     # app/services/users.py::create_user, qui appelle grant_credits_atomic
-    # (WELCOME_BONUS_CREDITS = 10, transaction BONUS tracée au ledger) dans la
+    # (WELCOME_BONUS_CREDITS = 30, transaction BONUS tracée au ledger) dans la
     # même transaction que l'insertion du user. La colonne User.credits_balance
     # a pour défaut 0 depuis la migration 0066 : un grant explicite ici ferait
     # un DOUBLE comptage. (Ce commentaire décrivait l'état d'avant 0066 —

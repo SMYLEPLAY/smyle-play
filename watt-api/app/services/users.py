@@ -11,7 +11,7 @@ from app.services.referrals import generate_referral_code
 # Bonus de bienvenue offert à l'inscription. Désormais GRANTé explicitement
 # (transaction BONUS tracée dans le ledger) au lieu du server_default de la
 # colonne credits_balance. Cf. migration 0066 + décision Tom 2026-06-25.
-WELCOME_BONUS_CREDITS = 10
+WELCOME_BONUS_CREDITS = 30
 
 
 def hash_password(password: str) -> str:
@@ -75,7 +75,7 @@ async def create_user(
         # recréditer (cf. grant_credits_atomic, idempotence).
         idempotency_key=f"welcome_bonus:{db_user.id}",
     )
-    await db.refresh(db_user)  # recharge credits_balance = 10 (post-grant)
+    await db.refresh(db_user)  # recharge credits_balance = WELCOME_BONUS_CREDITS (post-grant)
     await db.commit()
     return db_user
 

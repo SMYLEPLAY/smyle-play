@@ -108,7 +108,7 @@ async def _make_adn_playlist(
 
 
 async def _make_profile_adn(
-    artist_id: uuid.UUID, *, price: int = 50, reserve: int | None = 60
+    artist_id: uuid.UUID, *, price: int = 500, reserve: int | None = 60
 ) -> uuid.UUID:
     from app.models.adn import Adn
     async with SessionLocal() as db:
@@ -534,7 +534,7 @@ async def test_accept_grants_fan_achievement(client):
 
     seller, seller_email = await _make_user(balance=0, name="SellerFan")
     buyer, buyer_email = await _make_user(balance=1000, name="BuyerFan")
-    adn = await _make_profile_adn(seller, price=50, reserve=None)
+    adn = await _make_profile_adn(seller, price=500, reserve=None)
     try:
         await _accept_offer(
             client, buyer_email=buyer_email, seller_email=seller_email,

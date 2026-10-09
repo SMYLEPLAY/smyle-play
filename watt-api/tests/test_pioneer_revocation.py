@@ -146,7 +146,7 @@ async def _etat_rangs():
 
 async def _adn(uid):
     async with SessionLocal() as db:
-        o = Adn(artist_id=uid, description="D" * 200, price_credits=50, is_published=True)
+        o = Adn(artist_id=uid, description="D" * 200, price_credits=500, is_published=True)
         db.add(o)
         await db.commit()
         return o.id
@@ -154,7 +154,7 @@ async def _adn(uid):
 
 async def _visual_adn(uid):
     async with SessionLocal() as db:
-        o = VisualAdn(artist_id=uid, description="V" * 200, price_credits=50, is_published=True)
+        o = VisualAdn(artist_id=uid, description="V" * 200, price_credits=500, is_published=True)
         db.add(o)
         await db.commit()
         return o.id
@@ -164,7 +164,7 @@ async def _voix(uid):
     async with SessionLocal() as db:
         o = Voice(artist_id=uid, name="Voix test", style="soul", genres=["soul"],
                   sample_url="https://example.invalid/s.mp3", license="personnel",
-                  price_credits=100, is_published=True)
+                  price_credits=1000, is_published=True)
         db.add(o)
         await db.commit()
         return o.id

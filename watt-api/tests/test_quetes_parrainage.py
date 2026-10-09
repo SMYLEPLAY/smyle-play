@@ -81,8 +81,10 @@ def test_defauts_config():
     from app.config import Settings
     s = Settings()
     assert s.FEATURE_QUETES_PARRAINAGE is False
-    assert [tuple(p) for p in s.QUETES_PARRAINAGE_PALIERS] == [(3, 10), (10, 50), (25, 150)]
+    # Décision Tom du 9/10/2026 (redénomination ×10) : 30 / 100 / 250 Smyles.
+    assert [tuple(p) for p in s.QUETES_PARRAINAGE_PALIERS] == [(3, 30), (10, 100), (25, 250)]
     assert s.QUETES_PARRAINAGE_PALIER_AMBASSADEUR == 25
+    assert s.QUETES_PARRAINAGE_PLAFOND_24H == 30000
 
 
 async def test_flag_off_404(client, auth_headers, monkeypatch):

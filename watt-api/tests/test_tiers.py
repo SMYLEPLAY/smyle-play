@@ -198,7 +198,7 @@ async def _sell_voice(seller, buyer):
             genres=[],
             sample_url="https://example.invalid/s.mp3",
             license="personnel",
-            price_credits=100,
+            price_credits=1000,
             is_published=True,
         )
         db.add(v)
@@ -217,7 +217,7 @@ async def _sell_visual_adn(seller, buyer):
         v = VisualAdn(
             artist_id=seller,
             description="D" * 220,
-            price_credits=100,
+            price_credits=1000,
             is_published=True,
         )
         db.add(v)

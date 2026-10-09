@@ -5,7 +5,7 @@ Deux éditions vendues en Smyles (jamais en €) :
   - "ia"      → THE PLAN — Édition IA  (produit phare WATT)
   - "classic" → THE PLAN — Édition classique (artistes physiques)
 
-Prix : 35 Smyles (barré 70). Conversion sur EUR_PER_CREDIT = 0,70 €/Smyle.
+Prix : 350 Smyles (barré 700). Conversion sur EUR_PER_CREDIT = 0,07 €/Smyle.
 
 Endpoints :
   GET  /products/the-plan/{edition}                   → infos + possession (auth)
@@ -45,8 +45,8 @@ router = APIRouter(
     dependencies=[Depends(require_launch_item("thePlan"))],
 )
 
-PRICE = 35           # Smyles — prix réel
-PRICE_STRIKE = 70    # Smyles — prix barré (−50 %)
+PRICE = 350          # Smyles — prix réel (×10 au 9/10/2026)
+PRICE_STRIKE = 700   # Smyles — prix barré (−50 %)
 _TOKEN_TTL = 7 * 24 * 3600
 
 _ASSETS = Path(__file__).resolve().parents[1] / "assets" / "the-plan"

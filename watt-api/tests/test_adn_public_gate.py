@@ -47,7 +47,7 @@ async def _seed_artist_with_adn() -> tuple[uuid.UUID, uuid.UUID, str]:
             description=_GENOME,
             usage_guide=_GUIDE,
             example_outputs=_EXAMPLES,
-            price_credits=50,
+            price_credits=500,
             is_published=True,
         )
         db.add(adn)

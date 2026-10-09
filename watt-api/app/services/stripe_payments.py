@@ -3,7 +3,7 @@
 Principes (décisions Tom / coordinateur, 23/09) :
   - Stripe Checkout (page de paiement hébergée par Stripe : aucune donnée de
     carte ne transite ni n'est stockée chez nous) ;
-  - packs existants 10 / 50 / 200 Smyles à 8 / 35 / 120 € (CREDIT_PACKS) ;
+  - packs 100 / 500 / 2000 Smyles à 8 / 35 / 120 € (CREDIT_PACKS) ;
   - le CRÉDIT se fait UNIQUEMENT sur le webhook signé (jamais sur la page de
     retour), dans le bucket `achetes`, idempotent : une session Stripe ne
     crédite qu'une fois (clé d'idempotence du ledger), et chaque événement

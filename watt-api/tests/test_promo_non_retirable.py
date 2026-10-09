@@ -139,13 +139,15 @@ async def test_non_retirables_se_depensent_mais_ne_se_retirent_pas():
     jamais le promo restant."""
     artiste, acheteur, autre = await _user(), await _user(promo=50), await _user()
     pid = await _prompt(artiste)
-    pid2 = await _prompt(autre, price=5)
+    pid1b = await _prompt(artiste)
+    pid2 = await _prompt(autre, price=10)   # prix minimum depuis le 9/10/2026
     try:
         await _acheter(acheteur, pid)
-        assert (await _bk(artiste))["pg"] == 8
-        await _acheter(artiste, pid2)            # l'artiste dépense 5 (promo en premier)
+        await _acheter(acheteur, pid1b)
+        assert (await _bk(artiste))["pg"] == 16
+        await _acheter(artiste, pid2)            # l'artiste dépense 10 (promo en premier)
         a = await _bk(artiste)
-        assert a["p"] == 3 and a["pg"] == 3 and a["g"] == 0
+        assert a["p"] == 6 and a["pg"] == 6 and a["g"] == 0
         assert await _invariant_ok()
     finally:
         await _cleanup(artiste, acheteur, autre)

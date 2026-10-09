@@ -84,7 +84,7 @@ async def _seed_listing(artist_id, seller_id, price: int) -> tuple[uuid.UUID, uu
             title=f"Prompt race {uuid.uuid4().hex[:8]}",
             description="Tagline",
             prompt_text="X" * 100,
-            price_credits=8,
+            price_credits=10,
             is_published=True,
         )
         db.add(p)

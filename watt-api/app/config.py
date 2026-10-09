@@ -291,13 +291,13 @@ class Settings(BaseSettings):
     # filleuls ACTIFS → Smyles PROMO (non retirables), une seule fois par
     # palier et par parrain. [filleuls actifs requis, Smyles versés].
     FEATURE_QUETES_PARRAINAGE: bool = False
-    QUETES_PARRAINAGE_PALIERS: list[tuple[int, int]] = [(3, 10), (10, 50), (25, 150)]
+    QUETES_PARRAINAGE_PALIERS: list[tuple[int, int]] = [(3, 30), (10, 100), (25, 250)]
     # Palier qui donne le badge « Ambassadeur ».
     QUETES_PARRAINAGE_PALIER_AMBASSADEUR: int = 25
     # Plafond GLOBAL anti-abus : Smyles de quêtes versés sur 24 h glissantes,
     # toute la plateforme confondue. Au-delà, le versement attend (il sera
     # repris à la visite suivante du parrain, rien n'est perdu).
-    QUETES_PARRAINAGE_PLAFOND_24H: int = 3000
+    QUETES_PARRAINAGE_PLAFOND_24H: int = 30000
 
     # ══ Étape 5 — sécurité ═══════════════════════════════════════════════
 

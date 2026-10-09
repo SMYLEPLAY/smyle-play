@@ -43,6 +43,8 @@ import asyncio
 import uuid
 
 import pytest
+
+from app.services.users import WELCOME_BONUS_CREDITS
 from sqlalchemy import delete, select, text
 
 # Force TOUS les tests de ce fichier à partager le MÊME event loop (session).
@@ -464,7 +466,7 @@ async def test_perk_race_consistency():
     artist = await _make_user(initial_balance=0, artist_name="ArtistX")
     buyer = await _make_user(initial_balance=1000)
     prompt = await _make_published_prompt(artist, price=10)
-    adn = await _make_published_adn(artist, price=50)
+    adn = await _make_published_adn(artist, price=500)
 
     try:
         results = await asyncio.gather(
@@ -620,8 +622,8 @@ async def test_double_accept_trade_idempotent(client, monkeypatch):
       - exactement 1 réponse 200 et 1 réponse 409 (offre non pending)
       - l'offre est ACCEPTED (une seule)
       - les frais ne sont débités QU'UNE FOIS de chaque côté
-        (prix snapshot 10 → frais = max(2, 20%) = 2 ; supplément 0)
-        → sender 1000→998, receiver 1000→998 (et surtout PAS 996)
+        (prix snapshot 10 → frais = max(20, 20%) = 20 ; supplément 0)
+        → sender 1000→980, receiver 1000→980 (et surtout PAS 960)
     """
     # S-08 (2026-09-02) : le routeur /trades est désormais gaté par le drapeau
     # "troc" du MODE LANCEMENT (404 quand masqué, ce qui est le défaut). Ce
@@ -671,8 +673,8 @@ async def test_double_accept_trade_idempotent(client, monkeypatch):
             assert n_accepted == 1, f"Offre non unique/ACCEPTED : {n_accepted}"
 
         # Frais débités UNE seule fois de chaque côté (sinon 996).
-        assert await _balance(sender) == 998, "Sender débité plus d'une fois"
-        assert await _balance(receiver) == 998, "Receiver débité plus d'une fois"
+        assert await _balance(sender) == 980, "Sender débité plus d'une fois"
+        assert await _balance(receiver) == 980, "Receiver débité plus d'une fois"
     finally:
         await _cleanup(sender, receiver)
 
@@ -698,7 +700,9 @@ async def test_welcome_bonus_is_ledgered():
         uid = user.id
 
     try:
-        assert await _balance(uid) == 10, "Solde net du bonus doit rester 10"
+        assert await _balance(uid) == WELCOME_BONUS_CREDITS == 30, (
+            "Solde net du bonus doit rester 30"
+        )
 
         async with SessionLocal() as db:
             rows = (await db.execute(
@@ -709,7 +713,7 @@ async def test_welcome_bonus_is_ledgered():
                 {"u": uid},
             )).all()
         assert len(rows) == 1, f"Attendu 1 transaction BONUS, reçu {len(rows)}"
-        assert rows[0].credits_amount == 10, "Le bonus tracé doit valoir 10"
+        assert rows[0].credits_amount == 30, "Le bonus tracé doit valoir 30"
         assert rows[0].status == "completed", "La transaction BONUS doit être COMPLETED"
     finally:
         await _cleanup(uid)
@@ -726,13 +730,13 @@ async def test_adn_playlist_perk_applies():
 
     Scénario : le buyer possède l'ADN d'une playlist qui contient un track de
     l'artiste A ; il achète ensuite l'ADN profil de A. Le perk -20% doit
-    s'appliquer → ADN à 50 payé 40 (50 * 8 // 10).
+    s'appliquer → ADN à 500 payé 400 (500 * 8 // 10).
 
-    Avant réactivation, la fonction renvoyait None (perk neutralisé) → payé 50.
+    Avant réactivation, la fonction renvoyait None (perk neutralisé) → payé 500.
     """
     artist = await _make_user(initial_balance=0, artist_name="PerkArtist")
     buyer = await _make_user(initial_balance=1000)
-    adn = await _make_published_adn(artist, price=50)
+    adn = await _make_published_adn(artist, price=500)
     track = await _make_track(artist, "PerkTrack")
     playlist_id = await _setup_owned_playlist_adn(buyer, artist, track)
 
@@ -740,8 +744,8 @@ async def test_adn_playlist_perk_applies():
         result = await _do_unlock_adn(buyer, adn)
         assert result[0] == "ok", f"Unlock ADN a échoué : {result}"
         paid = 1000 - await _balance(buyer)
-        assert paid == 40, (
-            f"Perk -20% non appliqué : payé {paid} (attendu 40 = 50*8//10)"
+        assert paid == 400, (
+            f"Perk -20% non appliqué : payé {paid} (attendu 400 = 500*8//10)"
         )
     finally:
         await _cleanup_playlist_and_track(playlist_id, track)

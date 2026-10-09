@@ -155,7 +155,7 @@ async def test_compte_banni_400(
     "payload",
     [
         {"credits": 0, "reason": "x"},           # borne basse
-        {"credits": 10001, "reason": "x"},       # borne haute
+        {"credits": 100001, "reason": "x"},      # borne haute (×10 au 9/10/2026)
         {"credits": 10},                          # raison obligatoire
         {"credits": 10, "reason": ""},            # raison vide
         {"credits": 10, "reason": "x" * 501},     # raison trop longue
@@ -437,7 +437,7 @@ async def test_credit_email_compte_supprime_400(
         {"credits": 10, "reason": "x"},                                   # aucune cible
         {"credits": 10, "reason": "x", "email": "a@b.c", "user_id": str(uuid.uuid4())},  # deux
         {"credits": 0, "reason": "x", "email": "a@b.c"},                  # borne basse
-        {"credits": 10001, "reason": "x", "email": "a@b.c"},              # borne haute
+        {"credits": 100001, "reason": "x", "email": "a@b.c"},             # borne haute
         {"credits": 10, "email": "a@b.c"},                                # raison manquante
         {"credits": 10, "reason": "", "email": "a@b.c"},                  # raison vide
         {"credits": 10, "reason": "x", "email": "a@b.c", "extra": 1},     # extra="forbid"

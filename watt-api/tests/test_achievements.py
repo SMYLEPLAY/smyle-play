@@ -5,8 +5,9 @@ Phase 9.6 — Tests d'intégration du système achievements.
 
   1. test_grant_artist_first_credit_grants_bonus
        Service de base : un user avec credits_earned_total=1 sur l'axis
-       ARTIST déclenche le badge "Premier souffle" (reward=5).
-       Vérifie : badge créé + balance += 5 + transaction BONUS.
+       ARTIST déclenche le badge "Premier souffle" (reward=50 depuis la
+       redénomination ×10).
+       Vérifie : badge créé + balance += 50 + transaction BONUS.
 
   2. test_check_and_grant_idempotent
        Anti double-grant : appeler check_and_grant 2x consécutivement
@@ -148,12 +149,12 @@ async def _bonus_transactions(user_id: uuid.UUID) -> list[Transaction]:
 async def test_grant_artist_first_credit_grants_bonus():
     """
     Un artist avec credits_earned_total=1 doit débloquer "Premier souffle"
-    (axis=ARTIST, threshold=1, reward=5).
+    (axis=ARTIST, threshold=1, reward=50).
 
     Conservation :
       - 1 UserAchievement en DB
-      - balance += 5
-      - 1 transaction BONUS (credits_amount=5, metadata.code=artist_first_credit)
+      - balance += 50
+      - 1 transaction BONUS (credits_amount=50, metadata.code=artist_first_credit)
     """
     artist = await _make_user_clean(initial_balance=0, earned_total=1)
     try:
@@ -171,14 +172,14 @@ async def test_grant_artist_first_credit_grants_bonus():
             f"artist_first_credit absent des badges débloqués : {codes}"
         )
 
-        # Balance = +5 (reward du badge)
+        # Balance = +50 (reward du badge)
         bal = await _balance(artist)
-        assert bal == 5, f"Balance attendue 5 (reward), obtenue {bal}"
+        assert bal == 50, f"Balance attendue 50 (reward), obtenue {bal}"
 
-        # 1 transaction BONUS de 5 crédits
+        # 1 transaction BONUS de 50 Smyles
         bonuses = await _bonus_transactions(artist)
         assert len(bonuses) == 1, f"Attendu 1 BONUS, obtenu {len(bonuses)}"
-        assert bonuses[0].credits_amount == 5
+        assert bonuses[0].credits_amount == 50
         assert bonuses[0].metadata_json is not None
         assert bonuses[0].metadata_json.get("achievement_code") == "artist_first_credit"
     finally:
@@ -214,9 +215,9 @@ async def test_check_and_grant_idempotent():
             f"2ème appel a re-granté {len(grants2)} badges (devrait être 0)"
         )
 
-        # Balance reste à 5 (pas de double-grant)
+        # Balance reste à 50 (pas de double-grant)
         bal = await _balance(artist)
-        assert bal == 5, f"Balance corrompue par double-grant : {bal}"
+        assert bal == 50, f"Balance corrompue par double-grant : {bal}"
 
         # Toujours 1 seule transaction BONUS
         bonuses = await _bonus_transactions(artist)

@@ -214,7 +214,7 @@ async def test_voix_et_adn_playlist_filtres(client, test_user, auth_headers, gat
     async with SessionLocal() as db:
         v = Voice(artist_id=uid, name="Voix", style="calme", genres=[],
                   sample_url="https://example.invalid/s.mp3", license="personnel",
-                  price_credits=100, is_published=False)
+                  price_credits=1000, is_published=False)
         db.add(v)
         await db.commit()
         vid = v.id

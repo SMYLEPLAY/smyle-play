@@ -1,9 +1,9 @@
 """Quêtes de parrainage — Étape 3 (flag FEATURE_QUETES_PARRAINAGE).
 
 Paliers (settings.QUETES_PARRAINAGE_PALIERS, par défaut) :
-     3 filleuls ACTIFS →  10 Smyles
-    10 filleuls ACTIFS →  50 Smyles
-    25 filleuls ACTIFS → 150 Smyles + badge « Ambassadeur »
+     3 filleuls ACTIFS →  30 Smyles
+    10 filleuls ACTIFS → 100 Smyles
+    25 filleuls ACTIFS → 250 Smyles + badge « Ambassadeur »
 
 Règles :
   - Crédit dans le bucket PROMO UNIQUEMENT (type BONUS → promo, via
