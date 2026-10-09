@@ -50,8 +50,9 @@ R2_CONNECT_TIMEOUT = 3
 R2_READ_TIMEOUT = 10
 R2_MAX_ATTEMPTS = 2
 
-# Codes d'erreur S3 qui signifient « l'objet n'existe pas ».
-_CODES_ABSENT = {"NoSuchKey", "404", "NotFound", "NoSuchBucket"}
+# Codes d'erreur S3 qui signifient « l'objet n'existe pas ». Un bucket
+# introuvable (NoSuchBucket) est une panne de configuration : 503, pas 404.
+_CODES_ABSENT = {"NoSuchKey", "404", "NotFound"}
 
 
 class R2Absent(Exception):
@@ -187,9 +188,11 @@ def est_absent(exc: BaseException) -> bool:
     if isinstance(reponse, dict):
         err = reponse.get("Error") or {}
         code = str(err.get("Code") or "")
+        if code == "NoSuchBucket":
+            return False
         statut = (reponse.get("ResponseMetadata") or {}).get("HTTPStatusCode")
         return code in _CODES_ABSENT or statut == 404
-    return type(exc).__name__ in ("NoSuchKey", "NoSuchBucket")
+    return type(exc).__name__ == "NoSuchKey"
 
 
 async def appel_r2(fn, /, *args, operation: str = "appel", key: str = "", **kwargs):

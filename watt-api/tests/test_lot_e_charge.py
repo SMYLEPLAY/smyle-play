@@ -170,6 +170,8 @@ async def test_ouvrir_objet_hors_boucle_et_classement(faux_r2):
 
     for panne in (TimeoutError("lecture trop lente"),
                   _ErreurClient("InternalError", 500),
+                  # Bucket introuvable = panne de configuration, pas un 404.
+                  _ErreurClient("NoSuchBucket", 404),
                   ConnectionError("injoignable")):
         faux_r2(panne)
         with pytest.raises(HTTPException) as e:
