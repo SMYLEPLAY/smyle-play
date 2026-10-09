@@ -21,6 +21,35 @@
 (function(){
   'use strict';
 
+  // Parcours V1 — couverture de playlist : vidéo servie par sa route dédiée
+  // (/watt/playlist-video/…), image si l'adresse est une image, et IMAGE DE
+  // SECOURS si le média ne se charge pas (fichier absent, format refusé).
+  var PL_COVER_SECOURS = '/ui/img/playlist-secours.svg';
+  function _coverMediaHtml(url, cls) {
+    var u = String(url || '').replace(/"/g, '&quot;');
+    if (/\.(mp4|mov|webm)(\?|#|$)/i.test(url) || /^\/watt\/playlist-video\//.test(url) || /^\/watt\/stream\/PLAYLISTS\//.test(url)) {
+      return '<video class="' + cls + '" data-pl-cover autoplay muted loop playsinline preload="metadata" poster="' +
+        PL_COVER_SECOURS + '"><source src="' + u + '" /></video>';
+    }
+    return '<img class="' + cls + '" data-pl-cover src="' + u + '" alt="" loading="lazy" style="object-fit:cover" />';
+  }
+  if (typeof document !== 'undefined' && !window.__plCoverSecours) {
+    window.__plCoverSecours = true;
+    document.addEventListener('error', function (ev) {
+      var el = ev.target;
+      if (!el || !el.closest) return;
+      var media = el.matches && el.matches('[data-pl-cover]') ? el : el.closest('video[data-pl-cover]');
+      if (!media || media.__secours) return;
+      media.__secours = true;
+      var img = document.createElement('img');
+      img.className = media.className;
+      img.src = PL_COVER_SECOURS;
+      img.alt = '';
+      img.style.objectFit = 'cover';
+      media.replaceWith(img);
+    }, true);
+  }
+
   // ── 1. HELPERS API ─────────────────────────────────────────────────────────
 
   // Fallback minimal si apiFetch n'est pas dispo (rare — api.js charge avant)
@@ -223,8 +252,9 @@
         close();
         if (typeof onCreated === 'function') onCreated(created);
       } catch (e) {
+        if (e && e.status === 401 && window.SmyleGate) { close(); window.SmyleGate.requireAccount(); return; }
         errBox.textContent = (e && e.status === 401)
-          ? 'Connecte-toi pour créer une playlist.'
+          ? 'Crée ton compte pour créer une playlist.'
           : 'Création impossible (' + (e && e.message || 'erreur') + ').';
         errBox.style.display = 'block';
       }
@@ -589,7 +619,7 @@
             ? '<span class="pl-badge" style="background:rgba(111,255,176,.12);color:#6fffb0;border:1px solid rgba(111,255,176,.35)">🧬 ADN · sur proposition</span>'
             : '';
           const thumb = p.cover_video_url
-            ? '<video class="pl-row-cover" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" /></video>'
+            ? _coverMediaHtml(p.cover_video_url, 'pl-row-cover')
             : '<div class="pl-row-cover-fallback">🎵</div>';
           const currentColor = p.color || _universeColor(p.title);
           return (
@@ -797,7 +827,7 @@
           ? p.track_count
           : ((p.tracks && p.tracks.length) || 0);
         const mediaBg = p.cover_video_url
-          ? '<video class="ap-pl-world-media" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
+          ? _coverMediaHtml(p.cover_video_url, 'ap-pl-world-media')
           : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
         const qpId = 'ap-qp-' + p.id;
         const adnBadge = p.adn_for_sale
@@ -1558,7 +1588,8 @@
   async function openAddToPlaylistModal(trackId) {
     if (!trackId) return;
     if (!_isAuth()) {
-      _showToast('Connecte-toi pour ajouter à une playlist.');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else _showToast('Crée ton compte pour ajouter à une playlist.');
       return;
     }
     if (document.getElementById('pl-add-modal')) return;
@@ -2210,7 +2241,8 @@
 
   async function toggleLike(trackId) {
     if (!_isAuth()) {
-      _showToast('Connecte-toi pour aimer.');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else _showToast('Crée ton compte pour aimer.');
       return;
     }
     const wid = await _ensureWishlistId();
@@ -2309,7 +2341,8 @@
 
   async function toggleImgLike(imageId, btn) {
     if (!_isAuth()) {
-      _showToast('Connecte-toi pour aimer.');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else _showToast('Crée ton compte pour aimer.');
       return;
     }
     if (!_imgLikedSet) _imgLikedSet = new Set();

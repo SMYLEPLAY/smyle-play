@@ -90,7 +90,8 @@ async function loadAll() {
     apiFetch('/me/library/playlist-adns?per_page=100'),
     apiFetch('/me/library/album-adns?per_page=100'),
     apiFetch('/me/library/visual-adns?per_page=100'),
-    apiFetch('/api/voices/me/unlocked'),
+    // Parcours V1 : voix fermées → pas d'appel (colonne masquée).
+    (window.WATT_LAUNCH && window.WATT_LAUNCH.voix) ? apiFetch('/api/voices/me/unlocked') : Promise.resolve([]),
   ]);
 
   if (promptsRes.status === 'fulfilled') {

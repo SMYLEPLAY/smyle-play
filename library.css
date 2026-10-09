@@ -834,3 +834,9 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
   #lib-images-liked-list { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
   .lib-mode-btn { padding: 9px 18px; font-size: .86rem; }
 }
+
+/* Parcours V1 — colonne « Voix » masquée tant que les voix sont fermées. */
+.lib-sans-voix #lib-col-voice { display: none; }
+.lib-sans-voix .lib-adn-grid { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 900px) { .lib-sans-voix .lib-adn-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px)  { .lib-sans-voix .lib-adn-grid { grid-template-columns: 1fr; } }
