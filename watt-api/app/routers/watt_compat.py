@@ -29,6 +29,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import decode_access_token, get_current_user
 from app.config import settings
+from app.core.fichiers import (
+    lire_fichier_borne,
+    max_octets,
+    mime_pour,
+    verifier_audio,
+    verifier_image,
+    verifier_video,
+)
+from app.core.ratelimit import LIMIT_UPLOAD, limiter
 from app.database import get_db
 from app.models.adn import Adn
 from app.models.playlist import Playlist, PlaylistTrack
@@ -56,7 +65,7 @@ _AUDIO_MIME_BY_EXT = {
     "ogg":  "audio/ogg",
     "flac": "audio/flac",
     "aac":  "audio/aac",
-    # S-05 (2026-09-02) — accepté à l'upload (_AUDIO_EXTS) : doit rester
+    # S-05 (2026-09-02) — accepté à l'upload (app.core.fichiers.detecter_audio) : doit rester
     # streamable maintenant que ce dict sert de liste blanche.
     "webm": "audio/webm",
 }
@@ -1890,24 +1899,15 @@ _IMAGE_MIME: dict[str, str] = {
     "webp": "image/webp",
     "gif":  "image/gif",
 }
-_IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 Mo (aligné avec la validation client)
-
-
-def _looks_like_image(data: bytes) -> bool:
-    """Valide la SIGNATURE réelle du fichier (magic bytes), pas seulement le
-    content-type déclaré (spoofable). Accepte JPEG / PNG / GIF / WEBP."""
-    if len(data) < 12:
-        return False
-    return (
-        data[:3] == b"\xff\xd8\xff"                          # JPEG
-        or data[:8] == b"\x89PNG\r\n\x1a\n"                  # PNG
-        or data[:4] == b"GIF8"                               # GIF
-        or (data[:4] == b"RIFF" and data[8:12] == b"WEBP")   # WEBP
-    )
+# Étape 5 : taille max dans config.py (UPLOAD_MAX_AVATAR_MB, défaut 5 Mo) ;
+# le type réel est contrôlé par app.core.fichiers (signature + Pillow).
+_FORMATS_AVATAR = ("jpg", "png", "webp", "gif")
 
 
 @router.post("/upload-image")
+@limiter.limit(LIMIT_UPLOAD)
 async def upload_image(
+    request: Request,
     file: UploadFile = File(...),
     userId: str = Form(default=""),
     kind: str = Form(default="image"),
@@ -1932,34 +1932,13 @@ async def upload_image(
             detail="R2 storage not configured",
         )
 
-    # ── Validation MIME ───────────────────────────────────────────────────────
-    ct = (file.content_type or "").lower()
-    if not ct.startswith("image/"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le fichier doit être une image (image/*).",
-        )
-
-    # ── Lecture + validation taille ───────────────────────────────────────────
-    data = await file.read()
-    if len(data) > _IMAGE_MAX_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image trop lourde ({len(data) // 1024} KB) — max 5 Mo.",
-        )
-    # Durcissement : valider les octets réels, pas seulement le content-type.
-    if not _looks_like_image(data):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le fichier n'est pas une image valide (JPEG, PNG, WEBP ou GIF).",
-        )
-
-    # ── Extension / MIME ──────────────────────────────────────────────────────
-    filename = file.filename or "image.jpg"
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
-    if ext not in _IMAGE_MIME:
-        ext = "jpg"
-    mime = _IMAGE_MIME[ext]
+    # ── Contrôle du fichier (étape 5) ─────────────────────────────────────────
+    # Taille bornée, type RÉEL par signature (le Content-Type et le nom envoyés
+    # sont ignorés), refus SVG/HTML/scripts, image décodable. L'extension et le
+    # type MIME stockés sont déduits du CONTENU.
+    data = await lire_fichier_borne(file, max_octets(settings.UPLOAD_MAX_AVATAR_MB))
+    ext = await asyncio.to_thread(verifier_image, data, _FORMATS_AVATAR)
+    mime = mime_pour(ext)
 
     # ── Clé R2 unique par kind ────────────────────────────────────────────────
     # Lot A (C1) : dossier au nom du compte → la propriété du fichier se
@@ -1995,7 +1974,9 @@ async def upload_image(
 
 
 @router.post("/upload-playlist-cover")
+@limiter.limit(LIMIT_UPLOAD)
 async def upload_playlist_cover(
+    request: Request,
     file: UploadFile = File(...),
     userId: str = Form(default=""),
     name: str = Form(default="cover"),
@@ -2007,7 +1988,7 @@ async def upload_playlist_cover(
     Port 1:1 de l'ancien endpoint Flask /api/watt/upload-playlist-cover.
     Le générique /watt/upload-image refuse les vidéos (image/* uniquement),
     d'où cette route dédiée. La durée (<= 3s) est validée côté front ;
-    côté serveur on valide la taille (<= 25 Mo) et l'extension.
+    côté serveur on valide la taille (<= 25 Mo) et le type RÉEL (signature).
 
     Retourne : { "ok": true, "cover_url": "/watt/stream/<key>", "r2_key": "<key>" }
     Le front fait ensuite PATCH /playlists/{id} avec la cover_video_url.
@@ -2020,44 +2001,19 @@ async def upload_playlist_cover(
             detail="R2 storage not configured",
         )
 
-    _VIDEO_MIME = {
-        "mp4": "video/mp4",
-        "webm": "video/webm",
-        "mov": "video/quicktime",
-        "m4v": "video/x-m4v",
-    }
-    _VIDEO_MAX_BYTES = 25 * 1024 * 1024  # 25 Mo — identique au legacy
+    # ── Contrôle du fichier (étape 5) ─────────────────────────────────────────
+    # Taille bornée (UPLOAD_MAX_VIDEO_MB, défaut 25 Mo) + type RÉEL par
+    # signature (MP4 / MOV / WebM) ; l'extension du nom envoyé est ignorée.
+    data = await lire_fichier_borne(file, max_octets(settings.UPLOAD_MAX_VIDEO_MB))
+    ext = verifier_video(data)
+    mime = mime_pour(ext, video=True)
 
-    # ── Extension ─────────────────────────────────────────────────────────────
-    filename = file.filename or ""
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in _VIDEO_MIME:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Format non supporté ({ext or 'inconnu'}). Utilise mp4, webm ou mov.",
-        )
-
-    # ── Lecture + validation taille ───────────────────────────────────────────
-    data = await file.read()
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Fichier vide",
-        )
-    if len(data) > _VIDEO_MAX_BYTES:
-        mb = len(data) / 1024 / 1024
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Fichier trop lourd ({mb:.1f} Mo). Limite : 25 Mo.",
-        )
-
-    mime = _VIDEO_MIME[ext]
-
-    # ── Clé R2 : PLAYLISTS/<userId>/<uuid>-<nom>.<ext> ────────────────────────
+    # ── Clé R2 : PLAYLISTS/<id du compte>/<uuid>.<ext> ────────────────────────
+    # Étape 5 : nom 100 % généré côté serveur. Avant, le dossier venait du
+    # champ `userId` du formulaire (fourni par le client) et le nom du champ
+    # `name` ; ils sont désormais ignorés.
     uid = _uuid_module.uuid4().hex
-    safe_uid = re.sub(r"[^a-zA-Z0-9_-]", "_", userId or "guest")[:60] or "guest"
-    safe_name = re.sub(r"[^a-z0-9_-]", "_", (name or "cover").lower())[:40] or "cover"
-    r2_key = f"PLAYLISTS/{safe_uid}/{uid}-{safe_name}.{ext}"
+    r2_key = f"PLAYLISTS/{current_user.id}/{uid}.{ext}"
 
     # ── Upload R2 (boto3 sync → executor) ────────────────────────────────────
     client = get_r2_client()
@@ -2181,18 +2137,8 @@ async def serve_image(key: str):
 # Les URLs retournées pointent vers /watt/stream/{key} (proxy same-origin).
 # ──────────────────────────────────────────────────────────────────────────────
 
-_AUDIO_MAX_BYTES = 50 * 1024 * 1024  # 50 Mo (tracks peuvent être lourdes)
-_VOICE_MAX_BYTES = 20 * 1024 * 1024  # 20 Mo pour les samples voix
-_AUDIO_EXTS = {"mp3", "wav", "m4a", "ogg", "flac", "aac", "webm"}
-_AUDIO_MIME_UPLOAD = {
-    "mp3":  "audio/mpeg",
-    "wav":  "audio/wav",
-    "m4a":  "audio/mp4",
-    "ogg":  "audio/ogg",
-    "flac": "audio/flac",
-    "aac":  "audio/aac",
-    "webm": "audio/webm",
-}
+# Étape 5 : tailles max dans config.py (UPLOAD_MAX_AUDIO_MB = 50 Mo,
+# UPLOAD_MAX_VOICE_MB = 20 Mo) ; type réel contrôlé par app.core.fichiers.
 
 
 def _slugify_name(name: str, max_len: int = 40) -> str:
@@ -2239,26 +2185,12 @@ async def _upload_audio_to_r2(
     if not is_configured():
         return {"url": None, "key": f"{r2_prefix}/mock.wav", "mock": True}
 
-    # Validation MIME
-    ct = (file.content_type or "").lower()
-    if not (ct.startswith("audio/") or ct in ("application/octet-stream", "video/webm")):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le fichier doit être un fichier audio.",
-        )
-
-    data = await file.read()
-    if len(data) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Fichier trop lourd ({len(data) // (1024*1024)} Mo) — max {max_bytes // (1024*1024)} Mo.",
-        )
-
-    filename = file.filename or "audio.wav"
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "wav"
-    if ext not in _AUDIO_EXTS:
-        ext = "wav"
-    mime = _AUDIO_MIME_UPLOAD.get(ext, "audio/wav")
+    # ── Contrôle du fichier (étape 5) ─────────────────────────────────────────
+    # Taille bornée + type RÉEL par signature (le Content-Type et le nom
+    # envoyés sont ignorés) ; l'extension stockée vient du contenu.
+    data = await lire_fichier_borne(file, max_bytes)
+    ext = verifier_audio(data)
+    mime = mime_pour(ext)
 
     slug = _slugify_name(name)
     uid = _uuid_module.uuid4().hex[:12]
@@ -2287,7 +2219,9 @@ async def _upload_audio_to_r2(
 
 
 @router.post("/upload")
+@limiter.limit(LIMIT_UPLOAD)
 async def upload_audio(
+    request: Request,
     file: UploadFile = File(...),
     name: str = Form(default="track"),
     userId: str = Form(default=""),
@@ -2304,13 +2238,15 @@ async def upload_audio(
 
     result = await _upload_audio_to_r2(
         file, name, r2_prefix=track_audio_prefix(current_user.id),
-        max_bytes=_AUDIO_MAX_BYTES,
+        max_bytes=max_octets(settings.UPLOAD_MAX_AUDIO_MB),
     )
     return result
 
 
 @router.post("/upload-voice")
+@limiter.limit(LIMIT_UPLOAD)
 async def upload_voice_sample(
+    request: Request,
     file: UploadFile = File(...),
     name: str = Form(default="voice"),
     userId: str = Form(default=""),
@@ -2322,7 +2258,9 @@ async def upload_voice_sample(
     Retourne { sample_url, preview_url, url, key, mock }.
     preview_url = null (génération 30s non implémentée — à faire avec FFmpeg).
     """
-    result = await _upload_audio_to_r2(file, name, r2_prefix="voices", max_bytes=_VOICE_MAX_BYTES)
+    result = await _upload_audio_to_r2(
+        file, name, r2_prefix="voices", max_bytes=max_octets(settings.UPLOAD_MAX_VOICE_MB)
+    )
     return {
         **result,
         "sample_url":  result["url"],

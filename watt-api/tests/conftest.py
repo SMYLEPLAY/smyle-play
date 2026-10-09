@@ -18,6 +18,7 @@ peut pas être réutilisé entre tests : InterfaceError asyncpg).
 import uuid
 from typing import AsyncIterator
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
@@ -27,6 +28,28 @@ from app.main import app
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.users import create_user
+
+
+@pytest.fixture(autouse=True)
+def _limiteur_neutre():
+    """Étape 5 — limites anti-attaques neutralisées dans les tests.
+
+    Les compteurs sont remis à zéro et le limiteur désactivé avant CHAQUE
+    test, même si ENVIRONMENT n'est pas « test » (sinon les connexions des
+    fixtures s'accumulent et finissent en 429 selon l'ordre des tests). Un
+    test qui vérifie les limites les rallume explicitement (fixture
+    `limiteur_actif` de test_etape5_ratelimit.py) ; l'état est restauré après.
+    """
+    from app.core.ratelimit import limiter
+
+    etat = limiter.enabled
+    limiter.reset()
+    limiter.enabled = False
+    try:
+        yield limiter
+    finally:
+        limiter.reset()
+        limiter.enabled = etat
 
 
 @pytest_asyncio.fixture(loop_scope="session")

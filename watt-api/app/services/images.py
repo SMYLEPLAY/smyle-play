@@ -7,7 +7,8 @@ le fichier original ET son aperçu réduit vivent sur la ligne `prompts`
 réutilisent la machinerie des prompts (UnlockedPrompt, unlock_prompt_atomic).
 
 Pipeline upload :
-  1. Validation MIME (PNG/JPG/WebP) + taille (≤ 20 Mo).
+  1. Validation (côté router, app.core.fichiers) : type RÉEL par signature
+     (PNG/JPG/WebP), refus SVG/HTML/scripts, image décodable, taille ≤ 20 Mo.
   2. Upload de l'ORIGINAL vers R2, préfixe `images/originals/` (jamais public).
   3. Génération d'un APERÇU via Pillow (max 1024px côté long, JPEG q80).
   4. Upload de l'aperçu vers R2, préfixe `images/previews/` (public).
@@ -38,7 +39,8 @@ IMAGE_MIME_BY_EXT: dict[str, str] = {
 # Validation par content-type (le front peut envoyer image/jpg ou image/jpeg).
 ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
 
-IMAGE_MAX_BYTES = 20 * 1024 * 1024  # 20 Mo
+# Étape 5 : la limite vit dans config.py (UPLOAD_MAX_IMAGE_MB, défaut 20 Mo).
+IMAGE_MAX_BYTES = settings.UPLOAD_MAX_IMAGE_MB * 1024 * 1024
 PREVIEW_MAX_SIDE = 1024  # côté long de l'aperçu
 PREVIEW_JPEG_QUALITY = 80
 

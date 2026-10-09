@@ -10,6 +10,7 @@ from app.core.ratelimit import (
     LIMIT_FORGOT_PASSWORD,
     LIMIT_LOGIN,
     LIMIT_REGISTER,
+    LIMIT_RESEND_VERIFICATION,
     LIMIT_RESET_PASSWORD,
     client_ip,
     limiter,
@@ -349,7 +350,7 @@ async def verify_email(
 
 
 @router.post("/resend-verification")
-@limiter.limit(LIMIT_FORGOT_PASSWORD)
+@limiter.limit(LIMIT_RESEND_VERIFICATION)
 async def resend_verification(
     payload: ResendVerificationRequest,
     request: Request,

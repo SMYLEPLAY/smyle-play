@@ -26,6 +26,7 @@ python-multipart>=0.0.9
 structlog>=24.1.0
 sentry-sdk[fastapi]>=1.40.0
 slowapi>=0.1.9                 # rate-limiting auth + achats (Tier 1 sécurité)
+redis>=5.0,<7.0                # compteur rate-limit partagé si REDIS_URL (étape 5)
 
 # ── Config / env ──────────────────────────────────────────────────────────────
 python-dotenv>=1.0.1

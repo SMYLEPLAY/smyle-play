@@ -107,7 +107,9 @@ from app.routers.oeuvre import (
 )
 
 
-_SEC_SKIP_PREFIXES = ("/watt/images", "/watt/stream", "/images")
+# Préfixes de proxy binaire (streaming R2) : ni en-têtes de sécurité ni
+# compression. Source unique : app.core.securite (étape 5).
+from app.core.securite import SEC_SKIP_PREFIXES as _SEC_SKIP_PREFIXES  # noqa: E402
 
 # Prefixes exclus de la COMPRESSION (sur-ensemble des precedents).
 #
@@ -191,6 +193,13 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
+    # ── Plafond des envois (étape 5) ─────────────────────────────────────
+    # Ajouté AVANT CORS et les en-têtes de sécurité = le plus INTERNE : sa
+    # réponse 413 reçoit donc les en-têtes CORS / sécurité comme les autres.
+    from app.core.securite import LimiteTailleEnvoiMiddleware as _LimiteEnvoi
+
+    app.add_middleware(_LimiteEnvoi)
+
     # ── CORS ────────────────────────────────────────────────────────────
     # Permet au front Flask (http://localhost:8080) et aux autres origines
     # listées dans settings.CORS_ALLOWED_ORIGINS d'appeler cette API.
@@ -212,62 +221,13 @@ def create_app() -> FastAPI:
     # Ici on n'ajoute que des en-têtes dans http.response.start, sans jamais
     # toucher au corps. Et on SAUTE explicitement les routes de proxy binaire
     # pour ne rien changer à leur réponse.
-    # F-02 (2026-09-02) : Content-Security-Policy en mode REPORT-ONLY. Le front
-    # a beaucoup d'inline (onclick=, <style>) → 'unsafe-inline' obligatoire, mais
-    # aucune ressource externe : la politique bloque tout script externe injecté,
-    # <object>, <base> et le framing tiers — une bonne part des payloads XSS.
-    # Report-Only = aucun blocage, les violations apparaissent dans la console
-    # (et Sentry). Bascule en enforcement = ticket séparé après une semaine
-    # sans violation sur les 6 pages.
-    from starlette.datastructures import MutableHeaders
+    # F-02 (2026-09-02) : CSP en Report-Only. Étape 5 (2026-10-02) : le
+    # middleware vit dans app.core.securite ; CSP bloquante derrière
+    # CSP_ENFORCE (défaut false), rapports de violation reçus sur
+    # /securite/csp-rapport, Permissions-Policy, cookies durcis.
+    from app.core.securite import SecurityHeadersMiddleware
 
-    # _SEC_SKIP_PREFIXES est defini au niveau module (F-07) : il sert aussi
-    # de base a _GZIP_SKIP_PREFIXES pour la compression selective.
-    _CSP_REPORT_ONLY = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: blob: https:; "
-        "media-src 'self' blob: https:; "
-        "connect-src 'self'; "
-        "font-src 'self' data:; "
-        "object-src 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'; "
-        "frame-ancestors 'self'"
-    )
-
-    class _SecurityHeadersMiddleware:
-        def __init__(self, asgi_app):
-            self.asgi_app = asgi_app
-
-        async def __call__(self, scope, receive, send):
-            if scope["type"] != "http" or any(
-                scope.get("path", "").startswith(p) for p in _SEC_SKIP_PREFIXES
-            ):
-                await self.asgi_app(scope, receive, send)
-                return
-
-            async def _send(message):
-                if message["type"] == "http.response.start":
-                    headers = MutableHeaders(scope=message)
-                    headers.setdefault("X-Content-Type-Options", "nosniff")
-                    headers.setdefault("X-Frame-Options", "SAMEORIGIN")
-                    headers.setdefault(
-                        "Referrer-Policy", "strict-origin-when-cross-origin"
-                    )
-                    headers.setdefault(
-                        "Strict-Transport-Security",
-                        "max-age=63072000; includeSubDomains",
-                    )
-                    headers.setdefault(
-                        "Content-Security-Policy-Report-Only", _CSP_REPORT_ONLY
-                    )
-                await send(message)
-
-            await self.asgi_app(scope, receive, _send)
-
-    app.add_middleware(_SecurityHeadersMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # ── Compression HTTP (F1-2, 2026-08-02) ─────────────────────────────
     # Voir SelectiveGZipMiddleware (niveau module) pour le detail, la
@@ -330,6 +290,9 @@ def create_app() -> FastAPI:
     # JAMAIS monté (aucun import ici) → /admin/* répondait 404 et tout patch
     # visant admin.py était mort. Monté ici, comme les autres routeurs API,
     # avant le routeur pages + mount_static (qui restent en dernier).
+    # Étape 5 : réception des rapports de violation CSP (logs).
+    from app.core.securite import router as securite_router
+    app.include_router(securite_router)
     app.include_router(admin_router)
     # Brique 2 — programme Pionnier : compteur public (404 si FEATURE_PIONEER
     # OFF) + écouteurs ORM qui repèrent les publications pour l'attribution

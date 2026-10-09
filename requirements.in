@@ -26,6 +26,9 @@ python-multipart>=0.0.9,<1.0
 structlog>=24.1.0,<27.0
 sentry-sdk[fastapi]>=1.40.0,<3.0
 slowapi>=0.1.9,<1.0
+# Étape 5 : compteur anti-attaques partagé entre workers (utilisé seulement si
+# REDIS_URL est défini ; client pur Python, sans dépendance native).
+redis>=5.0,<7.0
 
 # ── Config / env ────────────────────────────────────────────────────────────
 python-dotenv>=1.0.1,<2.0
