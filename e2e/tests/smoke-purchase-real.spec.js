@@ -20,21 +20,22 @@ const { bootSessionAuthentifiee, qualifierPourVendre } = require('./_helpers');
 //   1. inscription + connexion ;
 //   2. PATCH /users/me → nom d'artiste (requis pour publier le profil) ;
 //   3. POST /artist/me/adn → un ADN est le pré-requis de tout prompt ;
-//   4. POST /artist/me/prompts → le produit, publié, à 5 Smyles.
-// L'acheteur reçoit 10 Smyles de bienvenue à l'inscription
+//   4. POST /artist/me/prompts → le produit, publié, à 15 Smyles (prix conseillé).
+// L'acheteur reçoit 30 Smyles de bienvenue à l'inscription
 // (WELCOME_BONUS_CREDITS) : c'est la seule source de Smyles disponible, car
 // POST /credits/grant est réservé aux comptes officiels.
 //
-// Répartition attendue après achat à 5 Smyles : l'acheteur passe de 10 à 5,
+// Répartition attendue après achat à 15 Smyles : l'acheteur passe de 30 à 15,
 // exactement le prix affiché. Côté vendeur, on vérifie seulement que le solde
 // AUGMENTE : le montant exact dépend de la commission de palier ET des bonus de
-// trophée déclenchés par la première vente (mesuré : +9 pour une vente à 5).
+// trophée déclenchés par la première vente.
 // Figer ce chiffre reviendrait à verrouiller un barème qui est une décision
 // produit encore ouverte — le test casserait à chaque ajustement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PRICE = 5;
-const WELCOME = 10;
+// Redénomination ×10 du 9/10/2026 : bienvenue 30, prix libre 10–150, ADN ≥ 300.
+const PRICE = 15;
+const WELCOME = 30;
 
 function _uniq(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -83,7 +84,7 @@ async function _seedProduit(request, token) {
         'batterie feutree, tempo lent, ambiance nocturne et enveloppante. ' +
         'Ecrit uniquement pour valider le parcours d achat reel en CI, sans ' +
         'aucune valeur artistique revendiquee ni resultat promis a personne.',
-      price_credits: 30,
+      price_credits: 300,
     },
   });
   expect(adn.status(), `create adn: ${await adn.text()}`).toBe(201);
@@ -196,7 +197,7 @@ test('achat réel : solde insuffisant → refus sans débit', async ({ request }
   const vendeur = await _register(request, 'e2e-seller3');
   const acheteur = await _register(request, 'e2e-buyer3');
 
-  // Produit hors de portée du bonus de bienvenue (10 Smyles).
+  // Produit hors de portée du bonus de bienvenue (30 Smyles).
   await request.patch('/users/me', {
     headers: _auth(vendeur.token),
     data: { artist_name: _uniq('E2E Vendeur cher') },
@@ -210,7 +211,7 @@ test('achat réel : solde insuffisant → refus sans débit', async ({ request }
         'granulaires, cordes traitees, rythmique lente et sourde, espace large. ' +
         'Ecrite uniquement pour valider le refus pour solde insuffisant en CI, ' +
         'sans aucune valeur artistique revendiquee ni promesse de resultat.',
-      price_credits: 30,
+      price_credits: 300,
     },
   });
   const cher = await request.post('/artist/me/prompts', {
@@ -221,7 +222,7 @@ test('achat réel : solde insuffisant → refus sans débit', async ({ request }
         'ambient granulaire, 70 bpm, cordes traitees au granulateur, nappes ' +
         'sombres, percussions sourdes et lointaines, reverb tres longue, ' +
         'progression lente, aucune voix, mix large et profond.',
-      price_credits: 500,
+      price_credits: 150,
       is_published: true,
       prompt_platform: 'suno',
       prompt_weirdness: '80%',

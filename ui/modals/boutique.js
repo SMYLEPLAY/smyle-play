@@ -239,7 +239,7 @@
     body.textContent = 'Chargement…';
     try {
       const info = await _api('/packs/mystery');
-      const price = (info && info.price) || 8;
+      const price = (info && info.price) || 80;
       const pool = (info && info.pool_count) || 0;
       if (pool <= 0) {
         body.innerHTML = `

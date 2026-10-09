@@ -1229,7 +1229,7 @@ function dte2OpenCreatePrompt() {
         </div>
         <div class="dte2-cp-field">
           <label class="dte2-cp-label">Prix (Smyles) <span style="color:#cc44ff">*</span></label>
-          <input id="cp_price" class="dte2-input" type="number" min="3" max="500" value="30"
+          <input id="cp_price" class="dte2-input" type="number" min="10" max="150" value="15"
                  style="width:100%;box-sizing:border-box">
         </div>
       </div>
@@ -1324,7 +1324,7 @@ async function dte2SubmitCreatePrompt() {
   if (text.length < 100)  { showErr(`Le texte du prompt doit faire au moins 100 caractères (${text.length}/100).`); return; }
   if (text.length > 1000) { showErr('Le texte du prompt ne doit pas dépasser 1000 caractères.'); return; }
   if (!platform)           { showErr('Choisis une plateforme.'); return; }
-  if (price < 3 || price > 500 || isNaN(price)) { showErr('Le prix doit être entre 3 et 500 Smyles.'); return; }
+  if (price < 10 || price > 150 || isNaN(price)) { showErr('Le prix doit être entre 10 et 150 Smyles.'); return; }
   if (!vocal)              { showErr('Choisis un genre vocal.'); return; }
 
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Création en cours…'; }
@@ -1426,7 +1426,7 @@ async function openTrackEdit(localId) {
   const promptOptions = [
     `<option value="">— Aucune recette liée —</option>`,
     ...myPrompts.map(p =>
-      `<option value="${p.id}"${t.promptId === p.id ? ' selected' : ''}>${htmlEscape(p.title)} (${p.price_credits} crédits)</option>`
+      `<option value="${p.id}"${t.promptId === p.id ? ' selected' : ''}>${htmlEscape(p.title)} (${p.price_credits} Smyles)</option>`
     ),
   ].join('');
 
@@ -1850,7 +1850,7 @@ function cancelUpload() {
     if (el) el.value = '';
   });
   const priceEl = document.getElementById('dashPromptPrice');
-  if (priceEl) priceEl.value = 80;
+  if (priceEl) priceEl.value = 15;   // prix conseillé d'une recette (≈ 1 €)
   // Retour au mode par défaut "avec recette prompt" (architecture primaire)
   setUploadMode('with_prompt');
   updatePromptCharCount();
@@ -1949,11 +1949,11 @@ function updatePromptCharCount() {
   cnt.setAttribute('data-state', state);
 }
 
-// Met à jour le bloc "live" de la grille crédits↔euros selon le prix saisi.
-// Fourchette calculée sur les 3 packs de credits.py :
-//   pack_10  → 0.80 €/crédit  (plafond — le plus cher pour l'acheteur)
-//   pack_200 → 0.60 €/crédit  (plancher — meilleur deal acheteur)
-// On affiche donc : "prix × 0,60€"  —  "prix × 0,80€"
+// Met à jour le bloc "live" de la grille Smyles↔euros selon le prix saisi.
+// Fourchette calculée sur les 3 packs de credits.py (redénomination ×10) :
+//   pack_100  → 0.08 €/Smyle  (plafond — le plus cher pour l'acheteur)
+//   pack_2000 → 0.06 €/Smyle  (plancher — meilleur deal acheteur)
+// On affiche donc : "prix × 0,06€"  —  "prix × 0,08€"
 // K-08 (2026-09-04, annexe B §5) — l'affichage en EUROS est un item de mode
 // lancement. Defensif : drapeau absent (launch-flags.js non charge) → masque.
 function _dashEurosOn() {
@@ -1961,8 +1961,8 @@ function _dashEurosOn() {
 }
 
 function updateCreditGrid() {
-  // K-08 — la grille « Repere SMYLES » annonce « le fan paie entre 48 € et
-  // 64 € » : un chiffre invérifiable tant qu'aucun euro n'est encaissable.
+  // K-08 — la grille « Repere SMYLES » annonce « le fan paie entre 0,90 € et
+  // 1,20 € » : un chiffre invérifiable tant qu'aucun euro n'est encaissable.
   // Masquee ET non calculee tant que l'item `euros` n'est pas VISIBLE.
   if (!_dashEurosOn()) {
     const grid = document.getElementById('dashCreditGrid');
@@ -1973,8 +1973,8 @@ function updateCreditGrid() {
   if (!priceEl) return;
   const raw = parseInt(priceEl.value, 10);
   const credits = Number.isFinite(raw) && raw > 0 ? raw : 0;
-  const min = credits * 0.60;
-  const max = credits * 0.80;
+  const min = credits * 0.06;
+  const max = credits * 0.08;
 
   const display = document.getElementById('dashCreditLivePrice');
   const minEl   = document.getElementById('dashCreditLiveMin');
@@ -2147,7 +2147,7 @@ async function uploadTrack() {
   // Si l'artiste veut vendre la pochette comme image : il FAUT une pochette
   // sélectionnée + provenance (plateforme + version), sinon on bloque le
   // submit (provenance image obligatoire, règle stricte). Le prix image est
-  // validé ici aussi (3..500). Le prompt image est optionnel (fallback titre).
+  // validé ici aussi (10..150). Le prompt image est optionnel (fallback titre).
   const _sellCover = !!document.getElementById('dashSellCover')?.checked;
   let _coverImg = null;
   if (_sellCover) {
@@ -2159,8 +2159,8 @@ async function uploadTrack() {
     if (!cVersion)  cErrs.push('la version / modèle de l\'image');
     const cPriceRaw = parseInt(document.getElementById('dashCoverImgPrice')?.value, 10);
     const cPrice = Number.isFinite(cPriceRaw) ? cPriceRaw : NaN;
-    if (!Number.isInteger(cPrice) || cPrice < 3 || cPrice > 500) {
-      cErrs.push('un prix image entre 3 et 500');
+    if (!Number.isInteger(cPrice) || cPrice < 10 || cPrice > 150) {
+      cErrs.push('un prix image entre 10 et 150 Smyles');
     }
     let cSupply = null;
     const cSupplyRaw = (document.getElementById('dashCoverImgSupply')?.value || '').trim();
@@ -2370,7 +2370,7 @@ async function uploadTrack() {
 
   // ── 4. Si mode = with_prompt, publier aussi la recette sur la marketplace ──
   // Bornes DOIVENT matcher Pydantic (app/schemas/marketplace.py) :
-  //   prompt_text 100..1000 (plafond Suno), price_credits 3..500.
+  //   prompt_text 100..1000 (plafond Suno), price_credits 10..150.
   // Si la track est déjà publiée mais le prompt rejeté par validation, on
   // tolère : la track reste en ligne, l'artiste peut éditer/republier le
   // prompt plus tard depuis la gestion catalogue (phase ultérieure).
@@ -2380,7 +2380,7 @@ async function uploadTrack() {
     const promptText = (document.getElementById('dashPromptText')?.value || '').trim();
     const lyrics     = (document.getElementById('dashPromptLyrics')?.value || '').trim();
     const priceRaw   = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
-    const price      = Number.isFinite(priceRaw) ? priceRaw : 80;
+    const price      = Number.isFinite(priceRaw) ? priceRaw : 15;
 
     // P1-F4 (2026-05-04) — réglages de génération.
     // 4 obligatoires (platform, weirdness, style_influence, vocal_gender)
@@ -2407,7 +2407,7 @@ async function uploadTrack() {
     const promptErrs = [];
     if (promptText.length < 100)               promptErrs.push('prompt trop court (min 100 caractères)');
     if (promptText.length > 1000)              promptErrs.push('prompt trop long (max 1000)');
-    if (price < 3 || price > 500)              promptErrs.push('prix entre 3 et 500 crédits');
+    if (price < 10 || price > 150)             promptErrs.push('prix entre 10 et 150 Smyles');
     if (!platformVal)                          promptErrs.push('plateforme d\'origine');
     if (!weirdnessVal)                         promptErrs.push('weirdness');
     if (!styleInfluenceVal)                    promptErrs.push('style influence');
@@ -3529,7 +3529,7 @@ async function dashVoiceSave() {
   // En mode édition, le sample est optionnel (on garde celui en DB si pas
   // de nouveau fichier). En création, il est obligatoire.
   if (!isEdit && !_voicesState.pendingFile) errs.push('Sample audio');
-  if (!price || price < 50 || price > 5000) errs.push('Prix (50-5000)');
+  if (!price || price < 500 || price > 50000) errs.push('Prix (500-50 000 Smyles)');
   if (errs.length) {
     alert('Champs manquants ou invalides :\n• ' + errs.join('\n• '));
     return;
@@ -4625,7 +4625,7 @@ function _portefeuilleHtml(p, tile) {
     tile('🎁', 'Smyles bonus', Number(p.bonus) || 0) +
     '</div>' +
     '<p style="margin:0 0 16px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.5">' +
-    '1 Smyle gagné en vendant = 0,50 € quand les retraits s\'ouvriront ' +
+    '100 Smyles gagnés en vendant = 5 € quand les retraits s\'ouvriront ' +
     '(à 1000 actifs, et au plus tard le 1er mai 2027). ' +
     'Les Smyles bonus se dépensent sur WATT mais ne se retirent pas.</p>';
 }
@@ -5034,7 +5034,7 @@ function openAdnEditor() {
   document.getElementById('dashAdnDescription').value     = adn ? (adn.description || '') : '';
   document.getElementById('dashAdnUsageGuide').value      = adn ? (adn.usage_guide || '') : '';
   document.getElementById('dashAdnExampleOutputs').value  = adn ? (adn.example_outputs || '') : '';
-  document.getElementById('dashAdnPrice').value           = adn ? String(adn.price_credits) : '80';
+  document.getElementById('dashAdnPrice').value           = adn ? String(adn.price_credits) : '300';
   // 2026-05-13 v2 — préselection IA + éditions (1 seul input libre)
   const aiSel = document.getElementById('dashAdnAiReference');
   if (aiSel) aiSel.value = (adn && adn.ai_reference) ? adn.ai_reference : '';
@@ -5125,7 +5125,7 @@ async function saveAdn() {
   // OFFRES-ADN : l'ADN se vend sur offre — plus de prix fixe obligatoire.
   // Si aucun prix valide n'est saisi, on envoie un prix vestigial (min légal) ;
   // la vente réelle passe par le reserve + les offres ("Sur proposition").
-  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30) ? priceCredits : 30;
+  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 300) ? priceCredits : 300;
 
   // IA utilisée : OBLIGATOIRE — l'acheteur doit savoir avec quelle IA exploiter l'ADN.
   const aiRef = (document.getElementById('dashAdnAiReference')||{}).value || '';
@@ -5381,7 +5381,7 @@ function openVisualAdnEditor() {
   document.getElementById('dashVisualAdnDescription').value    = adn ? (adn.description || '') : '';
   document.getElementById('dashVisualAdnUsageGuide').value     = adn ? (adn.usage_guide || '') : '';
   document.getElementById('dashVisualAdnExampleOutputs').value = adn ? (adn.example_outputs || '') : '';
-  document.getElementById('dashVisualAdnPrice').value          = adn ? String(adn.price_credits) : '80';
+  document.getElementById('dashVisualAdnPrice').value          = adn ? String(adn.price_credits) : '300';
   const styleSel = document.getElementById('dashVisualAdnStyle');
   if (styleSel) styleSel.value = (adn && adn.style) ? adn.style : '';
   const paletteInp = document.getElementById('dashVisualAdnPalette');
@@ -5453,7 +5453,7 @@ async function saveVisualAdn() {
   }
   // OFFRES-ADN : ADN visuel vendu sur offre — prix fixe non obligatoire.
   // Prix vestigial (min légal) si non saisi ; vente réelle via reserve + offres.
-  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30 && priceCredits <= 500) ? priceCredits : 30;
+  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 300 && priceCredits <= 5000) ? priceCredits : 300;
 
   const aiRef  = (document.getElementById('dashVisualAdnAiReference')||{}).value || '';
   if (!aiRef) {
@@ -5751,7 +5751,7 @@ function renderTrades(root, trades) {
     ) : '';
 
     const supplement = t.credit_supplement > 0
-      ? `<span class="trade-supp">+ ${t.credit_supplement} crédits</span>` : '';
+      ? `<span class="trade-supp">+ ${t.credit_supplement} Smyles</span>` : '';
 
     return `
       <div class="trade-card">
@@ -5763,14 +5763,14 @@ function renderTrades(root, trades) {
           <div class="trade-prompt-box">
             <span class="trade-prompt-lbl">${isSender ? 'Tu proposes' : 'Il/elle propose'}</span>
             <span class="trade-prompt-name">${htmlEscape(offered.title || '—')}</span>
-            <span class="trade-prompt-price">${offered.price_credits || 0} crédits</span>
+            <span class="trade-prompt-price">${offered.price_credits || 0} Smyles</span>
             ${offered.audio_url ? `<audio controls preload="none" src="${htmlEscape(offered.audio_url)}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           <span class="trade-arrow">⇄</span>
           <div class="trade-prompt-box">
             <span class="trade-prompt-lbl">${isSender ? 'Tu demandes' : 'Tu recevrais'}</span>
             <span class="trade-prompt-name">${htmlEscape(requested.title || '—')}</span>
-            <span class="trade-prompt-price">${requested.price_credits || 0} crédits</span>
+            <span class="trade-prompt-price">${requested.price_credits || 0} Smyles</span>
             ${requested.audio_url ? `<audio controls preload="none" src="${htmlEscape(requested.audio_url)}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           ${supplement}

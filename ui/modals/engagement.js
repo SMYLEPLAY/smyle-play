@@ -104,7 +104,7 @@
           <h3 style="margin:0;font-size:18px;">Parraine tes amis</h3>
           <button id="egRefClose" aria-label="Fermer" style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;line-height:1;">×</button>
         </div>
-        <p style="margin:0 0 14px;font-size:13px;color:#b9b2cc;">Partage ton code. Quand ton filleul poste son 1er son ou fait son 1er achat, vous gagnez <strong>10 Smyles chacun</strong>.</p>
+        <p style="margin:0 0 14px;font-size:13px;color:#b9b2cc;">Partage ton code. Quand ton filleul poste son 1er son ou fait son 1er achat, vous gagnez <strong>20 Smyles chacun</strong>.</p>
         <div id="egRefBody" style="font-size:14px;">Chargement…</div>
       </div>`;
     m.querySelector('#egRefClose').addEventListener('click', () => { m.style.display = 'none'; });

@@ -876,7 +876,7 @@
               </span>
               <div class="dash-prompt-hdr-titles">
                 <div class="dash-prompt-hdr-title">Recette IA — la partie vendable</div>
-                <div class="dash-prompt-hdr-sub">Ce que les fans débloquent contre des crédits</div>
+                <div class="dash-prompt-hdr-sub">Ce que les fans débloquent contre des Smyles</div>
               </div>
             </div>
 
@@ -899,12 +899,19 @@
                  portés par le bloc beat (un seul achat, un seul prix) —
                  ces champs recette sont masqués via [data-mode="pack"]. -->
             <div id="dashPromptPriceWrap">
-            <label class="dash-label">Prix de débloquage (crédits) <span class="dash-req">*</span></label>
+            <label class="dash-label">Prix de déblocage (Smyles) <span class="dash-req">*</span></label>
             <input class="dash-input" id="dashPromptPrice" type="number"
-                   min="3" max="500" value="80"
+                   min="10" max="150" value="15"
                    oninput="updateCreditGrid()" />
           <div class="dash-help" id="dashPromptPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
-            <div class="dash-help">Min. 3 · Max. 500 crédits. Si l'acheteur possède ton ADN il a -30&nbsp;% automatique.</div>
+            <div class="dash-help" id="dashPromptPriceAdvice">
+              Prix libre, entre 10 et 150 Smyles. Prix conseillés :
+              <strong>15&nbsp;Smyles</strong> (≈&nbsp;1&nbsp;€) pour une recette ·
+              <strong>30</strong> (≈&nbsp;2&nbsp;€) pour une Œuvre son&nbsp;+&nbsp;image ·
+              <strong>45 et plus</strong> (≈&nbsp;3&nbsp;€) pour une édition rare ou limitée.
+              Les prix montent avec la rareté et le travail de création.
+              Si l'acheteur possède ton ADN, il a −30&nbsp;% automatiquement.
+            </div>
             </div>
 
             <!-- Édition limitée (rareté par nb d'exemplaires) — comme les ADN. -->
@@ -974,13 +981,13 @@
             </div>
           </div>
 
-          <!-- Col 3 : aside (pochette + grille tarif crédits↔SMYLES)
+          <!-- Col 3 : aside (pochette + grille tarif Smyles↔euros)
                En mode simple, la grille disparaît, la pochette reste seule. -->
           <div class="dash-upload-col-aside">
 
-            <!-- Grille de prix crédits↔euros (SMYLES) — guide pour l'artiste
+            <!-- Grille de prix Smyles↔euros — guide pour l'artiste
                  qui fixe son prix. Sources packs : app/services/credits.py
-                 CREDIT_PACKS (pack_10=8€, pack_50=35€, pack_200=120€).
+                 CREDIT_PACKS (pack_100=8€, pack_500=35€, pack_2000=120€).
                  Le bloc live "Ton prix = X€ à Y€" calcule la fourchette
                  en fonction du tarif unitaire du plus petit et du plus gros
                  pack, pour donner un repère concret à l'artiste. -->
@@ -993,35 +1000,35 @@
                 <span>Repère SMYLES</span>
               </div>
               <div class="dash-credit-grid-sub">
-                Les acheteurs paient en crédits (SMYLES). Voici ce qu'ils ont
-                payé 1 crédit selon leur pack :
+                Les acheteurs paient en Smyles. Voici ce qu'ils ont
+                payé 1 Smyle selon leur pack :
               </div>
               <ul class="dash-credit-grid-packs">
                 <li>
-                  <span class="dcg-pack">Pack 10</span>
+                  <span class="dcg-pack">Pack 100</span>
                   <span class="dcg-dots"></span>
-                  <span class="dcg-rate">0,80&nbsp;€ / crédit</span>
+                  <span class="dcg-rate">0,08&nbsp;€ / Smyle</span>
                 </li>
                 <li>
-                  <span class="dcg-pack">Pack 50</span>
+                  <span class="dcg-pack">Pack 500</span>
                   <span class="dcg-dots"></span>
-                  <span class="dcg-rate">0,70&nbsp;€ / crédit</span>
+                  <span class="dcg-rate">0,07&nbsp;€ / Smyle</span>
                 </li>
                 <li>
-                  <span class="dcg-pack">Pack 200</span>
+                  <span class="dcg-pack">Pack 2000</span>
                   <span class="dcg-dots"></span>
-                  <span class="dcg-rate">0,60&nbsp;€ / crédit</span>
+                  <span class="dcg-rate">0,06&nbsp;€ / Smyle</span>
                 </li>
               </ul>
               <div class="dash-credit-live">
                 <div class="dash-credit-live-lbl">
-                  À <strong id="dashCreditLivePrice">80</strong>&nbsp;crédits,
+                  À <strong id="dashCreditLivePrice">15</strong>&nbsp;Smyles,
                   le fan paie entre
                 </div>
                 <div class="dash-credit-live-range">
-                  <span id="dashCreditLiveMin">48,00&nbsp;€</span>
+                  <span id="dashCreditLiveMin">0,90&nbsp;€</span>
                   <span class="dcg-dash">—</span>
-                  <span id="dashCreditLiveMax">64,00&nbsp;€</span>
+                  <span id="dashCreditLiveMax">1,20&nbsp;€</span>
                 </div>
                 <div class="dash-credit-live-note">
                   Tu touches 80&nbsp;% (split primary). Ajuste le prix pour
@@ -1076,8 +1083,8 @@
                 </div>
                 <div>
                   <label class="dash-label" for="dashCoverImgPrice">Prix de l'image <span class="dash-req">*</span></label>
-                  <input class="dash-input" id="dashCoverImgPrice" type="number" min="3" max="500" value="50" />
-                  <div class="dash-help">Entre 3 et 500 SMYLES. Produit indépendant du son.</div>
+                  <input class="dash-input" id="dashCoverImgPrice" type="number" min="10" max="150" value="15" />
+                  <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15). Son&nbsp;+&nbsp;image achetés ensemble reviennent à environ 30&nbsp;Smyles (≈&nbsp;2&nbsp;€). Les prix montent avec la rareté et le travail de création.</div>
                 </div>
                 <div>
                   <label class="dash-label" for="dashCoverImgSupply">Nombre d'exemplaires <span style="font-weight:400">(optionnel)</span></label>
@@ -1327,7 +1334,7 @@
         </div>
         <div class="dash-adn-summary-price">
           <span id="dashAdnPriceVal">—</span>
-          <span class="dash-adn-summary-price-unit">crédits</span>
+          <span class="dash-adn-summary-price-unit">Smyles</span>
         </div>
       </div>
       <p class="dash-adn-summary-desc" id="dashAdnDescPreview"></p>
@@ -1386,13 +1393,13 @@
 
           <!-- OFFRES-ADN : plus de prix fixe. L'ADN se vend UNIQUEMENT sur offre.
                L'input reste caché (le JS le lit → prix fantôme ignoré côté vente). -->
-          <input type="hidden" id="dashAdnPrice" value="30" />
+          <input type="hidden" id="dashAdnPrice" value="300" />
           <div class="dash-help" id="dashAdnPriceEur" style="display:none"></div>
 
           <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
           <label class="dash-label">Plancher caché des offres (optionnel)</label>
           <input type="number" class="dash-input" id="dashAdnReserve"
-                 min="0" max="100000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
+                 min="0" max="1000000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
           <div class="dash-help">Les ADN se vendent sur proposition : les offres sous ce montant sont refusées automatiquement. Vide = inchangé · 0 = pas de plancher.</div>
 
           <!-- 2026-05-13 — IA source du contenu ADN -->
@@ -1496,7 +1503,7 @@
         </div>
         <div class="dash-adn-summary-price">
           <span id="dashVisualAdnPriceVal">—</span>
-          <span class="dash-adn-summary-price-unit">crédits</span>
+          <span class="dash-adn-summary-price-unit">Smyles</span>
         </div>
       </div>
       <p class="dash-adn-summary-desc" id="dashVisualAdnDescPreview"></p>
@@ -1585,13 +1592,13 @@
 
           <!-- OFFRES-ADN : plus de prix fixe. L'ADN se vend UNIQUEMENT sur offre.
                L'input reste caché (le JS le lit → prix fantôme ignoré côté vente). -->
-          <input type="hidden" id="dashVisualAdnPrice" value="30" />
+          <input type="hidden" id="dashVisualAdnPrice" value="300" />
           <div class="dash-help" id="dashVisualAdnPriceEur" style="display:none"></div>
 
           <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
           <label class="dash-label">Plancher caché des offres (optionnel)</label>
           <input type="number" class="dash-input" id="dashVisualAdnReserve"
-                 min="0" max="100000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
+                 min="0" max="1000000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
           <div class="dash-help">Les ADN se vendent sur proposition : les offres sous ce montant sont refusées automatiquement. Vide = inchangé · 0 = pas de plancher.</div>
 
           <label class="dash-label">IA utilisée <span class="dash-req">*</span></label>
@@ -1699,12 +1706,12 @@
         <input type="checkbox" id="advForSale" /> <span>🎨 Mettre l'ADN de cet album en vente</span>
       </label>
 
-      <label class="dash-label" for="advPrice">Prix en Smyles (1 – 100 000)</label>
-      <input type="number" class="dash-input" id="advPrice" min="1" max="100000" placeholder="ex : 50" />
+      <label class="dash-label" for="advPrice">Prix en Smyles (1 – 1 000 000)</label>
+      <input type="number" class="dash-input" id="advPrice" min="1" max="1000000" placeholder="ex : 500" />
 
       <!-- OFFRES-ADN étape 5 : plancher caché des offres (write-only) -->
       <label class="dash-label" for="advReserve">Plancher caché des offres (optionnel)</label>
-      <input type="number" class="dash-input" id="advReserve" min="0" max="100000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
+      <input type="number" class="dash-input" id="advReserve" min="0" max="1000000" placeholder="Minimum accepté — jamais montré aux acheteurs" />
       <div class="dash-help">Les ADN se vendent sur proposition : les offres sous ce montant sont refusées automatiquement. Vide = inchangé · 0 = pas de plancher.</div>
 
       <label class="dash-label" for="advStyle">Style dominant</label>
@@ -1993,12 +2000,12 @@
       </label>
       <div class="dash-voice-price-row">
         <input type="number" class="dash-input" id="dashVoicePrice"
-               min="50" max="5000" value="200"
+               min="500" max="50000" value="2000"
                  oninput="dashUpdateEurPreview('dashVoicePrice','dashVoicePriceEur')" />
           <div class="dash-help" id="dashVoicePriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
-        <span class="dash-voice-price-suffix">SMYLES</span>
+        <span class="dash-voice-price-suffix">Smyles</span>
       </div>
-      <div class="dash-help">Entre 50 et 5000 SMYLES. Les licences exclusives se vendent plus cher (× 3 à × 10 le tarif commercial).</div>
+      <div class="dash-help">Entre 500 et 50 000 Smyles. Les licences exclusives se vendent plus cher (× 3 à × 10 le tarif commercial).</div>
 
       <div class="dash-adn-editor-actions" style="margin-top:14px">
         <button type="button" class="dash-btn-ghost" onclick="dashVoiceResetForm()">Réinitialiser</button>
@@ -2327,10 +2334,10 @@
 
       <label class="dash-label">Prix <span class="dash-req">*</span></label>
       <div class="dash-voice-price-row">
-        <input type="number" class="dash-input" id="imgcPrice" min="3" max="500" value="50" />
-        <span class="dash-voice-price-suffix">SMYLES</span>
+        <input type="number" class="dash-input" id="imgcPrice" min="10" max="150" value="15" />
+        <span class="dash-voice-price-suffix">Smyles</span>
       </div>
-      <div class="dash-help">Entre 3 et 500 SMYLES.</div>
+      <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15, ≈ 1 €). Les prix montent avec la rareté et le travail de création.</div>
 
       <label class="dash-label">Visibilité</label>
       <div class="wb3-license-choice">
@@ -2587,7 +2594,7 @@
         <div class="tph-axis-icon">🎵</div>
         <div class="tph-axis-label">Artiste</div>
         <div class="tph-axis-val" id="tphArtistVal">—</div>
-        <div class="tph-axis-sub">crédits gagnés</div>
+        <div class="tph-axis-sub">Smyles gagnés</div>
       </div>
     </div>
 

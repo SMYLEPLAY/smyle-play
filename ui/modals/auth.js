@@ -471,7 +471,7 @@ function _ensureReferralModal() {
         <h3 style="margin:0;font-size:18px;">Parraine tes amis</h3>
         <button onclick="closeReferralModal()" aria-label="Fermer" style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;line-height:1;">×</button>
       </div>
-      <p style="margin:0 0 14px;font-size:13px;color:#b9b2cc;">Partage ton code. Quand ton filleul poste son 1er son ou fait son 1er achat, vous gagnez <strong>10 Smyles chacun</strong>.</p>
+      <p style="margin:0 0 14px;font-size:13px;color:#b9b2cc;">Partage ton code. Quand ton filleul poste son 1er son ou fait son 1er achat, vous gagnez <strong>20 Smyles chacun</strong>.</p>
       <div id="referralBody" style="font-size:14px;">Chargement…</div>
     </div>`;
   document.body.appendChild(modal);
@@ -547,7 +547,7 @@ if (typeof window !== 'undefined') {
 }
 
 // ── Streak (mécanique 2) — récompense de connexion quotidienne ───────────────
-// +1 Smyle/jour, +3 au 7e jour consécutif. Modal de réclamation + rappel toast.
+// +10 Smyles/jour, +30 au 7e jour consécutif. Modal de réclamation + rappel toast.
 
 function _ensureStreakModal() {
   let modal = document.getElementById('streakModal');
@@ -697,7 +697,7 @@ async function _renderPackIntro() {
   body.textContent = 'Chargement…';
   try {
     const info = await apiFetch('/packs/mystery');
-    const price = (info && info.price) || 8;
+    const price = (info && info.price) || 80;
     const pool = (info && info.pool_count) || 0;
     if (pool <= 0) {
       body.innerHTML = `

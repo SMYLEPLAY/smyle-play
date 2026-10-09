@@ -2566,8 +2566,8 @@
         } else if (status === 402) {
           const d = err.body && err.body.detail;
           const msg = (d && typeof d === 'object')
-            ? `Crédits insuffisants — il te faut ${d.required}, tu en as ${d.available}.`
-            : 'Crédits insuffisants.';
+            ? `Smyles insuffisants — il te faut ${d.required}, tu en as ${d.available}.`
+            : 'Smyles insuffisants.';
           if (window.showToast) window.showToast(msg);
         } else if (status === 409) {
           _close();

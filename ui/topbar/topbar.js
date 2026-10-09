@@ -941,16 +941,16 @@
         <div style="opacity:.85;margin-bottom:10px">${isReceiver ? `${esc(o.sender_name || 'Un artiste')} te propose un échange` : 'Ta proposition'}</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu recevrais' : 'Tu offres'}</div>
-          <strong>${esc(off.title) || '—'}</strong> · ${off.price_credits || 0} crédits
+          <strong>${esc(off.title) || '—'}</strong> · ${off.price_credits || 0} Smyles
           ${audio(off)}
         </div>
         <div style="text-align:center;opacity:.5;margin:2px 0 8px">⇄</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu donnerais' : 'Tu demandes'}</div>
-          <strong>${esc(req.title) || '—'}</strong> · ${req.price_credits || 0} crédits
+          <strong>${esc(req.title) || '—'}</strong> · ${req.price_credits || 0} Smyles
           ${audio(req)}
         </div>
-        ${o.credit_supplement > 0 ? `<div style="opacity:.8;margin-bottom:8px">+ ${o.credit_supplement} crédits ${isReceiver ? 'pour toi' : 'de ta part'}</div>` : ''}
+        ${o.credit_supplement > 0 ? `<div style="opacity:.8;margin-bottom:8px">+ ${o.credit_supplement} Smyles ${isReceiver ? 'pour toi' : 'de ta part'}</div>` : ''}
         ${o.message ? `<div style="opacity:.7;font-style:italic;margin-bottom:10px">« ${esc(o.message)} »</div>` : ''}
         <div style="opacity:.55;font-size:12px;margin-bottom:12px">⚠️ Frais de 20% (brûlé) de chaque côté à l'acceptation.</div>
         <div style="display:flex;gap:8px">${actions}</div>

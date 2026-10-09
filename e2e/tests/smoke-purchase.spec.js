@@ -53,13 +53,13 @@ test('drawer d’achat : rendu + clic « Débloquer » appelle l’unlock', asyn
 
   // Ouvre le drawer pour un prompt (type 'son'), prix 5.
   await page.evaluate((id) => {
-    window.PurchaseDrawer.open({ type: 'son', id, price: 5, title: 'Smoke Produit' });
+    window.PurchaseDrawer.open({ type: 'son', id, price: 15, title: 'Smoke Produit' });
   }, FAKE_PROMPT_ID);
 
   // Rendu attendu.
   await expect(page.locator('#pd-overlay')).toBeVisible();
   await expect(page.locator('#pd-overlay .pd-title')).toHaveText('Smoke Produit');
-  await expect(page.locator('#pd-overlay .pd-price')).toHaveText('5');
+  await expect(page.locator('#pd-overlay .pd-price')).toHaveText('15');
   const confirm = page.locator('#pd-overlay .pd-confirm');
   await expect(confirm).toBeVisible();
 

@@ -1985,7 +1985,7 @@
           recipeBtn.disabled = false;
           recipeBtn.textContent = '🧬 Débloquer';
           const status = err && err.status;
-          const msg = status === 402 ? 'Crédits insuffisants.' : status === 409 ? 'Déjà débloqué.' : 'Erreur lors du déblocage.';
+          const msg = status === 402 ? 'Smyles insuffisants.' : status === 409 ? 'Déjà débloqué.' : 'Erreur lors du déblocage.';
           if (typeof showToast === 'function') showToast(msg);
         }
       });

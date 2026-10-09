@@ -622,7 +622,7 @@
         btn.disabled = false;
         btn.textContent = prev;
         const s = e && e.status;
-        const msg = s === 402 ? 'Crédits insuffisants.'
+        const msg = s === 402 ? 'Smyles insuffisants.'
                   : s === 409 ? 'Tu possèdes déjà cet ADN.'
                   : s === 401 ? 'Connecte-toi pour acheter.'
                   : 'Erreur lors de l\'achat.';
