@@ -636,6 +636,12 @@ async def artiste_page_legacy(slug: str):
     return RedirectResponse(f"/u/{slug}", status_code=301)
 
 
+@router.get("/mes-oeuvres", include_in_schema=False)
+async def mes_oeuvres_page():
+    # Parcours V1 — écran « Mes Œuvres » du créateur (données : /artist/me/oeuvres).
+    return _page("mes-oeuvres.html")
+
+
 @router.get("/library", include_in_schema=False)
 async def library_page():
     return _page("library.html")
