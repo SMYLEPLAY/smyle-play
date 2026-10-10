@@ -192,7 +192,7 @@
         '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>';
     } else {
       reperes =
-        '<li>🎧 <span>L’écoute reste <strong>libre pour tout le monde</strong> — tu achètes la possession, pas l’accès.</span></li>' +
+        '<li>🎧 <span>L’écoute est <strong>libre avec un compte gratuit</strong> — tu achètes la possession, pas l’accès.</span></li>' +
         (type === 'voix'
           ? '<li>🔓 <span>Achat = <strong>le fichier voix complet</strong> (la preview 30 s devient intégrale).</span></li>'
           : '<li>🔓 <span>Achat = <strong>fichier + recette</strong> — l’exemplaire complet, téléchargeable depuis ta bibliothèque.</span></li>') +
