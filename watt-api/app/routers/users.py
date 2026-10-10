@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import ADMIN_FORBIDDEN_DETAIL, is_admin_user
@@ -10,22 +11,93 @@ from app.schemas.user import UserRead, UserUpdate
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+class SuppressionCompte(BaseModel):
+    """Lot D — renonciation explicite, vérifiée côté serveur : la case
+    « je renonce à mes Smyles » cochée ET le mot SUPPRIMER saisi."""
+
+    model_config = ConfigDict(extra="forbid")
+    confirmation: str = Field(default="", max_length=40)
+    renonce_smyles: bool = False
+
+
+def _verifier_renonciation(payload: SuppressionCompte | None) -> None:
+    if payload is None or not payload.renonce_smyles or (payload.confirmation or "").strip() != "SUPPRIMER":
+        raise HTTPException(
+            422,
+            detail=("Pour supprimer ton compte, coche la renonciation à tes Smyles "
+                    "et tape SUPPRIMER."),
+        )
+
+
+async def _supprimer(db, user, background_tasks):
+    from app.services.account_deletion import delete_account, purger_fichiers
+
+    cles = await delete_account(db, user)
+    if cles:
+        background_tasks.add_task(purger_fichiers, cles)
+
+
+@router.get("/me/suppression")
+async def apercu_suppression(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lot D — ce que la suppression fera perdre (affiché dans l'écran de
+    confirmation) : Smyles par catégorie, œuvres, rang Pionnier."""
+    from app.services.account_deletion import apercu_suppression as _apercu
+
+    return await _apercu(db, current_user)
+
+
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_me(
+    background_tasks: BackgroundTasks,
+    payload: SuppressionCompte | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Suppression de compte RGPD (pack légal v1, 2026-06-10).
+    Suppression de compte RGPD (pack légal v1, complétée au Lot D).
 
-    Anonymisation immédiate + retrait public des contenus + déconnexion
-    définitive (l'email anonymisé invalide tous les JWT émis, sub=email).
-    Les exemplaires achetés par d'autres restent dans leur bibliothèque —
-    voir services/account_deletion.py et /legal#confidentialite.
+    Exige une renonciation explicite (corps JSON : `renonce_smyles: true` et
+    `confirmation: "SUPPRIMER"`), sinon 422. Effacement des données
+    personnelles, des œuvres jamais achetées et de leurs fichiers (purge en
+    tâche de fond), anonymisation de l'auteur des œuvres déjà achetées,
+    registre conservé. Détail : services/account_deletion.py.
     """
-    from app.services.account_deletion import delete_account
+    _verifier_renonciation(payload)
+    await _supprimer(db, current_user, background_tasks)
 
-    await delete_account(db, current_user)
+
+@router.post("/me/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me_post(
+    payload: SuppressionCompte,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Même suppression que DELETE /users/me (pour les clients qui
+    n'envoient pas de corps avec DELETE)."""
+    _verifier_renonciation(payload)
+    await _supprimer(db, current_user, background_tasks)
+
+
+@router.post("/me/accept-terms", response_model=UserRead)
+async def accept_terms(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lot D — accepte les CGU en vigueur (version + date). Idempotent."""
+    from datetime import datetime, timezone
+
+    from app.core.legal import CGU_VERSION
+
+    if current_user.accepted_terms_version != CGU_VERSION:
+        current_user.accepted_terms_version = CGU_VERSION
+        current_user.accepted_terms_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(current_user)
+    return current_user
 
 
 @router.get("/me/export")
@@ -35,8 +107,9 @@ async def export_me(
 ):
     """
     Export des données personnelles (RGPD art. 15/20 — accès/portabilité).
-    Renvoie un JSON téléchargeable de tout ce que le compte possède.
-    Lecture seule.
+    Renvoie un JSON téléchargeable de toutes les données du compte (profil,
+    transactions, achats, ventes, œuvres, messages, signalements faits,
+    abonnements, consentements). Lecture seule.
     """
     from fastapi.responses import JSONResponse
 

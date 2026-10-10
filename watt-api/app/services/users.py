@@ -31,6 +31,10 @@ def verify_password(password: str, hashed: str) -> bool:
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    # Lot D (migration 0103) : emails stockés en minuscules, unicité sur
+    # lower(email). On normalise l'entrée (inscription, connexion, mot de
+    # passe oublié, renvoi de vérification, jeton `sub`).
+    email = (email or "").strip().lower()
     result = await db.execute(select(User).where(User.email == email))
     return result.scalar_one_or_none()
 
@@ -38,14 +42,18 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
 async def create_user(
     db: AsyncSession, user: UserCreate, signup_ip: str | None = None
 ) -> User:
+    from app.core.legal import CGU_VERSION
+
     db_user = User(
-        email=user.email,
+        email=(user.email or "").strip().lower(),
         password_hash=hash_password(user.password),
         referral_code=await generate_referral_code(db),
         signup_ip=signup_ip,  # anti-abus H0.4 (None si indéterminé)
         # Inscription encadrée (Phase 3) : register() a déjà exigé l'acceptation
         # CGU + âge avant d'appeler create_user → on trace l'instant (preuve).
         accepted_terms_at=datetime.now(timezone.utc),
+        # Lot D : version des CGU acceptée à l'inscription.
+        accepted_terms_version=CGU_VERSION,
     )
     db.add(db_user)
     # flush → refresh DANS la transaction (asyncpg : un refresh APRÈS commit

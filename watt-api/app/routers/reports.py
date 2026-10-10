@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,6 +49,9 @@ class ReportCreate(BaseModel):
     detail: str | None = Field(default=None, max_length=2000)
     # Pour l'accusé de réception d'un signalement ANONYME (facultatif).
     reporter_email: EmailStr | None = None
+    # Lot D (DSA art. 16 §2 d) — « Je déclare de bonne foi que les
+    # informations sont exactes » : case obligatoire, vérifiée ici.
+    good_faith: bool = False
 
 
 class ReportRead(BaseModel):
@@ -91,6 +94,11 @@ async def create_report(
 ) -> ReportRead:
     """Dépose un signalement. Accusé de réception = la réponse 201 (id de
     suivi) + email best-effort si une adresse est connue (DSA art. 16)."""
+    if not payload.good_faith:
+        raise HTTPException(
+            422,
+            detail="Coche la déclaration de bonne foi pour envoyer le signalement.",
+        )
     user = await _optional_user(request, db)
 
     report = ContentReport(
@@ -199,6 +207,7 @@ async def list_reports(
 async def patch_report(
     report_id: UUID,
     payload: ReportPatch,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ReportRead:
@@ -213,8 +222,16 @@ async def patch_report(
                             detail="Signalement introuvable")
     report.status = ReportStatus(payload.status)
     report.resolved_at = datetime.now(timezone.utc)
+    # Lot D — la personne qui a signalé est informée de la décision finale.
+    envois = []
+    if payload.status in ("actioned", "rejected"):
+        envois = await _destinataires_signaleurs(db, [report])
+    titre = await _titre_cible(db, report.target_type, report.target_id)
     await db.commit()
     await db.refresh(report)
+    decision = "retire" if payload.status == "actioned" else "rejete"
+    for email, ref in envois:
+        background_tasks.add_task(_email_signaleur, email, decision, report.target_type, titre, ref)
     return ReportRead.model_validate(report)
 
 
@@ -227,14 +244,21 @@ async def patch_report(
 
 
 class TakedownRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     # Suspendre aussi le compte auteur du contenu retiré.
     ban_owner: bool = False
-    reason: str | None = Field(default=None, max_length=500)
+    # Lot D — motif OBLIGATOIRE : il est envoyé à l'auteur (DSA art. 17).
+    reason: str = Field(min_length=3, max_length=500)
 
 
 class BanRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    # Lot D — motif OBLIGATOIRE : il est envoyé au titulaire du compte.
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class UnbanRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     reason: str | None = Field(default=None, max_length=500)
 
 
@@ -293,18 +317,100 @@ async def _notify_account(
         pass
 
 
+async def _email_compte(db: AsyncSession, user_id) -> str | None:
+    if user_id is None:
+        return None
+    u = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    return u.email if u is not None else None
+
+
+async def _titre_cible(db: AsyncSession, target_type: str, target_id: str) -> str | None:
+    """Titre lisible du contenu visé (pour les emails ; échappé à l'envoi)."""
+    from sqlalchemy import text as _text
+
+    table, col = {
+        "track": ("tracks", "title"), "prompt": ("prompts", "title"),
+        "image": ("prompts", "title"), "playlist": ("playlists", "title"),
+        "album": ("albums", "title"), "voix": ("voices_for_sale", "name"),
+        "profil": ("users", "artist_name"),
+    }.get((target_type or "").strip().lower(), (None, None))
+    if table is None:
+        return None
+    try:
+        tid = UUID(str(target_id))
+    except (ValueError, TypeError):
+        return None
+    return (await db.execute(
+        _text(f"SELECT {col} FROM {table} WHERE id = :i"), {"i": tid}  # noqa: S608
+    )).scalar_one_or_none()
+
+
+async def _destinataires_signaleurs(db: AsyncSession, reports) -> list[tuple[str, str]]:
+    """(email, référence) de chaque personne à informer : l'email laissé au
+    signalement, sinon celui du compte qui a signalé."""
+    out = []
+    for r in reports:
+        email = r.reporter_email or await _email_compte(db, r.reporter_id)
+        if email:
+            out.append((email, str(r.id)))
+    return out
+
+
+async def _clore_signalements_ouverts(db: AsyncSession, target_type: str, target_id: str,
+                                      sauf=None) -> list:
+    """Passe à « actioned » les autres signalements ouverts sur la même cible
+    (le contenu vient d'être retiré) et les renvoie pour informer leurs
+    auteurs."""
+    q = select(ContentReport).where(
+        ContentReport.target_type == target_type,
+        ContentReport.target_id == str(target_id),
+        ContentReport.status.in_([ReportStatus.NEW, ReportStatus.REVIEWED]),
+    )
+    if sauf is not None:
+        q = q.where(ContentReport.id != sauf)
+    rows = (await db.execute(q)).scalars().all()
+    now = datetime.now(timezone.utc)
+    for r in rows:
+        r.status = ReportStatus.ACTIONED
+        r.resolved_at = now
+    return list(rows)
+
+
+async def _email_auteur(email, nature, target_type, titre, motif, ref) -> None:
+    from app.services.emails import send_decision_auteur
+
+    await send_decision_auteur(email, nature=nature, target_type=target_type,
+                               titre=titre, motif=motif, reference=ref)
+
+
+async def _email_signaleur(email, decision, target_type, titre, ref) -> None:
+    from app.services.emails import send_decision_signaleur
+
+    await send_decision_signaleur(email, decision=decision, target_type=target_type,
+                                  titre=titre, reference=ref)
+
+
+async def _email_levee(email) -> None:
+    from app.services.emails import send_levee_suspension
+
+    await send_levee_suspension(email)
+
+
 @router.post("/admin/reports/{report_id}/takedown",
              response_model=ModerationResult)
 async def takedown_reported_content(
     report_id: UUID,
     payload: TakedownRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ModerationResult:
     """
     Retire le contenu ciblé par un signalement (le rend invisible sans
     supprimer la ligne = preuve conservée), passe le signalement à `actioned`,
-    et suspend optionnellement le compte auteur.
+    et suspend optionnellement le compte auteur. Lot D : motif obligatoire,
+    envoyé par email à l'auteur avec la voie de recours ; la (ou les)
+    personne(s) qui ont signalé sont informées de la décision.
     """
     _require_official(current_user)
     from app.services.moderation import ban_user, takedown_content
@@ -316,6 +422,8 @@ async def takedown_reported_content(
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             detail="Signalement introuvable")
 
+    owner_id = await _resolve_owner_id(db, report.target_type, report.target_id)
+    titre = await _titre_cible(db, report.target_type, report.target_id)
     result = await takedown_content(
         db, report.target_type, report.target_id, payload.reason,
         admin_id=current_user.id,
@@ -324,21 +432,20 @@ async def takedown_reported_content(
         await db.rollback()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=result["detail"])
 
-    # DSA art. 17 : informer l'AUTEUR du contenu retiré. On résout le
-    # propriétaire une seule fois (notif + éventuel ban).
-    owner_id = await _resolve_owner_id(db, report.target_type, report.target_id)
-    motif = (payload.reason or "").strip() or "non précisé"
+    motif = payload.reason
     is_profil = (report.target_type or "").strip().lower() == "profil"
+    emails_auteur = []  # (nature, ...)
+    owner_email = await _email_compte(db, owner_id)
 
     if is_profil:
         # Le « retrait » d'un profil EST une suspension de compte
-        # (cf. services/moderation.py::takedown_content) → on notifie une
-        # suspension, pas un retrait de contenu.
+        # (cf. services/moderation.py::takedown_content).
         await _notify_account(
             db, user_id=owner_id,
             text=(f"Ton compte a été suspendu suite à un signalement. "
                   f"Motif : {motif}. Référence : {report.id}."),
         )
+        emails_auteur.append("suspension")
     else:
         await _notify_account(
             db, user_id=owner_id,
@@ -346,17 +453,28 @@ async def takedown_reported_content(
                   f"de la vitrine suite à un signalement. Motif : {motif}. "
                   f"Référence : {report.id}."),
         )
+        emails_auteur.append("retrait")
         if payload.ban_owner and owner_id is not None:
-            await ban_user(db, owner_id, payload.reason)
+            await ban_user(db, owner_id, payload.reason, admin_id=current_user.id)
             await _notify_account(
                 db, user_id=owner_id,
                 text=(f"Ton compte a également été suspendu. "
                       f"Motif : {motif}. Référence : {report.id}."),
             )
+            emails_auteur.append("suspension")
 
     report.status = ReportStatus.ACTIONED
     report.resolved_at = datetime.now(timezone.utc)
+    autres = await _clore_signalements_ouverts(db, report.target_type, report.target_id,
+                                               sauf=report.id)
+    signaleurs = await _destinataires_signaleurs(db, [report, *autres])
     await db.commit()
+
+    for nature in emails_auteur:
+        background_tasks.add_task(_email_auteur, owner_email, nature, report.target_type,
+                                  titre, motif, str(report.id))
+    for email, ref in signaleurs:
+        background_tasks.add_task(_email_signaleur, email, "retire", report.target_type, titre, ref)
     return ModerationResult(ok=True, detail=result["detail"])
 
 
@@ -374,6 +492,7 @@ class DirectTakedownRequest(BaseModel):
 @router.post("/admin/moderation/takedown", response_model=ModerationResult)
 async def takedown_direct(
     payload: DirectTakedownRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ModerationResult:
@@ -382,12 +501,15 @@ async def takedown_direct(
     signalement préalable (ex. : œuvres bâclées publiées pour prendre une
     place Pionnier). Même effet que le retrait sur signalement : contenu caché
     et marqué `taken_down_at` (il ne qualifie plus personne), auteur notifié
-    avec le motif. Le rang Pionnier éventuel n'est PAS retiré ici : c'est une
-    décision séparée (POST /admin/pioneer/{user_id}/revoke), « à vie sauf fraude ».
+    et prévenu par email avec le motif et la voie de recours (Lot D). Le rang
+    Pionnier éventuel n'est PAS retiré ici : c'est une décision séparée
+    (POST /admin/pioneer/{user_id}/revoke), « à vie sauf fraude ».
     """
     _require_official(current_user)
     from app.services.moderation import takedown_content
 
+    owner_id = await _resolve_owner_id(db, payload.target_type, payload.target_id)
+    titre = await _titre_cible(db, payload.target_type, payload.target_id)
     result = await takedown_content(
         db, payload.target_type, payload.target_id, payload.reason,
         admin_id=current_user.id,
@@ -395,13 +517,19 @@ async def takedown_direct(
     if not result["ok"]:
         await db.rollback()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=result["detail"])
-    owner_id = await _resolve_owner_id(db, payload.target_type, payload.target_id)
     await _notify_account(
         db, user_id=owner_id,
         text=(f"Un de tes contenus ({payload.target_type}) a été retiré de la "
               f"vitrine par la modération. Motif : {payload.reason}."),
     )
+    owner_email = await _email_compte(db, owner_id)
+    ouverts = await _clore_signalements_ouverts(db, payload.target_type, payload.target_id)
+    signaleurs = await _destinataires_signaleurs(db, ouverts)
     await db.commit()
+    background_tasks.add_task(_email_auteur, owner_email, "retrait", payload.target_type,
+                              titre, payload.reason, None)
+    for email, ref in signaleurs:
+        background_tasks.add_task(_email_signaleur, email, "retire", payload.target_type, titre, ref)
     return ModerationResult(ok=True, detail=result["detail"])
 
 
@@ -409,43 +537,54 @@ async def takedown_direct(
 async def ban_account(
     user_id: UUID,
     payload: BanRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ModerationResult:
-    """Suspend un compte (login + accès authentifié bloqués)."""
+    """Suspend un compte (connexion bloquée, contenus retirés de la vente et
+    des listes publiques jusqu'à la levée). Motif obligatoire, journalisé et
+    envoyé par email au titulaire avec la voie de recours."""
     _require_official(current_user)
     if user_id == current_user.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail="Impossible de se suspendre soi-même.")
     from app.services.moderation import ban_user
 
-    user = await ban_user(db, user_id, payload.reason)
+    user = await ban_user(db, user_id, payload.reason, admin_id=current_user.id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Compte introuvable")
     # DSA art. 17 : informer le compte suspendu du motif.
-    motif = (payload.reason or "").strip() or "non précisé"
     await _notify_account(
         db, user_id=user_id,
-        text=f"Ton compte a été suspendu. Motif : {motif}.",
+        text=f"Ton compte a été suspendu. Motif : {payload.reason}.",
     )
+    email = user.email
     await db.commit()
+    background_tasks.add_task(_email_auteur, email, "suspension", "profil", None,
+                              payload.reason, None)
     return ModerationResult(ok=True, detail="Compte suspendu.")
 
 
 @router.post("/admin/users/{user_id}/unban", response_model=ModerationResult)
 async def unban_account(
     user_id: UUID,
+    background_tasks: BackgroundTasks,
+    payload: UnbanRequest | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ModerationResult:
-    """Rétablit un compte suspendu."""
+    """Rétablit un compte suspendu : ses contenus masqués par la suspension
+    reviennent en ligne. Journalisé (motif facultatif), titulaire prévenu."""
     _require_official(current_user)
     from app.services.moderation import unban_user
 
-    user = await unban_user(db, user_id)
+    user = await unban_user(db, user_id, admin_id=current_user.id,
+                            motif=(payload.reason if payload else None))
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Compte introuvable")
+    email = user.email
     await db.commit()
+    background_tasks.add_task(_email_levee, email)
     return ModerationResult(ok=True, detail="Compte rétabli.")
 
 

@@ -4,8 +4,9 @@ Télémétrie D0 — journal d'événements produit, privacy-first.
 Mesure le funnel (visiteur → inscrit → 1er achat → revient) SANS donnée
 personnelle : pas d'IP, pas de user-agent, pas d'e-mail. L'identifiant de
 session est un jeton aléatoire généré côté client (localStorage), non
-réversible vers une personne. `user_id` n'est rempli que si l'utilisateur est
-connecté au moment de l'événement (lien volontaire).
+réversible vers une personne. Lot D (0102) : `user_id` est TOUJOURS NULL
+(CHECK en base) — la mesure n'est jamais rattachée à un compte. La colonne est
+conservée pour ne pas casser les lectures existantes. Conservation 13 mois.
 
 Best-effort : la collecte ne doit JAMAIS bloquer une action utilisateur.
 """
@@ -28,7 +29,7 @@ class AnalyticsEvent(Base):
     )
     # Identifiant de session anonyme (client-side, non-PII), indexé pour le funnel.
     session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    # Lien volontaire vers un compte si connecté ; sinon NULL (visiteur anonyme).
+    # Toujours NULL depuis le Lot D (ck_analytics_events_sans_compte).
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),

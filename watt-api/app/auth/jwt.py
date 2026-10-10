@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import jwt  # PyJWT (remplace python-jose, CVE-2024-33663/33664, non maintenue)
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +40,55 @@ def decode_access_token(token: str) -> str | None:
     return claims.get("sub") if claims else None
 
 
+# Lot D — écritures permises tant que les CGU en vigueur ne sont pas acceptées :
+# accepter, supprimer son compte (droit RGPD), marquer le guide vu, lire ses
+# notifications. Tout le reste (achat, publication, vente, profil…) attend
+# l'acceptation. La lecture (GET) n'est jamais bloquée.
+_ECRITURES_SANS_CGU = (
+    ("POST", "/users/me/accept-terms"),
+    ("DELETE", "/users/me"),
+    ("POST", "/users/me/delete"),
+    ("POST", "/users/me/onboarding"),
+)
+_PREFIXES_SANS_CGU = ("/notifications",)
+_METHODES_ECRITURE = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+class CguNonAcceptees(HTTPException):
+    """403 « accepte les CGU en vigueur » — le corps porte un code stable
+    (`code: cgu_a_accepter`) que le front reconnaît pour ouvrir la fenêtre
+    d'acceptation (cf. app/main.py, gestionnaire dédié)."""
+
+    def __init__(self) -> None:
+        from app.core.legal import CGU_VERSION
+
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accepte les nouvelles conditions d'utilisation pour continuer.",
+        )
+        self.cgu_version = CGU_VERSION
+
+
+def cgu_a_jour(user: User) -> bool:
+    from app.core.legal import CGU_VERSION
+
+    return (getattr(user, "accepted_terms_version", None) or "") == CGU_VERSION
+
+
+def _ecriture_soumise_aux_cgu(request: Request | None) -> bool:
+    if request is None:
+        return False
+    methode = request.method.upper()
+    if methode not in _METHODES_ECRITURE:
+        return False
+    chemin = request.url.path.rstrip("/") or "/"
+    if (methode, chemin) in _ECRITURES_SANS_CGU:
+        return False
+    return not any(chemin.startswith(p) for p in _PREFIXES_SANS_CGU)
+
+
 async def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
@@ -74,6 +122,10 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Compte suspendu.",
         )
+    # Lot D — CGU en vigueur non acceptées : les actions qui écrivent sont
+    # refusées (code `cgu_a_accepter`), la lecture reste possible.
+    if not cgu_a_jour(user) and _ecriture_soumise_aux_cgu(request):
+        raise CguNonAcceptees()
     # Lot 2 — activité par jour (mesures « prêt à sortir ») : au plus une
     # écriture par compte et par jour, en tâche de fond, jamais bloquante.
     from app.services.activity import note_activity

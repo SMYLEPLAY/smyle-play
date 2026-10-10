@@ -186,6 +186,13 @@ class User(Base):
     accepted_terms_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Lot D (migration 0102) — version des CGU acceptée (app/core/legal.py::
+    # CGU_VERSION). NULL = compte antérieur : il doit accepter les CGU en
+    # vigueur avant toute action qui écrit. `accepted_terms_at` = date de la
+    # dernière acceptation.
+    accepted_terms_version: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
 
     # Vérification d'email (migration 0087, Phase A). NON bloquant par défaut :
     # tant que settings.REQUIRE_EMAIL_VERIFIED est False, le login n'est PAS

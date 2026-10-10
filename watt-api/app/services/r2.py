@@ -138,7 +138,7 @@ def get_r2_client():
     return _get_client()
 
 
-async def delete_r2_object(key: str) -> bool:
+async def delete_r2_object(key: str, *, bucket: str | None = None) -> bool:
     """
     Supprime un objet R2 par clé (ex 'tracks/sl-foo.wav').
 
@@ -163,7 +163,9 @@ async def delete_r2_object(key: str) -> bool:
     if client is None:
         return False
 
-    bucket = settings.R2_BUCKET
+    # Lot D : `bucket` optionnel (purge d'un compte supprimé : originaux
+    # d'images éventuellement rangés dans le bucket privé).
+    bucket = bucket or settings.R2_BUCKET
 
     def _sync_delete() -> bool:
         try:
