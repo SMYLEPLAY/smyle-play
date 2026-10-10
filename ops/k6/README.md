@@ -6,9 +6,9 @@ Le script `watt.js` simule trois parcours en même temps :
 |-----------|----------------------------------------------------------------------|
 | accueil   | visiteur anonyme : page d'accueil, catalogue, artistes, sons récents |
 | connexion | connexion d'un compte existant, puis lecture du profil               |
-| achat     | achat d'une recette à 3 Smyles, puis lecture de la bibliothèque      |
+| achat     | achat d'une recette à 15 Smyles, puis lecture de la bibliothèque     |
 
-Au démarrage, il crée lui-même ses comptes de test : un vendeur avec 4 recettes et 40 acheteurs, qui ont chacun 10 Smyles de bienvenue. Les réponses « solde insuffisant » (402) et « déjà acheté » (409) sont normales.
+Au démarrage, il crée lui-même ses comptes de test : un vendeur (ADN à 300 Smyles) avec 4 recettes à 15 Smyles, et 40 acheteurs, qui ont chacun 30 Smyles de bienvenue (deux achats). Les réponses « solde insuffisant » (402) et « déjà acheté » (409) sont normales.
 
 ## Règle n° 1 : jamais contre la production
 

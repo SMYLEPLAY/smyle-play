@@ -520,6 +520,14 @@ async def _optional_current_user(
 
 @router.get("/tracks-catalog")
 async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
+    """Catalogue des univers officiels — Lot G : cache court (45 s) en
+    mémoire, la réponse ne dépend pas du visiteur."""
+    from app.core.cache_court import cache_accueil
+
+    return await cache_accueil.obtenir("tracks-catalog", lambda: _tracks_catalog(db))
+
+
+async def _tracks_catalog(db: AsyncSession) -> dict:
     """
     Équivalent direct de `GET /tracks.json` côté Flask.
 
@@ -569,6 +577,14 @@ async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
 
 @router.get("/artists")
 async def list_artists(db: AsyncSession = Depends(get_db)) -> dict:
+    """Artistes publics — Lot G : cache court (45 s) en mémoire, la réponse
+    ne dépend pas du visiteur."""
+    from app.core.cache_court import cache_accueil
+
+    return await cache_accueil.obtenir("artists", lambda: _list_artists(db))
+
+
+async def _list_artists(db: AsyncSession) -> dict:
     """
     Équivalent de `GET /api/artists`.
     Renvoie {'artists': [...]} triés par total de plays décroissant.
@@ -2014,32 +2030,6 @@ async def serve_playlist_video(key: str):
 # Cache 24h côté browser (les images R2 sont immuables par UUID dans la clé).
 # ──────────────────────────────────────────────────────────────────────────────
 
-@router.get("/images/{key:path}")
-async def serve_image(key: str):
-    """
-    Proxy une image R2 PUBLIQUE par sa clé (ex. 'images/avatar/abc123.webp').
-
-    SÉCURITÉ (Phase 0 lancement, 2026-07-23) : ce proxy servait N'IMPORTE quelle
-    clé du bucket. Comme l'original d'une image payante (`images/originals/{uid}`)
-    partage l'UUID de son aperçu public (`images/previews/{uid}`), la clé de
-    l'original se déduisait de l'aperçu → l'original se téléchargeait sans achat.
-    On borne désormais ce proxy aux objets images PUBLICS uniquement :
-      - autorisé : préfixe `images/` (aperçus, avatars, covers, track-covers…)
-      - BLOQUÉ  : `images/originals/` (payant → passe par /images/{id}/download,
-                  gaté sur la possession) et toute clé hors `images/`.
-    """
-    # Gate dur : seuls les objets images publics sont servables ici.
-    # Lot G : clé ambiguë (« .. », « // »…) refusée (cle_sure).
-    from app.services.media_ownership import cle_sure
-
-    if (not cle_sure(key) or not key.startswith("images/")
-            or key.startswith("images/originals/")):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not found",
-        )
-    # Lot G : aperçu d'un produit retiré par la modération → plus servi.
-    if key.startswith("images/previews/") and key in await apercus_retires():
 # Lot G — aperçus des produits retirés par la modération, gardés 30 s en
 # mémoire : le proxy d'images ne fait pas une requête en base par image.
 _APERCUS_RETIRES_TTL = 30.0
@@ -2077,6 +2067,32 @@ async def apercus_retires() -> frozenset:
     return _apercus_retires_cache["cles"]
 
 
+@router.get("/images/{key:path}")
+async def serve_image(key: str):
+    """
+    Proxy une image R2 PUBLIQUE par sa clé (ex. 'images/avatar/abc123.webp').
+
+    SÉCURITÉ (Phase 0 lancement, 2026-07-23) : ce proxy servait N'IMPORTE quelle
+    clé du bucket. Comme l'original d'une image payante (`images/originals/{uid}`)
+    partage l'UUID de son aperçu public (`images/previews/{uid}`), la clé de
+    l'original se déduisait de l'aperçu → l'original se téléchargeait sans achat.
+    On borne désormais ce proxy aux objets images PUBLICS uniquement :
+      - autorisé : préfixe `images/` (aperçus, avatars, covers, track-covers…)
+      - BLOQUÉ  : `images/originals/` (payant → passe par /images/{id}/download,
+                  gaté sur la possession) et toute clé hors `images/`.
+    """
+    # Gate dur : seuls les objets images publics sont servables ici.
+    # Lot G : clé ambiguë (« .. », « // »…) refusée (cle_sure).
+    from app.services.media_ownership import cle_sure
+
+    if (not cle_sure(key) or not key.startswith("images/")
+            or key.startswith("images/originals/")):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+    # Lot G : aperçu d'un produit retiré par la modération → plus servi.
+    if key.startswith("images/previews/") and key in await apercus_retires():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",

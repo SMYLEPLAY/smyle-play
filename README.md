@@ -1,101 +1,103 @@
-# SMYLE PLAY
+# WATT (watt.place)
 
-Plateforme de musique générative WATT — backend FastAPI (`watt-api/`), front statique, Postgres, stockage R2.
+Plateforme où des créateurs publient des **Œuvres** créées avec l'IA (un son et
+une image, avec leur recette) et les vendent en **Smyles**.
 
-**Prod** : https://web-production-e30c8c.up.railway.app
+- **Site** : https://watt.place
+- **Backend** : FastAPI (`watt-api/`), qui sert **tout** : l'API, les pages HTML
+  et les fichiers statiques (`watt-api/app/routers/pages.py`). Flask a été
+  supprimé le 2026-07-30.
+- **Base** : PostgreSQL, migrations Alembic (`watt-api/alembic/versions/`).
+- **Fichiers** : Cloudflare R2 (sons, images, vidéos) — un bucket public, un
+  bucket privé optionnel (`R2_PRIVATE_BUCKET`) pour les originaux payants et
+  les contenus retirés par la modération.
+- **Hébergement** : Railway (`railway.toml`), sonde `/health`.
 
-## Structure du repo
+## Structure du dépôt
 
 ```
-smyle-play/
-├── main.py                  # Entry point uvicorn — FastAPI + mount Flask legacy (a2wsgi)
-├── flask_app.py             # Flask legacy : statiques + routes pages (suppression en cours, cf. dette « Sortie Flask »)
-├── config.py · models.py    # Config & modèles legacy Flask (partent avec flask_app.py)
-├── watt-api/                # ✅ SEUL backend actif : API FastAPI + migrations Alembic + tests
-│   └── app/                 # routers/ · models/ · services/ · schemas/
-├── agents/                  # Agents Python (classifier ADN, playlist, prompt Suno)
-├── ui/                      # Assets front (les pages HTML/JS/CSS vivent à la racine)
-├── data/                    # Données statiques (config/, seeds/, exports/ gitignoré)
-├── scripts/                 # Scripts shell/Python de déploiement & one-shots
-├── e2e/ · tests/            # Tests end-to-end & racine (la suite principale est dans watt-api/tests/)
-├── graphify-out/            # Cartographie AST du code (gitignoré, rebuild à la demande)
-└── OBSIDIAN/                # Vault Obsidian — stratégie / produit / dette (gitignoré)
+.
+├── main.py              # Point d'entrée uvicorn (importe watt-api/app/main.py)
+├── watt-api/            # SEUL backend : API FastAPI, migrations, tests
+│   ├── app/             # routers/ · services/ · models/ · schemas/ · core/ · auth/
+│   ├── alembic/         # migrations (une seule tête, cf. /health → alembic_head)
+│   ├── tests/           # suite pytest (Postgres réel)
+│   ├── scripts/         # scripts ponctuels (ex. migrate_originals_to_private.py)
+│   └── tools/           # outils d'exploitation (sauvegarde des médias, lien de secours…)
+├── *.html · *.js · *.css  # pages et scripts du site (servis par FastAPI)
+├── ui/                  # composants front partagés (api, modales, lecteur, PWA…)
+├── e2e/                 # tests de bout en bout (Playwright)
+├── ops/k6/              # test de charge (k6) — jamais contre la production
+├── agents/              # agents Python (classement ADN, playlists, prompts)
+├── data/                # données statiques (config/, seeds/ ; exports/ ignoré)
+├── scripts/             # scripts shell/Python ponctuels
+└── .github/workflows/   # CI, E2E, sauvegardes, restore drill
 ```
 
-⚠️ `smyleplay-api/` (ancien backend, débranché le 2026-07-20) a été retiré du repo.
+Pour les humains : ce `README.md`. Pour les agents IA : [`CLAUDE.md`](./CLAUDE.md).
 
-## Conventions
+## Démarrage local
 
-Pour les humains : ce `README.md`.
-Pour les agents IA (Claude Code / Cowork) : voir [`CLAUDE.md`](./CLAUDE.md).
-
-## Stack
-
-- **Backend** : FastAPI (`watt-api/app`), servi par `uvicorn`. Flask legacy encore monté en fallback via `a2wsgi` pour les statiques et les pages — sa suppression est le chantier P0 en cours.
-- **DB** : Postgres (Railway managed), migrations Alembic — chaîne unique dans `watt-api/` (`preDeployCommand` Railway).
-- **Storage** : Cloudflare R2 (audio, images, covers).
-- **Auth** : JWT (HS256) côté FastAPI.
-- **Deploy** : Railway (`railway.toml`), healthcheck `/health`.
-
-## Démarrage local (Postgres-only)
-
-Le dev local utilise Postgres, comme la prod. Pas de mode SQLite : la chaîne Alembic
-utilise des types Postgres (UUID, enums) et ne tourne pas sur SQLite.
+PostgreSQL obligatoire (pas de SQLite : la chaîne Alembic utilise des types
+Postgres).
 
 ```bash
-# 1. Postgres 16 local (Docker)
-docker run -d --name smyle-pg -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev \
+# 1. Postgres local (Docker)
+docker run -d --name watt-pg -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev \
   -e POSTGRES_DB=smyleplay -p 5432:5432 postgres:16
 
-# 2. Deps (requirements.txt est un LOCKFILE, cf. « Dépendances » plus bas)
+# 2. Dépendances (requirements.txt est un lockfile, voir plus bas)
 pip install -r requirements.txt
 
-# 3. Variables d'env
+# 3. Variables d'environnement : partir de .env.example (à ADAPTER, ne pas
+#    le copier tel quel — voir l'avertissement en tête du fichier)
 cp .env.example .env
-# éditer DATABASE_URL=postgresql://dev:dev@localhost:5432/smyleplay, JWT_SECRET, R2_*, etc.
 
 # 4. Migrations (toujours depuis watt-api/)
 cd watt-api && alembic upgrade head && cd ..
 
-# 5. Run
-uvicorn main:app --reload
+# 5. Lancer
+uvicorn main:app --reload --port 8080
 ```
+
+## Vérifier ce qui tourne en production
+
+`GET /health` renvoie notamment :
+
+- `commit` : le commit servi ;
+- `alembic_head` : la version de base attendue par le code ;
+- `alembic_db` : la version réellement appliquée à la base (les deux doivent
+  être égales après un déploiement réussi).
 
 ## Dépendances (lockfile)
 
-`requirements.in` liste les dépendances **voulues** ; `requirements.txt` est le
-**lockfile** installé partout (Railway/nixpacks, CI, e2e, local) — il est
-généré, jamais édité à la main. `watt-api/pyproject.toml` ne sert qu'au
-packaging (`pip install ./watt-api`) : la source de vérité des versions reste
-`requirements.in`/`requirements.txt`.
-
-Pour ajouter ou monter une dépendance :
+`requirements.in` liste les dépendances voulues ; `requirements.txt` est le
+lockfile installé partout (Railway, CI, e2e, local), généré, jamais édité à la
+main.
 
 ```bash
-# 1. éditer requirements.in (une ligne par dépendance, borne haute conseillée)
-# 2. régénérer le lockfile — même version de Python que la CI et la prod
 uv pip compile requirements.in --python-version 3.11 -o requirements.txt
-# 3. réinstaller localement et faire tourner la suite avant de commiter
 pip install -r requirements.txt && (cd watt-api && pytest -q)
 ```
 
 Commiter `requirements.in` **et** `requirements.txt` dans le même commit.
 
-## Tests & CI
+## Tests et CI
 
-CI GitHub Actions active — 4 workflows dans [`.github/workflows/`](./.github/workflows/), tous bloquants sur PR :
+Workflows dans [`.github/workflows/`](./.github/workflows/) :
 
-- **`ci.yml`** : migrations Alembic sur Postgres 16 vierge · smoke test `/health` · suite pytest complète (`watt-api/tests/`, ~469 tests, Postgres réel) · sécurité (`pip-audit`, `bandit -ll -ii`, `gitleaks`).
-- **`e2e.yml`** : tests end-to-end.
-- **`backup-db.yml`** : backup automatisé de la base.
-- **`restore-drill.yml`** : drill de restauration.
+- **`ci.yml`** : migrations Alembic sur une base vierge, sonde `/health`, suite
+  pytest complète (`watt-api/tests/`), sécurité (`pip-audit`, `bandit`,
+  `gitleaks`).
+- **`e2e.yml`** : tests Playwright, en configuration « actuelle » et « jour J ».
+- **`backup-db.yml`** / **`backup-media.yml`** : sauvegardes quotidiennes de la
+  base et des fichiers.
+- **`restore-drill.yml`** : chaque semaine, restaure la dernière sauvegarde
+  (refusée si elle a plus de 26 h), vérifie les tables et applique les
+  migrations du code sur la copie.
 
-Lancer la suite en local : `cd watt-api && pytest -q` (Postgres démarré + migrations appliquées).
+En local : `cd watt-api && pytest -q` (Postgres démarré, migrations appliquées).
 
 ## Documentation projet
 
-- **Cartographie produit/stratégie** : ouvrir `OBSIDIAN/` dans Obsidian (local, non versionné).
-- **Cartographie code** : `graphify-out/graph.html` (rebuild à la demande).
-- **Dette technique** : `OBSIDIAN/01_PRODUIT/Dette_technique.md` — chantier actif : **Sortie Flask** (plan P0 a/b/c).
-
-> Dernier déploiement forcé : 2026-08-01 (kick — webhook Railway muet après la rafale de merges #473-478).
+Stratégie, produit et dette : vault `OBSIDIAN/` (local, non versionné).
