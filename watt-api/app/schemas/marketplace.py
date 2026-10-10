@@ -215,11 +215,11 @@ class PromptCreate(BaseModel):
     # La rareté en découle (compute_rarity_tier) ; le prix reste libre.
     max_supply: int | None = Field(default=None, ge=1)
 
-    # ── Réglages génération (4 obligatoires + 1 optionnel) ───────────────
+    # ── Réglages génération (5 obligatoires) ─────────────────────────────
+    # Lot G : la version de l'outil devient obligatoire — les CGU promettent
+    # que chaque Œuvre affiche l'outil d'IA ET sa version.
     prompt_platform: PromptPlatform
-    prompt_model_version: str | None = Field(
-        default=None, max_length=50
-    )
+    prompt_model_version: str = Field(min_length=1, max_length=50)
     prompt_weirdness: str = Field(min_length=1, max_length=50)
     prompt_style_influence: str = Field(min_length=1, max_length=500)
     prompt_vocal_gender: PromptVocalGender

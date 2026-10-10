@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # watt-api/alembic/ (source de vérité) ; si l'ini est introuvable (paquet
 # installé sans les migrations), on retombe sur la constante ci-dessous — à
 # mettre à jour à chaque nouvelle migration.
-_ALEMBIC_HEAD_FALLBACK = "0103_emails_minuscules"
+_ALEMBIC_HEAD_FALLBACK = "0104_fichiers_a_traiter"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 
@@ -137,7 +137,7 @@ from app.core.securite import SEC_SKIP_PREFIXES as _SEC_SKIP_PREFIXES  # noqa: E
 # compressee. Les reponses de /auth/* portent le JWT (et /auth/register
 # reflete l'email soumis) : ce sont exactement les conditions de l'attaque.
 # Ces reponses sont minuscules — la compression n'y apportait rien.
-_GZIP_SKIP_PREFIXES = _SEC_SKIP_PREFIXES + ("/auth",)
+_GZIP_SKIP_PREFIXES = _SEC_SKIP_PREFIXES + ("/images/", "/auth")
 
 
 # ── Compression HTTP selective (F1-2, 2026-08-02) ──────────────────────────

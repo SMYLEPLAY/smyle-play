@@ -55,14 +55,14 @@ def _capture_reset_delivery_failure(user, *, reason: str) -> None:
 async def _emails_inscription(
     email: str, name: str | None, link: str | None, user_id: str
 ) -> None:
-    """Lot E — emails d'inscription, exécutés APRÈS l'envoi de la réponse
-    (BackgroundTasks). Ne lève jamais : chaque envoi est indépendant."""
-    from app.services.emails import send_verification_email, send_welcome_email
+    """Lot E — email d'inscription, exécuté APRÈS l'envoi de la réponse
+    (BackgroundTasks). Ne lève jamais.
 
-    try:
-        await send_welcome_email(email, name=name)
-    except Exception:
-        logger.warning("[auth] email de bienvenue : échec (compte %s)", user_id, exc_info=True)
+    Lot G (décision de Tom) : SEUL l'email de vérification part. L'email de
+    bienvenue est supprimé — il doublait le nombre d'emails par inscription
+    (quota d'envoi quotidien) sans rien apporter de nécessaire."""
+    from app.services.emails import send_verification_email
+
     if link:
         try:
             await send_verification_email(email, link=link)
@@ -122,7 +122,7 @@ async def register(
     # a pour défaut 0 depuis la migration 0066 : un grant explicite ici ferait
     # un DOUBLE comptage. (Ce commentaire décrivait l'état d'avant 0066 —
     # défaut de colonne à 10 et aucune trace comptable ; corrigé F-04.)
-    # Emails d'inscription (bienvenue + lien de vérification) — Lot E :
+    # Email d'inscription (lien de vérification seul, Lot G) — Lot E :
     # envoyés en ARRIÈRE-PLAN, après la réponse. Avant, l'inscription
     # attendait jusqu'à 2 × 6 s l'API Resend ; une lenteur de Resend ralentissait
     # chaque inscription et occupait la connexion. Best-effort intégral :
@@ -173,10 +173,24 @@ async def login(
             detail="Invalid credentials",
         )
     # Modération DSA (Phase 3) : un compte banni ne peut pas se reconnecter.
+    # Lot G : il reçoit un jeton limité (30 min) qui ne permet QUE d'exporter
+    # ou de supprimer ses données (RGPD), cf. app/auth/jwt.py.
     if user.is_banned:
-        raise HTTPException(
+        from fastapi.responses import JSONResponse
+
+        from app.auth.jwt import PORTEE_RGPD, RGPD_JETON_MINUTES
+
+        return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Compte suspendu.",
+            content={
+                "detail": ("Compte suspendu. Tu peux encore télécharger tes "
+                           "données ou supprimer ton compte."),
+                "code": "compte_suspendu",
+                "jeton_rgpd": create_access_token(
+                    subject=str(user.id), token_version=user.token_version or 0,
+                    portee=PORTEE_RGPD, minutes=RGPD_JETON_MINUTES,
+                ),
+            },
         )
     # Vérification d'email (Phase A). NON bloquant par défaut : le login n'est
     # refusé QUE si REQUIRE_EMAIL_VERIFIED=True. Sinon (défaut), un email non
@@ -188,7 +202,7 @@ async def login(
             detail="Confirme ton adresse email avant de te connecter.",
         )
     token = create_access_token(
-        subject=user.email, token_version=user.token_version or 0
+        subject=str(user.id), token_version=user.token_version or 0
     )
     return {
         "access_token": token,

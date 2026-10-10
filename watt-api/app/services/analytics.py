@@ -205,9 +205,20 @@ async def _passage_purge() -> None:
         if not pris:
             return
         n = await purger_mesure_ancienne(db)
+        # Lot G — signalements : supprimés 3 ans après la décision.
+        from app.services.moderation import purger_signalements_anciens
+
+        s = await purger_signalements_anciens(db)
         await db.commit()
         if n:
             _log.info("[mesure] purge : %s événements de plus de 13 mois supprimés", n)
+        if s:
+            _log.info("[signalements] purge : %s signalements décidés il y a plus de 3 ans", s)
+    # Lot G — opérations sur les fichiers restées en attente (stockage
+    # indisponible, bucket privé posé depuis…) : rejouées chaque jour.
+    from app.services.fichiers_a_traiter import traiter_en_attente
+
+    await traiter_en_attente()
 
 
 async def _boucle_purge() -> None:

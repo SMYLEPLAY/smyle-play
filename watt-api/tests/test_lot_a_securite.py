@@ -207,6 +207,7 @@ async def test_c1_creation_refuse_les_fichiers_d_autrui(client):
         r = await client.post("/tracks/", json={
             **base, "r2_key": mine, "audio_url": f"/watt/stream/{mine}",
             "cover_url": f"/watt/images/images/track-cover/{a['id']}/c.png",
+            "platform": "suno",
         }, headers=h)
         assert r.status_code == 201, r.text
         tr = r.json()["track"]
@@ -289,6 +290,7 @@ async def test_c1_parcours_createur_complet(client, monkeypatch):
         r = await client.post("/tracks/", headers=h, json={
             "title": "Mon son", "full_prompt": "deep house",
             "audio_url": f"/watt/stream/{key}", "r2_key": key, "cover_url": cover,
+            "platform": "suno",
         })
         assert r.status_code == 201, r.text
         tid = r.json()["track"]["id"]
@@ -448,7 +450,9 @@ async def test_e2_son_ne_porte_que_ses_recettes(client):
     try:
         h = await _login(client, a["email"])
         base = {"title": "Son", "full_prompt": "x",
-                "r2_key": f"tracks/{a['id']}/son-0123abcd.wav"}
+                "r2_key": f"tracks/{a['id']}/son-0123abcd.wav",
+                "cover_url": f"/watt/images/images/track-cover/{a['id']}/c.png",
+                "platform": "suno"}
         r = await client.post("/tracks/", json={**base, "prompt_id": str(rec_b)}, headers=h)
         assert r.status_code == 422, r.text
         r = await client.post("/tracks/", json={**base, "prompt_id": str(uuid.uuid4())}, headers=h)
@@ -610,7 +614,8 @@ async def test_e3_inventaire_des_requetes_track():
         if n:
             trouve[f.name] = n
     assert trouve == {
-        "beats.py": 1,         # téléchargement payé : créateur ; supprimé OK pour l'acheteur (Parcours V1)
+        "beats.py": 2,         # téléchargement payé : créateur ; supprimé OK pour l'acheteur (Parcours V1)
+                               # + Lot G : son retiré par la modération → refusé à tous
         "images.py": 3,        # cartes image / Œuvres : is_deleted
         "oeuvre.py": 2,        # collection : filtrée ; calcul de possession
         "search.py": 2,        # recherche + compteurs : visible_track_clause
@@ -628,7 +633,7 @@ async def test_m1_jeton_revoque_ou_compte_suspendu(client):
     a = await _user(public=False)
     tid = await _track(a["id"])
     try:
-        perime = {"Authorization": "Bearer " + create_access_token(a["email"], token_version=99)}
+        perime = {"Authorization": "Bearer " + create_access_token(str(a["id"]), token_version=99)}
         # Écriture : refusée avec un jeton révoqué (avant : acceptée).
         assert (await client.delete(f"/watt/tracks/{tid}", headers=perime)).status_code == 401
         # Lecture : le profil privé n'est plus servi en « aperçu créateur ».

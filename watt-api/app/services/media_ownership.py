@@ -26,7 +26,8 @@ from urllib.parse import unquote, urlsplit
 from app.config import settings
 
 # Préfixes de proxy same-origin qui pointent vers notre stockage.
-_PROXY_PREFIXES = ("/watt/stream/", "/watt/images/")
+# Lot G : + vidéos de couverture de playlist (adresse dédiée depuis 0101).
+_PROXY_PREFIXES = ("/watt/stream/", "/watt/images/", "/watt/playlist-video/")
 
 # Usages d'image que le navigateur peut demander (champ `kind`). Le reste est
 # ramené à « image » : ni les originaux payants ni les aperçus de produits
@@ -55,6 +56,20 @@ def track_audio_prefix(user_id) -> str:
 def image_prefix(kind: str, user_id) -> str:
     """Dossier R2 des images envoyées par ce compte pour cet usage."""
     return f"images/{safe_image_kind(kind)}/{user_id}"
+
+
+def cle_sure(key: str | None) -> bool:
+    """Lot G — une clé de stockage demandée par un navigateur est-elle sans
+    ambiguïté ? Refus : vide, « / » au début, « \\ », segment vide (« // »),
+    « . » ou « .. », caractère de contrôle. Les contrôles d'accès portent sur
+    la clé telle qu'elle est reçue : elle doit désigner un seul objet."""
+    if not key:
+        return False
+    if key.startswith("/") or "\\" in key:
+        return False
+    if any(ord(c) < 32 or ord(c) == 127 for c in key):
+        return False
+    return all(p not in ("", ".", "..") for p in key.split("/"))
 
 
 def key_owned_by(key: str | None, user_id) -> bool:

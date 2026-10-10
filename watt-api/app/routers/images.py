@@ -1313,39 +1313,9 @@ async def delete_my_image(
     await db.commit()
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# GET /watt/images/{key} — proxy aperçu PUBLIC (preview_r2_key uniquement)
-# ──────────────────────────────────────────────────────────────────────────
-
-
-@router.get("/watt/images/{key:path}")
-async def stream_image_preview(key: str):
-    """
-    Proxy same-origin de l'APERÇU R2 (miroir de /watt/stream pour l'audio).
-    Sert UNIQUEMENT les clés du préfixe `images/previews/` : l'original
-    `images/originals/...` n'est JAMAIS atteignable par ce proxy (gate dur
-    ci-dessous) — il passe exclusivement par /images/{id}/download après achat.
-    """
-    # Gate dur : seules les clés d'aperçu sont servables publiquement.
-    if not key.startswith("images/previews/"):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
-        )
-
-    from app.services.r2 import ouvrir_objet
-
-    obj = await ouvrir_objet(key)
-
-    ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
-    mime = IMAGE_MIME_BY_EXT.get(ext, "image/jpeg")
-
-
-    headers = {"Cache-Control": "public, max-age=3600"}
-    content_length = obj.get("ContentLength")
-    if content_length:
-        headers["Content-Length"] = str(content_length)
-
-    return StreamingResponse(_flux_objet(obj), media_type=mime, headers=headers)
+# Lot G : l'ancien doublon GET /watt/images/{key} (jamais atteint : la route de
+# watt_compat, enregistrée avant, répondait toujours) est supprimé. Le proxy
+# des images publiques est app/routers/watt_compat.py::serve_image.
 
 
 async def _get_original_r2_object(key: str) -> dict:
@@ -1407,6 +1377,11 @@ async def download_image(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Achète cet exemplaire pour pouvoir le télécharger.",
         )
+    # Lot G : image retirée par la modération → plus servie à personne.
+    if product.taken_down_at is not None:
+        from app.services.moderation import CONTENU_RETIRE
+
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail=CONTENU_RETIRE)
 
     # Journal de téléchargement (H0.5+) — best-effort, n'interrompt jamais le DL.
     from app.services.downloads import log_download
@@ -1423,11 +1398,9 @@ async def download_image(
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = IMAGE_MIME_BY_EXT.get(ext, "application/octet-stream")
-    safe_name = (product.title or "image").replace('"', "").strip() or "image"
-    filename = f"{safe_name}.{ext}" if ext else safe_name
+    from app.core.fichiers import entete_piece_jointe
 
-
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    headers = {"Content-Disposition": entete_piece_jointe(product.title, ext, defaut="image")}
     content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)
@@ -1641,6 +1614,10 @@ async def download_image_gallery_item(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Achète cet exemplaire pour pouvoir le télécharger.",
         )
+    if product.taken_down_at is not None:  # Lot G
+        from app.services.moderation import CONTENU_RETIRE
+
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail=CONTENU_RETIRE)
 
     item = (await db.execute(
         select(PromptGalleryImage).where(
@@ -1664,12 +1641,11 @@ async def download_image_gallery_item(
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = IMAGE_MIME_BY_EXT.get(ext, "application/octet-stream")
-    base = (product.title or "image").replace('"', "").strip() or "image"
-    safe_name = f"{base}-{item.position + 1}"
-    filename = f"{safe_name}.{ext}" if ext else safe_name
+    from app.core.fichiers import entete_piece_jointe
 
-
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    base = " ".join((product.title or "image").split()) or "image"
+    headers = {"Content-Disposition": entete_piece_jointe(
+        f"{base}-{item.position + 1}", ext, defaut="image")}
     content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)

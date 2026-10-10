@@ -106,6 +106,42 @@ class AlreadyOwned(UnlockError):
     """Buyer possède déjà cet ADN. → HTTP 409."""
 
 
+class PrixChange(UnlockError):
+    """Lot G — le prix a changé entre l'affichage et le paiement (le client a
+    envoyé un `prix_attendu` qui ne correspond plus). → HTTP 409, avec le
+    nouveau prix : l'interface propose de confirmer à ce prix."""
+
+    def __init__(self, prix: int):
+        super().__init__(f"Le prix a changé : {prix} Smyles")
+        self.prix = int(prix)
+
+
+def verifier_prix_attendu(prix_attendu: int | None, *acceptes: int) -> None:
+    """Refuse l'achat si le client attendait un autre prix. Sont acceptés le
+    prix affiché au catalogue ET le prix effectif pour cet acheteur (remises
+    comprises) : selon l'écran, l'un ou l'autre est montré. Le dernier de
+    `acceptes` est le prix réellement payé (renvoyé en cas d'écart)."""
+    if prix_attendu is None:
+        return
+    if int(prix_attendu) not in {int(a) for a in acceptes}:
+        raise PrixChange(acceptes[-1])
+
+
+async def _relire_sous_verrou(db: AsyncSession, prompt_id) -> Prompt:
+    """Lot G — relit le produit SOUS VERROU (FOR UPDATE) une fois les verrous
+    comptes pris : le prix lu avant les verrous pouvait changer (« Mes
+    Œuvres ») pendant l'achat. Revérifie qu'il est toujours en vente."""
+    row = (await db.execute(
+        select(Prompt).where(Prompt.id == prompt_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )).scalar_one_or_none()
+    if (row is None or not row.is_published or row.is_deleted
+            or row.taken_down_at is not None):
+        raise PromptNotPurchasable("Prompt not found or not published")
+    return row
+
+
 # -----------------------------------------------------------------------------
 # Result dataclass-like (retour des services, mappé en réponse par le router)
 # -----------------------------------------------------------------------------
@@ -210,6 +246,7 @@ async def unlock_prompt_atomic(
     buyer_id: UUID,
     prompt_id: UUID,
     _oeuvre: dict | None = None,
+    prix_attendu: int | None = None,
 ) -> _UnlockPromptResult:
     """
     Achète un prompt pour le compte de `buyer_id`.
@@ -278,6 +315,11 @@ async def unlock_prompt_atomic(
         else:
             treasury_id = _oeuvre["treasury_id"]  # verrous déjà pris
 
+        # Lot G — prix et état relus SOUS VERROU (le prix lu plus haut peut
+        # avoir changé depuis : modification par le créateur pendant l'achat).
+        prompt_row = await _relire_sous_verrou(db, prompt_id)
+        base_price = prompt_row.price_credits
+
         # Lot A (M2) — stock RECOMPTÉ SOUS VERROU. Le contrôle ci-dessus est
         # lu avant les verrous : deux clics simultanés sur une édition 1/1
         # le passaient tous les deux. Tous les acheteurs d'un même produit
@@ -294,6 +336,9 @@ async def unlock_prompt_atomic(
         remise_oeuvre = int(_oeuvre["discount"]) if _oeuvre else 0
         if remise_oeuvre:
             paid = max(1, paid - remise_oeuvre)
+        # Lot G — prix attendu par le client (achat unitaire seulement ; pour
+        # une Œuvre entière, le contrôle est fait sur le total par l'appelant).
+        verifier_prix_attendu(prix_attendu, base_price, paid)
         # C6 : commission selon le PALIER de l'artiste vendeur (80/88/90).
         # Standard = 80% = comportement historique.
         artist_pct = await artist_pct_for_user(db, artist_id)

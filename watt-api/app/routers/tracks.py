@@ -40,17 +40,24 @@ async def create(
     # qu'après la publication du profil sur /u/<slug>. Le flag est porté
     # par users.profile_public. 409 = intention-utilisateur non remplie
     # (pas un 400 validation, pas un 403 permissions).
-    if not bool(getattr(current_user, "profile_public", False)):
+    # Lot G (décision de Tom) : le profil devient public AUTOMATIQUEMENT au
+    # premier son publié (l'étape « publier mon profil » était cachée et
+    # bloquait). Seul prérequis restant : un nom d'artiste (sinon la page
+    # publique n'a pas d'adresse) → 409, comme avant.
+    profil_a_publier = not bool(getattr(current_user, "profile_public", False))
+    if profil_a_publier and not (current_user.artist_name or "").strip():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "error":    "profile_not_published",
-                "message":  "Publie d'abord ton profil pour pouvoir publier un son.",
+                "message":  "Choisis d'abord ton nom d'artiste pour publier un son.",
                 "redirect": "/u/me",
             },
         )
     try:
-        track, dna = await create_track_with_dna(db, current_user, data)
+        track, dna = await create_track_with_dna(
+            db, current_user, data, publier_profil=profil_a_publier
+        )
     except (MediaOwnershipError, PromptLinkInvalid) as e:
         # Lot A — fichier qui ne vient pas d'un envoi de ce compte, ou recette
         # d'un autre artiste : 422, rien n'est créé.

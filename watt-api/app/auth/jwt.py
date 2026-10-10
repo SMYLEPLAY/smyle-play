@@ -8,22 +8,63 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.services.users import get_user_by_email
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+# Lot G — jeton « données personnelles » remis à un compte SUSPENDU qui se
+# connecte : il ne permet QUE d'exporter ou de supprimer ses données.
+PORTEE_RGPD = "rgpd"
+RGPD_JETON_MINUTES = 30
+_ROUTES_RGPD = {
+    ("GET", "/users/me/export"),
+    ("GET", "/users/me/suppression"),
+    ("DELETE", "/users/me"),
+    ("POST", "/users/me/delete"),
+}
 
-def create_access_token(subject: str, token_version: int = 0) -> str:
+
+def create_access_token(
+    subject: str,
+    token_version: int = 0,
+    *,
+    portee: str | None = None,
+    minutes: int | None = None,
+) -> str:
+    """Lot G : `subject` = IDENTIFIANT du compte (et non plus l'email) :
+    l'identifiant d'un compte ne change jamais."""
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.JWT_EXPIRE_MINUTES
+        minutes=minutes if minutes is not None else settings.JWT_EXPIRE_MINUTES
     )
     # `tv` = version de jeton (durcissement) : recopiée depuis user.token_version,
     # vérifiée à chaque requête. Un reset de mot de passe l'incrémente → révoque
     # les jetons antérieurs.
-    payload = {"sub": subject, "exp": expire, "tv": token_version}
+    payload = {"sub": str(subject), "exp": expire, "tv": token_version}
+    if portee:
+        payload["portee"] = portee
     return jwt.encode(
         payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM
     )
+
+
+async def _user_du_jeton(db: AsyncSession, claims: dict | None) -> User | None:
+    """Compte désigné par le jeton (identifiant). Un ancien jeton portant un
+    email n'est plus accepté : il désignait une adresse, pas un compte."""
+    import uuid as _uuid
+
+    sub = claims.get("sub") if claims else None
+    if not sub:
+        return None
+    try:
+        uid = _uuid.UUID(str(sub))
+    except (ValueError, TypeError):
+        return None
+    return await db.get(User, uid)
+
+
+def _route_rgpd(request: Request | None) -> bool:
+    if request is None:
+        return False
+    chemin = request.url.path.rstrip("/") or "/"
+    return (request.method.upper(), chemin) in _ROUTES_RGPD
 
 
 def _decode_claims(token: str) -> dict | None:
@@ -50,7 +91,9 @@ _ECRITURES_SANS_CGU = (
     ("POST", "/users/me/delete"),
     ("POST", "/users/me/onboarding"),
 )
-_PREFIXES_SANS_CGU = ("/notifications",)
+# Lot G : les notifications vivent sous /me/notifications (l'ancien préfixe
+# « /notifications » ne correspondait à aucune route).
+_PREFIXES_SANS_CGU = ("/me/notifications",)
 _METHODES_ECRITURE = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -98,13 +141,12 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     claims = _decode_claims(token)
-    email = claims.get("sub") if claims else None
-    if email is None:
+    if not claims or not claims.get("sub"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
-    user = await get_user_by_email(db, email)
+    user = await _user_du_jeton(db, claims)
     if user is None:
         raise credentials_exception
     # Révocation (durcissement) : le `tv` du jeton doit correspondre à la
@@ -115,9 +157,17 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session expirée, reconnecte-toi.",
         )
+    # Lot G — exporter ou supprimer ses données reste possible pendant une
+    # suspension (RGPD art. 15, 17, 20). Le jeton « rgpd » ne sert qu'à ça.
+    rgpd = _route_rgpd(request)
+    if claims.get("portee") == PORTEE_RGPD and not rgpd:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session limitée à tes données personnelles.",
+        )
     # Modération DSA (Phase 3) : un compte banni ne peut plus rien faire
-    # d'authentifié, même avec un jeton encore valide.
-    if user.is_banned:
+    # d'authentifié, même avec un jeton encore valide (sauf ses données).
+    if user.is_banned and not rgpd:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Compte suspendu.",
@@ -145,11 +195,10 @@ async def resolve_optional_user(db: AsyncSession, token: str | None) -> User | N
     if not token:
         return None
     claims = _decode_claims(token)
-    email = claims.get("sub") if claims else None
-    if not email:
+    if not claims or claims.get("portee") == PORTEE_RGPD:
         return None
     try:
-        user = await get_user_by_email(db, email)
+        user = await _user_du_jeton(db, claims)
     except Exception:  # noqa: BLE001 — une lecture publique ne casse jamais
         return None
     if user is None:

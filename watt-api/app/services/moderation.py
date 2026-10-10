@@ -11,8 +11,10 @@ au niveau des endpoints) :
   en base (migration 0092) les garde cachées même si le créateur tente de les
   republier, et elles ne qualifient plus personne au programme Pionnier
   (cf. publications.SQL_OEUVRES_EN_LIGNE).
-  On NE supprime jamais la ligne → la preuve est conservée (exigence DSA) et un
-  éventuel acheteur garde son accès en bibliothèque.
+  On NE supprime jamais la ligne → la preuve est conservée (exigence DSA).
+  Lot G : un contenu retiré n'est plus servi à PERSONNE (écoute, image,
+  recette, téléchargements, acheteurs compris), et ses fichiers quittent le
+  bucket public quand R2_PRIVATE_BUCKET est configuré.
 - `ban_user` / `unban_user` : suspend / rétablit un compte (login + tout accès
   authentifié bloqués via get_current_user).
 """
@@ -32,6 +34,10 @@ from app.models.track import Track
 from app.models.user import User
 from app.models.visual_adn import VisualAdn
 from app.models.voice import Voice
+
+# Lot G — message unique quand un contenu retiré est demandé (téléchargement,
+# recette en bibliothèque) : il n'est plus servi à personne.
+CONTENU_RETIRE = "Ce contenu a été retiré par la modération : il n'est plus disponible."
 
 # Types d'œuvres « publiables » : retrait = is_published false + marque
 # taken_down_at (le trigger 0092 empêche toute republication).
@@ -217,6 +223,7 @@ async def takedown_content(
             await journaliser(db, admin_id=admin_id, action="retrait", cible_type=ttype,
                               cible_id=str(tid), motif=reason,
                               details={"etait_publie": etait_publie})
+            await _fichiers_vers_prive(db, ttype, tid)
         return {"ok": True, "detail": done}
 
     if ttype == "track":
@@ -232,6 +239,7 @@ async def takedown_content(
             await journaliser(db, admin_id=admin_id, action="retrait", cible_type="track",
                               cible_id=str(tid), motif=reason,
                               details={"etait_supprime": etait_supprime})
+            await _fichiers_vers_prive(db, "track", tid)
         return {"ok": True, "detail": "Morceau retiré."}
 
     if ttype in ("playlist", "album"):
@@ -263,6 +271,26 @@ async def takedown_content(
         return {"ok": True, "detail": "Compte suspendu."}
 
     return {"ok": False, "detail": f"Type de cible non géré : {ttype}."}
+
+
+async def _fichiers_vers_prive(db: AsyncSession, ttype: str, tid) -> None:
+    """Lot G — le fichier d'un contenu retiré quitte le bucket public (copie
+    vers le bucket privé puis suppression du public), via une opération
+    durable exécutée après le commit (services/fichiers_a_traiter.py)."""
+    from app.services.fichiers_a_traiter import cles_du_contenu, programmer
+
+    await db.flush()
+    await programmer(db, await cles_du_contenu(db, ttype, tid), "vers_prive", "retrait")
+    _oublier_cache_apercus()
+
+
+def _oublier_cache_apercus() -> None:
+    try:
+        from app.routers.watt_compat import oublier_apercus_retires
+
+        oublier_apercus_retires()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -408,6 +436,11 @@ async def restaurer_contenu(
             {"p": bool(avant.get("etait_publie", True)), "i": tid},
         )
     await db.execute(text("SELECT set_config('watt.restauration', 'off', true)"))
+    # Lot G — les fichiers déplacés au retrait reviennent dans le public.
+    from app.services.fichiers_a_traiter import cles_du_contenu, programmer
+
+    await programmer(db, await cles_du_contenu(db, ttype, tid), "vers_public", "restauration")
+    _oublier_cache_apercus()
     await journaliser(db, admin_id=admin_id, action="restauration", cible_type=ttype,
                       cible_id=str(tid), motif=motif, details={"etat_remis": avant or "en_ligne"})
     # Informer l'auteur (best-effort).
@@ -422,3 +455,21 @@ async def restaurer_contenu(
     except Exception:  # noqa: BLE001
         pass
     return {"ok": True, "detail": "Contenu restauré."}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Lot G — purge des signalements 3 ans après la décision
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def purger_signalements_anciens(db: AsyncSession) -> int:
+    """Supprime les signalements dont la décision finale (retrait ou rejet)
+    date de plus de SIGNALEMENTS_RETENTION_ANS ans. Les signalements encore
+    ouverts ne sont jamais touchés. Ne commit pas. Renvoie le nombre supprimé."""
+    from app.core.legal import SIGNALEMENTS_RETENTION_ANS
+
+    res = await db.execute(text(
+        "DELETE FROM content_reports WHERE status IN ('actioned', 'rejected') "
+        "AND resolved_at IS NOT NULL "
+        "AND resolved_at < now() - make_interval(years => :a)"),
+        {"a": SIGNALEMENTS_RETENTION_ANS})
+    return int(res.rowcount or 0)

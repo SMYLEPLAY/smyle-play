@@ -14,6 +14,14 @@ from app.services.media_ownership import (
 )
 
 
+POCHETTE_MANQUANTE = (
+    "Ajoute une pochette : une Œuvre, c'est un son et son image."
+)
+OUTIL_MANQUANT = (
+    "Indique l'outil d'IA avec lequel ce son a été créé (il est affiché sur l'Œuvre)."
+)
+
+
 class BeatLinkInvalid(Exception):
     """beat_id fourni au PATCH track invalide : inexistant, pas un beat,
     supprimé, ou appartenant à un autre artiste. → 422 côté router."""
@@ -77,6 +85,8 @@ async def create_track_with_dna(
     db: AsyncSession,
     user: User,
     data: TrackCreate,
+    *,
+    publier_profil: bool = False,
 ) -> tuple[Track, DNA]:
     """Atomic creation: NO DNA = NO TRACK.
 
@@ -110,6 +120,15 @@ async def create_track_with_dna(
         )
     if data.prompt_id is not None:
         await _assert_prompt_owned(db, user=user, prompt_id=data.prompt_id)
+    # Lot G (décision de Tom) — une Œuvre = un son ET une image : pas de son
+    # publié sans pochette (sinon sa page /o/ est introuvable). L'outil d'IA
+    # est obligatoire (il est affiché publiquement, CGU).
+    if not (data.cover_url or "").strip():
+        raise MediaOwnershipError(POCHETTE_MANQUANTE)
+    if not data.platform:
+        raise MediaOwnershipError(OUTIL_MANQUANT)
+    if publier_profil:
+        user.profile_public = True
 
     # Étape 2 — la couleur est optionnelle : si l'artiste n'en a pas choisi,
     # on la laisse à NULL et le front retombera sur sa brandColor.

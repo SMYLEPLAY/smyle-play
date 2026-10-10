@@ -99,7 +99,9 @@ async def test_b1_son_refuse_sans_audio_valide(client):
             n = (await db.execute(select(Track.id).where(Track.artist_id == a["id"]))).all()
         assert n == []
         r = await client.post("/tracks/", headers=h, json={
-            **base, "r2_key": f"tracks/{a['id']}/son-0123abcd.mp3"})
+            **base, "r2_key": f"tracks/{a['id']}/son-0123abcd.mp3",
+            "cover_url": f"/watt/images/images/track-cover/{a['id']}/c.png",
+            "platform": "suno"})
         assert r.status_code == 201, r.text
     finally:
         await _cleanup(a["id"], b["id"])

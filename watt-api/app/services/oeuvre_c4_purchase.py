@@ -42,7 +42,9 @@ from app.services.unlocks import (
     SelfPurchaseForbidden,
     UnlockError,
     _effective_prompt_price,
+    _relire_sous_verrou,
     unlock_prompt_atomic,
+    verifier_prix_attendu,
 )
 
 OEUVRE_DISCOUNT_PCT = 10
@@ -151,7 +153,9 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
             "discountPct": OEUVRE_DISCOUNT_PCT, "mode": "oeuvre"}
 
 
-async def buy_oeuvre_atomic(db: AsyncSession, *, buyer_id: UUID, oeuvre_id: UUID) -> dict:
+async def buy_oeuvre_atomic(
+    db: AsyncSession, *, buyer_id: UUID, oeuvre_id: UUID, prix_attendu: int | None = None,
+) -> dict:
     """Achète l'Œuvre (ou la moitié manquante). Le caller commit.
 
     Lève : OeuvreIntrouvable (404), OeuvreNotBundlable (409), SelfPurchaseForbidden (400),
@@ -184,9 +188,16 @@ async def buy_oeuvre_atomic(db: AsyncSession, *, buyer_id: UUID, oeuvre_id: UUID
         if len(owned) == 2:
             raise AlreadyUnlocked("Tu possèdes déjà cette œuvre.")
 
+        # Lot G — les deux moitiés relues SOUS VERROU : prix à jour, toujours
+        # en vente (sinon PromptNotPurchasable).
+        recipe = await _relire_sous_verrou(db, recipe.id)
+        img = await _relire_sous_verrou(db, img.id)
+
         if owned:
             # Une moitié déjà possédée → l'autre au PRIX PLEIN, sans remise.
             manquante = img if recipe.id in owned else recipe
+            p_manq, _, _ = await _effective_prompt_price(db, buyer_id=buyer_id, prompt_row=manquante)
+            verifier_prix_attendu(prix_attendu, manquante.price_credits, p_manq)
             r = await unlock_prompt_atomic(
                 db, buyer_id=buyer_id, prompt_id=manquante.id,
                 _oeuvre={"treasury_id": treasury_id, "discount": 0, "oeuvre_id": img.id},
@@ -198,6 +209,8 @@ async def buy_oeuvre_atomic(db: AsyncSession, *, buyer_id: UUID, oeuvre_id: UUID
             p_son, _, _ = await _effective_prompt_price(db, buyer_id=buyer_id, prompt_row=recipe)
             p_img, _, _ = await _effective_prompt_price(db, buyer_id=buyer_id, prompt_row=img)
             prix, r_son, r_img = oeuvre_bundle_price(p_son, p_img)
+            prix_public, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits)
+            verifier_prix_attendu(prix_attendu, prix_public, prix)
             balance = int((await db.execute(
                 text("SELECT credits_balance FROM users WHERE id = :u"), {"u": buyer_id}
             )).scalar_one())

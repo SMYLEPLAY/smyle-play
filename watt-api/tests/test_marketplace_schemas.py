@@ -51,6 +51,7 @@ def _prompt_create_payload(**overrides):
         # Champs rendus obligatoires après l'évolution produit (plateforme IA,
         # weirdness, style_influence, genre vocal). Valeurs valides minimales.
         "prompt_platform": "suno",
+        "prompt_model_version": "v4.5",
         "prompt_weirdness": "standard",
         "prompt_style_influence": "aucune",
         "prompt_vocal_gender": "masculin",

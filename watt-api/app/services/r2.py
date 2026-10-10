@@ -293,3 +293,55 @@ def flux_objet(obj: dict, chunk_size: int = 65536):
             body.close()
         except Exception:
             pass
+
+
+# ── Lot G — déplacements entre buckets (retrait par la modération) ─────────
+
+def bucket_prive_distinct() -> str | None:
+    """Nom du bucket privé s'il est configuré ET différent du public, sinon
+    None (dans ce cas rien ne peut être « rendu privé » côté stockage)."""
+    prive = (settings.R2_PRIVATE_BUCKET or "").strip()
+    if prive and prive != settings.R2_BUCKET:
+        return prive
+    return None
+
+
+async def objet_existe(key: str, *, bucket: str) -> bool:
+    """head_object : True / False ; R2Indisponible si le stockage ne répond pas."""
+    client = get_r2_client()
+    if client is None:
+        raise R2Indisponible("non_configure")
+    try:
+        await appel_r2(client.head_object, Bucket=bucket, Key=key,
+                       operation="head_object", key=key)
+        return True
+    except R2Absent:
+        return False
+
+
+async def copier_objet(key: str, *, source: str, destination: str) -> None:
+    """Copie serveur à serveur (même compte R2). Lève R2Absent / R2Indisponible."""
+    client = get_r2_client()
+    if client is None:
+        raise R2Indisponible("non_configure")
+    await appel_r2(
+        client.copy_object,
+        Bucket=destination,
+        Key=key,
+        CopySource={"Bucket": source, "Key": key},
+        operation="copy_object",
+        key=key,
+    )
+
+
+async def supprimer_objet(key: str, *, bucket: str) -> None:
+    """delete_object qui LÈVE en cas d'échec (contrairement à delete_r2_object).
+    Supprimer un objet absent n'est pas une erreur (S3)."""
+    client = get_r2_client()
+    if client is None:
+        raise R2Indisponible("non_configure")
+    try:
+        await appel_r2(client.delete_object, Bucket=bucket, Key=key,
+                       operation="delete_object", key=key)
+    except R2Absent:
+        return

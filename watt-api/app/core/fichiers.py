@@ -272,3 +272,21 @@ def mime_pour(ext: str, *, video: bool = False) -> str:
     if video and ext == "webm":
         return MIME_VIDEO_WEBM
     return MIME_PAR_EXT.get(ext, "application/octet-stream")
+
+
+def entete_piece_jointe(nom: str | None, ext: str = "", *, defaut: str = "fichier") -> str:
+    """Lot G — en-tête Content-Disposition d'un téléchargement, sûr pour tous
+    les titres. Un titre avec accents « œ » ou emoji ne passe pas dans un
+    en-tête HTTP brut (latin-1) : le serveur répondait 500. On envoie un nom
+    ASCII de repli (`filename=`) ET le vrai nom en UTF-8 (`filename*=`, RFC
+    6266), que tous les navigateurs actuels utilisent."""
+    import re
+    import unicodedata
+    from urllib.parse import quote
+
+    base = " ".join(str(nom or "").split())
+    base = re.sub(r'[\x00-\x1f\x7f"\\/:*?<>|]', "", base).strip(". ")[:120] or defaut
+    complet = f"{base}.{ext}" if ext else base
+    repli = unicodedata.normalize("NFKD", complet).encode("ascii", "ignore").decode("ascii")
+    repli = re.sub(r"[^A-Za-z0-9 ._()\-]", "", repli).strip() or (f"{defaut}.{ext}" if ext else defaut)
+    return f"attachment; filename=\"{repli}\"; filename*=UTF-8''{quote(complet, safe='')}"

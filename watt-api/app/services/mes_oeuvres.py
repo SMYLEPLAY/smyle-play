@@ -200,6 +200,11 @@ async def _supprimer(db: AsyncSession, track: Track, recette, image) -> None:
             recette.is_published = False
 
 
+def _retiree(t, r, img) -> bool:
+    """Lot G — le son, sa recette ou son image a été retiré par la modération."""
+    return any(x is not None and getattr(x, "taken_down_at", None) is not None for x in (t, r, img))
+
+
 async def action_groupee(
     db: AsyncSession, user: User, *, track_ids: list[UUID], action: str,
     prix: int | None = None, cible: str = "les_deux",
@@ -231,8 +236,10 @@ async def action_groupee(
     faits, ignores = [], []
     for t in tracks:
         r, img = liens[t.id]
-        if t.taken_down_at is not None and action in ("masquer", "republier"):
-            ignores.append(str(t.id))  # retirée par la modération : intouchable ici
+        if _retiree(t, r, img):
+            # Lot G : retirée par la modération → intouchable ici, quelle que
+            # soit l'action (prix compris) ; seule la restauration admin y touche.
+            ignores.append(str(t.id))
             continue
         if action == "masquer":
             t.hidden_at = t.hidden_at or _now()
@@ -278,6 +285,10 @@ async def modifier(db: AsyncSession, user: User, track_id: UUID, data: dict) -> 
         raise LookupError("Œuvre introuvable.")
     t = tracks[0]
     r, img = (await _rattachements(db, user.id, tracks))[t.id]
+    if _retiree(t, r, img):
+        raise OeuvreErreur(
+            "Cette Œuvre a été retirée par la modération : elle ne peut plus être modifiée."
+        )
 
     if "title" in data and data["title"] is not None:
         titre = " ".join(str(data["title"]).split())

@@ -3,8 +3,10 @@ D3 Confiance (07/07) — signalement de contenu (conformité DSA art. 16).
 
 Routes :
   POST  /reports               → déposer un signalement (ANONYME AUTORISÉ,
-                                 rate-limité ; accusé de réception dans la
-                                 réponse + email best-effort si connu)
+                                 rate-limité, explication de 10 caractères
+                                 minimum ; accusé de réception dans la
+                                 réponse + email si le compte connecté a une
+                                 adresse vérifiée)
   GET   /admin/reports         → liste (admin = is_official), new en premier
   PATCH /admin/reports/{id}    → changer le statut (reviewed/actioned/rejected)
 
@@ -28,6 +30,10 @@ from app.models.content_report import ContentReport, ReportReason, ReportStatus
 from app.models.user import User
 
 router = APIRouter(tags=["reports"])
+
+# Lot G — longueur minimale de l'explication d'un signalement (formulaire
+# et API).
+DETAIL_MIN = 10
 
 _TARGET_TYPES = (
     "track", "prompt", "image", "profil", "playlist", "album",
@@ -99,6 +105,14 @@ async def create_report(
             422,
             detail="Coche la déclaration de bonne foi pour envoyer le signalement.",
         )
+    # Lot G — explication OBLIGATOIRE (DSA art. 16 §2 a, et nos CGU) : sans
+    # elle, la modération ne peut pas apprécier le signalement.
+    if len(" ".join((payload.detail or "").split())) < DETAIL_MIN:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(f"Explique en quelques mots ce qui pose problème "
+                    f"({DETAIL_MIN} caractères minimum)."),
+        )
     user = await _optional_user(request, db)
 
     report = ContentReport(
@@ -165,9 +179,13 @@ async def create_report(
                      f"<p>Réf : {esc(report.id)}</p>"),
                 ),
             )
-        if report.reporter_email:
+        # Lot G : accusé de réception UNIQUEMENT vers une adresse vérifiée
+        # (celle d'un compte connecté qui l'a confirmée). L'accusé de
+        # réception reste la réponse elle-même (référence affichée à l'écran).
+        destinataire_ar = user.email if (user is not None and user.email_verified) else None
+        if destinataire_ar:
             await _send(
-                report.reporter_email,
+                destinataire_ar,
                 "Accusé de réception de ton signalement",
                 _layout(
                     "Signalement bien reçu",
@@ -396,6 +414,14 @@ async def _email_levee(email) -> None:
     await send_levee_suspension(email)
 
 
+def _traiter_fichiers(background_tasks: BackgroundTasks) -> None:
+    """Lot G — déplacements de fichiers programmés par le retrait, lancés
+    après la réponse (rejoués chaque jour s'ils échouent)."""
+    from app.services.fichiers_a_traiter import traiter_en_attente
+
+    background_tasks.add_task(traiter_en_attente)
+
+
 @router.post("/admin/reports/{report_id}/takedown",
              response_model=ModerationResult)
 async def takedown_reported_content(
@@ -470,6 +496,7 @@ async def takedown_reported_content(
     signaleurs = await _destinataires_signaleurs(db, [report, *autres])
     await db.commit()
 
+    _traiter_fichiers(background_tasks)
     for nature in emails_auteur:
         background_tasks.add_task(_email_auteur, owner_email, nature, report.target_type,
                                   titre, motif, str(report.id))
@@ -526,6 +553,7 @@ async def takedown_direct(
     ouverts = await _clore_signalements_ouverts(db, payload.target_type, payload.target_id)
     signaleurs = await _destinataires_signaleurs(db, ouverts)
     await db.commit()
+    _traiter_fichiers(background_tasks)
     background_tasks.add_task(_email_auteur, owner_email, "retrait", payload.target_type,
                               titre, payload.reason, None)
     for email, ref in signaleurs:

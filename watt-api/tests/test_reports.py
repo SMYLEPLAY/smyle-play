@@ -75,6 +75,7 @@ async def test_report_authenticated(client):
             "target_type": "image",
             "target_id": str(uuid.uuid4()),
             "reason": "contrefacon",
+            "detail": "Reprise d'une image protégée",
         })
         assert r.status_code == 201, r.text
         body = r.json()
