@@ -17,7 +17,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.database import SessionLocal
 
-from tests.test_lot_a_securite import _PWD, _cleanup, _login, _prompt, _track, _user
+from tests.test_lot_a_securite import _PWD, _cleanup, _login, _prompt, _user
 from tests.test_parcours_v1 import _bibliotheque, _oeuvre, _vente
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
