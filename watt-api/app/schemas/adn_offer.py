@@ -16,7 +16,7 @@ class AdnOfferCreate(BaseModel):
     target_type: AdnTargetType
     target_id: UUID
     # Montant proposé en Smyles. Borne haute 100 000 = garde anti-fat-finger.
-    amount_credits: int = Field(ge=1, le=100_000)
+    amount_credits: int = Field(ge=1, le=1_000_000)
     message: str | None = Field(default=None, max_length=500)
 
 

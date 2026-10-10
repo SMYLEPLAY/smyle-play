@@ -9,6 +9,8 @@
    ui/core/telemetry.js. Do-Not-Track => refus automatique, aucune bannière.
 
    API : window.SmyleConsent.granted() / .choiceMade() / .set('granted'|'denied')
+         / .reopen() (Lot D : rouvre le choix depuis le pied de page). Un refus
+         efface les identifiants de mesure déjà posés.
    ───────────────────────────────────────────────────────────────────────── */
 (function () {
   'use strict';
@@ -18,21 +20,34 @@
   function get() { try { return localStorage.getItem(KEY); } catch (_) { return null; } }
   function set(v) { try { localStorage.setItem(KEY, v); } catch (_) {} }
 
+  function _oublier() {
+    try { if (window.SmyleTrack && SmyleTrack.forget) SmyleTrack.forget(); } catch (_) {}
+    // Si telemetry.js n'est pas chargé sur cette page : on efface quand même.
+    try { ['smyle_sid', 'smyle_attrib', 'smyle_visit_day'].forEach(function (k) { localStorage.removeItem(k); }); } catch (_) {}
+  }
+  function _choisir(v) {
+    set(v);
+    if (v === 'denied') _oublier();
+    else { try { if (window.SmyleTrack && SmyleTrack.start) SmyleTrack.start(); } catch (_) {} }
+  }
+
   window.SmyleConsent = {
     granted: function () { return get() === 'granted'; },
     choiceMade: function () { var v = get(); return v === 'granted' || v === 'denied'; },
-    set: function (v) { if (v === 'granted' || v === 'denied') set(v); }
+    set: function (v) { if (v === 'granted' || v === 'denied') _choisir(v); },
+    // Lot D — rouvre le choix (lien « Cookies / mesure d'audience » du pied
+    // de page), même si un choix a déjà été fait.
+    reopen: function () { show(true); }
   };
 
   // Do-Not-Track → refus automatique, pas de bannière.
   var dnt = (navigator.doNotTrack === '1' || window.doNotTrack === '1' ||
              navigator.msDoNotTrack === '1');
-  if (dnt) { if (!get()) set('denied'); return; }
 
-  if (window.SmyleConsent.choiceMade()) return;  // choix déjà fait
-
-  function show() {
-    if (document.getElementById('smyle-consent')) return;
+  function show(force) {
+    var old = document.getElementById('smyle-consent');
+    if (old) { if (!force) return; old.remove(); }
+    var actuel = get();
     var bar = document.createElement('div');
     bar.id = 'smyle-consent';
     bar.setAttribute('role', 'dialog');
@@ -46,9 +61,17 @@
       'color:#e8e4f0', 'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif',
       'font-size:13px', 'line-height:1.5'
     ].join(';');
+    var etat = force && actuel
+      ? '<div style="margin-bottom:8px;color:#b9b2cc">Ton choix actuel : <strong>' +
+        (actuel === 'granted' ? 'mesure acceptée' : 'mesure refusée') + '</strong>.' +
+        (dnt ? ' Le signal « Do Not Track » de ton navigateur est actif : la mesure reste coupée.' : '') +
+        '</div>'
+      : '';
     bar.innerHTML =
+      etat +
       '<div style="margin-bottom:10px">On utilise une <strong>mesure d\'audience anonyme</strong> ' +
-      '(sans publicité ni traceur tiers) pour améliorer WATT. Tu peux refuser — ' +
+      '(sans publicité ni traceur tiers, jamais rattachée à ton compte, conservée 13 mois au plus) ' +
+      'pour améliorer WATT. Rien n\'est enregistré avant ton accord. Tu peux refuser — ' +
       'le site fonctionne pareil. <a href="/legal#confidentialite" style="color:#b98bff">En savoir plus</a>.</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end">' +
         '<button type="button" data-consent="no" style="cursor:pointer;background:rgba(255,255,255,.06);' +
@@ -59,18 +82,23 @@
     document.body.appendChild(bar);
 
     bar.querySelector('[data-consent="ok"]').addEventListener('click', function () {
-      set('granted'); bar.remove();
+      bar.remove();
+      if (dnt) { _choisir('denied'); return; }
       // Compte la visite en cours maintenant que c'est accepté.
-      try { if (window.SmyleTrack && SmyleTrack.pageView) SmyleTrack.pageView(); } catch (_) {}
+      _choisir('granted');
     });
     bar.querySelector('[data-consent="no"]').addEventListener('click', function () {
-      set('denied'); bar.remove();
+      _choisir('denied'); bar.remove();
     });
   }
 
+  if (dnt) { if (!get()) set('denied'); return; }
+
+  if (window.SmyleConsent.choiceMade()) return;  // choix déjà fait
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', show);
+    document.addEventListener('DOMContentLoaded', function () { show(false); });
   } else {
-    show();
+    show(false);
   }
 })();

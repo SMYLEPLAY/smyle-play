@@ -63,7 +63,7 @@ class AdminGrantRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    credits: int = Field(ge=1, le=10000, description="Nombre de Smyles à créditer")
+    credits: int = Field(ge=1, le=100000, description="Nombre de Smyles à créditer")
     reason: str = Field(min_length=1, max_length=500, description="Motif — tracé au ledger")
 
 

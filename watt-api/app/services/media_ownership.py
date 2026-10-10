@@ -150,3 +150,62 @@ def assert_track_media_owned(
         raise MediaOwnershipError("Fichier audio non reconnu pour ce compte.")
     if not media_url_owned_or_external(cover_url, user_id):
         raise MediaOwnershipError("Image non reconnue pour ce compte.")
+
+
+# ── Parcours V1 — un son se publie TOUJOURS avec son fichier audio ──────────
+
+_AUDIO_EXTS = {"mp3", "wav", "m4a", "ogg", "flac", "aac", "webm"}
+
+AUDIO_MANQUANT = (
+    "Un son se publie avec son fichier audio : envoie d'abord le fichier, "
+    "puis publie."
+)
+
+
+def exiger_audio_du_compte(user_id, *, r2_key: str | None, audio_url: str | None) -> str:
+    """Clé R2 du fichier audio du son, après contrôle. Lève MediaOwnershipError :
+      - aucun fichier désigné (ni clé, ni URL de notre stockage) ;
+      - fichier hors du dossier d'envoi de CE compte (tracks/<id>/…) ;
+      - extension qui n'est pas un format audio ;
+      - URL audio externe, ou qui ne désigne pas le même fichier que la clé.
+    """
+    url = (audio_url or "").strip() or None
+    cle = (r2_key or "").strip() or None
+    ours, cle_url = media_url_key(url)
+    if url and not ours:
+        raise MediaOwnershipError("Le fichier audio doit être envoyé sur WATT.")
+    if cle is None:
+        cle = cle_url
+    if cle is None:
+        raise MediaOwnershipError(AUDIO_MANQUANT)
+    if cle_url is not None and cle_url != cle:
+        raise MediaOwnershipError("Fichier audio non reconnu pour ce compte.")
+    if not key_owned_by(cle, user_id):
+        raise MediaOwnershipError("Fichier audio non reconnu pour ce compte.")
+    ext = cle.rsplit(".", 1)[-1].lower() if "." in cle else ""
+    if ext not in _AUDIO_EXTS:
+        raise MediaOwnershipError("Ce fichier n'est pas un fichier audio.")
+    return cle
+
+
+async def audio_present_sur_stockage(cle: str) -> bool | None:
+    """Le fichier existe-t-il sur le stockage ? None si le stockage n'est pas
+    configuré (développement, tests) : rien n'est vérifié dans ce cas."""
+    import asyncio
+
+    from app.services.r2 import get_r2_client, is_configured
+
+    if not is_configured():
+        return None
+    client = get_r2_client()
+    if client is None:
+        return None
+
+    def _head() -> bool:
+        try:
+            client.head_object(Bucket=settings.R2_BUCKET, Key=cle)
+            return True
+        except Exception:
+            return False
+
+    return await asyncio.get_running_loop().run_in_executor(None, _head)

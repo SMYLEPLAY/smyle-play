@@ -10,6 +10,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.config import assert_secret_key_strong, settings
+from app.core.logging import configurer_logs
+
+# Lot E — logs posés AVANT l'import des routeurs : les avertissements émis à
+# l'import (limiteur, R2…) sortent déjà horodatés, au bon format.
+configurer_logs()
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +25,7 @@ logger = logging.getLogger(__name__)
 # watt-api/alembic/ (source de vérité) ; si l'ini est introuvable (paquet
 # installé sans les migrations), on retombe sur la constante ci-dessous — à
 # mettre à jour à chaque nouvelle migration.
-_ALEMBIC_HEAD_FALLBACK = "0087_email_verification"
+_ALEMBIC_HEAD_FALLBACK = "0103_emails_minuscules"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 
@@ -95,6 +100,7 @@ from app.routers.resale import router as resale_router
 from app.routers.beats import router as beats_router
 from app.routers.images import router as images_router
 from app.routers.links import router as links_router
+from app.routers.mes_oeuvres import router as mes_oeuvres_router
 from app.routers.the_plan import router as the_plan_router
 from app.routers.telemetry import router as telemetry_router
 from app.routers.albums import (
@@ -171,6 +177,10 @@ def create_app() -> FastAPI:
     # affectée. Prod + smoke-test posent une vraie clé → démarrage normal.
     assert_secret_key_strong(settings.SECRET_KEY)
 
+    # Lot E — logs applicatifs : INFO, horodatés, une ligne JSON par message
+    # (lisible par Railway), emails masqués. Idempotent (déjà posé à l'import).
+    configurer_logs()
+
     # Lot A — /docs, /redoc et /openapi.json servis seulement si
     # API_DOCS_ENABLED=true (développement local) ; 404 sinon.
     _docs = bool(settings.API_DOCS_ENABLED)
@@ -192,6 +202,37 @@ def create_app() -> FastAPI:
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+
+    # Lot D — CGU en vigueur non acceptées : 403 avec un code stable que le
+    # front reconnaît (ouvre la fenêtre d'acceptation au lieu d'un message
+    # d'erreur générique).
+    from app.auth.jwt import CguNonAcceptees
+    from app.core.legal import CODE_CGU_A_ACCEPTER
+
+    async def _cgu_handler(request: Request, exc: CguNonAcceptees):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail, "code": CODE_CGU_A_ACCEPTER,
+                     "cgu_version": exc.cgu_version},
+        )
+
+    app.add_exception_handler(CguNonAcceptees, _cgu_handler)
+
+    # Lot D — purge des données de mesure d'audience de plus de 13 mois :
+    # au démarrage puis toutes les 24 h (désactivée en test).
+    from contextlib import asynccontextmanager
+
+    from app.services.analytics import demarrer_purge_periodique
+
+    _lifespan_initial = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def _lifespan(a):
+        await demarrer_purge_periodique()
+        async with _lifespan_initial(a) as etat:
+            yield etat
+
+    app.router.lifespan_context = _lifespan
 
     # ── Plafond des envois (étape 5) ─────────────────────────────────────
     # Ajouté AVANT CORS et les en-têtes de sécurité = le plus INTERNE : sa
@@ -331,6 +372,7 @@ def create_app() -> FastAPI:
     app.include_router(beats_router)
     app.include_router(images_router)
     app.include_router(links_router)
+    app.include_router(mes_oeuvres_router)  # Parcours V1 — écran « Mes Œuvres »
     # MODE LANCEMENT — S-08 (2026-09-02) : THE PLAN est monté comme les autres
     # routeurs ; le masquage est porté par la dépendance require_launch_item
     # ("thePlan") posée sur son APIRouter, relue à CHAQUE requête. Avant, le

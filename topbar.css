@@ -737,3 +737,17 @@
   background: rgba(255, 215, 0, 0.22);
   transform: translateY(-1px);
 }
+
+/* Parcours V1 — inscription en bouton plein, connexion en lien. */
+.stb-auth-cta.stb-auth-cta-signup { background: #ffd700; color: #1a1206; }
+.stb-auth-cta.stb-auth-cta-signup:hover { background: #ffe34d; }
+.stb-auth-link {
+  margin-left: 8px; padding: 6px 4px; background: none; border: none;
+  color: rgba(255, 255, 255, 0.75); font-size: 12px; text-decoration: underline;
+  cursor: pointer;
+}
+.stb-auth-link:hover { color: #fff; }
+@media (max-width: 480px) {
+  .stb-auth-cta { padding: 7px 10px; font-size: 11px; letter-spacing: 0.04em; }
+  .stb-auth-link { margin-left: 4px; font-size: 11px; }
+}

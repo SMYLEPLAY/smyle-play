@@ -1,7 +1,7 @@
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import create_access_token
@@ -52,6 +52,26 @@ def _capture_reset_delivery_failure(user, *, reason: str) -> None:
         pass
 
 
+async def _emails_inscription(
+    email: str, name: str | None, link: str | None, user_id: str
+) -> None:
+    """Lot E — emails d'inscription, exécutés APRÈS l'envoi de la réponse
+    (BackgroundTasks). Ne lève jamais : chaque envoi est indépendant."""
+    from app.services.emails import send_verification_email, send_welcome_email
+
+    try:
+        await send_welcome_email(email, name=name)
+    except Exception:
+        logger.warning("[auth] email de bienvenue : échec (compte %s)", user_id, exc_info=True)
+    if link:
+        try:
+            await send_verification_email(email, link=link)
+        except Exception:
+            logger.warning(
+                "[auth] email de vérification : échec (compte %s)", user_id, exc_info=True,
+            )
+
+
 @router.post(
     "/register",
     response_model=UserRead,
@@ -61,6 +81,7 @@ def _capture_reset_delivery_failure(user, *, reason: str) -> None:
 async def register(
     user: UserCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     # Inscription encadrée (Phase 3) : acceptation CGU + confirmation d'âge
@@ -94,47 +115,47 @@ async def register(
         await ensure_default_wishlist(db, new_user)
     except Exception:
         await db.rollback()
-    # 10 Smyles de bienvenue : RIEN à faire ici. Le bonus est accordé par
+    # 30 Smyles de bienvenue : RIEN à faire ici. Le bonus est accordé par
     # app/services/users.py::create_user, qui appelle grant_credits_atomic
-    # (WELCOME_BONUS_CREDITS = 10, transaction BONUS tracée au ledger) dans la
+    # (WELCOME_BONUS_CREDITS = 30, transaction BONUS tracée au ledger) dans la
     # même transaction que l'insertion du user. La colonne User.credits_balance
     # a pour défaut 0 depuis la migration 0066 : un grant explicite ici ferait
     # un DOUBLE comptage. (Ce commentaire décrivait l'état d'avant 0066 —
     # défaut de colonne à 10 et aucune trace comptable ; corrigé F-04.)
-    # Email de bienvenue — best-effort (chantier hygiène revenu 2026-06-10).
-    # Mode test Resend tant que le domaine WATT n'est pas déposé.
-    try:
-        from app.services.emails import send_welcome_email
-        await send_welcome_email(
-            new_user.email, name=new_user.artist_name or None
-        )
-    except Exception:
-        pass
-    # Email de vérification — best-effort (Phase A). NON bloquant : la
-    # vérification n'est exigée que si REQUIRE_EMAIL_VERIFIED=True (défaut
-    # False). Même robustesse que le reset MDP (jeton SHA-256, expiration,
-    # usage unique) ; le lien porte le jeton en FRAGMENT (#token=). Un envoi
-    # qui échoue (emails désactivés, domaine non vérifié) ne casse jamais
-    # l'inscription.
+    # Emails d'inscription (bienvenue + lien de vérification) — Lot E :
+    # envoyés en ARRIÈRE-PLAN, après la réponse. Avant, l'inscription
+    # attendait jusqu'à 2 × 6 s l'API Resend ; une lenteur de Resend ralentissait
+    # chaque inscription et occupait la connexion. Best-effort intégral :
+    # un envoi qui échoue ne casse jamais l'inscription (déjà committée).
+    # Le jeton de vérification est créé ICI (base, rapide) ; seul l'appel
+    # réseau à Resend part en arrière-plan. Vérification NON bloquante par
+    # défaut (REQUIRE_EMAIL_VERIFIED=False) ; jeton SHA-256, expiration,
+    # usage unique, porté en FRAGMENT (#token=) comme le reset MDP.
+    link = None
     try:
         from app.services.email_verification import (
             build_verification_link,
             issue_verification_token,
         )
-        from app.services.emails import send_verification_email
 
         token = await issue_verification_token(db, new_user)
         # S-10 : origine depuis PUBLIC_BASE_URL si posée, sinon la requête.
         base = os.getenv("PUBLIC_BASE_URL") or str(request.base_url)
         link = build_verification_link(base, token)
-        await send_verification_email(new_user.email, link=link)
     except Exception:
         # issue_verification_token commit sa propre transaction ; en cas
         # d'échec on n'empêche pas le compte d'exister (déjà committé).
         logger.warning(
-            "[auth] envoi du lien de vérification d'email : échec best-effort "
-            "(compte %s)", new_user.id, exc_info=True,
+            "[auth] création du lien de vérification d'email : échec "
+            "best-effort (compte %s)", new_user.id, exc_info=True,
         )
+    background_tasks.add_task(
+        _emails_inscription,
+        new_user.email,
+        new_user.artist_name or None,
+        link,
+        str(new_user.id),
+    )
     return new_user
 
 

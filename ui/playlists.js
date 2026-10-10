@@ -21,6 +21,35 @@
 (function(){
   'use strict';
 
+  // Parcours V1 — couverture de playlist : vidéo servie par sa route dédiée
+  // (/watt/playlist-video/…), image si l'adresse est une image, et IMAGE DE
+  // SECOURS si le média ne se charge pas (fichier absent, format refusé).
+  var PL_COVER_SECOURS = '/ui/img/playlist-secours.svg';
+  function _coverMediaHtml(url, cls) {
+    var u = String(url || '').replace(/"/g, '&quot;');
+    if (/\.(mp4|mov|webm)(\?|#|$)/i.test(url) || /^\/watt\/playlist-video\//.test(url) || /^\/watt\/stream\/PLAYLISTS\//.test(url)) {
+      return '<video class="' + cls + '" data-pl-cover autoplay muted loop playsinline preload="metadata" poster="' +
+        PL_COVER_SECOURS + '"><source src="' + u + '" /></video>';
+    }
+    return '<img class="' + cls + '" data-pl-cover src="' + u + '" alt="" loading="lazy" style="object-fit:cover" />';
+  }
+  if (typeof document !== 'undefined' && !window.__plCoverSecours) {
+    window.__plCoverSecours = true;
+    document.addEventListener('error', function (ev) {
+      var el = ev.target;
+      if (!el || !el.closest) return;
+      var media = el.matches && el.matches('[data-pl-cover]') ? el : el.closest('video[data-pl-cover]');
+      if (!media || media.__secours) return;
+      media.__secours = true;
+      var img = document.createElement('img');
+      img.className = media.className;
+      img.src = PL_COVER_SECOURS;
+      img.alt = '';
+      img.style.objectFit = 'cover';
+      media.replaceWith(img);
+    }, true);
+  }
+
   // ── 1. HELPERS API ─────────────────────────────────────────────────────────
 
   // Fallback minimal si apiFetch n'est pas dispo (rare — api.js charge avant)
@@ -223,8 +252,9 @@
         close();
         if (typeof onCreated === 'function') onCreated(created);
       } catch (e) {
+        if (e && e.status === 401 && window.SmyleGate) { close(); window.SmyleGate.requireAccount(); return; }
         errBox.textContent = (e && e.status === 401)
-          ? 'Connecte-toi pour créer une playlist.'
+          ? 'Crée ton compte pour créer une playlist.'
           : 'Création impossible (' + (e && e.message || 'erreur') + ').';
         errBox.style.display = 'block';
       }
@@ -589,7 +619,7 @@
             ? '<span class="pl-badge" style="background:rgba(111,255,176,.12);color:#6fffb0;border:1px solid rgba(111,255,176,.35)">🧬 ADN · sur proposition</span>'
             : '';
           const thumb = p.cover_video_url
-            ? '<video class="pl-row-cover" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '" /></video>'
+            ? _coverMediaHtml(p.cover_video_url, 'pl-row-cover')
             : '<div class="pl-row-cover-fallback">🎵</div>';
           const currentColor = p.color || _universeColor(p.title);
           return (
@@ -790,6 +820,19 @@
 
       const FALLBACK_EMOJIS = ['🎵','🎶','🔥','✨','🎸','🎹','🌙','⚡'];
 
+      // Lot D — « Signaler » une collection depuis le profil public (pas sur
+      // son propre profil). Le délégué global de report-modal.js capte le clic
+      // avant la tuile (phase de capture) : la tuile ne s'ouvre pas.
+      const _selfProfile = (typeof state !== 'undefined' && state && state.artist && state.artist.isSelf) ? true : false;
+      function _reportTileBtn(type, id, title) {
+        if (_selfProfile || !id) return '';
+        return '<button type="button" class="mp-report-btn ap-col-report" data-report-type="' + type +
+          '" data-report-id="' + _esc(String(id)) + '" data-report-title="' + _esc(title || '') + '" ' +
+          'title="Signaler" aria-label="Signaler cette collection" ' +
+          'style="position:absolute;bottom:8px;right:8px;z-index:9;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.18);' +
+          'border-radius:999px;color:#cfc9e0;font-size:11px;padding:2px 8px;cursor:pointer">⚑</button>';
+      }
+
       function _plTileHtml(p, i, kind, slugOeuvre) {
         const nc     = p.color || '#cc88ff';
         const ncRgb  = _hexToRgb(nc);
@@ -797,7 +840,7 @@
           ? p.track_count
           : ((p.tracks && p.tracks.length) || 0);
         const mediaBg = p.cover_video_url
-          ? '<video class="ap-pl-world-media" autoplay muted loop playsinline preload="metadata"><source src="' + p.cover_video_url.replace(/"/g, '&quot;') + '"/></video>'
+          ? _coverMediaHtml(p.cover_video_url, 'ap-pl-world-media')
           : '<div class="ap-pl-world-media ap-pl-world-fallback">' + FALLBACK_EMOJIS[i % FALLBACK_EMOJIS.length] + '</div>';
         const qpId = 'ap-qp-' + p.id;
         const adnBadge = p.adn_for_sale
@@ -829,6 +872,7 @@
             '</button>' +
             adnBadge +
             plActionsHtml +
+            _reportTileBtn('playlist', p.id, p.title) +
             '<div class="ap-pl-world-info">' +
               '<div class="ap-pl-world-name">' + _esc(p.title) + '</div>' +
               '<div class="ap-pl-world-meta">' + meta + '</div>' +
@@ -849,6 +893,7 @@
             media +
             '<div class="ap-pl-world-scrim"></div>' +
             '<div class="ap-col-type ap-col-type--visual">🎨 Album</div>' +
+            _reportTileBtn('album', a.id, a.title) +
             '<div class="ap-pl-world-info">' +
               '<div class="ap-pl-world-name">' + _esc(a.title) + '</div>' +
               '<div class="ap-pl-world-meta">' + n + ' image' + (n > 1 ? 's' : '') + '</div>' +
@@ -1558,7 +1603,8 @@
   async function openAddToPlaylistModal(trackId) {
     if (!trackId) return;
     if (!_isAuth()) {
-      _showToast('Connecte-toi pour ajouter à une playlist.');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else _showToast('Crée ton compte pour ajouter à une playlist.');
       return;
     }
     if (document.getElementById('pl-add-modal')) return;
@@ -1985,7 +2031,7 @@
           recipeBtn.disabled = false;
           recipeBtn.textContent = '🧬 Débloquer';
           const status = err && err.status;
-          const msg = status === 402 ? 'Crédits insuffisants.' : status === 409 ? 'Déjà débloqué.' : 'Erreur lors du déblocage.';
+          const msg = status === 402 ? 'Smyles insuffisants.' : status === 409 ? 'Déjà débloqué.' : 'Erreur lors du déblocage.';
           if (typeof showToast === 'function') showToast(msg);
         }
       });
@@ -2210,7 +2256,8 @@
 
   async function toggleLike(trackId) {
     if (!_isAuth()) {
-      _showToast('Connecte-toi pour aimer.');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else _showToast('Crée ton compte pour aimer.');
       return;
     }
     const wid = await _ensureWishlistId();
@@ -2309,7 +2356,8 @@
 
   async function toggleImgLike(imageId, btn) {
     if (!_isAuth()) {
-      _showToast('Connecte-toi pour aimer.');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else _showToast('Crée ton compte pour aimer.');
       return;
     }
     if (!_imgLikedSet) _imgLikedSet = new Set();

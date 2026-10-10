@@ -47,6 +47,8 @@ async def published_user(test_user: dict) -> AsyncIterator[dict]:
 
 
 async def _create_track(client: AsyncClient, auth_headers: dict, tags) -> dict:
+    # Parcours V1 : un son se publie avec son fichier audio (clé du compte).
+    me = (await client.get("/users/me", headers=auth_headers)).json()
     r = await client.post(
         "/tracks/",
         headers=auth_headers,
@@ -54,6 +56,7 @@ async def _create_track(client: AsyncClient, auth_headers: dict, tags) -> dict:
             "title": "Tag persistence test",
             "full_prompt": "deep house 128 bpm dark nocturne",
             "tags": tags,
+            "r2_key": f"tracks/{me['id']}/tags-0123abcd.wav",
         },
     )
     assert r.status_code == 201, r.text

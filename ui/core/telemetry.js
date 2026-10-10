@@ -3,7 +3,8 @@
    Télémétrie D0 — émetteur privacy-first.
 
    Mesure le funnel (visiteur → inscrit → 1er achat → revient) SANS PII.
-   - session_id anonyme persistée en localStorage (jeton aléatoire).
+   - session_id anonyme persistée en localStorage (jeton aléatoire), créée
+     SEULEMENT après l'accord (Lot D) ; jamais rattachée au compte.
    - Respecte Do-Not-Track : si l'utilisateur l'a activé, on n'émet rien.
    - Batch + flush (intervalle + beforeunload via sendBeacon), best-effort :
      un échec réseau ne casse jamais l'app.
@@ -40,7 +41,14 @@
                  'adn_reuse', 'trade', 'review', 'topup_click'];
 
   // ── Session anonyme (non-PII) ─────────────────────────────────────────────
+  // Lot D : AUCUN identifiant n'est posé avant l'accord. L'identifiant de
+  // session n'est créé (et écrit dans le navigateur) qu'au premier envoi, et
+  // seulement si la mesure a été acceptée. Refus = rien n'est écrit, et
+  // SmyleTrack.forget() efface ce qui l'aurait été avant.
+  var _SID = null;
   function _sid() {
+    if (_SID) return _SID;
+    if (!_consented()) return null;
     try {
       var k = 'smyle_sid', v = localStorage.getItem(k);
       if (!v) {
@@ -48,10 +56,10 @@
             : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
         localStorage.setItem(k, v);
       }
-      return v;
-    } catch (_) { return 'anon-' + Math.random().toString(36).slice(2, 12); }
+      _SID = v;
+    } catch (_) { _SID = 'anon-' + Math.random().toString(36).slice(2, 12); }
+    return _SID;
   }
-  var SID = _sid();
 
   // ── Attribution créateur (F3-1) ───────────────────────────────────────────
   // Le modèle d'acquisition est creator-led : un créateur partage son lien,
@@ -87,14 +95,23 @@
     } catch (_) { return null; }
   }
 
+  // Lot D : l'attribution est gardée EN MÉMOIRE pour la page en cours, et
+  // n'est écrite dans le navigateur qu'après l'accord (cf. _persistAttrib).
+  var _attribAEcrire = null;
   function _captureAttrib() {
     var creator = _param('ref') || _creatorFromPath();
-    if (!creator) return _readAttrib();
-    var existing = _readAttrib();
+    var existing = _consented() ? _readAttrib() : null;
+    if (!creator) return existing;
     if (existing && existing.creator) return existing;  // premier touche gagne
     var a = { creator: creator, src: _param('src') || null, ts: Date.now() };
-    try { localStorage.setItem(ATTRIB_KEY, JSON.stringify(a)); } catch (_) {}
+    _attribAEcrire = a;
+    _persistAttrib();
     return a;
+  }
+  function _persistAttrib() {
+    if (!_attribAEcrire || !_consented()) return;
+    try { localStorage.setItem(ATTRIB_KEY, JSON.stringify(_attribAEcrire)); } catch (_) {}
+    _attribAEcrire = null;
   }
 
   var ATTRIB = _captureAttrib();
@@ -106,14 +123,9 @@
     try {
       var k = 'smyle_cvisit_' + creator;
       if (sessionStorage.getItem(k)) return;
-      sessionStorage.setItem(k, '1');
+      if (_consented()) sessionStorage.setItem(k, '1');
     } catch (_) { /* pas de sessionStorage : on émet quand même */ }
     _enqueue('creator_visit', { creator: creator, src: (ATTRIB && ATTRIB.src) || null });
-  }
-
-  function _token() {
-    try { return (typeof getAuthToken === 'function') ? getAuthToken() : null; }
-    catch (_) { return null; }
   }
 
   // ── Buffer + flush ────────────────────────────────────────────────────────
@@ -140,7 +152,8 @@
 
   function flush(useBeacon) {
     if (dnt || !_consented() || !buf.length) return;
-    var batch = { session_id: SID, events: buf.splice(0, 50) };
+    _persistAttrib();
+    var batch = { session_id: _sid(), events: buf.splice(0, 50) };
     var url = API_BASE + '/events';
     var body = JSON.stringify(batch);
     // beforeunload → sendBeacon (pas d'auth header possible, mais best-effort).
@@ -148,9 +161,8 @@
       try { navigator.sendBeacon(url, new Blob([body], { type: 'application/json' })); return; }
       catch (_) { /* fallthrough */ }
     }
+    // Lot D : la mesure n'est jamais rattachée au compte — aucun jeton envoyé.
     var headers = { 'Content-Type': 'application/json' };
-    var tok = _token();
-    if (tok) headers['Authorization'] = 'Bearer ' + tok;
     try {
       fetch(url, { method: 'POST', headers: headers, body: body, keepalive: true })
         .catch(function () {});
@@ -159,6 +171,7 @@
 
   // ── Visite : 1×/jour/session (déduplique le bruit) ────────────────────────
   function _visitOncePerDay() {
+    if (dnt || !_consented()) return;  // Lot D : rien d'écrit avant l'accord
     try {
       var k = 'smyle_visit_day', today = new Date().toISOString().slice(0, 10);
       if (localStorage.getItem(k) !== today) {
@@ -168,12 +181,31 @@
     } catch (_) { _enqueue('visit'); }
   }
 
+  // Lot D — refus (ou retrait de l'accord) : on efface les identifiants de
+  // mesure déjà posés dans ce navigateur.
+  var _CLES_MESURE = ['smyle_sid', 'smyle_attrib', 'smyle_visit_day'];
+  function forget() {
+    buf.length = 0;
+    _SID = null;
+    _attribAEcrire = null;
+    try { _CLES_MESURE.forEach(function (k) { localStorage.removeItem(k); }); } catch (_) {}
+    try {
+      for (var i = sessionStorage.length - 1; i >= 0; i--) {
+        var k = sessionStorage.key(i);
+        if (k && k.indexOf('smyle_cvisit_') === 0) sessionStorage.removeItem(k);
+      }
+    } catch (_) {}
+  }
+
   // ── API publique ──────────────────────────────────────────────────────────
   var SmyleTrack = {
     event: function (name, props) { _enqueue(name, props); },
     pageView: function () { _enqueue('page_view'); },
     flush: function () { flush(false); },
-    sessionId: function () { return SID; },
+    sessionId: function () { return _SID; },
+    forget: forget,
+    // Appelé par consent.js quand la mesure vient d'être acceptée.
+    start: function () { _persistAttrib(); _visitOncePerDay(); _creatorVisitOnce(); _enqueue('page_view'); },
     // Créateur à l'origine de la venue (premier touche, 30 j), ou null.
     attribution: function () { return ATTRIB ? { creator: ATTRIB.creator, src: ATTRIB.src || null } : null; },
   };

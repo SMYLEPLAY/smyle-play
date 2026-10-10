@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#070608" />
+  <meta name="robots" content="noindex, nofollow" />
+  <!-- Parcours V1 (9/10/2026) — écran « Mes Œuvres » du créateur.
+       Données : GET /artist/me/oeuvres ; actions groupées :
+       POST /artist/me/oeuvres/actions ; modification : PATCH /artist/me/oeuvres/{id}. -->
+  <title>Mes Œuvres · WATT</title>
+  <link rel="stylesheet" href="/topbar.css" />
+  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <link rel="stylesheet" href="/mes-oeuvres.css?v=20261009pv1" />
+</head>
+<body class="mo-page">
+
+<div id="smyle-topbar"></div>
+
+<main class="mo-main" id="mo-main">
+  <header class="mo-head">
+    <div>
+      <p class="mo-kicker">Espace créateur</p>
+      <h1 class="mo-title">Mes Œuvres</h1>
+      <p class="mo-sub">Tous tes sons publiés, avec leur image, leur recette et leurs ventes.
+        Coche-en plusieurs pour les masquer, les republier, changer leur prix ou les supprimer.</p>
+    </div>
+    <a class="mo-btn mo-btn--ghost" href="/dashboard#sec-upload">+ Publier une Œuvre</a>
+  </header>
+
+  <!-- Barre d'actions groupées : reste visible en défilant. -->
+  <div class="mo-bar" id="mo-bar" role="toolbar" aria-label="Actions sur la sélection">
+    <label class="mo-all"><input type="checkbox" id="mo-all" /> <span>Tout sélectionner</span></label>
+    <span class="mo-count" id="mo-count" aria-live="polite">0 sélectionnée</span>
+    <div class="mo-bar-actions">
+      <button type="button" class="mo-btn" data-bulk="masquer" disabled>Masquer</button>
+      <button type="button" class="mo-btn" data-bulk="republier" disabled>Republier</button>
+      <button type="button" class="mo-btn" data-bulk="prix" disabled>Changer le prix</button>
+      <button type="button" class="mo-btn mo-btn--danger" data-bulk="supprimer" disabled>Supprimer</button>
+    </div>
+  </div>
+
+  <div id="mo-list" class="mo-list" aria-live="polite">
+    <div class="mo-state">Chargement de tes Œuvres…</div>
+  </div>
+</main>
+
+<!-- Fenêtre (prix, suppression, modification) : remplie par mes-oeuvres.js. -->
+<div class="mo-modal" id="mo-modal" hidden>
+  <div class="mo-modal-box" role="dialog" aria-modal="true" aria-labelledby="mo-modal-title" id="mo-modal-box"></div>
+</div>
+
+<div class="mo-toast" id="mo-toast" role="status" aria-live="polite"></div>
+
+<script src="/ui/core/launch-flags.js"></script>
+<script src="/ui/core/api.js?v=20261010lotd"></script>
+<script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
+<script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
+<script src="/ui/core/consent.js?v=20261010lotd"></script>
+<script src="/ui/core/telemetry.js?v=20261010lotd"></script>
+<script src="/ui/core/events.js"></script>
+<script src="/ui/core/toast.js"></script>
+<script src="/ui/topbar/topbar.js?v=20261009pv1" defer></script>
+<script src="/ui/smyle-balance.js" defer></script>
+<script src="/ui/session-guard.js" defer></script>
+<script src="/mes-oeuvres.js?v=20261009pv1" defer></script>
+<script src="/ui/core/legal-footer.js?v=20261010lotd" defer></script>
+</body>
+</html>

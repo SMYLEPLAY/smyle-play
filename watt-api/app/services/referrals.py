@@ -3,14 +3,14 @@ Service parrainage (mécanique 1).
 
 Boucle d'expérience client : un parrain partage son `referral_code`. Un
 nouvel inscrit le saisit → on crée un lien `Referral` en statut PENDING.
-La récompense (10 Smyles PAR CÔTÉ) n'est versée qu'à la PREMIÈRE vraie
+La récompense (REFERRAL_REWARD_CREDITS = 20 Smyles PAR CÔTÉ) n'est versée qu'à la PREMIÈRE vraie
 action du filleul (1er son posté OU 1er achat), via `maybe_reward_referral`.
 Cet ancrage sur une action réelle est l'anti-faux-compte : créer 1000
 comptes vides ne rapporte rien.
 
-Barème ancré sur l'économie réelle (1 Smyle s'achète ≈ 0,70 € ; un Smyle
-GAGNÉ se retire 0,50 € — pricing v2 ; bonus de bienvenue
-= 10 Smyles). Voir [[2026-06-07]] et [[project_mechanics_before_stripe]].
+Barème ancré sur l'économie réelle (redénomination ×10 du 9/10/2026 :
+1 Smyle s'achète ≈ 0,07 € ; un Smyle GAGNÉ se retire 0,05 € ; bonus de
+bienvenue = 30 Smyles). Voir [[2026-06-07]] et [[project_mechanics_before_stripe]].
 """
 import secrets
 import string
@@ -27,11 +27,12 @@ from app.models.user import User
 from app.services.credits import grant_credits_atomic
 
 # Montant crédité à CHAQUE côté (parrain + filleul) au déblocage.
-REFERRAL_REWARD_CREDITS = 10
+REFERRAL_REWARD_CREDITS = 20
 
 # Anti-abus : plafond glissant de filleuls RÉCOMPENSÉS par parrain sur 24h.
 # Au-delà, la récompense n'est pas versée (le lien reste PENDING). Borne le
-# farming par faux comptes à REFERRAL_DAILY_CAP × 10 Smyles/jour/parrain.
+# farming par faux comptes à REFERRAL_DAILY_CAP × REFERRAL_REWARD_CREDITS
+# Smyles/jour/parrain (le plafond compte des filleuls, pas des Smyles).
 # Volontairement haut pour ne jamais gêner un parrainage légitime viral.
 REFERRAL_DAILY_CAP = 20
 

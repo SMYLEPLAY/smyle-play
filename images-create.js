@@ -25,7 +25,7 @@
 
   var IMAGE_MAX_BYTES = 20 * 1024 * 1024;     /* 20 Mo (= IMAGE_MAX_BYTES API) */
   var ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-  var PRICE_MIN = 3, PRICE_MAX = 500;          /* PROMPT_PRICE_MIN/MAX */
+  var PRICE_MIN = 10, PRICE_MAX = 150;          /* PROMPT_PRICE_MIN/MAX */
 
   function $(id) { return document.getElementById(id); }
   function val(id) { var el = $(id); return el ? String(el.value || '').trim() : ''; }
@@ -204,7 +204,7 @@
         c.setAttribute('aria-pressed', 'false');
       });
     }
-    var price = $('imgcPrice'); if (price) price.value = '50';
+    var price = $('imgcPrice'); if (price) price.value = '15';
     var raw = $('imgcMjStyleRaw'); if (raw) raw.checked = false;
     var draft = document.querySelector('input[name="imgcVisibility"][value="draft"]');
     if (draft) draft.checked = true;

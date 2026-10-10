@@ -1,7 +1,7 @@
 """
 Tests inscription — bonus de bienvenue (marathon ②, 2026-06-11).
 
-Décision Tom (handoff 0bis.6) : chaque nouveau compte reçoit 10 Smyles
+Décision Tom (handoff 0bis.6) : chaque nouveau compte reçoit 30 Smyles (10 avant la redénomination ×10)
 à l'inscription (prérequis pour tester le circuit d'achat C2).
 Nécessite Postgres réel (voir conftest).
 """
@@ -14,7 +14,7 @@ from sqlalchemy import delete
 from app.database import SessionLocal
 from app.models.user import User
 
-WELCOME_BONUS = 10
+WELCOME_BONUS = 30  # redénomination ×10 du 9/10/2026 (décision Tom)
 
 
 async def test_register_grants_welcome_bonus(client: AsyncClient):
@@ -44,8 +44,12 @@ async def test_export_me_requires_auth_and_returns_profile(
     assert r.status_code == 200, r.text
     assert "attachment" in (r.headers.get("content-disposition") or "")
     j = r.json()
-    for key in ("profile", "tracks", "prompts", "playlists", "transactions"):
+    # Lot D : export complet (œuvres regroupées, achats, ventes, messages…).
+    for key in ("profile", "consentements", "transactions", "achats", "ventes", "oeuvres",
+                "messages", "signalements_faits", "abonnements"):
         assert key in j, j.keys()
+    for key in ("sons", "recettes_et_images", "playlists", "albums"):
+        assert key in j["oeuvres"], j["oeuvres"].keys()
     assert j["profile"]["email"] == test_user["email"]
 
 

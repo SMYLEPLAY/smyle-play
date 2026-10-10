@@ -31,20 +31,26 @@ from app.models.transaction import (
 # Packs (source of truth)
 # -----------------------------------------------------------------------------
 
-# 2026-05-13 — Taux moyen crédit ↔ euro pour affichage ordre d'idée
-# (utilisé côté UI pour montrer l'équivalent euro à côté des prix crédits).
-# Valeur = pack_50 médian = 35€/50 = 0.70€/crédit.
-EUR_PER_CREDIT: float = 0.70
+# 2026-05-13 — Taux moyen Smyle ↔ euro pour affichage ordre d'idée
+# (utilisé côté UI pour montrer l'équivalent euro à côté des prix en Smyles).
+# Valeur = pack médian = 35 € / 500 = 0,07 €/Smyle (redénomination ×10 du
+# 9/10/2026 : 1 ancien Smyle = 10 Smyles, prix des packs en euros inchangés).
+EUR_PER_CREDIT: float = 0.07
 
 
 CREDIT_PACKS: list[dict] = [
-    {"id": "pack_10", "credits": 10, "price_eur_cents": 800},
-    {"id": "pack_50", "credits": 50, "price_eur_cents": 3500},
-    {"id": "pack_200", "credits": 200, "price_eur_cents": 12000},
+    {"id": "pack_100", "credits": 100, "price_eur_cents": 800},
+    {"id": "pack_500", "credits": 500, "price_eur_cents": 3500},
+    {"id": "pack_2000", "credits": 2000, "price_eur_cents": 12000},
 ]
+
+# Anciens identifiants (avant la redénomination) : un lien ou un onglet resté
+# ouvert peut encore les envoyer. Ils désignent le même pack, au même prix.
+_PACK_ALIASES = {"pack_10": "pack_100", "pack_50": "pack_500", "pack_200": "pack_2000"}
 
 
 def get_pack_by_id(pack_id: str) -> dict | None:
+    pack_id = _PACK_ALIASES.get(pack_id, pack_id)
     return next((p for p in CREDIT_PACKS if p["id"] == pack_id), None)
 
 
@@ -172,12 +178,13 @@ def compute_split(
     (30% artiste, 20% plateforme), et on passera la part vendeur en
     `amount - artist_revenue - platform_fee` côté caller.
 
-    Exemples (artist_pct=80, primary market):
-        compute_split(3)   == (2, 1)    # 3*80//100=2, reste=1
-        compute_split(5)   == (4, 1)    # 5*80//100=4, reste=1
-        compute_split(7)   == (5, 2)    # 7*80//100=5, reste=2
+    Exemples (artist_pct=80, primary market — prix conseillés 15 / 30 / 45) :
         compute_split(10)  == (8, 2)    # 10*80//100=8, reste=2
-        compute_split(50)  == (40, 10)  # 50*80//100=40, reste=10
+        compute_split(15)  == (12, 3)   # commission exacte de 20 %
+        compute_split(30)  == (24, 6)
+        compute_split(45)  == (36, 9)
+    L'arrondi va toujours à la plateforme : la commission effective n'est
+    jamais inférieure au taux affiché (donc jamais sous le plancher de 10 %).
     """
     if amount <= 0:
         raise ValueError("amount must be positive")

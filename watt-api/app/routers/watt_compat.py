@@ -72,28 +72,21 @@ _AUDIO_MIME_BY_EXT = {
 
 
 @router.get("/stream/{key:path}")
-async def stream_r2_audio(key: str, db: AsyncSession = Depends(get_db)):
+async def stream_r2_audio(
+    key: str, db: AsyncSession = Depends(get_db), acces: Optional[str] = None,
+):
     """
-    Proxy le fichier audio R2 par sa clé en streaming.
+    Sert un fichier audio R2 par sa clé.
 
-    Pourquoi ce proxy : malgré que le bucket R2 soit en "public access"
-    et que l'URL R2 directe (pub-XXX.r2.dev) marche dans Chrome quand on
-    l'ouvre dans un onglet, le tag <audio> sur le profil Railway refusait
-    le play (CORS, CSP ou Content-Type incorrect côté R2). En passant
-    par cette route same-origin, on élimine toutes ces causes : Chrome
-    voit l'audio comme servi par smyleplay.com directement.
+    Lot E (2026-10-09) : après les contrôles d'accès, répond par une
+    redirection 302 vers l'objet R2 public (lecture partielle « Range »
+    gérée par R2 — indispensable sur iPhone). Le proxy en streaming ne reste
+    qu'en repli quand aucun domaine public n'est configuré (dev local).
 
-    Trade-off : la bande passante est facturée par Railway (sortie) au
-    lieu de R2 direct. Acceptable pour alpha (volume faible). Si le
-    trafic explose, on pourra migrer vers une URL R2 publique propre
-    avec config CORS correcte côté Cloudflare.
-
-    Implementation note : on retourne un StreamingResponse qui itère
-    sur le body S3 en chunks (pas de chargement mémoire complet du
-    fichier). Pas de support HTTP Range pour l'instant — Chrome
-    fallback sur un GET complet, ce qui marche pour des samples de
-    quelques Mo. Si seek nécessaire (samples >10 Mo), ajouter Range
-    plus tard.
+    Historique : ce proxy same-origin avait été posé le 2026-05-05 quand le
+    <audio> refusait l'URL R2 directe ; les objets sont depuis envoyés avec
+    leur vrai Content-Type (app.core.fichiers.mime_pour) et la CSP autorise
+    les médias https (media-src), ce qui rend la redirection sûre.
     """
     # SÉCURITÉ (Phase 0 lancement, 2026-07-25) : ce proxy audio streamait
     # N'IMPORTE quelle clé du bucket → il servait aussi les IMAGES ORIGINALES
@@ -125,71 +118,63 @@ async def stream_r2_audio(key: str, db: AsyncSession = Depends(get_db)):
     # modération ne s'écoute plus, même par sa clé. Refus si la clé n'est
     # portée QUE par des sons retirés (une clé qu'aucun son ne référence —
     # univers officiels, voix, vidéos de playlist — reste servie).
+    # Parcours V1 — exception pour les ACHETEURS : un son supprimé par son
+    # créateur reste écoutable avec l'adresse signée de leur bibliothèque
+    # (app.services.acces_audio). Un son retiré par la modération, jamais.
     if await _key_only_on_removed_tracks(db, key):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ressource introuvable.",
+        from app.services.acces_audio import verifier
+
+        if not (verifier(key.lstrip("/"), acces)
+                and not await _key_on_moderated_track(db, key)):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ressource introuvable.",
+            )
+
+    # Lot E (2026-10-09) — REDIRECTION 302 vers l'objet R2 public, au lieu de
+    # streamer le fichier à travers le serveur. Raisons :
+    #   • lecture partielle (« Range ») : Safari sur iPhone exige des réponses
+    #     206 pour lire un son et avancer dedans ; R2 les gère nativement, ce
+    #     proxy ne les gérait pas ;
+    #   • tenue en charge : un worker ne reste plus occupé pendant toute la
+    #     durée d'un téléchargement audio, et la bande passante sort de R2.
+    # Les contrôles ci-dessus (liste blanche d'extensions, refus des clés
+    # image, son supprimé ou retiré) restent faits AVANT la redirection : un
+    # son retiré ne redirige jamais. La réponse 302 n'est pas mise en cache
+    # (no-store) pour qu'un retrait prenne effet immédiatement.
+    # Rien de nouveau n'est exposé : le bucket est déjà public (même domaine
+    # que les audio_url stockés et que /watt/images).
+    public_base = settings.effective_r2_public_base_url
+    if public_base:
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            url=f"{public_base}/{quote(key.lstrip('/'), safe='/')}",
+            status_code=status.HTTP_302_FOUND,
+            headers={"Cache-Control": "no-store"},
         )
 
-    # Import local pour éviter de tirer boto3 dans tous les imports.
-    from app.services.r2 import get_r2_client, is_configured
+    # Repli (dev local sans domaine public) : ancien proxy, sans Range.
+    from app.services.r2 import flux_objet, ouvrir_objet
 
-    if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 storage not configured",
-        )
-
-    client = get_r2_client()
-    if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 client unavailable",
-        )
-
-    bucket = settings.R2_BUCKET
-
-    try:
-        # boto3 sync — get_object retourne immédiatement un dict avec
-        # Body (StreamingBody). Le streaming réel se fait à la lecture.
-        obj = client.get_object(Bucket=bucket, Key=key)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ressource introuvable.",
-        )
+    obj = await ouvrir_objet(key)
 
     # MIME via extension (déjà validée par la liste blanche ci-dessus). Le
     # content-type R2 lui-même est parfois application/octet-stream — on
     # l'ignore et on force le bon type, sinon Chrome refuse le play.
     mime = _AUDIO_MIME_BY_EXT[ext]
 
-    # Iterator qui lit le body S3 par chunks de 64 KB. boto3 StreamingBody
-    # supporte iter_chunks() qui fait exactement ça.
-    def _iter_chunks():
-        try:
-            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
-                yield chunk
-        finally:
-            try:
-                obj["Body"].close()
-            except Exception:
-                pass
-
-    # Content-Length aide Chrome à afficher la durée totale dès le départ.
-    content_length = obj.get("ContentLength")
     headers = {}
+    content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)
-    # Cache 1h côté browser uniquement (les samples R2 sont immuables tant
-    # que la clé ne change pas) — S-05 : `private` pour qu'aucun cache
-    # partagé (CDN/proxy) ne conserve un objet audio payant ; `inline` pour
-    # que le navigateur lise plutôt qu'il ne télécharge.
+    # S-05 : `private` pour qu'aucun cache partagé ne conserve l'objet ;
+    # `inline` pour que le navigateur lise plutôt qu'il ne télécharge.
     headers["Cache-Control"] = "private, max-age=3600"
     headers["Content-Disposition"] = "inline"
 
     return StreamingResponse(
-        _iter_chunks(),
+        flux_objet(obj),
         media_type=mime,
         headers=headers,
     )
@@ -212,11 +197,23 @@ async def _key_only_on_removed_tracks(db: AsyncSession, key: str) -> bool:
     return int(total or 0) > 0 and int(visibles or 0) == 0
 
 
-def _visible():
-    """Lot A (E3) — raccourci : son ni supprimé ni retiré (listes publiques)."""
-    from app.services.tracks import visible_track_clause
+async def _key_on_moderated_track(db: AsyncSession, key: str) -> bool:
+    """True si un son portant cette clé a été retiré par la modération."""
+    from sqlalchemy import or_ as _or
 
-    return visible_track_clause()
+    k = key.lstrip("/")
+    porte = _or(Track.r2_key == k, Track.audio_url == f"/watt/stream/{k}")
+    return (await db.execute(
+        select(Track.id).where(porte, Track.taken_down_at.is_not(None)).limit(1)
+    )).scalar_one_or_none() is not None
+
+
+def _visible():
+    """Lot A (E3) — raccourci : son ni supprimé ni retiré (listes publiques).
+    Parcours V1 : ni masqué par son créateur (« Mes Œuvres »)."""
+    from app.services.tracks import public_track_clause
+
+    return public_track_clause()
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -285,8 +282,8 @@ def _adn_public_teaser(adn) -> dict:
     example_outputs) n'est JAMAIS exposé sur une surface publique : seuls
     la longueur et des booléens de présence le sont (même règle que la page
     artiste depuis le 2026-05-13). Le contenu complet ne sort que par
-    /me/library/adns (possession vérifiée). Utilisé par la page artiste,
-    /watt/adns et /watt/adns/{slug}.
+    /me/library/adns (possession vérifiée). Utilisé par la page artiste
+    et /watt/adns/{slug}.
     """
     return {
         "characterCount":    len(adn.description or ""),
@@ -1617,63 +1614,9 @@ async def delete_track(
 # Marketplace — DNA Playlists (Adn) + Prompts
 # ──────────────────────────────────────────────────────────────────────────
 
-@router.get("/adns")
-async def list_adns(db: AsyncSession = Depends(get_db)) -> dict:
-    """
-    Liste publique des DNA Playlists (Adn.is_published = True).
-
-    Renvoie {'adns': [...]} avec, pour chaque ADN :
-      slug, artistName, brandColor, characterCount, hasUsageGuide,
-      hasExampleOutputs, priceCredits, trackCount, promptCount, universe.
-
-    S-04 (2026-09-02) : le génome (description), usageGuide et
-    exampleOutputs ne sont plus servis ici — contenu payant, visible
-    uniquement via /me/library/adns après achat (cf. _adn_public_teaser).
-
-    Trié par nombre de tracks descendant (les univers les plus fournis
-    apparaissent en premier).
-    """
-    stmt = (
-        select(Adn, User)
-        .join(User, User.id == Adn.artist_id)
-        .where(Adn.is_published == True, Adn.is_deleted == False)  # noqa: E712
-    )
-    rows = (await db.execute(stmt)).all()
-
-    adns = []
-    for adn, artist in rows:
-        track_count = await _count_tracks_for_artist(db, artist.id)
-        prompt_count_stmt = select(func.count(Prompt.id)).where(
-            (Prompt.artist_id == artist.id)
-            & (Prompt.is_published == True)  # noqa: E712
-        )
-        prompt_count = int((await db.execute(prompt_count_stmt)).scalar() or 0)
-
-        # Univers = universe slug de la premiere track de l'artiste
-        univ_stmt = (
-            select(Track.universe)
-            .where(Track.artist_id == artist.id, _visible())
-            .limit(1)
-        )
-        universe = (await db.execute(univ_stmt)).scalar_one_or_none()
-
-        adns.append({
-            "id":             str(adn.id),
-            "slug":           _derive_artist_slug(artist),
-            "artistId":       str(artist.id),
-            "artistName":     artist.artist_name or "",
-            "brandColor":     artist.brand_color or "",
-            **_adn_public_teaser(adn),
-            "priceCredits":   adn.price_credits,
-            "trackCount":     track_count,
-            "promptCount":    prompt_count,
-            "universe":       universe or "",
-            "createdAt":      adn.created_at.isoformat() if adn.created_at else None,
-        })
-
-    # Tri : nombre de tracks decroissant
-    adns.sort(key=lambda a: a["trackCount"], reverse=True)
-    return {"adns": adns}
+# Lot E (2026-10-09) — GET /watt/adns (liste publique des ADN) RETIRÉE :
+# aucun appel côté front (vérifié sur tous les .js/.html), et elle faisait
+# 3 requêtes par ADN (N+1). La fiche /watt/adns/{slug} reste en place.
 
 
 @router.get("/adns/{slug}")
@@ -1924,7 +1867,7 @@ async def upload_image(
     Le front stocke l'URL et la passe ensuite à PATCH /users/me ou
     PATCH /tracks/{id} selon le contexte.
     """
-    from app.services.r2 import get_r2_client, is_configured
+    from app.services.r2 import is_configured
 
     if not is_configured():
         raise HTTPException(
@@ -1949,26 +1892,8 @@ async def upload_image(
     uid = _uuid_module.uuid4().hex
     r2_key = f"{image_prefix(kind, current_user.id)}/{uid}.{ext}"
 
-    # ── Upload R2 (boto3 sync → executor) ────────────────────────────────────
-    client = get_r2_client()
-    bucket = settings.R2_BUCKET
-
-    def _sync_put() -> None:
-        client.put_object(
-            Bucket=bucket,
-            Key=r2_key,
-            Body=data,
-            ContentType=mime,
-        )
-
-    loop = asyncio.get_event_loop()
-    try:
-        await loop.run_in_executor(None, _sync_put)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Échec de l'envoi du fichier. Réessaie.",
-        )
+    # ── Upload R2 (hors boucle asyncio, délais courts — Lot E) ───────────────
+    await _envoyer_ou_503(r2_key, data, mime)
 
     return {"url": f"/watt/images/{r2_key}", "key": r2_key}
 
@@ -1993,7 +1918,7 @@ async def upload_playlist_cover(
     Retourne : { "ok": true, "cover_url": "/watt/stream/<key>", "r2_key": "<key>" }
     Le front fait ensuite PATCH /playlists/{id} avec la cover_video_url.
     """
-    from app.services.r2 import get_r2_client, is_configured
+    from app.services.r2 import is_configured
 
     if not is_configured():
         raise HTTPException(
@@ -2015,28 +1940,63 @@ async def upload_playlist_cover(
     uid = _uuid_module.uuid4().hex
     r2_key = f"PLAYLISTS/{current_user.id}/{uid}.{ext}"
 
-    # ── Upload R2 (boto3 sync → executor) ────────────────────────────────────
-    client = get_r2_client()
-    bucket = settings.R2_BUCKET
+    # ── Upload R2 (hors boucle asyncio, délais courts — Lot E) ───────────────
+    await _envoyer_ou_503(r2_key, data, mime)
 
-    def _sync_put() -> None:
-        client.put_object(
-            Bucket=bucket,
-            Key=r2_key,
-            Body=data,
-            ContentType=mime,
+    return {"ok": True, "cover_url": f"/watt/playlist-video/{r2_key}", "r2_key": r2_key}
+
+
+# Parcours V1 — vidéos de couverture de playlist. Elles étaient renvoyées sur
+# le lecteur AUDIO (/watt/stream), qui refuse tout ce qui n'est pas un son :
+# elles ne s'affichaient jamais. Route dédiée, bornée aux seules vidéos de
+# playlist (dossier PLAYLISTS/<id du compte>/<nom généré>.<mp4|mov|webm>).
+_PLAYLIST_VIDEO_RE = _re_slug.compile(
+    r"^PLAYLISTS/[0-9a-fA-F-]{32,36}/[0-9a-f]{32}\.(mp4|mov|webm)$"
+)
+
+
+@router.get("/playlist-video/{key:path}")
+async def serve_playlist_video(key: str):
+    m = _PLAYLIST_VIDEO_RE.match(key or "")
+    if m is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    public_base = settings.effective_r2_public_base_url
+    if public_base:
+        from urllib.parse import quote
+
+        return RedirectResponse(
+            url=f"{public_base}/{quote(key, safe='/')}",
+            status_code=status.HTTP_302_FOUND,
         )
+    from app.services.r2 import get_r2_client, is_configured
 
-    loop = asyncio.get_event_loop()
-    try:
-        await loop.run_in_executor(None, _sync_put)
-    except Exception as exc:
+    client = get_r2_client() if is_configured() else None
+    if client is None:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Échec de l'envoi du fichier. Réessaie.",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="R2 storage not configured",
         )
+    try:
+        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    ext = m.group(1)
 
-    return {"ok": True, "cover_url": f"/watt/stream/{r2_key}", "r2_key": r2_key}
+    def _iter_chunks():
+        try:
+            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
+                yield chunk
+        finally:
+            try:
+                obj["Body"].close()
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        _iter_chunks(),
+        media_type=mime_pour(ext, video=True),
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -2082,47 +2042,18 @@ async def serve_image(key: str):
         )
 
     # Fallback (dev/local sans domaine public configuré) : ancien proxy boto3.
-    from app.services.r2 import get_r2_client, is_configured
+    from app.services.r2 import flux_objet, ouvrir_objet
 
-    if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 storage not configured",
-        )
-
-    client = get_r2_client()
-    if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 client unavailable",
-        )
-
-    try:
-        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Image non trouvée.",
-        )
+    obj = await ouvrir_objet(key, detail_404="Image non trouvée.")
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = _IMAGE_MIME.get(ext, "image/jpeg")
-
-    def _iter_chunks():
-        try:
-            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
-                yield chunk
-        finally:
-            try:
-                obj["Body"].close()
-            except Exception:
-                pass
 
     headers: dict[str, str] = {"Cache-Control": "public, max-age=86400"}
     if obj.get("ContentLength"):
         headers["Content-Length"] = str(obj["ContentLength"])
 
-    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+    return StreamingResponse(flux_objet(obj), media_type=mime, headers=headers)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -2139,6 +2070,16 @@ async def serve_image(key: str):
 
 # Étape 5 : tailles max dans config.py (UPLOAD_MAX_AUDIO_MB = 50 Mo,
 # UPLOAD_MAX_VOICE_MB = 20 Mo) ; type réel contrôlé par app.core.fichiers.
+
+
+async def _envoyer_ou_503(r2_key: str, data: bytes, mime: str) -> None:
+    """Lot E — envoi R2 hors boucle ; stockage en panne → 503 lisible."""
+    from app.services.r2 import R2Indisponible, envoyer_objet, http_503_r2
+
+    try:
+        await envoyer_objet(r2_key, data, mime)
+    except R2Indisponible:
+        raise http_503_r2()
 
 
 def _slugify_name(name: str, max_len: int = 40) -> str:
@@ -2179,7 +2120,7 @@ async def _upload_audio_to_r2(
     Logique commune d'upload audio vers R2.
     Retourne { url, key, duration_seconds } ou lève HTTPException.
     """
-    from app.services.r2 import get_r2_client, is_configured
+    from app.services.r2 import is_configured
 
     # Mode sans R2 (dev local) — renvoie un mock pour ne pas bloquer l'UI
     if not is_configured():
@@ -2196,23 +2137,10 @@ async def _upload_audio_to_r2(
     uid = _uuid_module.uuid4().hex[:12]
     r2_key = f"{r2_prefix}/{slug}-{uid}.{ext}"
 
-    client = get_r2_client()
-    bucket = settings.R2_BUCKET
-
-    def _sync_put() -> None:
-        client.put_object(Bucket=bucket, Key=r2_key, Body=data, ContentType=mime)
-
-    loop = asyncio.get_event_loop()
-    try:
-        await loop.run_in_executor(None, _sync_put)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Échec de l'envoi du fichier. Réessaie.",
-        )
+    await _envoyer_ou_503(r2_key, data, mime)
 
     # Durée calculée hors event-loop (décodage audio = CPU-bound).
-    duration = await loop.run_in_executor(None, _audio_duration_seconds, data)
+    duration = await asyncio.to_thread(_audio_duration_seconds, data)
 
     stream_url = f"/watt/stream/{r2_key}"
     return {"url": stream_url, "key": r2_key, "mock": False, "duration_seconds": duration}

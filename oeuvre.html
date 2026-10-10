@@ -64,13 +64,15 @@
 <!-- Toast -->
 <div class="lib-toast" id="oeuvre-toast"></div>
 
-<script src="ui/core/api.js"></script>
+<script src="ui/core/api.js?v=20261010lotd"></script>
+<script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
+<script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
 <!-- K-11 (2026-09-04) — chemins ABSOLUS ici : oeuvre.html est servie sur
      /oeuvre/<slug>, donc un src relatif se résoudrait en
      /oeuvre/ui/core/… (404) et la mesure serait chargée « sur le papier »
      mais jamais exécutée. -->
-<script src="/ui/core/consent.js"></script>
-<script src="/ui/core/telemetry.js"></script>
+<script src="/ui/core/consent.js?v=20261010lotd"></script>
+<script src="/ui/core/telemetry.js?v=20261010lotd"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <script src="ui/topbar/topbar.js?v=20260708t6" defer></script>
@@ -79,10 +81,12 @@
 <!-- Drawer d'achat unifié : son · image · playlist · album-adn -->
 <script src="/ui/modals/purchase-drawer.js?v=20260703offres3"></script>
 <script src="/ui/modals/offer-modal.js?v=20260703offres3"></script>
-<script src="/ui/modals/report-modal.js?v=20260707dsa"></script>
-<script src="oeuvre.js?v=20260702c" defer></script>
+<script src="/ui/modals/report-modal.js?v=20261010lotd"></script>
+<script src="oeuvre.js?v=20261010lotd" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <script src="/ui/player/mini-bar.js?v=20260707player" defer></script>
+<!-- Lot D : pied de page légal (Mentions, CGU, Confidentialité, Cookies, Contact) -->
+<script src="/ui/core/legal-footer.js?v=20261010lotd" defer></script>
 </body>
 </html>

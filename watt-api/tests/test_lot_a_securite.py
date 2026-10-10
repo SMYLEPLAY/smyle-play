@@ -142,6 +142,12 @@ class _FakeR2:
     def put_object(self, **kw):
         self.puts.append(kw["Key"])
 
+    def head_object(self, **kw):
+        # Parcours V1 : la publication d'un son vérifie que l'audio existe.
+        if kw["Key"] not in self.puts:
+            raise KeyError(kw["Key"])
+        return {}
+
 
 # ═══ C1 — propriété des fichiers (sans base) ════════════════════════════════
 
@@ -206,9 +212,11 @@ async def test_c1_creation_refuse_les_fichiers_d_autrui(client):
         tr = r.json()["track"]
         assert "r2_key" not in tr
         assert tr["stream_url"] == f"/watt/stream/{mine}"
+        # Parcours V1 : un son se publie avec SON fichier audio envoyé sur
+        # WATT — une URL externe seule est refusée.
         r = await client.post("/tracks/", json={
             **base, "audio_url": "https://cdn.exemple.org/son.mp3"}, headers=h)
-        assert r.status_code == 201, r.text
+        assert r.status_code == 422, r.text
 
         r = await client.get("/tracks/me", headers=h)
         assert r.status_code == 200
@@ -270,7 +278,14 @@ async def test_c1_parcours_createur_complet(client, monkeypatch):
         assert r.status_code == 200, r.text
         assert fake.puts[-1].startswith(f"images/image/{a['id']}/")
 
-        # 3. Publication du son avec ces fichiers.
+        # 3. Publication du son avec ces fichiers. Parcours V1 : le serveur
+        #    vérifie que l'audio existe sur le stockage (absent → refus).
+        r = await client.post("/tracks/", headers=h, json={
+            "title": "Mon son", "full_prompt": "deep house",
+            "audio_url": f"/watt/stream/{key}", "r2_key": key, "cover_url": cover,
+        })
+        assert r.status_code == 422, r.text
+        fake.puts.append(key)  # le fichier audio est bien sur le stockage
         r = await client.post("/tracks/", headers=h, json={
             "title": "Mon son", "full_prompt": "deep house",
             "audio_url": f"/watt/stream/{key}", "r2_key": key, "cover_url": cover,
@@ -382,10 +397,14 @@ async def test_e1_liste_blanche_des_statiques(monkeypatch):
         "/tracks.json", "/e2e/package.json", "/e2e/playwright.config.js",
         "/scripts/attach_recipes.py", "/agents/orchestrator.py",
         "/assets/the-plan/cover.png", "/watt-api/app/main.py",
-        "/banner-demo.html", "/tarifs.html", "/offres.html", "/oeuvre.html",
+        "/banner-demo.html",
         "/.github/workflows/ci.yml", "/ui/../tracks.json",
     ):
         assert c.get(path).status_code == 404, path
+    # Parcours V1 — pages masquées : redirection vers l'accueil (plus de 404).
+    for path in ("/tarifs.html", "/offres.html", "/oeuvre.html"):
+        r = c.get(path)
+        assert r.status_code == 302 and r.headers["location"] == "/", path
     for path in ("/index.html", "/style.css", "/dashboard.js", "/artiste.js",
                  "/ui/core/api.js", "/ui/core/tokens.css", "/o.html", "/legal.html"):
         assert c.get(path).status_code == 200, path
@@ -393,8 +412,11 @@ async def test_e1_liste_blanche_des_statiques(monkeypatch):
     monkeypatch.setattr(settings, "SHOW_EUROS", True)
     monkeypatch.setattr(settings, "SHOW_PALIERS", True)
     monkeypatch.setattr(settings, "SHOW_ALBUMS", True)
-    for path in ("/tarifs.html", "/offres.html", "/oeuvre.html"):
-        assert c.get(path).status_code == 200, path
+    # Rouvertes : l'adresse directe mène à la page officielle.
+    assert c.get("/tarifs.html").headers["location"] == "/tarifs"
+    assert c.get("/offres.html").headers["location"] == "/offres"
+    assert c.get("/oeuvre.html").headers["location"] == "/"
+    assert c.get("/tarifs").status_code == 200 and c.get("/offres").status_code == 200
 
 
 async def test_e1_recettes_retirees_du_depot():
@@ -425,7 +447,8 @@ async def test_e2_son_ne_porte_que_ses_recettes(client):
     tid = await _track(a["id"])
     try:
         h = await _login(client, a["email"])
-        base = {"title": "Son", "full_prompt": "x"}
+        base = {"title": "Son", "full_prompt": "x",
+                "r2_key": f"tracks/{a['id']}/son-0123abcd.wav"}
         r = await client.post("/tracks/", json={**base, "prompt_id": str(rec_b)}, headers=h)
         assert r.status_code == 422, r.text
         r = await client.post("/tracks/", json={**base, "prompt_id": str(uuid.uuid4())}, headers=h)
@@ -554,10 +577,16 @@ async def test_e3_listes_publiques_et_proxy_audio(client, monkeypatch):
         assert [t["id"] for t in r.json()["tracks"]] == [str(vis)]
 
         # Proxy audio : clé d'un son retiré → 404 ; son visible → passe le
-        # filtre (503 ici car le stockage n'est pas configuré en test).
+        # filtre. Lot E : redirection 302 vers l'objet R2 public (sans
+        # domaine public configuré : repli proxy, 503 sans stockage).
         monkeypatch.setattr(r2, "is_configured", lambda: False)
         assert (await client.get(f"/watt/stream/tracks/{a['id']}/s.wav")).status_code == 404
         assert (await client.get(f"/watt/stream/tracks/{a['id']}/r.wav")).status_code == 404
+        r = await client.get(f"/watt/stream/tracks/{a['id']}/v.wav")
+        assert r.status_code == 302
+        assert r.headers["location"].endswith(f"/tracks/{a['id']}/v.wav")
+        from app.config import settings as _s
+        monkeypatch.setattr(_s, "R2_PUBLIC_BASE_URL", "")
         assert (await client.get(f"/watt/stream/tracks/{a['id']}/v.wav")).status_code == 503
 
         # Écoute d'un son retiré : pas comptée.
@@ -581,12 +610,13 @@ async def test_e3_inventaire_des_requetes_track():
         if n:
             trouve[f.name] = n
     assert trouve == {
-        "beats.py": 1,         # téléchargement payé : is_deleted + créateur
+        "beats.py": 1,         # téléchargement payé : créateur ; supprimé OK pour l'acheteur (Parcours V1)
         "images.py": 3,        # cartes image / Œuvres : is_deleted
         "oeuvre.py": 2,        # collection : filtrée ; calcul de possession
         "search.py": 2,        # recherche + compteurs : visible_track_clause
         "trades.py": 1,        # échange : is_deleted
-        "watt_compat.py": 13,  # listes filtrées ; plays/suppression par id
+        "watt_compat.py": 13,  # listes filtrées ; plays/suppression par id (Lot E : /watt/adns retirée) ;
+                               # + Parcours V1 : retrait modération (proxy audio)
     }, trouve
 
 
@@ -677,7 +707,7 @@ async def test_signalement_email_moderateur_echappe(client, monkeypatch):
 
     monkeypatch.setattr(emails, "_send", _send)
     monkeypatch.setenv("REPORT_NOTIFY_EMAIL", "modo@x.example")
-    r = await client.post("/reports", json={
+    r = await client.post("/reports", json={"good_faith": True,
         "target_type": "track", "target_id": str(uuid.uuid4()),
         "reason": "autre", "detail": "<script>alert(1)</script>",
         "reporter_email": "r@x.example",

@@ -251,7 +251,7 @@ async def _preseed(uid, achetes=0):
         await db.commit()
 
 
-BODY = {"pack_id": "pack_10", "renonce_retractation": True}
+BODY = {"pack_id": "pack_100", "renonce_retractation": True}
 
 
 async def test_cle_de_test_achat_reserve_aux_admins(client, test_user, auth_headers, stripe_test):
@@ -288,7 +288,7 @@ async def test_smyles_de_test_marques_et_comptes_a_part(client, test_user, auth_
             {"k": f"stripe_session:{sid}"})).scalar_one()
         apres = (await beta_dashboard_data(db))["masse_smyles"]["crees"]
     assert meta["stripe_test"] is True
-    assert apres["achats_carte_de_test"] == avant["achats_carte_de_test"] + 10
+    assert apres["achats_carte_de_test"] == avant["achats_carte_de_test"] + 100
     assert apres["achats_de_packs"] == avant["achats_de_packs"]    # pas un vrai achat
 
 
@@ -311,18 +311,18 @@ async def test_manque_bloque_l_achat_carte_puis_deblocage_admin(client, test_use
     await _webhook(client, {"id": f"evt_{uuid.uuid4().hex}", "type": "checkout.session.completed",
                             "data": {"object": {"id": sid, "payment_status": "paid", "amount_total": 800,
                                                 "currency": "eur", "payment_intent": pi}}})
-    # Il dépense tout (les 10 achetés passent en gagnés chez un tiers : simulé).
+    # Il dépense tout (les 100 achetés passent en gagnés chez un tiers : simulé).
     async with SessionLocal() as db:
-        await db.execute(text("UPDATE users SET smyles_achetes = 0, smyles_gagnes = 10, "
-                              "credits_balance = 10 WHERE id = :u"), {"u": uid})
+        await db.execute(text("UPDATE users SET smyles_achetes = 0, smyles_gagnes = 100, "
+                              "credits_balance = 100 WHERE id = :u"), {"u": uid})
         await db.commit()
     r = await _webhook(client, {"id": f"evt_{uuid.uuid4().hex}", "type": "charge.dispute.created",
                                 "data": {"object": {"payment_intent": pi, "amount": 800}}})
     assert r.json()["statut"] == "signale"
     async with SessionLocal() as db:
         u = await db.get(User, uid)
-        assert u.achat_carte_bloque_at is not None and "10 Smyles" in u.achat_carte_bloque_motif
-        assert (u.smyles_gagnes, u.smyles_gagnes_bloque) == (10, 0)    # rien gelé, rien touché
+        assert u.achat_carte_bloque_at is not None and "100 Smyles" in u.achat_carte_bloque_motif
+        assert (u.smyles_gagnes, u.smyles_gagnes_bloque) == (100, 0)    # rien gelé, rien touché
     # Bloqué : plus d'achat par carte, message clair.
     r = await client.post("/credits/checkout", headers=auth_headers, json=BODY)
     assert r.status_code == 403 and "suspendu" in r.json()["detail"]
@@ -331,14 +331,14 @@ async def test_manque_bloque_l_achat_carte_puis_deblocage_admin(client, test_use
     await _admin(test_user)
     r = await client.get("/admin/achats-carte/bloques", headers=auth_headers)
     mine = [c for c in r.json()["comptes"] if c["user_id"] == str(uid)]
-    assert mine and mine[0]["smyles_non_repris"] == 10
+    assert mine and mine[0]["smyles_non_repris"] == 100
     url = f"/admin/achats-carte/{uid}/debloquer"
     assert (await client.post(url, headers=auth_headers, json={"reason": ""})).status_code == 422
     assert (await client.post(url, headers=auth_headers, json={"reason": "Remboursé à l'amiable"})).status_code == 200
     assert (await client.post(url, headers=auth_headers, json={"reason": "encore"})).status_code == 404
     async with SessionLocal() as db:
         u = await db.get(User, uid)
-        assert u.achat_carte_bloque_at is None and u.credits_balance == 10
+        assert u.achat_carte_bloque_at is None and u.credits_balance == 100
         j = (await db.execute(text(
             "SELECT motif FROM admin_journal WHERE action = 'deblocage_achat_carte' AND cible_id = :c"),
             {"c": str(uid)})).scalar_one()

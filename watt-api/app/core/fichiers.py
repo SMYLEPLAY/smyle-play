@@ -187,6 +187,15 @@ def _refus(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
+def appliquer_plafond_pillow() -> None:
+    """Lot E — aligne le plafond interne de Pillow (MAX_IMAGE_PIXELS) sur
+    UPLOAD_MAX_IMAGE_PIXELS : toute ouverture d'image par le serveur (contrôle
+    ET aperçu) refuse une bombe de décompression, même hors de ce module."""
+    from PIL import Image
+
+    Image.MAX_IMAGE_PIXELS = int(settings.UPLOAD_MAX_IMAGE_PIXELS)
+
+
 def verifier_image(data: bytes, formats: tuple[str, ...]) -> str:
     """Contrôle une image ; renvoie son extension réelle ('jpg', 'png'…).
 
@@ -206,6 +215,7 @@ def verifier_image(data: bytes, formats: tuple[str, ...]) -> str:
 
     from PIL import Image
 
+    appliquer_plafond_pillow()
     try:
         with Image.open(io.BytesIO(data)) as img:
             largeur, hauteur = img.size

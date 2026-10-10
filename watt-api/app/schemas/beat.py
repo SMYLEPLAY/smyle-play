@@ -38,7 +38,7 @@ class BeatCreate(BaseModel):
 
     title: str = Field(min_length=PROMPT_TITLE_MIN, max_length=PROMPT_TITLE_MAX)
     description: str | None = Field(default=None, max_length=PROMPT_DESCRIPTION_MAX)
-    # Prix libre (min 3 crédits, comme les prompts). Pas de plafond ressenti.
+    # Prix 10–150 Smyles, comme les prompts. Pas de plafond ressenti.
     price_credits: int = Field(ge=PROMPT_PRICE_MIN)
     license_type: BeatLicense
     # Édition limitée pour les lease (None = illimité). Ignoré si exclusive.

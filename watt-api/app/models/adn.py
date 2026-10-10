@@ -24,7 +24,7 @@ class Adn(Base):
 
     - 1 ADN max par artiste (UNIQUE artist_id)
     - Non-transférable : primary market uniquement, jamais P2P
-    - Prix encadré : 30 <= price_credits <= 500
+    - Prix minimum : 300 Smyles (redénomination ×10 du 9/10/2026)
     - Contenu enrichi : description + usage_guide + example_outputs
     - Validation min length sur description (200 chars) au niveau DB
     """
@@ -33,8 +33,8 @@ class Adn(Base):
     __table_args__ = (
         UniqueConstraint("artist_id", name="uq_adns_artist_id"),
         CheckConstraint(
-            "price_credits >= 30 AND price_credits <= 500",
-            name="ck_adns_price_credits_range",
+            "price_credits >= 300",
+            name="ck_adns_price_credits_min",
         ),
         CheckConstraint(
             "char_length(description) >= 200",

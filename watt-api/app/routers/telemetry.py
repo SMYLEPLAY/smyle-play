@@ -12,8 +12,10 @@ désormais lues dans `users` et `transactions` ; « Visiteurs » et
 Le tableau d'activité de la bêta est `GET /admin/beta` (routers/admin.py).
 
 Privacy-first : aucune PII stockée (pas d'IP, pas de user-agent). `session_id`
-anonyme (client). `user_id` posé seulement si un Bearer valide est présent —
-jamais accepté depuis le corps de la requête (anti-spoof).
+anonyme (client). Lot D : aucun événement n'est plus rattaché à un compte
+(`user_id` toujours NULL, garanti en base par ck_analytics_events_sans_compte) —
+la mesure annoncée comme anonyme l'est réellement. Conservation : 13 mois
+(purge automatique, cf. services/analytics.py).
 Best-effort : la collecte ne bloque jamais ; en cas d'erreur on renvoie 202.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -43,17 +45,6 @@ class EventsBatch(BaseModel):
     events: list[EventIn] = Field(default_factory=list)
 
 
-async def _user_id_from_request(request: Request, db: AsyncSession):
-    """Résout l'utilisateur depuis le Bearer SANS exiger l'auth (best-effort).
-
-    Lot A (M1) : jeton vérifié comme get_current_user (version de jeton,
-    compte suspendu) ; sinon l'événement reste anonyme."""
-    from app.auth.jwt import bearer_from_request, resolve_optional_user
-
-    user = await resolve_optional_user(db, bearer_from_request(request))
-    return user.id if user else None
-
-
 def _trunc(s: str | None) -> str | None:
     return s[:MAX_STR] if s else None
 
@@ -65,7 +56,6 @@ async def ingest_events(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    user_id = await _user_id_from_request(request, db)
     accepted = 0
     try:
         for ev in payload.events[:MAX_BATCH]:
@@ -73,7 +63,7 @@ async def ingest_events(
                 continue  # silencieux : on ignore les events hors whitelist
             db.add(AnalyticsEvent(
                 session_id=payload.session_id[:64],
-                user_id=user_id,
+                user_id=None,  # Lot D : mesure sans compte
                 name=ev.name,
                 path=_trunc(ev.path),
                 referrer=_trunc(ev.referrer),
@@ -89,6 +79,22 @@ async def ingest_events(
         # Best-effort : on ne fait jamais échouer le client pour de la télémétrie.
         return {"accepted": 0}
     return {"accepted": accepted}
+
+
+@router.post("/admin/mesure/purge")
+async def admin_purge_mesure(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lot D — purge manuelle des données de mesure de plus de 13 mois (la
+    même purge tourne seule au démarrage puis toutes les 24 h)."""
+    if not is_admin_user(current_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail=ADMIN_FORBIDDEN_DETAIL)
+    from app.services.analytics import purger_mesure_ancienne
+
+    n = await purger_mesure_ancienne(db)
+    await db.commit()
+    return {"supprimes": n}
 
 
 @router.get("/admin/funnel")

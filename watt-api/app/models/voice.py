@@ -63,7 +63,7 @@ class Voice(Base):
     __tablename__ = "voices_for_sale"
     __table_args__ = (
         CheckConstraint(
-            "price_credits >= 50 AND price_credits <= 5000",
+            "price_credits >= 500 AND price_credits <= 50000",
             name="ck_voices_price_credits_range",
         ),
         CheckConstraint(

@@ -111,6 +111,12 @@ class Playlist(Base):
         String(80), nullable=True, index=True
     )
 
+    # Lot D (migration 0102) — retrait par la modération (comme les œuvres,
+    # 0092) : un trigger garde la collection privée tant que la marque est
+    # posée ; seule la restauration admin peut la lever.
+    taken_down_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

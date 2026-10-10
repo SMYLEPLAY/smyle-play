@@ -24,7 +24,7 @@ class Prompt(Base):
     - N par artiste, autant qu'il en publie
     - Transférable en Phase 10 (P2P) — cf. UnlockedPrompt qui a son propre
       UUID pour être tradeable plus tard
-    - Plancher prix : 3 crédits
+    - Prix : 10 à 150 Smyles (redénomination ×10 du 9/10/2026)
     - pack_eligible : prêt pour Phase 10 (packs aléatoires), default True
     - Validations au niveau DB (title 5+, prompt_text 100..1000).
       prompt_text est plafonné à 1000 car Suno n'accepte pas plus — vendre
@@ -34,8 +34,8 @@ class Prompt(Base):
     __tablename__ = "prompts"
     __table_args__ = (
         CheckConstraint(
-            "price_credits >= 3",
-            name="ck_prompts_price_credits_min",
+            "price_credits >= 10 AND price_credits <= 150",
+            name="ck_prompts_price_credits_range",
         ),
         CheckConstraint(
             "char_length(title) >= 5",

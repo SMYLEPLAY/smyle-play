@@ -46,8 +46,8 @@ VisualStyle = Literal[
 ]
 
 # Bornes (mirror des bornes ADN musical).
-VISUAL_ADN_PRICE_MIN = 30
-VISUAL_ADN_PRICE_MAX = 500
+VISUAL_ADN_PRICE_MIN = 300
+VISUAL_ADN_PRICE_MAX = 5000
 VISUAL_ADN_DESCRIPTION_MIN = 200
 VISUAL_ADN_DESCRIPTION_MAX = 20000
 VISUAL_ADN_USAGE_GUIDE_MAX = 3000
@@ -80,12 +80,12 @@ class VisualAdnCreate(BaseModel):
         ge=VISUAL_ADN_PRICE_MIN,
         le=VISUAL_ADN_PRICE_MAX,
         description=(
-            f"Prix en crédits "
+            f"Prix en Smyles "
             f"({VISUAL_ADN_PRICE_MIN}..{VISUAL_ADN_PRICE_MAX})."
         ),
     )
     # OFFRES-ADN étape 5 : plancher CACHÉ posable dès la création. WRITE-ONLY.
-    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=1_000_000)
     ai_reference: AiReference | None = None
     max_supply: int | None = Field(
         default=None,
@@ -134,7 +134,7 @@ class VisualAdnUpdate(BaseModel):
     )
     # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY —
     # jamais exposé en lecture. 0 = pas de plancher.
-    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=1_000_000)
 
 
 class VisualAdnRead(BaseModel):

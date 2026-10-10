@@ -7,9 +7,9 @@ Smyles désirables (gagnés via parrainage + streak) et fait circuler la valeur
 vers les artistes.
 
 Économie :
-  - Prix FIXE de 8 Smyles par tirage (≈5,6 €), volontairement modéré (cf.
+  - Prix FIXE de 80 Smyles par tirage (≈5,6 €), volontairement modéré (cf.
     [[project_engagement_loop_economy]]). À affiner avec le prix moyen réel.
-  - Les 8 Smyles ne sont PAS brûlés : ils sont transférés à l'artiste du
+  - Les 80 Smyles ne sont PAS brûlés : ils sont transférés à l'artiste du
     prompt tiré (split 80/20 comme un unlock normal) → la valeur circule,
     les créateurs sont récompensés, la plateforme prend sa part.
 
@@ -42,7 +42,7 @@ from app.services.credits import (
 
 # Prix fixe d'un tirage (Smyles). Modéré au lancement, à affiner avec les
 # données réelles (prix moyen des prompts pack_eligible).
-MYSTERY_PACK_PRICE = 8
+MYSTERY_PACK_PRICE = 80
 
 # Raretés (mécanique 3) — basées sur le NOMBRE D'EXEMPLAIRES (max_supply),
 # aligné sur le modèle ADN (compute_rarity_tier). Plus c'est rare (peu
@@ -287,7 +287,7 @@ async def open_mystery_pack_atomic(db: AsyncSession, buyer_id: UUID) -> dict:
 
     # Top-up "prix fort" pour les éditions RARES tirées en pack (décision Tom
     # 2026-06-08) : si le son tiré est mythic (1/1) ou legendary (2–10),
-    # l'artiste touche le PRIX PLEIN du prompt, pas juste sa part des 8 Smyles.
+    # l'artiste touche le PRIX PLEIN du prompt, pas juste sa part des 80 Smyles.
     # La plateforme comble la différence (BONUS minté). RESTREINT aux 2 tiers
     # les plus rares (PAS "limited" 11–10 000) pour borner l'inflation —
     # garde-fou anti-saignée. Hors savepoint (grant pose son propre nested).

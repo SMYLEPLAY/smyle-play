@@ -37,7 +37,7 @@ class PlaylistCreate(BaseModel):
     cover_video_url: str | None = Field(default=None, max_length=2048)
     seed_prompt: str | None = None
     adn_for_sale: bool = False
-    adn_price: int | None = Field(default=None, ge=1, le=100_000)
+    adn_price: int | None = Field(default=None, ge=1, le=1_000_000)
     # Teaser PUBLIC de l'ADN — visible avant achat, par opposition au génome
     # (seed_prompt) qui reste gaté. Miroir strict d'Album (max_length=2000).
     dna_description: str | None = Field(default=None, max_length=2000)
@@ -54,11 +54,11 @@ class PlaylistUpdate(BaseModel):
     cover_video_url: str | None = Field(default=None, max_length=2048)
     seed_prompt: str | None = None
     adn_for_sale: bool | None = None
-    adn_price: int | None = Field(default=None, ge=1, le=100_000)
+    adn_price: int | None = Field(default=None, ge=1, le=1_000_000)
     dna_description: str | None = Field(default=None, max_length=2000)
     # OFFRES-ADN étape 5 : plancher CACHÉ (owner only). WRITE-ONLY — jamais
     # exposé dans PlaylistRead (servi aussi en public). 0 = pas de plancher.
-    adn_reserve_credits: int | None = Field(default=None, ge=0, le=100_000)
+    adn_reserve_credits: int | None = Field(default=None, ge=0, le=1_000_000)
 
 
 class PlaylistRead(BaseModel):

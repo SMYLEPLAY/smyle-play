@@ -158,3 +158,75 @@ async def funnel_data(db: AsyncSession, days: int = 30) -> dict:
             "créateurs), utiliser GET /admin/beta.",
         ],
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Lot D — durée de conservation de la mesure d'audience (13 mois, CNIL)
+#
+# Aucun mécanisme de tâches planifiées n'existe dans le code (pas de cron, pas
+# de worker) : la purge tourne DANS le process web, au démarrage puis toutes
+# les 24 h. Avec plusieurs workers, chacun la lance : la requête est
+# idempotente (DELETE … WHERE created_at < seuil), un second passage ne
+# supprime rien. Un verrou consultatif Postgres évite deux passages simultanés.
+# L'admin peut aussi la déclencher à la main : POST /admin/mesure/purge.
+# ─────────────────────────────────────────────────────────────────────────────
+
+import asyncio as _asyncio
+import logging as _logging
+
+_log = _logging.getLogger(__name__)
+_PURGE_INTERVALLE_S = 24 * 3600
+_PURGE_VERROU = 74_201_013  # identifiant arbitraire du verrou consultatif
+_tache_purge = None
+
+
+async def purger_mesure_ancienne(db: AsyncSession) -> int:
+    """Supprime les événements de mesure de plus de 13 mois. Renvoie le
+    nombre de lignes supprimées. Ne commit pas."""
+    from app.core.legal import MESURE_RETENTION_MOIS
+
+    res = await db.execute(
+        text(
+            "DELETE FROM analytics_events "
+            "WHERE created_at < now() - make_interval(months => :m)"
+        ),
+        {"m": MESURE_RETENTION_MOIS},
+    )
+    return int(res.rowcount or 0)
+
+
+async def _passage_purge() -> None:
+    from app.database import SessionLocal
+
+    async with SessionLocal() as db:
+        pris = (await db.execute(
+            text("SELECT pg_try_advisory_xact_lock(:k)"), {"k": _PURGE_VERROU}
+        )).scalar()
+        if not pris:
+            return
+        n = await purger_mesure_ancienne(db)
+        await db.commit()
+        if n:
+            _log.info("[mesure] purge : %s événements de plus de 13 mois supprimés", n)
+
+
+async def _boucle_purge() -> None:
+    await _asyncio.sleep(30)  # laisse le démarrage se terminer
+    while True:
+        try:
+            await _passage_purge()
+        except Exception:  # noqa: BLE001 — la purge ne fait jamais tomber l'app
+            _log.warning("[mesure] purge : échec (nouvel essai dans 24 h)", exc_info=True)
+        await _asyncio.sleep(_PURGE_INTERVALLE_S)
+
+
+async def demarrer_purge_periodique() -> None:
+    """Lance la boucle de purge (une par process). Rien en environnement de
+    test : les tests appellent `purger_mesure_ancienne` directement."""
+    global _tache_purge
+    from app.config import settings
+
+    if (getattr(settings, "ENVIRONMENT", "") or "").lower() == "test":
+        return
+    if _tache_purge is None or _tache_purge.done():
+        _tache_purge = _asyncio.get_running_loop().create_task(_boucle_purge())

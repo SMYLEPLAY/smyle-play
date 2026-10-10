@@ -47,15 +47,15 @@
 
   <h2>La boucle, en 4 temps</h2>
   <div class="steps">
-    <div class="step"><div class="n">1</div><div><p class="t">Tu explores</p><p class="d">Écoute librement les sons, parcours les artistes et les univers (Jungle Osmose, Night City, Sunset Lover, Hit Mix…). L'écoute est gratuite.</p></div></div>
-    <div class="step"><div class="n">2</div><div><p class="t">Tu débloques avec des Smyles</p><p class="d">Un son, un ADN ou un visuel qui te plaît ? Tu le débloques avec des <span class="hl">Smyles</span>, la monnaie de WATT. Tu en reçois à l'inscription pour démarrer.</p></div></div>
+    <div class="step"><div class="n">1</div><div><p class="t">Tu explores</p><p class="d">Écoute librement les sons, parcours les artistes et les univers (Jungle Osmose, Night City, Sunset Lover, Hit Mix…). Sans compte, tu écoutes un extrait de 30 secondes de chaque son ; avec un compte gratuit, tu écoutes tout en entier.</p></div></div>
+    <div class="step"><div class="n">2</div><div><p class="t">Tu débloques avec des Smyles</p><p class="d">Un son, un ADN ou un visuel qui te plaît ? Tu le débloques avec des <span class="hl">Smyles</span>, la monnaie de WATT. Tu en reçois <b>30</b> à l'inscription pour démarrer. Une recette coûte en général autour de 15 Smyles, une Œuvre (un son et son image) autour de 30.</p></div></div>
     <div class="step"><div class="n">3</div><div><p class="t">Tu possèdes la recette</p><p class="d">Débloquer, ce n'est pas juste télécharger : tu obtiens la <span class="hl">recette</span> reproductible (l'ADN) — de quoi recréer et décliner, pas seulement consommer.</p></div></div>
     <div class="step"><div class="n">4</div><div><p class="t">Tu crées et tu vends</p><p class="d">Tu peux devenir artiste : poser ton ADN, publier tes œuvres, et les vendre. Les autres te débloquent → tu gagnes des Smyles à ton tour.</p></div></div>
   </div>
 
   <h2>Le glossaire (sans jargon)</h2>
   <div class="gloss">
-    <div class="term"><b><span class="e">Smyle</span> — la monnaie</b><p>Ce qui te permet de débloquer une œuvre. Tu en gagnes (inscription, fidélité, parrainage), tu peux en recharger, et tu en encaisses quand on débloque tes créations.</p></div>
+    <div class="term"><b><span class="e">Smyle</span> — la monnaie</b><p>Ce qui te permet de débloquer une œuvre. Tu en reçois 30 offerts à l'inscription, et d'autres grâce au parrainage (20 pour toi, 20 pour ton filleul). Quand on débloque tes créations, tu gagnes des Smyles. L'achat de Smyles sera ouvert prochainement. Les règles complètes (ce qui est retirable en euros, et quand) sont dans les <a href="/legal#smyles">conditions d'utilisation</a>.</p></div>
     <div class="term"><b><span class="e">ADN</span> 🧬 — la signature reproductible</b><p>L'empreinte d'une œuvre : ses ingrédients (style, sons, ambiance) figés et réutilisables. Posséder un ADN, c'est pouvoir recréer dans le même esprit, pas juste écouter.</p></div>
     <div class="term"><b><span class="e">Recette</span> — le « comment c'est fait »</b><p>Le détail concret derrière une œuvre (prompts, réglages). C'est ce qui rend l'ADN reproductible. Inclus quand tu débloques.</p></div>
     <div class="term"><b><span class="e">ADN visuel</span> 🎨 — la signature image</b><p>Le pendant visuel de l'ADN musical : la signature graphique d'un artiste (covers, ambiance), elle aussi à débloquer et décliner.</p></div>
@@ -63,7 +63,7 @@
     <div class="term" id="term-packs"><b><span class="e">Pack mystère</span> 🎁 — le tirage</b><p>Un pack qui tire un son au hasard pour un petit prix : tu peux décrocher une pépite bien plus chère que le coût du tirage.</p></div>
     <div class="term" id="term-resale"><b><span class="e">Marché secondaire</span> 💱 — la revente</b><p>Achète des œuvres revendues par d'autres. L'artiste d'origine touche une royaltie à chaque revente.</p></div>
     <div class="term"><b><span class="e">WATT Board</span> — ton QG d'artiste</b><p>Le tableau de bord où tu poses ton profil, ton ADN, tes sorties et tes stats quand tu crées sur WATT.</p></div>
-    <div class="term" id="term-paliers"><b><span class="e">Paliers</span> — Free / Standard / Premium / Studio</b><p>Les formules créateur : plus le palier est élevé, plus la commission baisse et plus tu débloques d'avantages. Détails sur la page Offres.</p></div>
+    <div class="term" id="term-paliers"><b><span class="e">Paliers</span> — Standard / Premium / Mythique</b><p>Les formules créateur : plus le palier est élevé, plus la commission baisse (20 %, 12 %, 10 %) et plus tu débloques d'avantages. Détails sur la page Offres.</p></div>
   </div>
 
   <div class="cta">
@@ -78,8 +78,12 @@
        window.WATT_LAUNCH absent → tout masqué. Réversible (display seul). -->
   <script>(function(){var f=window.WATT_LAUNCH||{};var map={'term-voix':'voix','term-packs':'packs','term-resale':'resale','term-paliers':'paliers'};Object.keys(map).forEach(function(id){if(!f[map[id]]){var e=document.getElementById(id);if(e)e.style.display='none';}});})();</script>
 </div>
-<script src="ui/core/api.js"></script>
-<script src="ui/core/consent.js"></script>
-<script src="ui/core/telemetry.js"></script>
+<script src="ui/core/api.js?v=20261010lotd"></script>
+<script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
+<script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
+<script src="ui/core/consent.js?v=20261010lotd"></script>
+<script src="ui/core/telemetry.js?v=20261010lotd"></script>
+<!-- Lot D : pied de page légal (Mentions, CGU, Confidentialité, Cookies, Contact) -->
+<script src="/ui/core/legal-footer.js?v=20261010lotd" defer></script>
 </body>
 </html>

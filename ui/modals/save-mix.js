@@ -16,7 +16,11 @@
 // ── 11. SAVE MIX MODAL ──────────────────────────────────────────────────────
 
 function openSaveMix() {
-  if (!getCurrentUser()) { openAuthModal('login'); return; }
+  if (!getCurrentUser()) {
+    if (window.SmyleGate) window.SmyleGate.requireAccount();
+    else openAuthModal('signup');
+    return;
+  }
   if (!myMixTracks.length) { showToast('Aucun morceau dans My Mix.'); return; }
   document.getElementById('saveMixModal').classList.add('open');
   document.getElementById('mix-save-name').value = '';

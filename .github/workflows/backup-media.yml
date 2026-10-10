@@ -9,8 +9,10 @@
 #   • Incrémental : ne recopie que les fichiers nouveaux ou modifiés
 #     (copie serveur à serveur chez Cloudflare, rien ne transite par GitHub).
 #   • Ne supprime JAMAIS rien (ni dans la source, ni dans la sauvegarde).
-#   • Sans réglages (secrets absents) : le run s'arrête proprement avec un
-#     avertissement, il ne passe pas en échec.
+#   • Sans réglages (secrets absents) : le run ÉCHOUE (rouge) avec un message
+#     clair. Lot E (2026-10-09) : avant, il s'arrêtait « en vert » avec un
+#     simple avertissement — on pouvait croire les médias sauvegardés alors
+#     que rien n'était copié. Un run rouge déclenche l'email d'échec GitHub.
 #
 # Réglages à faire UNE fois par Tom (GitHub → Settings → Secrets and variables
 # → Actions) :
@@ -59,11 +61,19 @@ jobs:
           BB: ${{ vars.R2_BACKUP_BUCKET }}
         run: |
           if [ -z "$AK" ] || [ -z "$SK" ] || [ -z "$BB" ]; then
-            echo "::warning::Sauvegarde des médias NON configurée (secrets R2_MEDIA_BACKUP_* ou variable R2_BACKUP_BUCKET absents). Rien n'a été copié."
-            echo "pret=non" >> "$GITHUB_OUTPUT"
-          else
-            echo "pret=oui" >> "$GITHUB_OUTPUT"
+            manque=""
+            [ -z "$AK" ] && manque="$manque secret R2_MEDIA_BACKUP_ACCESS_KEY_ID ;"
+            [ -z "$SK" ] && manque="$manque secret R2_MEDIA_BACKUP_SECRET_ACCESS_KEY ;"
+            [ -z "$BB" ] && manque="$manque variable R2_BACKUP_BUCKET ;"
+            echo "::error::Sauvegarde des médias NON configurée — rien n'a été copié. Manquant :$manque voir l'en-tête de .github/workflows/backup-media.yml."
+            {
+              echo '### Sauvegarde des médias : NON CONFIGURÉE'
+              echo ''
+              echo "Rien n'a été copié. Réglages manquants :$manque"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
+          echo "pret=oui" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v5
         if: steps.reglages.outputs.pret == 'oui'

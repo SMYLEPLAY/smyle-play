@@ -213,6 +213,11 @@ class Settings(BaseSettings):
     # elles réapparaissent au rallumage.
     # Lot 3 (décision Tom 23/09) : VISIBLE au lancement — c'est le seul moyen
     # d'acheter un ADN. L'interrupteur est gardé pour pouvoir le couper.
+    # Coordonnées de l'éditeur affichées sur /legal. Renseignées dans les
+    # variables Railway (jamais dans le dépôt, qui est public). Vides → texte
+    # de repli « communiqué sur demande » (à éviter en production).
+    EDITEUR_ADRESSE: str = ""
+    EDITEUR_TELEPHONE: str = ""
     SHOW_OFFRES_ADN: bool = True    # offres sur ADN (/adn-offers)
     SHOW_MESSAGERIE: bool = False   # messagerie privée (/messages)
     SHOW_SERIE: bool = False        # série quotidienne (/streak)
@@ -291,13 +296,13 @@ class Settings(BaseSettings):
     # filleuls ACTIFS → Smyles PROMO (non retirables), une seule fois par
     # palier et par parrain. [filleuls actifs requis, Smyles versés].
     FEATURE_QUETES_PARRAINAGE: bool = False
-    QUETES_PARRAINAGE_PALIERS: list[tuple[int, int]] = [(3, 10), (10, 50), (25, 150)]
+    QUETES_PARRAINAGE_PALIERS: list[tuple[int, int]] = [(3, 30), (10, 100), (25, 250)]
     # Palier qui donne le badge « Ambassadeur ».
     QUETES_PARRAINAGE_PALIER_AMBASSADEUR: int = 25
     # Plafond GLOBAL anti-abus : Smyles de quêtes versés sur 24 h glissantes,
     # toute la plateforme confondue. Au-delà, le versement attend (il sera
     # repris à la visite suivante du parrain, rien n'est perdu).
-    QUETES_PARRAINAGE_PLAFOND_24H: int = 3000
+    QUETES_PARRAINAGE_PLAFOND_24H: int = 30000
 
     # ══ Étape 5 — sécurité ═══════════════════════════════════════════════
 
@@ -341,7 +346,9 @@ class Settings(BaseSettings):
     UPLOAD_MAX_REQUEST_MB: int = 300
     # Garde-fou mémoire : une image de plus de N pixels est refusée (son
     # aperçu serait décodé en entier en mémoire — bombe de décompression).
-    UPLOAD_MAX_IMAGE_PIXELS: int = 90_000_000
+    # Lot E : 40 Mpx (≈ 160 Mo décodée en RGBA, contre 360 Mo à 90 Mpx) —
+    # largement au-dessus d'une photo de téléphone (12 à 24 Mpx).
+    UPLOAD_MAX_IMAGE_PIXELS: int = 40_000_000
 
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est

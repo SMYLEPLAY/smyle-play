@@ -281,6 +281,8 @@
     }
 
     ov.querySelector('.pd-confirm').addEventListener('click', function () {
+      // Parcours V1 : un visiteur qui débloque ouvre l'inscription.
+      if (window.SmyleGate && !window.SmyleGate.requireAccount()) { close(); return; }
       var btn = ov.querySelector('.pd-confirm');
       btn.disabled = true;
       btn.textContent = 'Déblocage…';
@@ -307,8 +309,11 @@
         var status = err && err.status;
         if (status === 401) {
           close();
-          _toast('Connecte-toi pour acheter — ta bibliothèque garde tes exemplaires.', 'error');
-          try { if (window.openAuthModal) window.openAuthModal(); } catch (_) {}
+          if (window.SmyleGate) { window.SmyleGate.requireAccount(); }
+          else {
+            _toast('Crée ton compte pour acheter — ta bibliothèque garde tes exemplaires.', 'error');
+            try { if (window.openAuthModal) window.openAuthModal('signup'); } catch (_) {}
+          }
         } else if (status === 402) {
           var d = err.body && err.body.detail;
           _toast((d && typeof d === 'object')

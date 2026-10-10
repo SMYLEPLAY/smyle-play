@@ -532,8 +532,10 @@ function checkAccess() {
   // On bloque si getAuthToken n'est pas encore défini (api.js non chargé)
   // OU si le token est absent — évite l'accès au dashboard sans auth.
   if (typeof getAuthToken !== 'function' || !getAuthToken()) {
-    const returnUrl = encodeURIComponent('/dashboard');
-    window.location.href = `/?auth=login&return=${returnUrl}`;
+    // Parcours V1 : publier = une action → inscription (connexion en lien
+    // secondaire), retour ensuite sur le WATT BOARD.
+    const returnUrl = encodeURIComponent('/dashboard' + (location.hash || ''));
+    window.location.href = `/?auth=signup&return=${returnUrl}`;
     return false;
   }
   const guardEl = document.getElementById('dash-guard');
@@ -1229,7 +1231,7 @@ function dte2OpenCreatePrompt() {
         </div>
         <div class="dte2-cp-field">
           <label class="dte2-cp-label">Prix (Smyles) <span style="color:#cc44ff">*</span></label>
-          <input id="cp_price" class="dte2-input" type="number" min="3" max="500" value="30"
+          <input id="cp_price" class="dte2-input" type="number" min="10" max="150" value="15"
                  style="width:100%;box-sizing:border-box">
         </div>
       </div>
@@ -1324,7 +1326,7 @@ async function dte2SubmitCreatePrompt() {
   if (text.length < 100)  { showErr(`Le texte du prompt doit faire au moins 100 caractères (${text.length}/100).`); return; }
   if (text.length > 1000) { showErr('Le texte du prompt ne doit pas dépasser 1000 caractères.'); return; }
   if (!platform)           { showErr('Choisis une plateforme.'); return; }
-  if (price < 3 || price > 500 || isNaN(price)) { showErr('Le prix doit être entre 3 et 500 Smyles.'); return; }
+  if (price < 10 || price > 150 || isNaN(price)) { showErr('Le prix doit être entre 10 et 150 Smyles.'); return; }
   if (!vocal)              { showErr('Choisis un genre vocal.'); return; }
 
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Création en cours…'; }
@@ -1426,7 +1428,7 @@ async function openTrackEdit(localId) {
   const promptOptions = [
     `<option value="">— Aucune recette liée —</option>`,
     ...myPrompts.map(p =>
-      `<option value="${p.id}"${t.promptId === p.id ? ' selected' : ''}>${htmlEscape(p.title)} (${p.price_credits} crédits)</option>`
+      `<option value="${p.id}"${t.promptId === p.id ? ' selected' : ''}>${htmlEscape(p.title)} (${p.price_credits} Smyles)</option>`
     ),
   ].join('');
 
@@ -1803,7 +1805,16 @@ function handleFileSelect(e) {
   if (file) showUploadForm(file);
 }
 
+// Parcours V1 — même limite que le serveur (UPLOAD_MAX_AUDIO_MB = 50 Mo).
+const DASH_AUDIO_MAX_MB = 50;
+
 function showUploadForm(file) {
+  if (file && file.size > DASH_AUDIO_MAX_MB * 1024 * 1024) {
+    dashToast(`⚠ Fichier trop lourd (${(file.size / 1048576).toFixed(1)} Mo) — ${DASH_AUDIO_MAX_MB} Mo au maximum.`);
+    const inp = document.getElementById('dashAudioInput');
+    if (inp) inp.value = '';
+    return;
+  }
   _pendingFile = file;
   const sizeStr = file.size > 1048576
     ? (file.size / 1048576).toFixed(1) + ' MB'
@@ -1850,7 +1861,7 @@ function cancelUpload() {
     if (el) el.value = '';
   });
   const priceEl = document.getElementById('dashPromptPrice');
-  if (priceEl) priceEl.value = 80;
+  if (priceEl) priceEl.value = 15;   // prix conseillé d'une recette (≈ 1 €)
   // Retour au mode par défaut "avec recette prompt" (architecture primaire)
   setUploadMode('with_prompt');
   updatePromptCharCount();
@@ -1949,11 +1960,11 @@ function updatePromptCharCount() {
   cnt.setAttribute('data-state', state);
 }
 
-// Met à jour le bloc "live" de la grille crédits↔euros selon le prix saisi.
-// Fourchette calculée sur les 3 packs de credits.py :
-//   pack_10  → 0.80 €/crédit  (plafond — le plus cher pour l'acheteur)
-//   pack_200 → 0.60 €/crédit  (plancher — meilleur deal acheteur)
-// On affiche donc : "prix × 0,60€"  —  "prix × 0,80€"
+// Met à jour le bloc "live" de la grille Smyles↔euros selon le prix saisi.
+// Fourchette calculée sur les 3 packs de credits.py (redénomination ×10) :
+//   pack_100  → 0.08 €/Smyle  (plafond — le plus cher pour l'acheteur)
+//   pack_2000 → 0.06 €/Smyle  (plancher — meilleur deal acheteur)
+// On affiche donc : "prix × 0,06€"  —  "prix × 0,08€"
 // K-08 (2026-09-04, annexe B §5) — l'affichage en EUROS est un item de mode
 // lancement. Defensif : drapeau absent (launch-flags.js non charge) → masque.
 function _dashEurosOn() {
@@ -1961,8 +1972,8 @@ function _dashEurosOn() {
 }
 
 function updateCreditGrid() {
-  // K-08 — la grille « Repere SMYLES » annonce « le fan paie entre 48 € et
-  // 64 € » : un chiffre invérifiable tant qu'aucun euro n'est encaissable.
+  // K-08 — la grille « Repere SMYLES » annonce « le fan paie entre 0,90 € et
+  // 1,20 € » : un chiffre invérifiable tant qu'aucun euro n'est encaissable.
   // Masquee ET non calculee tant que l'item `euros` n'est pas VISIBLE.
   if (!_dashEurosOn()) {
     const grid = document.getElementById('dashCreditGrid');
@@ -1973,8 +1984,8 @@ function updateCreditGrid() {
   if (!priceEl) return;
   const raw = parseInt(priceEl.value, 10);
   const credits = Number.isFinite(raw) && raw > 0 ? raw : 0;
-  const min = credits * 0.60;
-  const max = credits * 0.80;
+  const min = credits * 0.06;
+  const max = credits * 0.08;
 
   const display = document.getElementById('dashCreditLivePrice');
   const minEl   = document.getElementById('dashCreditLiveMin');
@@ -2147,7 +2158,7 @@ async function uploadTrack() {
   // Si l'artiste veut vendre la pochette comme image : il FAUT une pochette
   // sélectionnée + provenance (plateforme + version), sinon on bloque le
   // submit (provenance image obligatoire, règle stricte). Le prix image est
-  // validé ici aussi (3..500). Le prompt image est optionnel (fallback titre).
+  // validé ici aussi (10..150). Le prompt image est optionnel (fallback titre).
   const _sellCover = !!document.getElementById('dashSellCover')?.checked;
   let _coverImg = null;
   if (_sellCover) {
@@ -2159,8 +2170,8 @@ async function uploadTrack() {
     if (!cVersion)  cErrs.push('la version / modèle de l\'image');
     const cPriceRaw = parseInt(document.getElementById('dashCoverImgPrice')?.value, 10);
     const cPrice = Number.isFinite(cPriceRaw) ? cPriceRaw : NaN;
-    if (!Number.isInteger(cPrice) || cPrice < 3 || cPrice > 500) {
-      cErrs.push('un prix image entre 3 et 500');
+    if (!Number.isInteger(cPrice) || cPrice < 10 || cPrice > 150) {
+      cErrs.push('un prix image entre 10 et 150 Smyles');
     }
     let cSupply = null;
     const cSupplyRaw = (document.getElementById('dashCoverImgSupply')?.value || '').trim();
@@ -2180,6 +2191,39 @@ async function uploadTrack() {
       price:    cPrice,
       supply:   cSupply,
     };
+  }
+
+  // ── Parcours V1 — la RECETTE et le DROIT DE VENDRE sont vérifiés AVANT
+  // toute publication (avant : le son partait en ligne, puis la recette
+  // était refusée → « Son publié, prompt non créé »). Rien n'est envoyé
+  // tant que tout n'est pas bon.
+  {
+    const _pt = (document.getElementById('dashPromptText')?.value || '').trim();
+    const _pr = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
+    const _errs = [];
+    if (_pt.length < 100)  _errs.push('une recette d\'au moins 100 caractères');
+    if (_pt.length > 1000) _errs.push('une recette de 1000 caractères au plus');
+    if (!Number.isInteger(_pr) || _pr < 10 || _pr > 150) _errs.push('un prix entre 10 et 150 Smyles');
+    if (!(document.getElementById('dashPromptWeirdness')?.value || '').trim())      _errs.push('le réglage « weirdness »');
+    if (!(document.getElementById('dashPromptStyleInfluence')?.value || '').trim()) _errs.push('le réglage « style influence »');
+    if (!(document.getElementById('dashPromptVocalGender')?.value || '').trim())    _errs.push('la voix (homme, femme ou instrumental)');
+    if (_errs.length) {
+      dashToast('⚠ Avant de publier, il manque : ' + _errs.join(', ') + '.');
+      return;
+    }
+  }
+  try {
+    const _dv = await apiFetch('/me/droit-de-vendre');
+    if (_dv && _dv.actif && _dv.peut_vendre === false) {
+      dashToast('⚠ ' + (_dv.message || 'Tu ne peux pas encore vendre : il te faut plus d\'abonnés.'));
+      return;
+    }
+  } catch (e) {
+    if (e && e.status === 401) {
+      dashToast('Ta session a expiré. Reconnecte-toi pour publier.');
+      return;
+    }
+    /* autre erreur : le serveur revérifie de toute façon à la publication */
   }
 
   // ── Vérification limite freemium (comptes officiels exemptés) ───────────
@@ -2222,6 +2266,10 @@ async function uploadTrack() {
   let durationSecs = null;  // P2 — durée calculée serveur à l'upload
 
   // ── 1. Upload fichier audio vers R2 ─────────────────────────────────────
+  // Parcours V1 : un son se publie TOUJOURS avec son fichier audio. Si
+  // l'envoi échoue, on s'arrête ici : rien n'est enregistré, et l'artiste
+  // sait pourquoi (avant : le son était créé sans audio, en silence).
+  let _upErr = null;
   try {
     const fd = new FormData();
     fd.append('file',   _pendingFile);
@@ -2237,8 +2285,26 @@ async function uploadTrack() {
       r2Key     = data.key  || null;
       durationSecs = (typeof data.duration_seconds === 'number') ? data.duration_seconds : null;
       setProgress(70, 'Enregistrement…');
+    } else {
+      let detail = '';
+      try { const j = await res.json(); detail = (j && typeof j.detail === 'string') ? j.detail : ''; } catch (_) {}
+      _upErr = res.status === 413
+        ? `Fichier trop lourd — ${DASH_AUDIO_MAX_MB} Mo au maximum.`
+        : res.status === 429
+          ? 'Trop d\'envois d\'affilée — attends une minute puis réessaie.'
+          : (detail || 'Le serveur a refusé le fichier audio.');
     }
-  } catch (_) { /* mode hors-ligne */ }
+  } catch (_) {
+    _upErr = 'Connexion interrompue pendant l\'envoi du fichier audio.';
+  }
+  if (!r2Key) {
+    setProgress(100, '⚠ Fichier audio non envoyé');
+    dashToast('⚠ Ton son n\'a pas été publié : ' + (_upErr || 'le fichier audio n\'a pas pu être envoyé.') +
+      ' Vérifie ta connexion et réessaie.');
+    const pw = document.getElementById('dashProgressWrap');
+    setTimeout(() => { if (pw) pw.style.display = 'none'; }, 2500);
+    return;
+  }
 
   await wait(300);
   setProgress(80, 'Pochette…');
@@ -2370,7 +2436,7 @@ async function uploadTrack() {
 
   // ── 4. Si mode = with_prompt, publier aussi la recette sur la marketplace ──
   // Bornes DOIVENT matcher Pydantic (app/schemas/marketplace.py) :
-  //   prompt_text 100..1000 (plafond Suno), price_credits 3..500.
+  //   prompt_text 100..1000 (plafond Suno), price_credits 10..150.
   // Si la track est déjà publiée mais le prompt rejeté par validation, on
   // tolère : la track reste en ligne, l'artiste peut éditer/republier le
   // prompt plus tard depuis la gestion catalogue (phase ultérieure).
@@ -2380,7 +2446,7 @@ async function uploadTrack() {
     const promptText = (document.getElementById('dashPromptText')?.value || '').trim();
     const lyrics     = (document.getElementById('dashPromptLyrics')?.value || '').trim();
     const priceRaw   = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
-    const price      = Number.isFinite(priceRaw) ? priceRaw : 80;
+    const price      = Number.isFinite(priceRaw) ? priceRaw : 15;
 
     // P1-F4 (2026-05-04) — réglages de génération.
     // 4 obligatoires (platform, weirdness, style_influence, vocal_gender)
@@ -2407,7 +2473,7 @@ async function uploadTrack() {
     const promptErrs = [];
     if (promptText.length < 100)               promptErrs.push('prompt trop court (min 100 caractères)');
     if (promptText.length > 1000)              promptErrs.push('prompt trop long (max 1000)');
-    if (price < 3 || price > 500)              promptErrs.push('prix entre 3 et 500 crédits');
+    if (price < 10 || price > 150)             promptErrs.push('prix entre 10 et 150 Smyles');
     if (!platformVal)                          promptErrs.push('plateforme d\'origine');
     if (!weirdnessVal)                         promptErrs.push('weirdness');
     if (!styleInfluenceVal)                    promptErrs.push('style influence');
@@ -3529,7 +3595,7 @@ async function dashVoiceSave() {
   // En mode édition, le sample est optionnel (on garde celui en DB si pas
   // de nouveau fichier). En création, il est obligatoire.
   if (!isEdit && !_voicesState.pendingFile) errs.push('Sample audio');
-  if (!price || price < 50 || price > 5000) errs.push('Prix (50-5000)');
+  if (!price || price < 500 || price > 50000) errs.push('Prix (500-50 000 Smyles)');
   if (errs.length) {
     alert('Champs manquants ou invalides :\n• ' + errs.join('\n• '));
     return;
@@ -4451,10 +4517,9 @@ function initSectionNav() {
 
 // ── 12. DÉCONNEXION ───────────────────────────────────────────────────────────
 
-/* ── Suppression de compte RGPD (pack légal v1, 2026-06-10) ──────────────
-   Double confirmation : l'utilisateur doit taper SUPPRIMER. Appelle
-   DELETE /users/me (anonymisation backend), puis purge la session locale
-   et renvoie à l'accueil. */
+/* ── Suppression de compte RGPD (pack légal v1, 2026-06-10 ; Lot D) ──────
+   Écran de confirmation (dashDeleteAccount, plus bas) : renonciation aux
+   Smyles + saisie de SUPPRIMER, revérifiées par le serveur. */
 // Export RGPD (droit d'accès) — télécharge le JSON du compte via le token.
 async function dashExportData(btn) {
   const tok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
@@ -4481,37 +4546,141 @@ async function dashExportData(btn) {
   }
 }
 
+/* Lot D — écran de confirmation de suppression : avertit de la perte de
+   TOUS les Smyles (y compris ceux gagnés en vendant), explique ce qui est
+   effacé et ce qui reste chez les acheteurs, et exige une renonciation
+   explicite (case + saisie de « SUPPRIMER »). Le serveur revérifie les deux
+   (DELETE /users/me, corps JSON), sinon 422. */
+function _dashDelEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 async function dashDeleteAccount() {
-  const typed = window.prompt(
-    'Cette action est DÉFINITIVE.\n\n' +
-    'Ton profil sera anonymisé et tes contenus retirés du public. ' +
-    'Les exemplaires déjà achetés par d\'autres restent dans leur bibliothèque.\n\n' +
-    'Pour confirmer, tape exactement : SUPPRIMER'
-  );
-  if (typed === null) return;                    // annulé
-  if (typed.trim() !== 'SUPPRIMER') {
-    dashToast('Suppression annulée — le texte ne correspond pas.');
-    return;
+  if (document.getElementById('dash-del-overlay')) return;
+  let apercu = null;
+  try { apercu = await apiFetch('/users/me/suppression'); } catch (_) { apercu = null; }
+  const sm = (apercu && apercu.smyles) || {};
+  const oe = (apercu && apercu.oeuvres) || {};
+  const total = Number(sm.total || 0);
+  const gagnes = Number(sm.gagnes_en_vendant || 0);
+  const rang = apercu && apercu.pionnier_rang;
+
+  if (!document.getElementById('dash-del-css')) {
+    const st = document.createElement('style');
+    st.id = 'dash-del-css';
+    st.textContent = [
+      '#dash-del-overlay{position:fixed;inset:0;z-index:100050;background:rgba(5,3,10,.82);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}',
+      '#dash-del-overlay .dd-box{background:#16101c;border:1px solid rgba(255,85,119,.45);border-radius:16px;max-width:480px;width:100%;padding:22px 20px;color:#eee;box-sizing:border-box;max-height:calc(100vh - 32px);overflow:auto}',
+      '#dash-del-overlay h2{margin:0 0 12px;font-size:18px;color:#ff6f8a}',
+      '#dash-del-overlay .dd-loss{background:rgba(255,85,119,.1);border:1px solid rgba(255,85,119,.35);border-radius:11px;padding:12px 14px;margin:0 0 14px;font-size:14px;line-height:1.55}',
+      '#dash-del-overlay .dd-loss strong{color:#ffd700}',
+      '#dash-del-overlay ul{margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.6;color:#cfc8de}',
+      '#dash-del-overlay p{font-size:13px;line-height:1.6;color:#cfc8de;margin:0 0 12px}',
+      '#dash-del-overlay a{color:#c9a6ff}',
+      '#dash-del-overlay .dd-check{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.5;margin:12px 0;cursor:pointer}',
+      '#dash-del-overlay .dd-check input{margin-top:3px;width:18px;height:18px;accent-color:#ff5577;flex-shrink:0}',
+      '#dash-del-overlay label.dd-lbl{display:block;font-size:13px;margin:6px 0 6px;color:#ddd}',
+      '#dash-del-overlay input.dd-type{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#0d0a12;color:#fff;font-size:15px;letter-spacing:.06em}',
+      '#dash-del-overlay .dd-acts{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}',
+      '#dash-del-overlay .dd-acts button{flex:1 1 140px;padding:12px;border-radius:11px;font-weight:700;font-size:14px;cursor:pointer}',
+      '#dash-del-overlay .dd-cancel{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#eee}',
+      '#dash-del-overlay .dd-go{background:#e2304f;border:none;color:#fff}',
+      '#dash-del-overlay .dd-go[disabled]{opacity:.4;cursor:not-allowed}',
+      '#dash-del-overlay .dd-err{display:none;color:#ff7b7b;font-size:13px;margin-top:8px}'
+    ].join('\n');
+    document.head.appendChild(st);
   }
-  try {
-    await apiFetch('/users/me', { method: 'DELETE' });
-  } catch (e) {
-    dashToast('⚠ Échec de la suppression : ' + _humanizeApiError(e));
-    return;
-  }
-  // Purge locale complète puis retour accueil (le JWT est déjà invalide
-  // côté serveur : l'email anonymisé ne résout plus aucun token).
-  try { if (typeof clearAuthToken === 'function') clearAuthToken(); } catch (_) {}
-  try { clearCurrentUser(); } catch (_) {}
-  try { safeStorage.removeItem('smyle_watt_profile'); } catch (_) {}
-  try { safeStorage.removeItem('smyle_watt_tracks'); } catch (_) {}
-  window.location.href = '/';
+
+  const ov = document.createElement('div');
+  ov.id = 'dash-del-overlay';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-labelledby', 'dash-del-title');
+  ov.innerHTML =
+    '<div class="dd-box">' +
+      '<h2 id="dash-del-title">Supprimer définitivement mon compte</h2>' +
+      '<div class="dd-loss">Tu vas perdre <strong>tous tes Smyles' +
+        (apercu ? ' (' + _dashDelEsc(total) + ')' : '') + '</strong>, y compris ceux ' +
+        '<strong>gagnés en vendant' + (apercu ? ' (' + _dashDelEsc(gagnes) + ')' : '') + '</strong>, ' +
+        'ainsi que ceux achetés ou offerts. Ils ne sont ni remboursés, ni convertis en euros, ni transférables.</div>' +
+      '<p><strong>Effacé :</strong></p>' +
+      '<ul>' +
+        '<li>ton profil, ton email, ton adresse IP d’inscription ;</li>' +
+        '<li>tes œuvres que personne n’a achetées' + (apercu ? ' (' + _dashDelEsc(oe.effacees || 0) + ')' : '') +
+          ', avec leurs fichiers ;</li>' +
+        '<li>tes messages, abonnements, notifications et statistiques ;</li>' +
+        (rang ? '<li>ton rang Pionnier n°' + _dashDelEsc(rang) + ' (il passera au créateur suivant) ;</li>' : '') +
+        '<li>tes ventes en cours sur le marché secondaire.</li>' +
+      '</ul>' +
+      '<p><strong>Conservé, sans ton nom :</strong> les œuvres déjà achetées par d’autres' +
+        (apercu && oe.conservees_pour_acheteurs ? ' (' + _dashDelEsc(oe.conservees_pour_acheteurs) + ')' : '') +
+        ' restent dans leur bibliothèque (auteur affiché « Artiste supprimé »), et le registre des ' +
+        'transactions est gardé pour la comptabilité. ' +
+        '<a href="/legal#confidentialite" target="_blank" rel="noopener">En savoir plus</a></p>' +
+      '<p>Avant de partir, tu peux <a href="#" id="dash-del-export">télécharger une copie de tes données</a>.</p>' +
+      '<label class="dd-check"><input type="checkbox" id="dash-del-renonce" /> ' +
+        '<span>Je renonce définitivement à tous mes Smyles, y compris ceux gagnés en vendant, ' +
+        'et je comprends que la suppression est irréversible.</span></label>' +
+      '<label class="dd-lbl" for="dash-del-type">Pour confirmer, tape <strong>SUPPRIMER</strong> :</label>' +
+      '<input class="dd-type" id="dash-del-type" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />' +
+      '<div class="dd-err" id="dash-del-err"></div>' +
+      '<div class="dd-acts">' +
+        '<button type="button" class="dd-cancel" id="dash-del-cancel">Annuler</button>' +
+        '<button type="button" class="dd-go" id="dash-del-go" disabled>Supprimer mon compte</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+
+  const chk = document.getElementById('dash-del-renonce');
+  const inp = document.getElementById('dash-del-type');
+  const go = document.getElementById('dash-del-go');
+  const err = document.getElementById('dash-del-err');
+  const maj = function () { go.disabled = !(chk.checked && inp.value.trim() === 'SUPPRIMER'); };
+  chk.addEventListener('change', maj);
+  inp.addEventListener('input', maj);
+  const fermer = function () { ov.remove(); };
+  document.getElementById('dash-del-cancel').addEventListener('click', fermer);
+  ov.addEventListener('click', function (e) { if (e.target === ov) fermer(); });
+  document.getElementById('dash-del-export').addEventListener('click', function (e) {
+    e.preventDefault();
+    dashExportData(null);
+  });
+
+  go.addEventListener('click', async function () {
+    if (go.disabled) return;
+    go.disabled = true;
+    err.style.display = 'none';
+    try {
+      await apiFetch('/users/me', {
+        method: 'DELETE',
+        json: { confirmation: inp.value.trim(), renonce_smyles: chk.checked },
+      });
+    } catch (e) {
+      maj();
+      err.textContent = 'Échec de la suppression : ' + _humanizeApiError(e);
+      err.style.display = 'block';
+      return;
+    }
+    // Purge locale complète puis retour accueil (le JWT est déjà invalide
+    // côté serveur : l'email anonymisé ne résout plus aucun token).
+    try { if (typeof clearAuthToken === 'function') clearAuthToken(); } catch (_) {}
+    try { clearCurrentUser(); } catch (_) {}
+    try { safeStorage.removeItem('smyle_watt_profile'); } catch (_) {}
+    try { safeStorage.removeItem('smyle_watt_tracks'); } catch (_) {}
+    try { if (window.smyleClearPersonalData) window.smyleClearPersonalData(); } catch (_) {}
+    window.location.href = '/';
+  });
+  setTimeout(function () { try { chk.focus(); } catch (_) {} }, 50);
 }
 
 function dashLogout() {
   clearCurrentUser();
   // Vide le JWT (localStorage, partagé entre onglets) et notifie les autres composants
   if (typeof clearAuthToken === 'function') clearAuthToken();
+  // Parcours V1 : données personnelles du navigateur (cache des sons inclus).
+  try { if (window.smyleClearPersonalData) window.smyleClearPersonalData(); } catch (_) {}
   if (window.SmyleEvents) SmyleEvents.emit('smyle:auth-changed', { loggedIn: false });
   window.location.href = '/';
 }
@@ -4625,7 +4794,7 @@ function _portefeuilleHtml(p, tile) {
     tile('🎁', 'Smyles bonus', Number(p.bonus) || 0) +
     '</div>' +
     '<p style="margin:0 0 16px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.5">' +
-    '1 Smyle gagné en vendant = 0,50 € quand les retraits s\'ouvriront ' +
+    '100 Smyles gagnés en vendant = 5 € quand les retraits s\'ouvriront ' +
     '(à 1000 actifs, et au plus tard le 1er mai 2027). ' +
     'Les Smyles bonus se dépensent sur WATT mais ne se retirent pas.</p>';
 }
@@ -5034,7 +5203,7 @@ function openAdnEditor() {
   document.getElementById('dashAdnDescription').value     = adn ? (adn.description || '') : '';
   document.getElementById('dashAdnUsageGuide').value      = adn ? (adn.usage_guide || '') : '';
   document.getElementById('dashAdnExampleOutputs').value  = adn ? (adn.example_outputs || '') : '';
-  document.getElementById('dashAdnPrice').value           = adn ? String(adn.price_credits) : '80';
+  document.getElementById('dashAdnPrice').value           = adn ? String(adn.price_credits) : '300';
   // 2026-05-13 v2 — préselection IA + éditions (1 seul input libre)
   const aiSel = document.getElementById('dashAdnAiReference');
   if (aiSel) aiSel.value = (adn && adn.ai_reference) ? adn.ai_reference : '';
@@ -5125,7 +5294,7 @@ async function saveAdn() {
   // OFFRES-ADN : l'ADN se vend sur offre — plus de prix fixe obligatoire.
   // Si aucun prix valide n'est saisi, on envoie un prix vestigial (min légal) ;
   // la vente réelle passe par le reserve + les offres ("Sur proposition").
-  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30) ? priceCredits : 30;
+  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 300) ? priceCredits : 300;
 
   // IA utilisée : OBLIGATOIRE — l'acheteur doit savoir avec quelle IA exploiter l'ADN.
   const aiRef = (document.getElementById('dashAdnAiReference')||{}).value || '';
@@ -5381,7 +5550,7 @@ function openVisualAdnEditor() {
   document.getElementById('dashVisualAdnDescription').value    = adn ? (adn.description || '') : '';
   document.getElementById('dashVisualAdnUsageGuide').value     = adn ? (adn.usage_guide || '') : '';
   document.getElementById('dashVisualAdnExampleOutputs').value = adn ? (adn.example_outputs || '') : '';
-  document.getElementById('dashVisualAdnPrice').value          = adn ? String(adn.price_credits) : '80';
+  document.getElementById('dashVisualAdnPrice').value          = adn ? String(adn.price_credits) : '300';
   const styleSel = document.getElementById('dashVisualAdnStyle');
   if (styleSel) styleSel.value = (adn && adn.style) ? adn.style : '';
   const paletteInp = document.getElementById('dashVisualAdnPalette');
@@ -5453,7 +5622,7 @@ async function saveVisualAdn() {
   }
   // OFFRES-ADN : ADN visuel vendu sur offre — prix fixe non obligatoire.
   // Prix vestigial (min légal) si non saisi ; vente réelle via reserve + offres.
-  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 30 && priceCredits <= 500) ? priceCredits : 30;
+  const priceForApi = (Number.isInteger(priceCredits) && priceCredits >= 300 && priceCredits <= 5000) ? priceCredits : 300;
 
   const aiRef  = (document.getElementById('dashVisualAdnAiReference')||{}).value || '';
   if (!aiRef) {
@@ -5751,7 +5920,7 @@ function renderTrades(root, trades) {
     ) : '';
 
     const supplement = t.credit_supplement > 0
-      ? `<span class="trade-supp">+ ${t.credit_supplement} crédits</span>` : '';
+      ? `<span class="trade-supp">+ ${t.credit_supplement} Smyles</span>` : '';
 
     return `
       <div class="trade-card">
@@ -5763,14 +5932,14 @@ function renderTrades(root, trades) {
           <div class="trade-prompt-box">
             <span class="trade-prompt-lbl">${isSender ? 'Tu proposes' : 'Il/elle propose'}</span>
             <span class="trade-prompt-name">${htmlEscape(offered.title || '—')}</span>
-            <span class="trade-prompt-price">${offered.price_credits || 0} crédits</span>
+            <span class="trade-prompt-price">${offered.price_credits || 0} Smyles</span>
             ${offered.audio_url ? `<audio controls preload="none" src="${htmlEscape(offered.audio_url)}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           <span class="trade-arrow">⇄</span>
           <div class="trade-prompt-box">
             <span class="trade-prompt-lbl">${isSender ? 'Tu demandes' : 'Tu recevrais'}</span>
             <span class="trade-prompt-name">${htmlEscape(requested.title || '—')}</span>
-            <span class="trade-prompt-price">${requested.price_credits || 0} crédits</span>
+            <span class="trade-prompt-price">${requested.price_credits || 0} Smyles</span>
             ${requested.audio_url ? `<audio controls preload="none" src="${htmlEscape(requested.audio_url)}" style="width:100%;margin-top:6px;height:32px"></audio>` : ''}
           </div>
           ${supplement}

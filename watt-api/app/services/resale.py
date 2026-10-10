@@ -63,7 +63,7 @@ async def _artist_account_deleted(db: AsyncSession, artist_id: UUID) -> bool:
 
 # Bornes de prix de revente (cohérentes avec les prix de prompt).
 RESALE_PRICE_MIN = 1
-RESALE_PRICE_MAX = 100000
+RESALE_PRICE_MAX = 1_000_000
 
 
 class ResaleError(ValueError):

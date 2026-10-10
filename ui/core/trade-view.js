@@ -33,7 +33,7 @@
 
   // OFFRES-ADN : une offre cash sur un ADN (target_type présent, pas de
   // prompt échangé) doit s'afficher via une carte dédiée, JAMAIS le gabarit
-  // give/receive (qui montrerait « Tu recevrais — · 0 crédits »).
+  // give/receive (qui montrerait « Tu recevrais — · 0 Smyles »).
   const _ADN_TYPE_LABELS = {
     playlist_adn: 'ADN playlist',
     album_adn:    'ADN album',
@@ -51,7 +51,7 @@
     // les offres ADN (mêmes ids TradeOffer, mais deux endpoints distincts).
     // DISSOCIATION ADN : on regarde d'ABORD les offres d'achat ADN. Une offre
     // ADN vit dans la même table que les trocs, donc on la teste en priorité
-    // pour ne jamais la rendre via le gabarit « échange » (0 crédits).
+    // pour ne jamais la rendre via le gabarit « échange » (0 Smyles).
     let o = null;
     try {
       const adn = (await apiFetch('/adn-offers/me')) || [];
@@ -85,7 +85,7 @@
     let actions;
     if (pending && isSeller) {
       actions = `
-        <button onclick="SmyleTradeView._adnAct('${_esc(o.id)}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">Accepter · ${o.amount_credits} crédits</button>
+        <button onclick="SmyleTradeView._adnAct('${_esc(o.id)}','accept')" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-weight:600;cursor:pointer">Accepter · ${o.amount_credits} Smyles</button>
         <button onclick="SmyleTradeView._adnAct('${_esc(o.id)}','reject')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Refuser</button>`;
     } else if (pending && isBuyer) {
       actions = `<button onclick="SmyleTradeView._adnAct('${_esc(o.id)}','cancel')" style="flex:1;padding:10px;border:none;border-radius:8px;background:rgba(255,255,255,.1);color:#eee;cursor:pointer">Annuler mon offre</button>`;
@@ -113,15 +113,15 @@
           <button onclick="document.getElementById('smyle-tradeview').remove()" style="background:none;border:none;color:#aaa;font-size:18px;cursor:pointer">✕</button>
         </div>
         <div style="opacity:.85;margin-bottom:10px">${isSeller
-          ? `${_esc(o.buyer_name || 'Un artiste')} te propose <strong>${o.amount_credits} crédits</strong> pour ton ${_esc(typeLbl)}`
-          : `Ton offre : <strong>${o.amount_credits} crédits</strong>${pending ? ' · en attente' : ''}`}</div>
+          ? `${_esc(o.buyer_name || 'Un artiste')} te propose <strong>${o.amount_credits} Smyles</strong> pour ton ${_esc(typeLbl)}`
+          : `Ton offre : <strong>${o.amount_credits} Smyles</strong>${pending ? ' · en attente' : ''}`}</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${_esc(typeLbl)}</div>
           <strong>${_esc(o.target_title) || '—'}</strong>
-          <div style="margin-top:8px;font-size:18px;font-weight:700;color:#cc88ff">${o.amount_credits} crédits</div>
+          <div style="margin-top:8px;font-size:18px;font-weight:700;color:#cc88ff">${o.amount_credits} Smyles</div>
         </div>
         ${o.message ? `<div style="opacity:.7;font-style:italic;margin-bottom:10px">« ${_esc(o.message)} »</div>` : ''}
-        ${pending && isSeller ? `<div style="opacity:.55;font-size:12px;margin-bottom:12px">À l'acceptation : les crédits sont transférés (moins la commission plateforme) et l'ADN est livré à l'acheteur.</div>` : ''}
+        ${pending && isSeller ? `<div style="opacity:.55;font-size:12px;margin-bottom:12px">À l'acceptation : les Smyles sont transférés (moins la commission plateforme) et l'ADN est livré à l'acheteur.</div>` : ''}
         <div style="display:flex;gap:8px">${actions}</div>
         ${negotiate}
       </div>`;
@@ -133,7 +133,7 @@
     try {
       await apiFetch(`/adn-offers/${offerId}/${action}`, { method: 'PATCH' });
       const el = document.getElementById('smyle-tradeview'); if (el) el.remove();
-      alert({ accept: '✅ Offre acceptée — crédits reçus, ADN livré !', reject: 'Offre refusée.', cancel: 'Offre annulée.' }[action] || 'Fait.');
+      alert({ accept: '✅ Offre acceptée — Smyles reçus, ADN livré !', reject: 'Offre refusée.', cancel: 'Offre annulée.' }[action] || 'Fait.');
     } catch (err) {
       const d = (err && err.body && err.body.detail) || err.message || 'Erreur';
       alert('Erreur : ' + (typeof d === 'string' ? d : JSON.stringify(d)));
@@ -173,16 +173,16 @@
         <div style="opacity:.85;margin-bottom:10px">${isReceiver ? `${_esc(o.sender_name || 'Un artiste')} te propose un échange` : 'Ta proposition'}</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu recevrais' : 'Tu offres'}</div>
-          <strong>${_esc(off.title) || '—'}</strong> · ${off.price_credits || 0} crédits
+          <strong>${_esc(off.title) || '—'}</strong> · ${off.price_credits || 0} Smyles
           ${_media(off)}
         </div>
         <div style="text-align:center;opacity:.5;margin:2px 0 8px">⇄</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu donnerais' : 'Tu demandes'}</div>
-          <strong>${_esc(req.title) || '—'}</strong> · ${req.price_credits || 0} crédits
+          <strong>${_esc(req.title) || '—'}</strong> · ${req.price_credits || 0} Smyles
           ${_media(req)}
         </div>
-        ${o.credit_supplement > 0 ? `<div style="opacity:.8;margin-bottom:8px">+ ${o.credit_supplement} crédits ${isReceiver ? 'pour toi' : 'de ta part'}</div>` : ''}
+        ${o.credit_supplement > 0 ? `<div style="opacity:.8;margin-bottom:8px">+ ${o.credit_supplement} Smyles ${isReceiver ? 'pour toi' : 'de ta part'}</div>` : ''}
         ${o.message ? `<div style="opacity:.7;font-style:italic;margin-bottom:10px">« ${_esc(o.message)} »</div>` : ''}
         <div style="opacity:.55;font-size:12px;margin-bottom:12px">⚠️ Frais de 20% (brûlé) de chaque côté à l'acceptation.</div>
         <div style="display:flex;gap:8px">${actions}</div>

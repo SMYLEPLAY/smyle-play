@@ -426,7 +426,8 @@
   function _open(userId) {
     if (!_msgOn()) return;
     if (!_auth()) {
-      if (window.openAuthModal) window.openAuthModal('login');
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else if (window.openAuthModal) window.openAuthModal('signup');
       return;
     }
     _s.open = true;
@@ -506,9 +507,9 @@
 
     const esc = _esc;   // S-01 : échappeur complet du module (plus de variante locale)
     const _ic = (k) => k === 'image' ? '🖼 ' : '🎵 ';
-    const theirOpts = theirs.map(p => `<option value="${_esc(p.id)}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('');
+    const theirOpts = theirs.map(p => `<option value="${_esc(p.id)}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} Smyles</option>`).join('');
     const myOpts = mine.length
-      ? mine.map(p => `<option value="${_esc(p.id)}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+      ? mine.map(p => `<option value="${_esc(p.id)}">${_ic(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} Smyles</option>`).join('')
       : '<option value="" disabled>Aucun produit à proposer</option>';
 
     const prev = document.getElementById('msg-trade-modal');
@@ -527,7 +528,7 @@
         <select id="msg-trade-req" style="${sel}"><option value="">-- Choisir --</option>${theirOpts}</select>
         <label style="display:block;margin:12px 0 4px;opacity:.8">Tu proposes (ton son ou ton image)</label>
         <select id="msg-trade-off" style="${sel}"><option value="">-- Choisir --</option>${myOpts}</select>
-        <label style="display:block;margin:12px 0 4px;opacity:.8">Complément en crédits (optionnel)</label>
+        <label style="display:block;margin:12px 0 4px;opacity:.8">Complément en Smyles (optionnel)</label>
         <input id="msg-trade-supp" type="number" min="0" value="0" style="${sel}" />
         <p style="opacity:.6;font-size:12px;margin:12px 0">⚠️ Frais de 20% (brûlé) par côté. Offre valable 7 jours.</p>
         <button type="button" id="msg-trade-send" data-trade-receiver="${_esc(receiverId)}"

@@ -546,10 +546,11 @@ async function _setupFollowButton(artist) {
   if (msgBtn && artist.id && _msgOn) {
     msgBtn.style.display = '';
     msgBtn.onclick = () => {
+      if (window.SmyleGate && !window.SmyleGate.requireAccount()) return;
       if (window.SmyleMessaging) {
         window.SmyleMessaging.open(artist.id);
       } else if (window.openAuthModal) {
-        window.openAuthModal('login');
+        window.openAuthModal('signup');
       }
     };
   }
@@ -595,6 +596,8 @@ async function _setupFollowButton(artist) {
   }
   _setBtnState(following);
   btn.onclick = async () => {
+    // Parcours V1 : suivre = une action → inscription pour un visiteur.
+    if (window.SmyleGate && !window.SmyleGate.requireAccount()) return;
     const wasFollowing = btn.dataset.following === '1';
     btn.disabled = true;
     btn.style.opacity = '.6';
@@ -794,7 +797,7 @@ async function saveRolesPicker() {
 
    Les achats POST /unlocks/prompts/{id} :
    - 201 Created + objet owned → toast "Débloqué"
-   - 402 Payment Required → toast "Crédits insuffisants"
+   - 402 Payment Required → toast "Smyles insuffisants"
    - 401 Unauthorized    → rediriger vers login
    - 409 Conflict (already owned) → toast "Déjà débloqué"
    - 400 self-purchase   → toast silencieux (ne devrait pas arriver, le
@@ -1036,7 +1039,7 @@ function openBoutiqueDrawer(type, dataStr) {
         ${isAdnType
           ? '<span class="bd-price-amount" style="font-size:.95rem">🤝 Sur proposition</span>'
           : `<span class="bd-price-amount">${formatCount(price)}</span>
-             <span class="bd-price-unit">crédits</span>`}
+             <span class="bd-price-unit">Smyles</span>`}
       </div>
       ${type === 'adn-artist' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur tout le catalogue sonore</span>' : ''}
       ${type === 'visual-adn' ? '<span class="bd-perk-hint">Possède cet ADN → −30 % sur tout le catalogue visuel</span>' : ''}
@@ -1752,7 +1755,7 @@ function renderPrompts(artist) {
       ? '<span class="ap-prompt-owner-note">Ton prompt</span>'
       : `<button type="button" class="ap-prompt-unlock-btn"
                  data-prompt-id="${p.id}" data-price="${p.priceCredits}">
-          🧬 Recette · ${priceStr} crédits
+          🧬 Recette · ${priceStr} Smyles
         </button>
         <button type="button" class="ap-prompt-trade-btn"
                 data-prompt-id="${p.id}"
@@ -1815,7 +1818,8 @@ function renderPrompts(artist) {
 async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, receiverName }) {
   // Vérifie auth
   if (typeof window.getAuthToken === 'function' && !window.getAuthToken()) {
-    if (window.openAuthModal) window.openAuthModal('login');
+    if (window.SmyleGate) window.SmyleGate.requireAccount();
+    else if (window.openAuthModal) window.openAuthModal('signup');
     return;
   }
 
@@ -1848,7 +1852,7 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
 
   const _tradeIc = (k) => k === 'image' ? '🖼 ' : '🎵 ';
   const promptOptions = myPrompts.length
-    ? myPrompts.map(p => `<option value="${escH(p.id)}">${_tradeIc(p.kind)}${escH(p.title || 'Sans titre')} · ${escH(p.price_credits || 0)} crédits</option>`).join('')
+    ? myPrompts.map(p => `<option value="${escH(p.id)}">${_tradeIc(p.kind)}${escH(p.title || 'Sans titre')} · ${escH(p.price_credits || 0)} Smyles</option>`).join('')
     : '<option value="" disabled>Aucun produit à proposer</option>';
 
   const el = document.createElement('div');
@@ -1865,7 +1869,7 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
           <label class="trade-label">Tu demandes</label>
           <div class="trade-target-info">
             <strong>${escH(promptTitle || 'Prompt sans titre')}</strong>
-            <span class="trade-price-tag">${escH(promptPrice)} crédits</span>
+            <span class="trade-price-tag">${escH(promptPrice)} Smyles</span>
           </div>
           <span class="trade-from">de <strong>${escH(receiverName || 'l\'artiste')}</strong></span>
         </div>
@@ -1877,7 +1881,7 @@ async function openTradeModal({ promptId, promptTitle, promptPrice, receiverId, 
           </select>
         </div>
         <div class="trade-field">
-          <label class="trade-label">Complément en crédits <span class="trade-hint">(optionnel · 0 si équitable)</span></label>
+          <label class="trade-label">Complément en Smyles <span class="trade-hint">(optionnel · 0 si équitable)</span></label>
           <input type="number" class="trade-input" id="trade-supplement" min="0" value="0" />
         </div>
         <div class="trade-field">
@@ -1939,7 +1943,8 @@ async function openTradeModalProfile() {
   if (artist.isSelf) { alert("C'est ton profil — tu ne peux pas échanger avec toi-même."); return; }
 
   if (typeof window.getAuthToken === 'function' && !window.getAuthToken()) {
-    if (window.openAuthModal) window.openAuthModal('login');
+    if (window.SmyleGate) window.SmyleGate.requireAccount();
+    else if (window.openAuthModal) window.openAuthModal('signup');
     return;
   }
 
@@ -1979,10 +1984,10 @@ async function openTradeModalProfile() {
   const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const _tradeIc = (k) => k === 'image' ? '🖼 ' : '🎵 ';
   const theirOptions = theirPrompts.map(p =>
-    `<option value="${p.id}">${_tradeIc(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`
+    `<option value="${p.id}">${_tradeIc(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} Smyles</option>`
   ).join('');
   const myOptions = myPrompts.length
-    ? myPrompts.map(p => `<option value="${p.id}">${_tradeIc(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} crédits</option>`).join('')
+    ? myPrompts.map(p => `<option value="${p.id}">${_tradeIc(p.kind)}${esc(p.title) || 'Sans titre'} · ${p.price_credits || 0} Smyles</option>`).join('')
     : '<option value="" disabled>Aucun produit à proposer — publie d\'abord un son ou une image</option>';
 
   const el = document.createElement('div');
@@ -2010,7 +2015,7 @@ async function openTradeModalProfile() {
           </select>
         </div>
         <div class="trade-field">
-          <label class="trade-label">Complément en crédits <span class="trade-hint">(optionnel · 0 si équitable)</span></label>
+          <label class="trade-label">Complément en Smyles <span class="trade-hint">(optionnel · 0 si équitable)</span></label>
           <input type="number" class="trade-input" id="trade-supplement" min="0" value="0" />
         </div>
         <div class="trade-field">
@@ -2173,7 +2178,7 @@ function renderTracks(artist) {
       unlockBlock = `<button type="button" class="ap-track-unlock-btn"
                 data-prompt-id="${linkedPrompt.id}"
                 data-price="${linkedPrompt.priceCredits}"
-                title="Débloquer la recette">🧬 ${priceStr} crédits</button>`;
+                title="Débloquer la recette">🧬 ${priceStr} Smyles</button>`;
     } else if (linkedPrompt && artist.isSelf) {
       unlockBlock = '<span class="ap-prompt-owner-note">Recette en vente</span>';
     }
@@ -2190,7 +2195,7 @@ function renderTracks(artist) {
     if (false && linkedPrompt && linkedImage && !artist.isSelf &&
         linkedPrompt.priceCredits != null && linkedImage.priceCredits != null) {
       const _packP = Math.max(2, Math.floor((linkedPrompt.priceCredits + linkedImage.priceCredits) * 0.9));
-      oeuvrePackBtn = `<button type="button" class="ap-track-oeuvre-btn" data-oeuvre-prompt-id="${linkedPrompt.id}" data-oeuvre-price="${_packP}" data-track-name="${(t.name || '').replace(/"/g, '&quot;')}" title="Acheter l'œuvre complète (son + image) · ${_packP} crédits — remise 10%">💠 ${_packP}</button>`;
+      oeuvrePackBtn = `<button type="button" class="ap-track-oeuvre-btn" data-oeuvre-prompt-id="${linkedPrompt.id}" data-oeuvre-price="${_packP}" data-track-name="${(t.name || '').replace(/"/g, '&quot;')}" title="Acheter l'œuvre complète (son + image) · ${_packP} Smyles — remise 10%">💠 ${_packP}</button>`;
     }
 
     // Bouton supprimer — owner uniquement (le backend re-vérifie : 403 sinon).
@@ -2484,7 +2489,7 @@ async function unlockPromptFromProfile(promptId, btn) {
   // Redirige vers la connexion si l'utilisateur n'est pas authentifié
   if (typeof getAuthToken === 'function' && !getAuthToken()) {
     const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/?auth=login&return=${returnUrl}`;
+    window.location.href = `/?auth=signup&return=${returnUrl}`;
     return;
   }
   if (btn) btn.disabled = true;
@@ -2606,7 +2611,8 @@ function renderResale(items) {
       } catch (e) {
         btn.disabled = false; btn.textContent = orig;
         const st = e && e.status;
-        const msg = st === 401 ? 'Connecte-toi pour acheter.' : st === 402 ? 'Crédits insuffisants.' : st === 409 ? 'Tu possèdes déjà cette recette.' : 'Erreur lors de l’achat.';
+        if (st === 401 && window.SmyleGate) window.SmyleGate.requireAccount();
+        const msg = st === 401 ? 'Crée ton compte pour acheter.' : st === 402 ? 'Smyles insuffisants.' : st === 409 ? 'Tu possèdes déjà cette recette.' : 'Erreur lors de l’achat.';
         if (window.showToast) window.showToast(msg);
       }
     });
@@ -2961,7 +2967,7 @@ function renderVoices(artist) {
       ? '<span class="ap-voice-owner-note">Ta voix</span>'
       : `<button type="button" class="ap-voice-unlock-btn"
                  data-voice-id="${v.id}" data-price="${v.price_credits}">
-          🎙 ${priceStr} crédits
+          🎙 ${priceStr} Smyles
         </button>`;
 
     _voiceDetailCache[v.id] = {
@@ -3099,7 +3105,7 @@ async function unlockVoiceFromProfile(voiceId, btn) {
   // Redirige vers la connexion si non authentifié
   if (typeof getAuthToken === 'function' && !getAuthToken()) {
     const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/?auth=login&return=${returnUrl}`;
+    window.location.href = `/?auth=signup&return=${returnUrl}`;
     return;
   }
   if (btn) btn.disabled = true;
@@ -3129,16 +3135,17 @@ async function unlockVoiceFromProfile(voiceId, btn) {
 function handleUnlockError(err) {
   console.error('[artiste.js] unlock error', err);
   if (err && err.status === 401) {
-    toast('Connecte-toi pour débloquer ce contenu.');
+    if (window.SmyleGate) window.SmyleGate.requireAccount();
+    else toast('Crée ton compte pour débloquer ce contenu.');
     return;
   }
   if (err && err.status === 402) {
     // body.detail = { message, required, available }
     const d = err.body && err.body.detail;
     if (d && typeof d === 'object') {
-      toast(`Crédits insuffisants — il te faut ${d.required}, tu en as ${d.available}.`);
+      toast(`Smyles insuffisants — il te faut ${d.required}, tu en as ${d.available}.`);
     } else {
-      toast('Crédits insuffisants.');
+      toast('Smyles insuffisants.');
     }
     return;
   }

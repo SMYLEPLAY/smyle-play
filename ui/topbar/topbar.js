@@ -670,7 +670,10 @@
           <a class="stb-drop-item" href="${_esc(profileHref)}">Mon profil</a>
           <a class="stb-drop-item" href="/dashboard">WATT BOARD</a>
           <a class="stb-drop-item" href="/library">Bibliothèque</a>
+          <a class="stb-drop-item" href="/mes-oeuvres">Mes Œuvres</a>
           ${_offresItem}
+          <button class="stb-drop-item" type="button"
+                  onclick="window.SmyleTopbar.openGuide(event)">Guide</button>
           <div class="stb-drop-sep" role="separator"></div>
           <button class="stb-drop-item stb-drop-logout" type="button"
                   onclick="window.SmyleTopbar.logout(event)">Déconnexion</button>
@@ -678,11 +681,16 @@
       </div>`;
   }
 
+  // Parcours V1 : l'inscription d'abord, la connexion en lien secondaire.
   function _renderAnonChip() {
     return `
-      <button class="stb-auth-cta" type="button"
+      <button class="stb-auth-cta stb-auth-cta-signup" type="button"
+              onclick="window.SmyleTopbar.clickSignup(event)">
+        Créer un compte
+      </button>
+      <button class="stb-auth-link" type="button"
               onclick="window.SmyleTopbar.clickLogin(event)">
-        Se connecter
+        Connexion
       </button>`;
   }
 
@@ -703,7 +711,8 @@
   function _clickLogin(ev) {
     if (ev) ev.preventDefault();
     // Ouvre la modale d'auth si la page l'expose (cas index.html). Sinon
-    // on renvoie sur / où elle existe.
+    // on passe par / (où elle existe) avec retour sur cette page.
+    if (window.SmyleGate) { window.SmyleGate.openSignup({ tab: 'login' }); return; }
     if (typeof window.openAuthModal === 'function') {
       window.openAuthModal('login');
     } else {
@@ -711,11 +720,28 @@
     }
   }
 
+  function _clickSignup(ev) {
+    if (ev) ev.preventDefault();
+    if (window.SmyleGate) { window.SmyleGate.openSignup({ tab: 'signup' }); return; }
+    if (typeof window.openAuthModal === 'function') window.openAuthModal('signup');
+    else window.location.href = '/?auth=signup';
+  }
+
+  function _openGuide(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    _state.dropOpen = false;
+    const drop = document.querySelector('#smyle-topbar .stb-user-drop');
+    if (drop) drop.hidden = true;
+    if (window.SmyleOnboarding) window.SmyleOnboarding.open();
+  }
+
   function _logout(ev) {
     if (ev) ev.preventDefault();
     // Pas de fetch logout côté API (JWT sans serveur-state) — on nettoie
     // juste le token + on recharge la page pour repartir propre.
     try { if (window.clearAuthToken) window.clearAuthToken(); } catch (_) {}
+    // Parcours V1 : données personnelles du navigateur (cache des sons inclus).
+    try { if (window.smyleClearPersonalData) window.smyleClearPersonalData(); } catch (_) {}
     // Nettoyage des clés compat legacy si présentes.
     try {
       localStorage.removeItem('smyle_watt_profile');
@@ -941,16 +967,16 @@
         <div style="opacity:.85;margin-bottom:10px">${isReceiver ? `${esc(o.sender_name || 'Un artiste')} te propose un échange` : 'Ta proposition'}</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu recevrais' : 'Tu offres'}</div>
-          <strong>${esc(off.title) || '—'}</strong> · ${off.price_credits || 0} crédits
+          <strong>${esc(off.title) || '—'}</strong> · ${off.price_credits || 0} Smyles
           ${audio(off)}
         </div>
         <div style="text-align:center;opacity:.5;margin:2px 0 8px">⇄</div>
         <div style="${card}">
           <div style="opacity:.6;font-size:12px">${isReceiver ? 'Tu donnerais' : 'Tu demandes'}</div>
-          <strong>${esc(req.title) || '—'}</strong> · ${req.price_credits || 0} crédits
+          <strong>${esc(req.title) || '—'}</strong> · ${req.price_credits || 0} Smyles
           ${audio(req)}
         </div>
-        ${o.credit_supplement > 0 ? `<div style="opacity:.8;margin-bottom:8px">+ ${o.credit_supplement} crédits ${isReceiver ? 'pour toi' : 'de ta part'}</div>` : ''}
+        ${o.credit_supplement > 0 ? `<div style="opacity:.8;margin-bottom:8px">+ ${o.credit_supplement} Smyles ${isReceiver ? 'pour toi' : 'de ta part'}</div>` : ''}
         ${o.message ? `<div style="opacity:.7;font-style:italic;margin-bottom:10px">« ${esc(o.message)} »</div>` : ''}
         <div style="opacity:.55;font-size:12px;margin-bottom:12px">⚠️ Frais de 20% (brûlé) de chaque côté à l'acceptation.</div>
         <div style="display:flex;gap:8px">${actions}</div>
@@ -1067,6 +1093,8 @@
     refresh:     _render,
     clickMix:    _clickMix,
     clickLogin:  _clickLogin,
+    clickSignup: _clickSignup,
+    openGuide:   _openGuide,
     logout:      _logout,
     toggleDrop:  _toggleDrop,
     // Notifications (cloche)

@@ -23,10 +23,14 @@ import logging
 import httpx
 
 from app.config import settings
+from app.core.logging import masquer_email
 
 logger = logging.getLogger(__name__)
 
 _RESEND_URL = "https://api.resend.com/emails"
+
+# Avertissement « emails désactivés » émis une seule fois par worker.
+_averti_desactive = False
 
 # Palette WATT (miroir de ui/core/tokens.css — un email ne charge pas de CSS
 # externe, tout est inline).
@@ -74,7 +78,7 @@ def _layout(title: str, body_html: str) -> str:
 </body></html>"""
 
 
-async def _send(to: str, subject: str, html: str) -> bool:
+async def _send(to: str, subject: str, html: str, *, reply_to: str | None = None) -> bool:
     """
     Envoi bas niveau. Ne lève JAMAIS — best-effort intégral.
 
@@ -82,7 +86,16 @@ async def _send(to: str, subject: str, html: str) -> bool:
     avant, la fonction ne renvoyait rien et l'appelant ne pouvait pas savoir
     qu'un email n'était pas parti. Le mot de passe oublié en dépend.
     """
-    if not emails_enabled() or not to:
+    if not to:
+        return False
+    if not emails_enabled():
+        global _averti_desactive
+        if not _averti_desactive:
+            _averti_desactive = True
+            logger.warning(
+                "[emails] RESEND_API_KEY absente : aucun email n'est envoyé "
+                "(bienvenue, vérification, mot de passe oublié, ventes)."
+            )
         return False
     try:
         async with httpx.AsyncClient(timeout=6.0) as client:
@@ -97,21 +110,29 @@ async def _send(to: str, subject: str, html: str) -> bool:
                     "to": [to],
                     "subject": subject,
                     "html": html,
+                    # Lot D : les décisions de modération se contestent en
+                    # répondant à l'email → la réponse part au contact.
+                    **({"reply_to": [reply_to]} if reply_to else {}),
                 },
             )
             if resp.status_code >= 400:
-                # Cas attendu en mode test (destinataire ≠ compte Resend) :
-                # on logge en INFO, pas en erreur — c'est un état normal
-                # tant que le domaine n'est pas vérifié. L'appelant, lui,
-                # reçoit False et décide s'il faut alerter (cf. reset MDP).
-                logger.info(
-                    "[emails] envoi refusé (%s) vers %s : %s",
-                    resp.status_code, to, resp.text[:200],
+                # Refus de Resend (domaine non vérifié, quota, adresse
+                # invalide…). Lot E : niveau WARNING (visible dans Railway),
+                # adresse masquée. L'appelant reçoit False et décide s'il
+                # faut alerter davantage (cf. reset MDP).
+                logger.warning(
+                    "[emails] envoi refusé par Resend (HTTP %s) vers %s, sujet « %s » : %s",
+                    resp.status_code, masquer_email(to), subject[:80],
+                    resp.text[:200],
                 )
                 return False
+            logger.info("[emails] envoyé vers %s, sujet « %s »", masquer_email(to), subject[:80])
             return True
     except Exception:
-        logger.warning("[emails] échec d'envoi vers %s", to, exc_info=True)
+        logger.warning(
+            "[emails] échec d'envoi vers %s (Resend injoignable ?)",
+            masquer_email(to), exc_info=True,
+        )
         try:
             import sentry_sdk
             sentry_sdk.capture_exception()
@@ -261,7 +282,7 @@ async def send_password_reset_email(to: str, *, link: str) -> bool:
             "[emails] lien de réinitialisation NON ENVOYÉ à %s "
             "(emails_enabled=%s). Secours bêta : "
             "cd watt-api && python tools/reset_link.py <email>",
-            to, emails_enabled(),
+            masquer_email(to), emails_enabled(),
         )
     return delivered
 
@@ -314,3 +335,129 @@ async def send_welcome_email(to: str, *, name: str | None = None) -> None:
       numérotés #X/N.
     </p>"""
     await _send(to, "Bienvenue sur WATT ⚡", _layout(hello, body))
+
+
+# ── Lot D — décisions de modération (DSA art. 16, 17 et 20) ────────────────
+
+_LIBELLES_CIBLE = {
+    "track": "un son", "prompt": "une recette", "image": "une image",
+    "profil": "un profil", "playlist": "une playlist", "album": "un album",
+    "adn": "un ADN musical", "visual_adn": "un ADN visuel", "voix": "une voix",
+}
+
+
+def libelle_cible(target_type: str | None) -> str:
+    return _LIBELLES_CIBLE.get((target_type or "").strip().lower(), "un contenu")
+
+
+def _paragraphe(texte_html: str) -> str:
+    return (f'<p style="color:{_MUTED};font-size:14px;line-height:1.7;margin:0 0 14px;">'
+            f"{texte_html}</p>")
+
+
+def _bloc_recours() -> str:
+    from app.core.legal import CONTACT_EMAIL
+
+    return _paragraphe(
+        "<strong style=\"color:" + _TEXT + ";\">Contester cette décision</strong> : "
+        "réponds simplement à cet email, ou écris à "
+        f'<a href="mailto:{esc(CONTACT_EMAIL)}" style="color:{_GOLD};">{esc(CONTACT_EMAIL)}</a> '
+        "en expliquant pourquoi. Ta demande sera réexaminée par une personne, "
+        "gratuitement. Tu peux aussi saisir le juge compétent."
+    )
+
+
+async def send_decision_auteur(
+    to: str | None,
+    *,
+    nature: str,
+    target_type: str | None = None,
+    titre: str | None = None,
+    motif: str,
+    reference: str | None = None,
+) -> bool:
+    """Informe l'auteur d'un retrait de contenu (`nature="retrait"`) ou le
+    titulaire d'un compte suspendu (`nature="suspension"`) : motif, référence
+    et voie de recours (DSA art. 17). Best-effort, ne lève jamais."""
+    from app.core.legal import CONTACT_EMAIL
+
+    if not to or str(to).endswith("@deleted.watt"):
+        return False
+    try:
+        if nature == "suspension":
+            sujet = "Ton compte WATT est suspendu"
+            titre_h = "Compte suspendu"
+            intro = ("Ton compte WATT a été suspendu par la modération. Pendant la "
+                     "suspension, tu ne peux plus te connecter et tes contenus ne "
+                     "sont plus visibles ni en vente. Ceux qui les ont déjà achetés "
+                     "gardent leur accès.")
+        else:
+            quoi = libelle_cible(target_type)
+            nom = f" « {esc(titre)} »" if titre else ""
+            sujet = "Un de tes contenus a été retiré de WATT"
+            titre_h = "Contenu retiré"
+            intro = (f"La modération a retiré {esc(quoi)}{nom} de la vitrine. "
+                     "Il n'est plus visible ni en vente ; ceux qui l'ont déjà "
+                     "acheté gardent leur accès.")
+        corps = (
+            _paragraphe(intro)
+            + _paragraphe(f"<strong style=\"color:{_TEXT};\">Motif</strong> : {esc(motif)}")
+            + (_paragraphe(f"Référence : {esc(reference)}") if reference else "")
+            + _bloc_recours()
+        )
+        return await _send(to, sujet, _layout(titre_h, corps), reply_to=CONTACT_EMAIL)
+    except Exception:  # noqa: BLE001
+        logger.warning("[emails] décision de modération (auteur) : échec", exc_info=True)
+        return False
+
+
+async def send_levee_suspension(to: str | None) -> bool:
+    """Informe le titulaire que sa suspension est levée."""
+    if not to or str(to).endswith("@deleted.watt"):
+        return False
+    try:
+        corps = _paragraphe("La suspension de ton compte WATT est levée : tu peux "
+                            "te reconnecter, et tes contenus sont de nouveau visibles.")
+        return await _send(to, "Ton compte WATT est rétabli", _layout("Compte rétabli", corps))
+    except Exception:  # noqa: BLE001
+        logger.warning("[emails] levée de suspension : échec", exc_info=True)
+        return False
+
+
+async def send_decision_signaleur(
+    to: str | None,
+    *,
+    decision: str,
+    target_type: str | None = None,
+    titre: str | None = None,
+    reference: str | None = None,
+) -> bool:
+    """Informe la personne qui a signalé de la décision prise (DSA art. 16 §5) :
+    `decision` = "retire" (contenu retiré / compte suspendu) ou "rejete"."""
+    from app.core.legal import CONTACT_EMAIL
+
+    if not to or str(to).endswith("@deleted.watt"):
+        return False
+    try:
+        quoi = libelle_cible(target_type)
+        nom = f" « {esc(titre)} »" if titre else ""
+        if decision == "retire":
+            verdict = (f"Après examen, la modération a retiré {esc(quoi)}{nom} que tu "
+                       "avais signalé. Merci pour ton signalement.")
+        else:
+            verdict = (f"Après examen, la modération a estimé que {esc(quoi)}{nom} que "
+                       "tu avais signalé ne contrevient pas à nos règles : il reste en "
+                       "ligne.")
+        corps = (
+            _paragraphe(verdict)
+            + (_paragraphe(f"Référence du signalement : {esc(reference)}") if reference else "")
+            + _paragraphe("Si tu n'es pas d'accord, réponds à cet email ou écris à "
+                          f'<a href="mailto:{esc(CONTACT_EMAIL)}" style="color:{_GOLD};">'
+                          f"{esc(CONTACT_EMAIL)}</a>.")
+        )
+        return await _send(to, "Suite donnée à ton signalement",
+                           _layout("Ton signalement a été traité", corps),
+                           reply_to=CONTACT_EMAIL)
+    except Exception:  # noqa: BLE001
+        logger.warning("[emails] décision de modération (signaleur) : échec", exc_info=True)
+        return False

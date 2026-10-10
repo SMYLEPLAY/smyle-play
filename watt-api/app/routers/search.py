@@ -36,7 +36,7 @@ from app.models.track import Track
 from app.models.user import User
 from app.models.user_follow import UserFollow
 from app.routers.watt_compat import _derive_artist_slug
-from app.services.tracks import visible_track_clause
+from app.services.tracks import public_track_clause
 
 
 router = APIRouter(prefix="/watt/search", tags=["watt-search"])
@@ -100,7 +100,7 @@ async def search_artists(
             func.coalesce(func.sum(Track.plays), 0).label("total_plays"),
             func.count(Track.id).label("track_count"),
         )
-        .where(visible_track_clause())  # Lot A (E3)
+        .where(public_track_clause())  # Lot A (E3) + masqués (Parcours V1)
         .group_by(Track.artist_id)
         .subquery()
     )
@@ -204,7 +204,7 @@ async def search_tracks(
         select(Track, User)
         .join(User, Track.artist_id == User.id)
         # Lot A (E3) : ni sons supprimés ni sons retirés par la modération.
-        .where(User.profile_public.is_(True), visible_track_clause())
+        .where(User.profile_public.is_(True), public_track_clause())
     )
 
     if q and len(q) >= _MIN_QUERY_LEN:

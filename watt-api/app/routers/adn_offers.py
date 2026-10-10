@@ -147,7 +147,7 @@ async def create_adn_offer(
     if current_user.credits_balance < payload.amount_credits:
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
-            detail=f"Crédits insuffisants (dispo: {current_user.credits_balance},"
+            detail=f"Smyles insuffisants (dispo: {current_user.credits_balance},"
                    f" offre: {payload.amount_credits})",
         )
 
@@ -258,7 +258,7 @@ async def accept_adn_offer(
         await db.rollback()
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
-            detail="L'acheteur n'a plus assez de crédits pour couvrir son offre",
+            detail="L'acheteur n'a plus assez de Smyles pour couvrir son offre",
         )
     except ReserveNotMet as e:
         await db.rollback()

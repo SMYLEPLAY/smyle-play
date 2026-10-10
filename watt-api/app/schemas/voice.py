@@ -90,7 +90,7 @@ class VoiceCreate(BaseModel):
     # UI : optionnel ici (défaut 'personnel' appliqué au router), la colonne
     # DB reste pour l'historique des achats passés.
     license: VoiceLicense | None = None
-    price_credits: int = Field(ge=50, le=5000)
+    price_credits: int = Field(ge=500, le=50000)
     # #X/N — NULL = illimité · 1 = vente unique · N = édition limitée.
     max_supply: int | None = Field(default=None, ge=1)
 
@@ -109,7 +109,7 @@ class VoiceUpdate(BaseModel):
     voice_origin: VoiceOrigin | None = None
     linked_track_id: UUID | None = None
     license: VoiceLicense | None = None
-    price_credits: int | None = Field(default=None, ge=50, le=5000)
+    price_credits: int | None = Field(default=None, ge=500, le=50000)
     is_published: bool | None = None
 
 

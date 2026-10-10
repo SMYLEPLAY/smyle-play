@@ -106,6 +106,8 @@ node_modules/
 
 *.sql
 *.dump
+# Exception : fixtures de la CI e2e (jamais appliquées à la production).
+!e2e/fixtures/*.sql
 
 _d2wt/
 

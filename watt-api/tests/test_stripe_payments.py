@@ -87,7 +87,7 @@ async def _preseed(uid, achetes=0):
         await db.commit()
 
 
-async def _checkout(client, auth_headers, pack="pack_50"):
+async def _checkout(client, auth_headers, pack="pack_500"):
     r = await client.post("/credits/checkout", headers=auth_headers,
                           json={"pack_id": pack, "renonce_retractation": True})
     assert r.status_code == 200, r.text
@@ -109,7 +109,7 @@ async def _paiement(sid):
 
 async def test_checkout_exige_la_renonciation(client, auth_headers):
     r = await client.post("/credits/checkout", headers=auth_headers,
-                          json={"pack_id": "pack_10", "renonce_retractation": False})
+                          json={"pack_id": "pack_100", "renonce_retractation": False})
     assert r.status_code == 422 and "rétractation" in r.json()["detail"]
 
 
@@ -121,7 +121,7 @@ async def test_checkout_pack_inconnu(client, auth_headers):
 
 async def test_checkout_masque_ou_sans_cle(client, auth_headers, monkeypatch):
     monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", False)
-    body = {"pack_id": "pack_10", "renonce_retractation": True}
+    body = {"pack_id": "pack_100", "renonce_retractation": True}
     assert (await client.post("/credits/checkout", headers=auth_headers, json=body)).status_code == 503
     monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", True)
     monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", None)
@@ -130,20 +130,20 @@ async def test_checkout_masque_ou_sans_cle(client, auth_headers, monkeypatch):
 
 async def test_checkout_cree_la_session_sans_crediter(client, test_user, auth_headers, _stripe_simule):
     await _preseed(test_user["id"])
-    sid = await _checkout(client, auth_headers, "pack_50")
+    sid = await _checkout(client, auth_headers, "pack_500")
     path, data = _stripe_simule[-1]
     assert path == "/checkout/sessions"
     assert data["line_items[0][price_data][unit_amount]"] == "3500"
     assert data["mode"] == "payment" and data["success_url"].endswith("/?achat=ok")
     assert "TVA" not in data["payment_intent_data[description]"]
     row = await _paiement(sid)
-    assert row.credits == 50 and row.amount_cents == 3500 and row.consent_immediate_at is not None
+    assert row.credits == 500 and row.amount_cents == 3500 and row.consent_immediate_at is not None
     assert (await _bk(test_user["id"]))["b"] == 0          # rien crédité avant le webhook
 
 
 async def test_mention_tva_configurable(client, test_user, auth_headers, _stripe_simule, monkeypatch):
     monkeypatch.setattr(settings, "MENTION_TVA_FRANCHISE", True)
-    await _checkout(client, auth_headers, "pack_10")
+    await _checkout(client, auth_headers, "pack_100")
     _, data = _stripe_simule[-1]
     assert "TVA non applicable, art. 293 B du CGI" in data["payment_intent_data[description]"]
     assert "293 B" in data["custom_text[submit][message]"]
@@ -174,17 +174,17 @@ async def test_webhook_non_configure(client, monkeypatch):
 async def test_credit_en_achetes_idempotent(client, test_user, auth_headers):
     uid = test_user["id"]
     await _preseed(uid)
-    sid = await _checkout(client, auth_headers, "pack_50")
+    sid = await _checkout(client, auth_headers, "pack_500")
     evt = _evt("checkout.session.completed", _session_payee(sid))
     r = await _webhook(client, evt)
     assert r.status_code == 200 and r.json()["statut"] == "credite"
-    assert await _bk(uid) == {"b": 50, "a": 50, "g": 0, "p": 0}   # bucket `achetes`
+    assert await _bk(uid) == {"b": 500, "a": 500, "g": 0, "p": 0}   # bucket `achetes`
     # Même événement rejoué → rien.
     assert (await _webhook(client, evt)).json()["statut"] == "deja_traite"
     # Autre événement, même session (ex. async_payment_succeeded) → pas de double crédit.
     evt2 = _evt("checkout.session.async_payment_succeeded", _session_payee(sid))
     assert (await _webhook(client, evt2)).status_code == 200
-    assert (await _bk(uid))["b"] == 50
+    assert (await _bk(uid))["b"] == 500
     async with SessionLocal() as db:
         n = (await db.execute(text(
             "SELECT count(*) FROM transactions WHERE idempotency_key = :k"),
@@ -195,7 +195,7 @@ async def test_credit_en_achetes_idempotent(client, test_user, auth_headers):
 
 async def test_paiement_non_confirme_ne_credite_pas(client, test_user, auth_headers):
     await _preseed(test_user["id"])
-    sid = await _checkout(client, auth_headers, "pack_10")
+    sid = await _checkout(client, auth_headers, "pack_100")
     obj = _session_payee(sid, amount=800)
     obj["payment_status"] = "unpaid"
     assert (await _webhook(client, _evt("checkout.session.completed", obj))).json()["statut"] == "en_attente"
@@ -204,7 +204,7 @@ async def test_paiement_non_confirme_ne_credite_pas(client, test_user, auth_head
 
 async def test_montant_incoherent_refuse_et_signale(client, test_user, auth_headers):
     await _preseed(test_user["id"])
-    sid = await _checkout(client, auth_headers, "pack_200")
+    sid = await _checkout(client, auth_headers, "pack_2000")
     r = await _webhook(client, _evt("checkout.session.completed", _session_payee(sid, amount=800)))
     assert r.json()["statut"] == "montant_incoherent"
     assert (await _bk(test_user["id"]))["b"] == 0
@@ -213,7 +213,7 @@ async def test_montant_incoherent_refuse_et_signale(client, test_user, auth_head
 
 # ─── 3. Remboursement / litige ─────────────────────────────────────────────────
 
-async def _paye(client, uid, auth_headers, pack="pack_50", amount=3500):
+async def _paye(client, uid, auth_headers, pack="pack_500", amount=3500):
     sid = await _checkout(client, auth_headers, pack)
     pi = f"pi_{uuid.uuid4().hex}"
     await _webhook(client, _evt("checkout.session.completed", _session_payee(sid, amount, pi)))
@@ -228,7 +228,7 @@ async def test_remboursement_reprend_les_achetes(client, test_user, auth_headers
     assert r.json()["statut"] == "repris"
     assert await _bk(uid) == {"b": 0, "a": 0, "g": 0, "p": 0}
     row = await _paiement(sid)
-    assert row.smyles_recovered == 50 and row.shortfall == 0 and row.flagged_at is None
+    assert row.smyles_recovered == 500 and row.shortfall == 0 and row.flagged_at is None
 
 
 async def test_remboursement_partiel_puis_total_cumulatif(client, test_user, auth_headers):
@@ -236,32 +236,32 @@ async def test_remboursement_partiel_puis_total_cumulatif(client, test_user, aut
     await _preseed(uid)
     sid, pi = await _paye(client, uid, auth_headers)
     await _webhook(client, _evt("charge.refunded", {"payment_intent": pi, "amount_refunded": 700}))
-    assert (await _bk(uid))["a"] == 40                    # 50 × 700/3500 = 10 repris
+    assert (await _bk(uid))["a"] == 400                   # 500 × 700/3500 = 100 repris
     await _webhook(client, _evt("charge.refunded", {"payment_intent": pi, "amount_refunded": 3500}))
-    assert (await _bk(uid))["a"] == 0                     # cumul : 50 au total, pas 60
-    assert (await _paiement(sid)).smyles_recovered == 50
+    assert (await _bk(uid))["a"] == 0                     # cumul : 500 au total, pas 600
+    assert (await _paiement(sid)).smyles_recovered == 500
 
 
 async def test_smyles_deja_depenses_jamais_de_solde_negatif(client, test_user, auth_headers):
-    """Achète 50, en dépense 45 (restent 5 en achetés) puis rembourse : on reprend
-    5, les 45 manquants sont signalés, aucun solde ne passe sous zéro."""
+    """Achète 500, en dépense 450 (restent 50 en achetés) puis rembourse : on
+    reprend 50, les 450 manquants sont signalés, aucun solde ne passe sous zéro."""
     uid = test_user["id"]
     await _preseed(uid)
     sid, pi = await _paye(client, uid, auth_headers)
     async with SessionLocal() as db:
-        await db.execute(text("UPDATE users SET smyles_achetes = 5, smyles_gagnes = 3, "
-                              "credits_balance = 8 WHERE id = :u"), {"u": uid})
+        await db.execute(text("UPDATE users SET smyles_achetes = 50, smyles_gagnes = 30, "
+                              "credits_balance = 80 WHERE id = :u"), {"u": uid})
         await db.commit()
     r = await _webhook(client, _evt("charge.refunded", {"payment_intent": pi, "amount_refunded": 3500}))
     assert r.json()["statut"] == "signale"
     b = await _bk(uid)
-    assert b == {"b": 3, "a": 0, "g": 3, "p": 0}          # gagnés intacts, rien de négatif
+    assert b == {"b": 30, "a": 0, "g": 30, "p": 0}        # gagnés intacts, rien de négatif
     row = await _paiement(sid)
-    assert row.smyles_recovered == 5 and row.shortfall == 45 and row.flagged_at is not None
+    assert row.smyles_recovered == 50 and row.shortfall == 450 and row.flagged_at is not None
     # Litige ensuite sur le même paiement : rien de plus à reprendre.
     r = await _webhook(client, _evt("charge.dispute.created", {"payment_intent": pi, "amount": 3500}))
     row = await _paiement(sid)
-    assert row.smyles_recovered + row.shortfall == 50
+    assert row.smyles_recovered + row.shortfall == 500
     async with SessionLocal() as db:
         assert await count_bucket_inconsistencies(db) == 0
 
@@ -269,10 +269,10 @@ async def test_smyles_deja_depenses_jamais_de_solde_negatif(client, test_user, a
 async def test_liste_admin_des_paiements_signales(client, test_user, auth_headers):
     uid = test_user["id"]
     await _preseed(uid)
-    sid, pi = await _paye(client, uid, auth_headers, "pack_10", 800)
+    sid, pi = await _paye(client, uid, auth_headers, "pack_100", 800)
     async with SessionLocal() as db:
-        await db.execute(text("UPDATE users SET smyles_achetes = 0, smyles_gagnes = 10, "
-                              "credits_balance = 10 WHERE id = :u"), {"u": uid})
+        await db.execute(text("UPDATE users SET smyles_achetes = 0, smyles_gagnes = 100, "
+                              "credits_balance = 100 WHERE id = :u"), {"u": uid})
         await db.commit()
     await _webhook(client, _evt("charge.dispute.created", {"payment_intent": pi, "amount": 800}))
     assert (await client.get("/admin/paiements/signales", headers=auth_headers)).status_code == 403
@@ -282,11 +282,11 @@ async def test_liste_admin_des_paiements_signales(client, test_user, auth_header
     r = await client.get("/admin/paiements/signales", headers=auth_headers)
     assert r.status_code == 200
     mine = [p for p in r.json()["paiements"] if p["user_id"] == str(uid)]
-    assert mine and mine[0]["smyles_non_repris"] == 10
+    assert mine and mine[0]["smyles_non_repris"] == 100
 
 
 async def test_aucune_cle_dans_les_reponses(client, test_user, auth_headers):
     await _preseed(test_user["id"])
     r = await client.post("/credits/checkout", headers=auth_headers,
-                          json={"pack_id": "pack_10", "renonce_retractation": True})
+                          json={"pack_id": "pack_100", "renonce_retractation": True})
     assert CLE_TEST not in r.text and SECRET_TEST not in r.text

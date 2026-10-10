@@ -62,6 +62,8 @@
 <div id="smyle-topbar"></div>
 
 <main class="o-main" id="o-main">
+  <!-- Parcours V1 — bandeau d'inscription du visiteur (visitor-gate.js). -->
+  <div id="smyle-visitor-banner" hidden></div>
   <div class="o-state" id="o-loading">Chargement de l'œuvre…</div>
 
   <div class="o-state" id="o-empty" style="display:none">
@@ -89,7 +91,8 @@
         <div class="o-bundle" id="o-bundle" hidden></div>
 
         <button type="button" class="o-share" id="o-share">Copier le lien de l'œuvre</button>
-        <button type="button" class="o-report" id="o-report">Signaler cette œuvre</button>
+        <button type="button" class="o-report" id="o-report">Signaler l'image</button>
+        <button type="button" class="o-report" id="o-report-son" hidden>Signaler le son</button>
       </div>
     </div>
   </article>
@@ -98,16 +101,20 @@
 <div class="lib-toast" id="o-toast"></div>
 
 <script src="/ui/core/launch-flags.js"></script>
-<script src="/ui/core/api.js"></script>
-<script src="/ui/core/consent.js"></script>
-<script src="/ui/core/telemetry.js"></script>
+<script src="/ui/core/api.js?v=20261010lotd"></script>
+<script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
+<script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
+<script src="/ui/core/consent.js?v=20261010lotd"></script>
+<script src="/ui/core/telemetry.js?v=20261010lotd"></script>
 <script src="/ui/core/events.js"></script>
 <script src="/ui/core/toast.js"></script>
 <script src="/ui/topbar/topbar.js?v=20260923o" defer></script>
 <script src="/ui/modals/purchase-drawer.js?v=20260923o"></script>
-<script src="/ui/modals/report-modal.js?v=20260923o"></script>
+<script src="/ui/modals/report-modal.js?v=20261010lotd"></script>
 <script src="/oeuvre-c4.js?v=20260923o" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/session-guard.js" defer></script>
+<!-- Lot D : pied de page légal (Mentions, CGU, Confidentialité, Cookies, Contact) -->
+<script src="/ui/core/legal-footer.js?v=20261010lotd" defer></script>
 </body>
 </html>

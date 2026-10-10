@@ -2562,12 +2562,13 @@
         const status = err && err.status;
         if (status === 401) {
           _close();
-          if (window.showToast) window.showToast('Connecte-toi pour débloquer ce contenu.');
+          if (window.SmyleGate) window.SmyleGate.requireAccount();
+          else if (window.showToast) window.showToast('Crée ton compte pour débloquer ce contenu.');
         } else if (status === 402) {
           const d = err.body && err.body.detail;
           const msg = (d && typeof d === 'object')
-            ? `Crédits insuffisants — il te faut ${d.required}, tu en as ${d.available}.`
-            : 'Crédits insuffisants.';
+            ? `Smyles insuffisants — il te faut ${d.required}, tu en as ${d.available}.`
+            : 'Smyles insuffisants.';
           if (window.showToast) window.showToast(msg);
         } else if (status === 409) {
           _close();

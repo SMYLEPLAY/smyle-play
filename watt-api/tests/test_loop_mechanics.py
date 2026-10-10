@@ -64,12 +64,13 @@ from app.services.resale import (
 # =============================================================================
 
 def test_reward_for_streak_bareme():
-    # +1 chaque jour, +3 au 7e jour consécutif → semaine pleine = 9.
+    # +10 chaque jour, +30 au 7e jour consécutif → semaine pleine = 90
+    # (redénomination ×10 du 9/10/2026).
     week = [reward_for_streak(d) for d in range(1, 8)]
-    assert week == [1, 1, 1, 1, 1, 1, 3]
-    assert sum(week) == 9
-    # 14 jours (2 cycles) = 18.
-    assert sum(reward_for_streak(d) for d in range(1, 15)) == 18
+    assert week == [10, 10, 10, 10, 10, 10, 30]
+    assert sum(week) == 90
+    # 14 jours (2 cycles) = 180.
+    assert sum(reward_for_streak(d) for d in range(1, 15)) == 180
     # Le palier tombe à chaque multiple de 7.
     assert reward_for_streak(MILESTONE_EVERY) == MILESTONE_REWARD
     assert reward_for_streak(MILESTONE_EVERY * 2) == MILESTONE_REWARD
@@ -475,7 +476,7 @@ async def test_pack_no_topup_for_limited_tier():
             res = await open_mystery_pack_atomic(db, buyer)
             await db.commit()
         assert res["rarity"] == "rare"
-        assert await _balance(artist) == 6                  # juste la part des 8
+        assert await _balance(artist) == 64                 # juste la part des 80
     finally:
         await _cleanup_users(artist, buyer)
 

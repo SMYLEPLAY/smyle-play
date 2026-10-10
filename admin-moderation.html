@@ -64,7 +64,7 @@
     <h2>Suspendre / rétablir un compte par identifiant</h2>
     <div class="row">
       <input id="uid" placeholder="ID du compte (UUID)" style="min-width:280px" />
-      <input id="ureason" placeholder="Motif (optionnel)" style="min-width:180px" />
+      <input id="ureason" placeholder="Motif (obligatoire pour suspendre)" style="min-width:180px" />
       <button class="danger" id="banBtn">Suspendre</button>
       <button class="ok" id="unbanBtn">Rétablir</button>
     </div>
@@ -92,7 +92,7 @@
 </div>
 <div class="flash" id="flash"></div>
 
-<script src="ui/core/api.js"></script>
+<script src="ui/core/api.js?v=20261010lotd"></script>
 <script>
 (function () {
   var out = document.getElementById('out');
@@ -170,12 +170,17 @@
     var p;
     if (act === 'takedown' || act === 'takedown_ban') {
       var ban = act === 'takedown_ban';
+      // Lot D : motif OBLIGATOIRE (envoyé par email à l'auteur, avec la voie de recours).
+      var motif = (window.prompt(ban
+        ? 'Motif du retrait ET de la suspension (envoyé à l\'auteur) :'
+        : 'Motif du retrait (envoyé à l\'auteur) :') || '').trim();
+      if (motif.length < 3) { b.disabled = false; flash('Motif obligatoire (3 caractères minimum).', false); return; }
       if (ban && !confirm('Retirer le contenu ET suspendre le compte de l\'auteur ?')) { b.disabled = false; return; }
-      p = apiFetch('/admin/reports/' + id + '/takedown', { method:'POST', json:{ ban_owner: ban } })
+      p = apiFetch('/admin/reports/' + id + '/takedown', { method:'POST', json:{ ban_owner: ban, reason: motif } })
             .then(function(res){ flash((res && res.detail) || 'Contenu retiré.', true); });
     } else if (act === 'reject') {
       p = apiFetch('/admin/reports/' + id, { method:'PATCH', json:{ status:'rejected' } })
-            .then(function(){ flash('Signalement rejeté.', true); });
+            .then(function(){ flash('Signalement rejeté — la personne qui a signalé est prévenue.', true); });
     }
     p.then(load).catch(function(e){
       b.disabled = false;
@@ -188,15 +193,17 @@
     var id = document.getElementById('uid').value.trim();
     if (!id) { flash('Renseigne l\'ID du compte.', false); return; }
     var reason = document.getElementById('ureason').value.trim();
-    if (!confirm('Suspendre ce compte ? Il ne pourra plus se connecter.')) return;
-    apiFetch('/admin/users/' + id + '/ban', { method:'POST', json:{ reason: reason || null } })
+    if (reason.length < 3) { flash('Motif obligatoire (envoyé au titulaire du compte).', false); return; }
+    if (!confirm('Suspendre ce compte ? Il ne pourra plus se connecter et ses contenus seront retirés jusqu\'à la levée.')) return;
+    apiFetch('/admin/users/' + id + '/ban', { method:'POST', json:{ reason: reason } })
       .then(function(res){ flash((res && res.detail) || 'Compte suspendu.', true); })
       .catch(function(e){ flash((e && e.detail) || 'Échec.', false); });
   });
   document.getElementById('unbanBtn').addEventListener('click', function(){
     var id = document.getElementById('uid').value.trim();
     if (!id) { flash('Renseigne l\'ID du compte.', false); return; }
-    apiFetch('/admin/users/' + id + '/unban', { method:'POST' })
+    var reasonU = document.getElementById('ureason').value.trim();
+    apiFetch('/admin/users/' + id + '/unban', { method:'POST', json:{ reason: reasonU || null } })
       .then(function(res){ flash((res && res.detail) || 'Compte rétabli.', true); })
       .catch(function(e){ flash((e && e.detail) || 'Échec.', false); });
   });

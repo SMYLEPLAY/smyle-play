@@ -129,6 +129,15 @@ def _password_max_bytes(v: str) -> str:
     return v
 
 
+def normaliser_email(v):
+    """Lot D — un email est stocké et comparé en minuscules, sans espaces
+    autour (« Marie@Exemple.fr » = « marie@exemple.fr »). Appliqué AVANT la
+    validation de forme (EmailStr)."""
+    if isinstance(v, str):
+        return v.strip().lower()
+    return v
+
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=PASSWORD_MAX_LENGTH)
@@ -142,10 +151,12 @@ class UserCreate(BaseModel):
     age_confirmed: bool = False
 
     _pw_bytes = field_validator("password")(_password_max_bytes)
+    _email_norm = field_validator("email", mode="before")(normaliser_email)
 
 
 class UserLogin(BaseModel):
     email: EmailStr
+    _email_norm = field_validator("email", mode="before")(normaliser_email)
     # Au-delà de 72, aucun compte ne peut correspondre (bcrypt) : refus net
     # au lieu d'une erreur serveur.
     password: str = Field(max_length=PASSWORD_MAX_LENGTH)
@@ -155,6 +166,7 @@ class UserLogin(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    _email_norm = field_validator("email", mode="before")(normaliser_email)
 
 
 class ResetPasswordRequest(BaseModel):
@@ -174,6 +186,7 @@ class VerifyEmailRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
+    _email_norm = field_validator("email", mode="before")(normaliser_email)
 
 
 class UserRead(BaseModel):
@@ -207,6 +220,14 @@ class UserRead(BaseModel):
     # affiche l'état « email à confirmer » et le CTA de renvoi. Non bloquant
     # par défaut (cf. settings.REQUIRE_EMAIL_VERIFIED).
     email_verified: bool = False
+    # Parcours V1 (migration 0101) — guide d'accueil vu (NULL = à montrer une
+    # fois, juste après la première connexion d'un nouveau compte).
+    onboarding_done_at: datetime | None = None
+    # Lot D — version des CGU acceptée (NULL = jamais acceptée dans sa version
+    # actuelle) ; `cgu_a_jour` dit au front s'il faut ouvrir la fenêtre
+    # d'acceptation.
+    accepted_terms_version: str | None = None
+    accepted_terms_at: datetime | None = None
     # Chantier "Positionnement fan/artiste" (migration 0018) — casquettes
     # déclarées par l'utilisateur. Liste de codes ROLE_CODES. None = pas
     # encore choisi. Cf. ROLE_CODES au début du module.
@@ -240,6 +261,20 @@ class UserRead(BaseModel):
     @property
     def fiat_withdrawal_status(self) -> str:
         return "planned_roadmap"
+
+    @computed_field
+    @property
+    def cgu_version(self) -> str:
+        from app.core.legal import CGU_VERSION
+
+        return CGU_VERSION
+
+    @computed_field
+    @property
+    def cgu_a_jour(self) -> bool:
+        from app.core.legal import CGU_VERSION
+
+        return (self.accepted_terms_version or "") == CGU_VERSION
 
 
 class UserUpdate(BaseModel):

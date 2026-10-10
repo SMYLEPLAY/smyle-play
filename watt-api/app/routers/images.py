@@ -64,6 +64,8 @@ from app.services.images import (
     upload_image_assets,
 )
 
+from app.services.r2 import flux_objet as _flux_objet
+
 router = APIRouter(tags=["images"])
 
 # Limite dure de résultats (miroir de /watt/search/*). Pagination simple par
@@ -1330,50 +1332,23 @@ async def stream_image_preview(key: str):
             status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
         )
 
-    from app.services.r2 import get_r2_client, is_configured
+    from app.services.r2 import ouvrir_objet
 
-    if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 storage not configured",
-        )
-    client = get_r2_client()
-    if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 client unavailable",
-        )
-
-    try:
-        obj = client.get_object(Bucket=settings.R2_BUCKET, Key=key)
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ressource introuvable.",
-        )
+    obj = await ouvrir_objet(key)
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = IMAGE_MIME_BY_EXT.get(ext, "image/jpeg")
 
-    def _iter_chunks():
-        try:
-            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
-                yield chunk
-        finally:
-            try:
-                obj["Body"].close()
-            except Exception:
-                pass
 
     headers = {"Cache-Control": "public, max-age=3600"}
     content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)
 
-    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+    return StreamingResponse(_flux_objet(obj), media_type=mime, headers=headers)
 
 
-def _get_original_r2_object(client, key: str):
+async def _get_original_r2_object(key: str) -> dict:
     """
     Récupère un ORIGINAL payant (`images/originals/...`) depuis R2.
 
@@ -1384,8 +1359,11 @@ def _get_original_r2_object(client, key: str):
     404 indistinct, comme aujourd'hui.
 
     N'expose JAMAIS la clé ni le bucket : usage interne au streaming gaté.
+    Lot E : lecture hors boucle asyncio ; R2 en panne → 503 (et non 404).
     """
-    return client.get_object(Bucket=settings.R2_BUCKET, Key=key)
+    from app.services.r2 import ouvrir_objet
+
+    return await ouvrir_objet(key, bucket=settings.R2_BUCKET)
 
 
 @router.get("/images/{image_id}/download")
@@ -1441,49 +1419,20 @@ async def download_image(
             detail="Fichier image indisponible pour cet exemplaire.",
         )
 
-    from app.services.r2 import get_r2_client, is_configured
-
-    if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 storage not configured",
-        )
-    client = get_r2_client()
-    if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 client unavailable",
-        )
-
-    try:
-        obj = _get_original_r2_object(client, key)
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ressource introuvable.",
-        )
+    obj = await _get_original_r2_object(key)
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = IMAGE_MIME_BY_EXT.get(ext, "application/octet-stream")
     safe_name = (product.title or "image").replace('"', "").strip() or "image"
     filename = f"{safe_name}.{ext}" if ext else safe_name
 
-    def _iter_chunks():
-        try:
-            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
-                yield chunk
-        finally:
-            try:
-                obj["Body"].close()
-            except Exception:
-                pass
 
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)
 
-    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+    return StreamingResponse(_flux_objet(obj), media_type=mime, headers=headers)
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -1711,27 +1660,7 @@ async def download_image_gallery_item(
             detail="Fichier image indisponible pour cet exemplaire.",
         )
 
-    from app.services.r2 import get_r2_client, is_configured
-
-    if not is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 storage not configured",
-        )
-    client = get_r2_client()
-    if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="R2 client unavailable",
-        )
-
-    try:
-        obj = _get_original_r2_object(client, key)
-    except Exception as e:  # noqa: BLE001
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ressource introuvable.",
-        )
+    obj = await _get_original_r2_object(key)
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = IMAGE_MIME_BY_EXT.get(ext, "application/octet-stream")
@@ -1739,22 +1668,13 @@ async def download_image_gallery_item(
     safe_name = f"{base}-{item.position + 1}"
     filename = f"{safe_name}.{ext}" if ext else safe_name
 
-    def _iter_chunks():
-        try:
-            for chunk in obj["Body"].iter_chunks(chunk_size=65536):
-                yield chunk
-        finally:
-            try:
-                obj["Body"].close()
-            except Exception:
-                pass
 
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)
 
-    return StreamingResponse(_iter_chunks(), media_type=mime, headers=headers)
+    return StreamingResponse(_flux_objet(obj), media_type=mime, headers=headers)
 
 
 # ──────────────────────────────────────────────────────────────────────────

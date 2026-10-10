@@ -51,31 +51,135 @@ def _as_uuid(value: str) -> uuid.UUID | None:
         return None
 
 
+# Lot D — pendant une suspension, les contenus du compte sont retirés de la
+# vente et de toutes les listes publiques, puis reviennent à la levée. On
+# n'efface rien : on note ce qu'on a masqué (journal « bannissement »), et la
+# levée ne remet QUE cela (jamais un contenu retiré entre-temps par la
+# modération). Les acheteurs gardent leur accès (bibliothèque, écoute signée).
+_MASQUAGE_PUBLIES = ("prompts", "adns", "visual_adns", "voices_for_sale")
+
+
+async def _masquer_contenus(db: AsyncSession, uid: uuid.UUID) -> dict:
+    p = {"u": uid}
+    masques: dict[str, list] = {}
+    for table in _MASQUAGE_PUBLIES:
+        ids = (await db.execute(text(
+            f"UPDATE {table} SET is_published = false "  # noqa: S608
+            "WHERE artist_id = :u AND is_published AND taken_down_at IS NULL RETURNING id"), p)).scalars().all()
+        masques[table] = [str(i) for i in ids]
+    ids = (await db.execute(text(
+        "UPDATE tracks SET hidden_at = now() WHERE artist_id = :u AND hidden_at IS NULL "
+        "AND NOT is_deleted AND taken_down_at IS NULL RETURNING id"), p)).scalars().all()
+    masques["tracks"] = [str(i) for i in ids]
+    for table in ("playlists", "albums"):
+        ids = (await db.execute(text(
+            f"UPDATE {table} SET visibility = 'private' "  # noqa: S608
+            "WHERE owner_id = :u AND visibility = 'public' RETURNING id"), p)).scalars().all()
+        masques[table] = [str(i) for i in ids]
+    reventes = (await db.execute(text(
+        "SELECT id, resale_price FROM unlocked_prompts "
+        "WHERE current_owner_id = :u AND resale_price IS NOT NULL"), p)).all()
+    masques["reventes"] = {str(r.id): int(r.resale_price) for r in reventes}
+    if reventes:
+        await db.execute(text(
+            "UPDATE unlocked_prompts SET resale_price = NULL WHERE current_owner_id = :u"), p)
+    profil = (await db.execute(text(
+        "UPDATE users SET profile_public = false WHERE id = :u AND profile_public RETURNING id"),
+        p)).first()
+    masques["profil_public"] = profil is not None
+    return masques
+
+
+async def _demasquer_contenus(db: AsyncSession, uid: uuid.UUID, masques: dict) -> None:
+    p = {"u": uid}
+
+    def _uuids(key):
+        return [uuid.UUID(x) for x in (masques.get(key) or [])]
+
+    for table in _MASQUAGE_PUBLIES:
+        ids = _uuids(table)
+        if ids:
+            await db.execute(text(
+                f"UPDATE {table} SET is_published = true "  # noqa: S608
+                "WHERE artist_id = :u AND id = ANY(:ids) AND taken_down_at IS NULL "
+                "AND NOT is_deleted"), {**p, "ids": ids})
+    ids = _uuids("tracks")
+    if ids:
+        await db.execute(text(
+            "UPDATE tracks SET hidden_at = NULL WHERE artist_id = :u AND id = ANY(:ids) "
+            "AND taken_down_at IS NULL"), {**p, "ids": ids})
+    for table in ("playlists", "albums"):
+        ids = _uuids(table)
+        if ids:
+            await db.execute(text(
+                f"UPDATE {table} SET visibility = 'public' "  # noqa: S608
+                "WHERE owner_id = :u AND id = ANY(:ids) AND taken_down_at IS NULL"),
+                {**p, "ids": ids})
+    for rid, prix in (masques.get("reventes") or {}).items():
+        await db.execute(text(
+            "UPDATE unlocked_prompts SET resale_price = :prix "
+            "WHERE id = :i AND current_owner_id = :u AND resale_price IS NULL"),
+            {**p, "i": uuid.UUID(rid), "prix": int(prix)})
+    if masques.get("profil_public"):
+        await db.execute(text("UPDATE users SET profile_public = true WHERE id = :u"), p)
+
+
 async def ban_user(
-    db: AsyncSession, user_id: uuid.UUID, reason: str | None = None
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    reason: str | None = None,
+    *,
+    admin_id: uuid.UUID | None = None,
 ) -> User | None:
-    """Suspend un compte. Retourne le User modifié, ou None s'il n'existe pas."""
+    """Suspend un compte : connexion bloquée, contenus retirés de la vente et
+    des listes publiques, décision journalisée. Retourne le User, ou None s'il
+    n'existe pas. Déjà suspendu : rien ne change (pas de second masquage).
+    Ne commit pas."""
     user = (await db.execute(
         select(User).where(User.id == user_id)
     )).scalar_one_or_none()
     if user is None:
         return None
+    if user.is_banned:
+        return user
     user.is_banned = True
     user.banned_at = datetime.now(timezone.utc)
     user.ban_reason = (reason or "").strip()[:500] or None
+    await db.flush()
+    masques = await _masquer_contenus(db, user.id)
+    await journaliser(db, admin_id=admin_id, action="bannissement", cible_type="profil",
+                      cible_id=str(user.id), motif=reason, details={"masques": masques})
+    await db.refresh(user)
     return user
 
 
-async def unban_user(db: AsyncSession, user_id: uuid.UUID) -> User | None:
-    """Rétablit un compte suspendu."""
+async def unban_user(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    admin_id: uuid.UUID | None = None,
+    motif: str | None = None,
+) -> User | None:
+    """Rétablit un compte suspendu et remet en ligne ce que la suspension
+    avait masqué. Journalisé. Ne commit pas."""
     user = (await db.execute(
         select(User).where(User.id == user_id)
     )).scalar_one_or_none()
     if user is None:
         return None
+    etait_suspendu = bool(user.is_banned)
     user.is_banned = False
     user.banned_at = None
     user.ban_reason = None
+    await db.flush()
+    if etait_suspendu:
+        details = (await db.execute(text(
+            "SELECT details FROM admin_journal WHERE action = 'bannissement' AND cible_id = :c "
+            "ORDER BY created_at DESC LIMIT 1"), {"c": str(user.id)})).scalar_one_or_none() or {}
+        await _demasquer_contenus(db, user.id, details.get("masques") or {})
+        await journaliser(db, admin_id=admin_id, action="levee_suspension", cible_type="profil",
+                          cible_id=str(user.id), motif=motif)
+    await db.refresh(user)
     return user
 
 
@@ -130,30 +234,30 @@ async def takedown_content(
                               details={"etait_supprime": etait_supprime})
         return {"ok": True, "detail": "Morceau retiré."}
 
-    if ttype == "playlist":
+    if ttype in ("playlist", "album"):
+        # Lot D : retrait d'une collection = marque `taken_down_at` (le trigger
+        # 0102 la garde privée) + journal, comme les œuvres.
+        model, nom = (Playlist, "Playlist") if ttype == "playlist" else (Album, "Album")
         obj = (await db.execute(
-            select(Playlist).where(Playlist.id == tid)
+            select(model).where(model.id == tid)
         )).scalar_one_or_none()
         if obj is None:
-            return {"ok": False, "detail": "Playlist introuvable."}
+            return {"ok": False, "detail": f"{nom} introuvable."}
+        etait_publique = obj.visibility == "public"
         obj.visibility = "private"
-        return {"ok": True, "detail": "Playlist passée en privé."}
-
-    if ttype == "album":
-        obj = (await db.execute(
-            select(Album).where(Album.id == tid)
-        )).scalar_one_or_none()
-        if obj is None:
-            return {"ok": False, "detail": "Album introuvable."}
-        obj.visibility = "private"
-        return {"ok": True, "detail": "Album passé en privé."}
+        if obj.taken_down_at is None:
+            obj.taken_down_at = datetime.now(timezone.utc)
+            await journaliser(db, admin_id=admin_id, action="retrait", cible_type=ttype,
+                              cible_id=str(tid), motif=reason,
+                              details={"etait_publique": etait_publique})
+        return {"ok": True, "detail": f"{nom} retiré{'e' if ttype == 'playlist' else ''} de la vitrine."}
 
     if ttype == "profil":
         # Signalement d'un profil → on suspend le compte visé.
         pid = tid or _as_uuid(target_id)
         if pid is None:
             return {"ok": False, "detail": "Identifiant de profil invalide."}
-        user = await ban_user(db, pid, reason)
+        user = await ban_user(db, pid, reason, admin_id=admin_id)
         if user is None:
             return {"ok": False, "detail": "Compte introuvable."}
         return {"ok": True, "detail": "Compte suspendu."}
@@ -198,7 +302,12 @@ _RETIRABLES = {
     "visual_adn": ("visual_adns", None, "ADN visuel"),
     "voix": ("voices_for_sale", "name", "Voix"),
     "track": ("tracks", "title", "Morceau"),
+    "playlist": ("playlists", "title", "Playlist"),
+    "album": ("albums", "title", "Album"),
 }
+
+# Colonne « auteur » par table (les collections ont un propriétaire).
+_AUTEUR = {"playlists": "owner_id", "albums": "owner_id"}
 
 
 async def contenus_retires(db: AsyncSession, limit: int = 200) -> list[dict]:
@@ -206,11 +315,14 @@ async def contenus_retires(db: AsyncSession, limit: int = 200) -> list[dict]:
     ancien : type, titre, auteur, motif (journal, sinon signalement), date."""
     union = []
     for ttype, table in (("prompt", "prompts"), ("adn", "adns"), ("visual_adn", "visual_adns"),
-                         ("voix", "voices_for_sale"), ("track", "tracks")):
-        titre = {"prompts": "t.title", "voices_for_sale": "t.name", "tracks": "t.title"}.get(table, "NULL")
+                         ("voix", "voices_for_sale"), ("track", "tracks"),
+                         ("playlist", "playlists"), ("album", "albums")):
+        titre = {"prompts": "t.title", "voices_for_sale": "t.name", "tracks": "t.title",
+                 "playlists": "t.title", "albums": "t.title"}.get(table, "NULL")
         kind = "CASE WHEN t.product_type = 'image' THEN 'image' ELSE 'prompt' END" if table == "prompts" else f"'{ttype}'"
+        auteur = _AUTEUR.get(table, "artist_id")
         union.append(
-            f"SELECT {kind} AS type, t.id::text AS id, {titre} AS titre, t.artist_id, "
+            f"SELECT {kind} AS type, t.id::text AS id, {titre} AS titre, t.{auteur} AS artist_id, "
             f"t.taken_down_at FROM {table} t WHERE t.taken_down_at IS NOT NULL"
         )
     rows = (await db.execute(text(
@@ -266,8 +378,9 @@ async def restaurer_contenu(
     if tid is None:
         raise RestaurationImpossible("Identifiant invalide.")
     table = _RETIRABLES[ttype][0]
+    auteur = _AUTEUR.get(table, "artist_id")
     row = (await db.execute(
-        text(f"SELECT taken_down_at, artist_id FROM {table} WHERE id = :i FOR UPDATE"),  # noqa: S608
+        text(f"SELECT taken_down_at, {auteur} AS artist_id FROM {table} WHERE id = :i FOR UPDATE"),  # noqa: S608
         {"i": tid},
     )).first()
     if row is None:
@@ -283,6 +396,11 @@ async def restaurer_contenu(
         await db.execute(
             text("UPDATE tracks SET taken_down_at = NULL, is_deleted = :d WHERE id = :i"),
             {"d": bool(avant.get("etait_supprime", False)), "i": tid},
+        )
+    elif table in ("playlists", "albums"):
+        await db.execute(
+            text(f"UPDATE {table} SET taken_down_at = NULL, visibility = :v WHERE id = :i"),  # noqa: S608
+            {"v": "public" if avant.get("etait_publique", True) else "private", "i": tid},
         )
     else:
         await db.execute(

@@ -174,7 +174,7 @@
         '<div class="imgl-field"><label>Description</label>' +
           '<textarea id="imgl-e-desc" maxlength="2000">' + esc(img.description || '') + '</textarea></div>' +
         '<div class="imgl-field"><label>Prix (Smyles · 3 à 500)</label>' +
-          '<input type="number" id="imgl-e-price" min="3" max="500" value="' + esc(img.priceCredits != null ? img.priceCredits : '') + '"></div>' +
+          '<input type="number" id="imgl-e-price" min="10" max="150" value="' + esc(img.priceCredits != null ? img.priceCredits : '') + '"></div>' +
         '<label class="imgl-toggle"><input type="checkbox" id="imgl-e-pub"' + (img.isPublished ? ' checked' : '') + '> Publié (visible à la vente)</label>' +
         '<div class="imgl-field"><label>Galerie de l\'avatar <span style="font-weight:400;opacity:.7">(visuels livrés à l\'achat — 10 recommandés)</span></label>' +
           '<div id="imgl-e-gallery"></div>' +
@@ -210,8 +210,8 @@
       var price = parseInt(ov.querySelector('#imgl-e-price').value, 10);
       var pub   = ov.querySelector('#imgl-e-pub').checked;
       if (!title) { toast('Le titre est obligatoire.', 'error'); return; }
-      if (!Number.isInteger(price) || price < 3 || price > 500) {
-        toast('Le prix doit être entre 3 et 500 Smyles.', 'error'); return;
+      if (!Number.isInteger(price) || price < 10 || price > 150) {
+        toast('Le prix doit être entre 10 et 150 Smyles.', 'error'); return;
       }
       btn.disabled = true; btn.textContent = 'Enregistrement…';
       window.apiFetch('/artist/me/images/' + encodeURIComponent(img.id), {

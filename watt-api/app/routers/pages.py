@@ -34,14 +34,17 @@ blanche d'extensions : Flask exposait n'importe quel fichier du repo en HTTP
 (flask_app.py, models.py… téléchargeables) — on ferme ce trou au passage.
 """
 
+import hashlib
 import html as _html
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
+from starlette.datastructures import Headers
 from starlette.exceptions import HTTPException
 from starlette.staticfiles import StaticFiles
 
@@ -183,8 +186,8 @@ def _page_social(filename: str, **meta) -> Response:
         idx = low.find(_HEAD_CLOSE)
         if idx == -1:
             return _page(filename)
-        body = text[:idx] + block + text[idx:]
-        return HTMLResponse(
+        body = injecter_pwa(text[:idx] + block + text[idx:])
+        return _PageHTML(
             content=body,
             headers={"Cache-Control": "public, max-age=60"},
         )
@@ -318,10 +321,193 @@ async def _oeuvre_c4_meta(oeuvre_id: str, request: Request) -> dict | None:
         return None
 
 
+# ── Application installable (PWA) + correctifs mobiles — Lot E ───────────
+#
+# Objectif : « Installer WATT » depuis Safari (iPhone) et Chrome (Android) —
+# icône sur l'écran d'accueil, ouverture en plein écran.
+#
+# Les fichiers vivent dans ui/pwa/ (manifeste, service worker, script, icônes,
+# correctifs mobiles). Plutôt que de modifier chaque page HTML, le serveur
+# ajoute, au moment de servir une page, juste avant </head> :
+#   <link rel="manifest">, les balises iOS (apple-mobile-web-app-*,
+#   apple-touch-icon), theme-color, ui/pwa/mobile.css et ui/pwa/pwa.js.
+# Les balises déjà présentes dans une page ne sont pas dupliquées. Aucun
+# script inline : compatible avec la CSP (script-src 'self').
+#
+# Interrupteur PWA_ACTIVE (variable Railway, défaut true). À false :
+#   • /sw.js devient un « interrupteur d'arrêt » (vide ses caches, se
+#     désinscrit, recharge les onglets) ;
+#   • pwa.js désinscrit tout worker installé au chargement de la page.
+# C'est la garantie qu'un bug de cache ne bloque jamais les utilisateurs.
+
+_PWA_DIR = REPO_ROOT / "ui" / "pwa"
+_THEME_COLOR = "#050508"  # --sp-bg (ui/core/tokens.css), fond de l'accueil
+
+# Fichiers servis À LA RACINE du site (hors du mount statique) :
+# chemin public → (fichier dans ui/pwa/, type, Cache-Control).
+PWA_ROOT_FILES: dict[str, tuple[str, str, str]] = {
+    "/manifest.webmanifest": (
+        "manifest.webmanifest", "application/manifest+json", "public, max-age=3600",
+    ),
+    "/apple-touch-icon.png": (
+        "icones/apple-touch-icon.png", "image/png", "public, max-age=86400",
+    ),
+    # Safari demande aussi cette variante historique.
+    "/apple-touch-icon-precomposed.png": (
+        "icones/apple-touch-icon.png", "image/png", "public, max-age=86400",
+    ),
+    "/favicon.ico": ("icones/favicon-32.png", "image/png", "public, max-age=86400"),
+}
+
+
+def pwa_active() -> bool:
+    """Interrupteur PWA_ACTIVE (lu à chaque requête, comme les drapeaux)."""
+    return os.getenv("PWA_ACTIVE", "true").strip().lower() not in (
+        "0", "false", "non", "no", "off",
+    )
+
+
+def _commit() -> str:
+    return os.getenv("RAILWAY_GIT_COMMIT_SHA", "")[:12]
+
+
+@lru_cache(maxsize=32)
+def _empreinte(path: str, mtime_ns: int) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:10]
+
+
+def _version(rel: str) -> str:
+    """Empreinte du contenu d'un fichier de ui/pwa/ (« ?v= » des adresses)."""
+    path = _PWA_DIR / rel
+    try:
+        return _empreinte(str(path), path.stat().st_mtime_ns)
+    except OSError:
+        return "0"
+
+
+def _bloc_pwa(low: str, actif: bool) -> str:
+    """Balises à injecter ; `low` = page en minuscules (anti-doublons)."""
+    parts = ['<link rel="manifest" href="/manifest.webmanifest" />']
+    if 'name="theme-color"' not in low:
+        parts.append(f'<meta name="theme-color" content="{_THEME_COLOR}" />')
+    if 'name="mobile-web-app-capable"' not in low:
+        parts.append('<meta name="mobile-web-app-capable" content="yes" />')
+    if 'name="apple-mobile-web-app-capable"' not in low:
+        parts.append('<meta name="apple-mobile-web-app-capable" content="yes" />')
+    if 'name="apple-mobile-web-app-status-bar-style"' not in low:
+        parts.append('<meta name="apple-mobile-web-app-status-bar-style" content="black" />')
+    if 'name="apple-mobile-web-app-title"' not in low:
+        parts.append('<meta name="apple-mobile-web-app-title" content="WATT" />')
+    if 'rel="apple-touch-icon"' not in low:
+        parts.append('<link rel="apple-touch-icon" href="/apple-touch-icon.png" />')
+    if 'rel="icon"' not in low:
+        parts.append(
+            '<link rel="icon" type="image/png" sizes="32x32" '
+            f'href="/ui/pwa/icones/favicon-32.png?v={_version("icones/favicon-32.png")}" />'
+        )
+    parts.append(
+        f'<link rel="stylesheet" href="/ui/pwa/mobile.css?v={_version("mobile.css")}" />'
+    )
+    parts.append(
+        f'<script src="/ui/pwa/pwa.js?v={_version("pwa.js")}" '
+        f'data-sw="{"on" if actif else "off"}" defer></script>'
+    )
+    return "<!-- WATT : application installable + correctifs mobiles -->\n" + "\n".join(parts) + "\n"
+
+
+def injecter_pwa(html_text: str, actif: bool | None = None) -> str:
+    """Ajoute le bloc PWA juste avant </head> (une seule fois)."""
+    low = html_text.lower()
+    if 'rel="manifest"' in low:
+        return html_text
+    idx = low.find(_HEAD_CLOSE)
+    if idx == -1:
+        return html_text
+    if actif is None:
+        actif = pwa_active()
+    return html_text[:idx] + _bloc_pwa(low, actif) + html_text[idx:]
+
+
+@lru_cache(maxsize=64)
+def _page_injectee(path: str, mtime_ns: int, actif: bool, commit: str) -> str:
+    # `commit` dans la clé : un déploiement recalcule les « ?v= ».
+    return injecter_pwa(_read_page_cached(path, mtime_ns), actif)
+
+
+class _PageHTML(HTMLResponse):
+    """Page HTML avec ETag : un rechargement sans changement répond 304
+    (FileResponse le faisait ; on garde ce gain sur mobile)."""
+
+    def __init__(self, content: str, **kw):
+        super().__init__(content=content, **kw)
+        self.headers["ETag"] = '"' + hashlib.sha256(self.body).hexdigest()[:20] + '"'
+
+    async def __call__(self, scope, receive, send):
+        demande = Headers(scope=scope).get("if-none-match", "")
+        etag = self.headers["ETag"]
+        if demande and etag in [v.strip() for v in demande.split(",")]:
+            entetes = [(k, v) for k, v in self.raw_headers
+                       if k.lower() not in (b"content-length", b"content-type")]
+            await send({"type": "http.response.start", "status": 304, "headers": entetes})
+            await send({"type": "http.response.body", "body": b""})
+            return
+        await super().__call__(scope, receive, send)
+
+
+@lru_cache(maxsize=8)
+def _sw_corps(mtime_ns: int, actif: bool, commit: str) -> str:
+    modele = (_PWA_DIR / "sw.js").read_text(encoding="utf-8")
+    version = hashlib.sha256(
+        (modele + commit + _version("mobile.css") + _version("pwa.js")).encode()
+    ).hexdigest()[:12]
+    return (
+        modele.replace("__WATT_SW_VERSION__", version)
+        .replace("__WATT_SW_ACTIF__", "true" if actif else "false")
+    )
+
+
+@router.api_route("/sw.js", methods=["GET", "HEAD"], include_in_schema=False)
+async def service_worker() -> Response:
+    # Jamais mis en cache par le navigateur : une nouvelle version (ou
+    # l'interrupteur d'arrêt) doit être vue dès la visite suivante.
+    path = _PWA_DIR / "sw.js"
+    return Response(
+        content=_sw_corps(path.stat().st_mtime_ns, pwa_active(), _commit()),
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Service-Worker-Allowed": "/",
+        },
+    )
+
+
+def _pwa_root_route(public: str, rel: str, media_type: str, cache: str):
+    async def _servir() -> FileResponse:
+        return FileResponse(
+            _PWA_DIR / rel, media_type=media_type, headers={"Cache-Control": cache}
+        )
+
+    router.add_api_route(public, _servir, methods=["GET", "HEAD"], include_in_schema=False)
+
+
+for _public, (_rel, _type, _cache) in PWA_ROOT_FILES.items():
+    _pwa_root_route(_public, _rel, _type, _cache)
+
+
 # ── Pages ──────────────────────────────────────────────────────────────────
 
-def _page(filename: str) -> FileResponse:
-    return FileResponse(REPO_ROOT / filename, media_type="text/html")
+def _page(filename: str) -> Response:
+    """Sert une page HTML du dépôt, avec le bloc « application installable »
+    + correctifs mobiles injecté avant </head> (Lot E, voir plus bas)."""
+    path = REPO_ROOT / filename
+    try:
+        mtime_ns = path.stat().st_mtime_ns
+    except OSError:
+        raise HTTPException(status_code=404)
+    return _PageHTML(
+        content=_page_injectee(str(path), mtime_ns, pwa_active(), _commit()),
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @router.get("/", include_in_schema=False)
@@ -450,14 +636,43 @@ async def artiste_page_legacy(slug: str):
     return RedirectResponse(f"/u/{slug}", status_code=301)
 
 
+@router.get("/mes-oeuvres", include_in_schema=False)
+async def mes_oeuvres_page():
+    # Parcours V1 — écran « Mes Œuvres » du créateur (données : /artist/me/oeuvres).
+    return _page("mes-oeuvres.html")
+
+
 @router.get("/library", include_in_schema=False)
 async def library_page():
     return _page("library.html")
 
 
+_REPLI_COORDONNEES = "communiqué sur simple demande à smyletheplan@gmail.com"
+
+
+def _coordonnees_editeur(texte: str) -> str:
+    """Remplace les marqueurs de legal.html par les coordonnées de l'éditeur,
+    lues dans la configuration (variables Railway) : elles ne figurent jamais
+    dans le dépôt public."""
+    adresse = (settings.EDITEUR_ADRESSE or "").strip() or _REPLI_COORDONNEES
+    telephone = (settings.EDITEUR_TELEPHONE or "").strip() or _REPLI_COORDONNEES
+    return (texte.replace("{{EDITEUR_ADRESSE}}", _html.escape(adresse))
+                 .replace("{{EDITEUR_TELEPHONE}}", _html.escape(telephone)))
+
+
 @router.get("/legal", include_in_schema=False)
+@router.get("/legal.html", include_in_schema=False)
 async def legal_page():
-    return _page("legal.html")
+    path = REPO_ROOT / "legal.html"
+    try:
+        mtime_ns = path.stat().st_mtime_ns
+    except OSError:
+        raise HTTPException(status_code=404)
+    texte = _page_injectee(str(path), mtime_ns, pwa_active(), _commit())
+    return _PageHTML(
+        content=_coordonnees_editeur(texte),
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @router.get("/reset", include_in_schema=False)
@@ -501,6 +716,29 @@ async def artistes_page():
     return _page("index.html")
 
 
+# ── Parcours V1 — anciennes adresses directes des pages masquées ─────────
+# /tarifs.html, /offres.html et /oeuvre.html ne s'ouvrent plus « à la main » :
+# redirection vers l'accueil tant que la page est masquée (ou obsolète), vers
+# son adresse officielle sinon. /oeuvre.html sans identifiant de collection
+# n'affiche rien d'utile : toujours l'accueil.
+
+@router.get("/tarifs.html", include_in_schema=False)
+async def tarifs_html_legacy():
+    cible = "/tarifs" if settings.launch_flags_dict()["euros"] else "/"
+    return RedirectResponse(cible, status_code=302)
+
+
+@router.get("/offres.html", include_in_schema=False)
+async def offres_html_legacy():
+    cible = "/offres" if settings.launch_flags_dict()["paliers"] else "/"
+    return RedirectResponse(cible, status_code=302)
+
+
+@router.get("/oeuvre.html", include_in_schema=False)
+async def oeuvre_html_legacy():
+    return RedirectResponse("/", status_code=302)
+
+
 # ── Statiques (mount "/" en dernier) ───────────────────────────────────────
 
 # Lot A (2026-10-07) — LISTE BLANCHE DE CHEMINS (et plus seulement
@@ -520,6 +758,12 @@ _UI_STATIC_SUFFIXES = {
     ".woff", ".woff2", ".ttf", ".otf",
 }
 _PUBLIC_STATIC_DIRS = {"ui"}
+# Pages HTML publiques HORS racine (Lot E) : la page « hors ligne » de
+# l'application installable, précachée par /sw.js.
+_PUBLIC_NESTED_FILES = {"ui/pwa/hors-ligne.html"}
+# Modèle du service worker : servi uniquement par la route /sw.js (qui
+# remplace ses marqueurs), jamais tel quel.
+_DENIED_NESTED_FILES = {"ui/pwa/sw.js"}
 # Pages jamais publiques (démo interne).
 _DENIED_ROOT_FILES = {"banner-demo.html"}
 # Pages derrière un interrupteur de lancement : l'accès direct au fichier
@@ -537,6 +781,10 @@ def static_path_allowed(path: str) -> bool:
     parts = p.parts
     if not parts or any(part.startswith(".") or part == ".." for part in parts):
         return False
+    if p.as_posix() in _PUBLIC_NESTED_FILES:
+        return True
+    if p.as_posix() in _DENIED_NESTED_FILES:
+        return False
     suffix = p.suffix.lower()
     if len(parts) == 1:
         name = parts[0]
@@ -553,6 +801,15 @@ class _AllowlistStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         if not static_path_allowed(path):
             raise HTTPException(status_code=404)
+        # Lot E : une page .html servie par son nom de fichier reçoit aussi
+        # le bloc « application installable » (mêmes règles que _page).
+        if (
+            path.lower().endswith(".html")
+            and len(Path(path).parts) == 1  # pages racine (pas la page hors ligne)
+            and scope.get("method") in ("GET", "HEAD")
+            and (REPO_ROOT / path).is_file()
+        ):
+            return _page(path)
         return await super().get_response(path, scope)
 
 

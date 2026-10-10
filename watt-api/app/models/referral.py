@@ -28,7 +28,7 @@ class Referral(Base):
     Règles métier (cf. [[project_mechanics_before_stripe]]) :
       - Un filleul ne peut être parrainé qu'UNE fois (unique sur referred_id).
       - Pas d'auto-parrainage (CHECK referrer_id != referred_id).
-      - La récompense (10 Smyles par côté) n'est versée qu'à la PREMIÈRE
+      - La récompense (20 Smyles par côté) n'est versée qu'à la PREMIÈRE
         vraie action du filleul (1er son posté OU 1er achat) — anti-faux-compte.
         Tant que status=PENDING, aucun crédit n'a été versé.
 

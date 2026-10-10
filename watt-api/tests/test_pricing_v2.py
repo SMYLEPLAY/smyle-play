@@ -63,19 +63,21 @@ async def _cleanup(*uids):
 
 # ─── constantes ───────────────────────────────────────────────────────────────
 
-def test_valeur_de_retrait_50_centimes_et_maturation_30_jours():
+def test_valeur_de_retrait_5_centimes_et_maturation_30_jours():
     from app.schemas.user import UserRead
     from app.services.escrow import EARNINGS_MATURITY_DAYS
     from app.services.reserve import PAYOUT_RATE_CENTS
 
-    assert PAYOUT_RATE_CENTS == 50
+    # Redénomination ×10 (9/10/2026) : 50 → 5 centimes par Smyle gagné, la
+    # valeur en euros d'un ancien Smyle (= 10 Smyles) reste 0,50 €.
+    assert PAYOUT_RATE_CENTS == 5
     assert EARNINGS_MATURITY_DAYS == 30
     fields = {k: v for k, v in {
         "id": uuid.uuid4(), "email": "a@b.example", "created_at": "2026-09-30T00:00:00Z",
-        "credits_earned_total": 10,
+        "credits_earned_total": 100,
     }.items()}
     u = UserRead.model_validate(fields)
-    assert u.euro_equivalent_earned == 5.0  # 10 × 0,50 €
+    assert u.euro_equivalent_earned == 5.0  # 100 × 0,05 €
 
 
 def test_page_offres_mythique_10_pct():
@@ -85,12 +87,12 @@ def test_page_offres_mythique_10_pct():
 
 
 def test_aucun_070_residuel_pour_la_valeur_de_retrait():
-    """0,70 € reste le prix d'ACHAT moyen (pack de 50) — jamais la valeur de
+    """0,07 € reste le prix d'ACHAT moyen (pack de 500) — jamais la valeur de
     retrait. Les endroits qui valorisent des gains lisent PAYOUT_RATE_CENTS."""
     user_schema = (REPO_ROOT / "watt-api" / "app" / "schemas" / "user.py").read_text(encoding="utf-8")
     assert "credits_earned_total * 0.70" not in user_schema
     reserve = (REPO_ROOT / "watt-api" / "app" / "services" / "reserve.py").read_text(encoding="utf-8")
-    assert "PAYOUT_RATE_CENTS = 50" in reserve
+    assert "PAYOUT_RATE_CENTS = 5\n" in reserve
 
 
 # ─── migration 0099 ───────────────────────────────────────────────────────────
@@ -182,14 +184,14 @@ async def test_creator_stats_portefeuille(client, test_user, auth_headers):
     r = await client.get("/me/creator-stats", headers=auth_headers)
     assert r.status_code == 200, r.text
     assert r.json()["portefeuille"] == {
-        "retirables": 7, "bonus": 8, "valeur_retrait_cents": 50,
+        "retirables": 7, "bonus": 8, "valeur_retrait_cents": 5,
     }
 
 
 def test_dashboard_affiche_retirables_et_bonus():
     js = (REPO_ROOT / "dashboard.js").read_text(encoding="utf-8")
     assert "Smyles retirables" in js and "Smyles bonus" in js
-    assert ("1 Smyle gagné en vendant = 0,50 € quand les retraits s\\'ouvriront "
+    assert ("100 Smyles gagnés en vendant = 5 € quand les retraits s\\'ouvriront "
             "' +\n    '(à 1000 actifs, et au plus tard le 1er mai 2027). ") in js
     assert "Les Smyles bonus se dépensent sur WATT mais ne se retirent pas." in js
 

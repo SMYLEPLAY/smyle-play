@@ -195,7 +195,11 @@
   async function openAddToAlbumModal(promptId) {
     if (!_albumsOn()) return null;  // Lot 1
     if (!promptId) return;
-    if (!_isAuth()) { _toast('Connecte-toi pour ajouter à un album.'); return; }
+    if (!_isAuth()) {
+      if (window.SmyleGate) window.SmyleGate.requireAccount();
+      else _toast('Crée ton compte pour ajouter à un album.');
+      return;
+    }
     if (document.getElementById('al-add-modal')) return;
     if (window.SmylePlaylists && window.SmylePlaylists.injectModalStyles) {
       window.SmylePlaylists.injectModalStyles();
@@ -601,7 +605,8 @@
     btn.addEventListener('click', async () => {
       const errEl = content.querySelector('#al-adn-buy-err');
       if (!_isAuth()) {
-        if (errEl) { errEl.textContent = 'Connecte-toi pour acheter cet ADN.'; errEl.style.display = 'block'; }
+        if (window.SmyleGate) { window.SmyleGate.requireAccount(); return; }
+        if (errEl) { errEl.textContent = 'Crée ton compte pour acheter cet ADN.'; errEl.style.display = 'block'; }
         return;
       }
       btn.disabled = true;
@@ -622,7 +627,7 @@
         btn.disabled = false;
         btn.textContent = prev;
         const s = e && e.status;
-        const msg = s === 402 ? 'Crédits insuffisants.'
+        const msg = s === 402 ? 'Smyles insuffisants.'
                   : s === 409 ? 'Tu possèdes déjà cet ADN.'
                   : s === 401 ? 'Connecte-toi pour acheter.'
                   : 'Erreur lors de l\'achat.';
