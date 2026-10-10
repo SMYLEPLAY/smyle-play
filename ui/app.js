@@ -23,7 +23,6 @@
      ui/panels/mix.js      — renderMixPanel
      ui/modals/auth.js     — renderAuthArea, closeAuthModal
      ui/modals/contact.js  — closeContactModal
-     ui/modals/premium.js  — closePremiumModal
      ui/modals/save-mix.js — closeSaveMix
      ui/hub/community.js   — fetchPlaylists, renderCommunityHub
    ───────────────────────────────────────────────────────────────────────── */
@@ -147,9 +146,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('contactModal').addEventListener('click', e => {
     if (e.target === document.getElementById('contactModal')) closeContactModal();
-  });
-  document.getElementById('premiumModal').addEventListener('click', e => {
-    if (e.target === document.getElementById('premiumModal')) closePremiumModal();
   });
 
   // 5. Raccourcis clavier

@@ -51,7 +51,7 @@
   font-weight: 700; color: #cc88ff; font-variant-numeric: tabular-nums;
 }
 </style>
-  <script src="/ui/core/credits-format.js" defer></script>
+  <script src="/ui/core/credits-format.js?v=20261011lotg" defer></script>
 </head>
 <body class="dash-page">
 
@@ -82,7 +82,6 @@
          le nom d'une PILL de ce tableau (section 03 : visibilité marketplace),
          plus celui du tableau entier. Évite la double-désignation. -->
     <span class="dash-topbar-brand">WATT BOARD</span>
-    <span class="dash-topbar-badge">Bêta</span>
   </div>
 
   <div class="dash-topbar-right">
@@ -700,12 +699,10 @@
       <span class="dash-subhdr-sub">avec ou sans recette prompt vendable</span>
     </div>
 
-    <!-- ═══ Gate "profil publié" (Étape 1) ═══════════════════════════════════
-         Tant que le profil n'est pas rendu public sur /u/<slug>, l'upload
-         est bloqué visuellement ici (et côté serveur : 409 sur POST
-         /api/watt/tracks). Affiché uniquement après que loadPublishStatus()
-         ait confirmé profile_public=false. renderCreationGate() gère le
-         toggle. ═══════════════════════════════════════════════════════════ -->
+    <!-- ═══ Gate « nom d'artiste » (Lot G) ═══════════════════════════════════
+         Le profil devient public AUTOMATIQUEMENT au premier son publié.
+         Seul prérequis : un nom d'artiste (adresse de la page publique).
+         renderCreationGate() affiche ce bloc uniquement s'il manque. ═════ -->
     <div id="dashCreationGate" class="dash-creation-gate" style="display:none">
       <div class="dash-creation-gate-ico">
         <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -714,47 +711,22 @@
         </svg>
       </div>
       <div class="dash-creation-gate-body">
-        <div class="dash-creation-gate-title">Active d'abord ta présence sur la marketplace</div>
+        <div class="dash-creation-gate-title">Choisis d'abord ton nom d'artiste</div>
         <div class="dash-creation-gate-sub">
-          Un son publié est rattaché à une boutique publique. Remplis ton
-          <strong>identité publique</strong> juste au-dessus (nom, bio,
-          couleurs, socials) puis bascule le switch <strong>PLUG WATT</strong>
-          pour apparaître sur la marketplace. Tu pourras ensuite poster tes
-          sons et vendre tes prompts ici.
+          Ton nom d'artiste donne son adresse à ta page publique. Remplis-le
+          dans ton <strong>identité publique</strong> juste au-dessus : ton
+          profil deviendra public automatiquement au premier son publié.
         </div>
         <div class="dash-creation-gate-actions">
           <a class="dash-btn-primary" href="#sec-identity">
             <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Remplir mon identité + activer ma boutique
+            Choisir mon nom d'artiste
           </a>
         </div>
       </div>
     </div>
 
     <!-- Compteur freemium -->
-    <div class="dash-free-counter" id="dashFreeCounter">
-      <div class="dash-free-counter-top">
-        <span class="dash-free-counter-lbl">Playlist gratuite</span>
-        <span class="dash-free-counter-val" id="dashFreeCounterVal">0 / 6 sons</span>
-      </div>
-      <div class="dash-free-bar-track">
-        <div class="dash-free-bar-fill" id="dashFreeBarFill" style="width:0%"></div>
-      </div>
-    </div>
-
-    <!-- Teaser premium (visible uniquement quand limite atteinte) -->
-    <div class="dash-premium-teaser" id="dashPremiumTeaser" style="display:none">
-      <div class="dpt-bolt">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      </div>
-      <div class="dpt-title">Ta playlist gratuite est complète</div>
-      <div class="dpt-sub">Tu as publié tes 6 sons offerts pendant la bêta.</div>
-      <!-- LANCEMENT 2026-07-20 — encart d'upsell PASS WATT (0,99 €/mois) RETIRÉ :
-           pas de mur de paiement ni de promesse « Bientôt » avant Stripe.
-           Le bloc reviendra avec le paiement réel. -->
-      <div class="dpt-note">Tu pourras publier davantage à mesure que la plateforme s'ouvre.</div>
-    </div>
-
     <div class="dash-upload-layout" id="dashUploadLayout">
 
       <!-- Zone drag & drop -->
@@ -941,10 +913,10 @@
                 <span class="dash-prompt-settings-sub">Pour que l'acheteur puisse reproduire ton son fidèlement</span>
               </div>
 
-              <label class="dash-label">Modèle / version</label>
+              <label class="dash-label">Modèle / version <span class="dash-req">*</span></label>
               <input class="dash-input" id="dashPromptModelVersion"
-                     placeholder="Suno v4, Udio 1.5, ..." maxlength="50" />
-              <div class="dash-help">Optionnel. Si tu connais la version exacte, plus l'acheteur reproduit fidèlement.</div>
+                     placeholder="Suno v4.5, Udio 1.5, ..." maxlength="50" required />
+              <div class="dash-help">Obligatoire : l'outil et sa version sont affichés sur ton Œuvre.</div>
 
               <label class="dash-label">
                 Weirdness <span class="dash-req">*</span>
@@ -1035,7 +1007,7 @@
                   <span id="dashCreditLiveMax">1,20&nbsp;€</span>
                 </div>
                 <div class="dash-credit-live-note">
-                  Tu touches 80&nbsp;% (split primary). Ajuste le prix pour
+                  Tu touches 80&nbsp;% du prix de vente. Ajuste le prix pour
                   trouver ton seuil juste.
                 </div>
               </div>
@@ -1043,7 +1015,7 @@
 
             <!-- Pochette -->
             <div class="dash-cover-col">
-              <label class="dash-label">Pochette (optionnel)</label>
+              <label class="dash-label">Pochette <span class="dash-req">*</span></label>
               <div class="dash-cover-drop" id="dashCoverDrop"
                    onclick="document.getElementById('dashCoverInput').click()"
                    ondragover="handleCoverDragOver(event)"
@@ -1160,7 +1132,7 @@
 
         <div class="dash-r2-note">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Stockage sécurisé · Cloudflare R2 · <code>WATT/{userId}/{filename}</code>
+          Tes fichiers sont stockés de façon sécurisée. <a href="/comment-ca-marche" style="color:inherit">Comment ça marche ?</a>
         </div>
       </div>
 
@@ -2636,30 +2608,30 @@
   </div>
 </div>
 
-<script src="ui/core/api.js?v=20261010lotd"></script>
-<script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
-<script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
-<script src="ui/core/consent.js?v=20261010lotd"></script>
-<script src="ui/core/telemetry.js?v=20261010lotd"></script>
+<script src="ui/core/api.js?v=20261011lotg"></script>
+<script src="/ui/core/visitor-gate.js?v=20261011lotg"></script>
+<script src="/ui/core/onboarding.js?v=20261011lotg" defer></script>
+<script src="ui/core/consent.js?v=20261011lotg"></script>
+<script src="ui/core/telemetry.js?v=20261011lotg"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
-<script src="/ui/modals/purchase-drawer.js?v=20260708parite"></script>
-<script src="/ui/modals/offer-modal.js?v=20260703offres3"></script>
-<script src="/ui/modals/report-modal.js?v=20261010lotd"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20261011lotg"></script>
+<script src="/ui/modals/offer-modal.js?v=20261011lotg"></script>
+<script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
 <script src="/ui/modals/oeuvre-compose.js?v=20260707oc" defer></script>
-<script src="/ui/playlists.js?v=20261010lotd" defer></script>
-<script src="dashboard.js?v=20261010lotd"></script>
+<script src="/ui/playlists.js?v=20261011lotg" defer></script>
+<script src="dashboard.js?v=20261011lotg"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260708parite" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
 <script src="/ui/modals/oeuvre-invite.js?v=20260923o" defer></script>
-<script src="images-create.js?v=20260618c4gal" defer></script>
-<script src="images-list.js?v=20260618c4gal" defer></script>
+<script src="images-create.js?v=20261011lotg" defer></script>
+<script src="images-list.js?v=20261011lotg" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
-<script src="/ui/modals/boutique.js" defer></script>
-<script src="/ui/modals/engagement.js" defer></script>
+<script src="/ui/modals/boutique.js?v=20261011lotg" defer></script>
+<script src="/ui/modals/engagement.js?v=20261011lotg" defer></script>
 <script src="/ui/modals/search.js?v=20260615a" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 
@@ -3090,13 +3062,13 @@
 
 <!-- Messagerie 1:1 (Phase C) -->
 <link rel="stylesheet" href="/ui/messaging/messaging.css" />
-<script src="/ui/messaging/messaging.js?v=20260708adn" defer></script>
-<script src="/ui/core/trade-view.js?v=20260708adn2" defer></script>
+<script src="/ui/messaging/messaging.js?v=20261011lotg" defer></script>
+<script src="/ui/core/trade-view.js?v=20261011lotg" defer></script>
 <script src="/ui/core/page-services.js" defer></script>
 <script src="/ui/pioneer-counter.js" defer></script>
 <script src="/ui/goal-bar.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
-<script src="/ui/core/legal-footer.js?v=20261010lotd" defer></script>
+<script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>
 <script src="/ui/player/mini-bar.js?v=20260707player" defer></script>
 </body>
 </html>

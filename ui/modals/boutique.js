@@ -22,12 +22,9 @@
     epique:     { label: 'Épique',     color: '#b06cff' },
     legendaire: { label: 'Légendaire', color: '#ffb627' },
   };
-  // Paliers de recharge — alignés sur CREDIT_PACKS (backend).
-  const SMYLE_PACKS = [
-    { credits: 10,  eur: 8,   best: false },
-    { credits: 50,  eur: 35,  best: true  },
-    { credits: 200, eur: 120, best: false },
-  ];
+  // Lot G : l'ancienne table des paliers de recharge (10 / 50 / 200, avant la
+  // redénomination ×10) est supprimée — inutilisée. Les packs en vigueur
+  // vivent côté serveur (CREDIT_PACKS) et reviendront avec le paiement réel.
   // Abonnement — 3 paliers décidés. Avantages à définir plus tard.
   const SUB_TIERS = [
     { name: 'Standard', icon: '🎫', accent: '#9aa0aa' },
@@ -157,7 +154,7 @@
     // LANCEMENT 2026-07-20 — sections « Recharger tes Smyles » (packs €) et
     // « Abonnement » RETIRÉES de l'UI : pas de mur de paiement ni de promesse
     // « Bientôt » tant que Stripe n'est pas branché. Elles reviendront telles
-    // quelles avec le paiement réel (les constantes SMYLE_PACKS / SUB_TIERS
+    // quelles avec le paiement réel (la constante SUB_TIERS
     // sont conservées pour ce retour).
 
     body.innerHTML = html;

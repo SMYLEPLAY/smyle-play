@@ -42,7 +42,7 @@
 <body>
 <div class="wrap">
   <h1>Funnel produit</h1>
-  <p class="sub">Visiteur → inscrit → 1er achat → revient. Inscrits et achats viennent du registre (exacts) ; visiteurs et retours de la télémétrie (partiels). Activité complète de la bêta&nbsp;: <code>GET /admin/beta</code>.</p>
+  <p class="sub">Visiteur → inscrit → 1er achat → revient. Inscrits et achats viennent du registre (exacts) ; visiteurs et retours de la mesure d'audience (partiels, seulement les visiteurs qui l'ont acceptée).</p>
   <div class="row">
     <label style="font-size:13px;color:var(--mut)">Fenêtre</label>
     <select id="days">
@@ -55,7 +55,7 @@
   <div id="out"><p class="msg">Chargement…</p></div>
 </div>
 
-<script src="ui/core/api.js?v=20261010lotd"></script>
+<script src="ui/core/api.js?v=20261011lotg"></script>
 <script>
 (function () {
   var out = document.getElementById('out');

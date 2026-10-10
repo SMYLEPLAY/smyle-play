@@ -42,6 +42,8 @@
     f.innerHTML =
       '<span style="letter-spacing:.1em;">⚡ WATT</span><br>' +
       '<nav aria-label="Informations légales">' +
+        // Lot G : lien vers la page d'explication, depuis toutes les pages.
+        '<a href="/comment-ca-marche" style="' + l + '">Comment ça marche</a>' +
         '<a href="/legal#mentions" style="' + l + '">Mentions légales</a>' +
         '<a href="/legal#cgu" style="' + l + '">CGU</a>' +
         '<a href="/legal#confidentialite" style="' + l + '">Confidentialité</a>' +

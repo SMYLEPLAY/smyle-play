@@ -287,7 +287,12 @@
       btn.disabled = true;
       btn.textContent = 'Déblocage…';
       if (!window.apiFetch) { _toast('Connexion indisponible. Recharge la page.', 'error'); btn.disabled = false; return; }
-      window.apiFetch(ENDPOINTS[type] + encodeURIComponent(id), { method: 'POST' }).then(function (resp) {
+      // Lot G — le prix affiché est envoyé : s'il a changé, le serveur
+      // refuse (409) et smyleAcheter propose de confirmer le nouveau prix.
+      var _achat = (window.smyleAcheter && (type === 'son' || type === 'image'))
+        ? window.smyleAcheter(ENDPOINTS[type] + encodeURIComponent(id), price)
+        : window.apiFetch(ENDPOINTS[type] + encodeURIComponent(id), { method: 'POST' });
+      _achat.then(function (resp) {
         close();
         var msg = (resp && resp.perk_applied)
           ? 'Débloqué avec perk ADN −30 % 🔓'
@@ -307,6 +312,10 @@
         btn.disabled = false;
         btn.textContent = 'Débloquer' + (price != null ? ' · ' + price : '') + ' ⚡';
         var status = err && err.status;
+        if (err && err.annule) {
+          _toast('Achat annulé : le prix a changé.', 'info');
+          return;
+        }
         if (status === 401) {
           close();
           if (window.SmyleGate) { window.SmyleGate.requireAccount(); }
@@ -319,6 +328,8 @@
           _toast((d && typeof d === 'object')
             ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.'
             : 'Solde de Smyles insuffisant.', 'error');
+        } else if (status === 409 && err.body && err.body.detail && err.body.detail.code === 'prix_change') {
+          _toast(err.body.detail.message + ' — réessaie.', 'error');
         } else if (status === 409) {
           _toast('Tu possèdes déjà cet exemplaire — il est dans ta bibliothèque.', 'info');
         } else {
