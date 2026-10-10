@@ -820,6 +820,19 @@
 
       const FALLBACK_EMOJIS = ['🎵','🎶','🔥','✨','🎸','🎹','🌙','⚡'];
 
+      // Lot D — « Signaler » une collection depuis le profil public (pas sur
+      // son propre profil). Le délégué global de report-modal.js capte le clic
+      // avant la tuile (phase de capture) : la tuile ne s'ouvre pas.
+      const _selfProfile = (typeof state !== 'undefined' && state && state.artist && state.artist.isSelf) ? true : false;
+      function _reportTileBtn(type, id, title) {
+        if (_selfProfile || !id) return '';
+        return '<button type="button" class="mp-report-btn ap-col-report" data-report-type="' + type +
+          '" data-report-id="' + _esc(String(id)) + '" data-report-title="' + _esc(title || '') + '" ' +
+          'title="Signaler" aria-label="Signaler cette collection" ' +
+          'style="position:absolute;bottom:8px;right:8px;z-index:9;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.18);' +
+          'border-radius:999px;color:#cfc9e0;font-size:11px;padding:2px 8px;cursor:pointer">⚑</button>';
+      }
+
       function _plTileHtml(p, i, kind, slugOeuvre) {
         const nc     = p.color || '#cc88ff';
         const ncRgb  = _hexToRgb(nc);
@@ -859,6 +872,7 @@
             '</button>' +
             adnBadge +
             plActionsHtml +
+            _reportTileBtn('playlist', p.id, p.title) +
             '<div class="ap-pl-world-info">' +
               '<div class="ap-pl-world-name">' + _esc(p.title) + '</div>' +
               '<div class="ap-pl-world-meta">' + meta + '</div>' +
@@ -879,6 +893,7 @@
             media +
             '<div class="ap-pl-world-scrim"></div>' +
             '<div class="ap-col-type ap-col-type--visual">🎨 Album</div>' +
+            _reportTileBtn('album', a.id, a.title) +
             '<div class="ap-pl-world-info">' +
               '<div class="ap-pl-world-name">' + _esc(a.title) + '</div>' +
               '<div class="ap-pl-world-meta">' + n + ' image' + (n > 1 ? 's' : '') + '</div>' +

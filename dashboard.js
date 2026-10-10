@@ -4517,10 +4517,9 @@ function initSectionNav() {
 
 // ── 12. DÉCONNEXION ───────────────────────────────────────────────────────────
 
-/* ── Suppression de compte RGPD (pack légal v1, 2026-06-10) ──────────────
-   Double confirmation : l'utilisateur doit taper SUPPRIMER. Appelle
-   DELETE /users/me (anonymisation backend), puis purge la session locale
-   et renvoie à l'accueil. */
+/* ── Suppression de compte RGPD (pack légal v1, 2026-06-10 ; Lot D) ──────
+   Écran de confirmation (dashDeleteAccount, plus bas) : renonciation aux
+   Smyles + saisie de SUPPRIMER, revérifiées par le serveur. */
 // Export RGPD (droit d'accès) — télécharge le JSON du compte via le token.
 async function dashExportData(btn) {
   const tok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
@@ -4547,32 +4546,133 @@ async function dashExportData(btn) {
   }
 }
 
+/* Lot D — écran de confirmation de suppression : avertit de la perte de
+   TOUS les Smyles (y compris ceux gagnés en vendant), explique ce qui est
+   effacé et ce qui reste chez les acheteurs, et exige une renonciation
+   explicite (case + saisie de « SUPPRIMER »). Le serveur revérifie les deux
+   (DELETE /users/me, corps JSON), sinon 422. */
+function _dashDelEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 async function dashDeleteAccount() {
-  const typed = window.prompt(
-    'Cette action est DÉFINITIVE.\n\n' +
-    'Ton profil sera anonymisé et tes contenus retirés du public. ' +
-    'Les exemplaires déjà achetés par d\'autres restent dans leur bibliothèque.\n\n' +
-    'Pour confirmer, tape exactement : SUPPRIMER'
-  );
-  if (typed === null) return;                    // annulé
-  if (typed.trim() !== 'SUPPRIMER') {
-    dashToast('Suppression annulée — le texte ne correspond pas.');
-    return;
+  if (document.getElementById('dash-del-overlay')) return;
+  let apercu = null;
+  try { apercu = await apiFetch('/users/me/suppression'); } catch (_) { apercu = null; }
+  const sm = (apercu && apercu.smyles) || {};
+  const oe = (apercu && apercu.oeuvres) || {};
+  const total = Number(sm.total || 0);
+  const gagnes = Number(sm.gagnes_en_vendant || 0);
+  const rang = apercu && apercu.pionnier_rang;
+
+  if (!document.getElementById('dash-del-css')) {
+    const st = document.createElement('style');
+    st.id = 'dash-del-css';
+    st.textContent = [
+      '#dash-del-overlay{position:fixed;inset:0;z-index:100050;background:rgba(5,3,10,.82);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}',
+      '#dash-del-overlay .dd-box{background:#16101c;border:1px solid rgba(255,85,119,.45);border-radius:16px;max-width:480px;width:100%;padding:22px 20px;color:#eee;box-sizing:border-box;max-height:calc(100vh - 32px);overflow:auto}',
+      '#dash-del-overlay h2{margin:0 0 12px;font-size:18px;color:#ff6f8a}',
+      '#dash-del-overlay .dd-loss{background:rgba(255,85,119,.1);border:1px solid rgba(255,85,119,.35);border-radius:11px;padding:12px 14px;margin:0 0 14px;font-size:14px;line-height:1.55}',
+      '#dash-del-overlay .dd-loss strong{color:#ffd700}',
+      '#dash-del-overlay ul{margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.6;color:#cfc8de}',
+      '#dash-del-overlay p{font-size:13px;line-height:1.6;color:#cfc8de;margin:0 0 12px}',
+      '#dash-del-overlay a{color:#c9a6ff}',
+      '#dash-del-overlay .dd-check{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.5;margin:12px 0;cursor:pointer}',
+      '#dash-del-overlay .dd-check input{margin-top:3px;width:18px;height:18px;accent-color:#ff5577;flex-shrink:0}',
+      '#dash-del-overlay label.dd-lbl{display:block;font-size:13px;margin:6px 0 6px;color:#ddd}',
+      '#dash-del-overlay input.dd-type{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#0d0a12;color:#fff;font-size:15px;letter-spacing:.06em}',
+      '#dash-del-overlay .dd-acts{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}',
+      '#dash-del-overlay .dd-acts button{flex:1 1 140px;padding:12px;border-radius:11px;font-weight:700;font-size:14px;cursor:pointer}',
+      '#dash-del-overlay .dd-cancel{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#eee}',
+      '#dash-del-overlay .dd-go{background:#e2304f;border:none;color:#fff}',
+      '#dash-del-overlay .dd-go[disabled]{opacity:.4;cursor:not-allowed}',
+      '#dash-del-overlay .dd-err{display:none;color:#ff7b7b;font-size:13px;margin-top:8px}'
+    ].join('\n');
+    document.head.appendChild(st);
   }
-  try {
-    await apiFetch('/users/me', { method: 'DELETE' });
-  } catch (e) {
-    dashToast('⚠ Échec de la suppression : ' + _humanizeApiError(e));
-    return;
-  }
-  // Purge locale complète puis retour accueil (le JWT est déjà invalide
-  // côté serveur : l'email anonymisé ne résout plus aucun token).
-  try { if (typeof clearAuthToken === 'function') clearAuthToken(); } catch (_) {}
-  try { clearCurrentUser(); } catch (_) {}
-  try { safeStorage.removeItem('smyle_watt_profile'); } catch (_) {}
-  try { safeStorage.removeItem('smyle_watt_tracks'); } catch (_) {}
-  try { if (window.smyleClearPersonalData) window.smyleClearPersonalData(); } catch (_) {}
-  window.location.href = '/';
+
+  const ov = document.createElement('div');
+  ov.id = 'dash-del-overlay';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-labelledby', 'dash-del-title');
+  ov.innerHTML =
+    '<div class="dd-box">' +
+      '<h2 id="dash-del-title">Supprimer définitivement mon compte</h2>' +
+      '<div class="dd-loss">Tu vas perdre <strong>tous tes Smyles' +
+        (apercu ? ' (' + _dashDelEsc(total) + ')' : '') + '</strong>, y compris ceux ' +
+        '<strong>gagnés en vendant' + (apercu ? ' (' + _dashDelEsc(gagnes) + ')' : '') + '</strong>, ' +
+        'ainsi que ceux achetés ou offerts. Ils ne sont ni remboursés, ni convertis en euros, ni transférables.</div>' +
+      '<p><strong>Effacé :</strong></p>' +
+      '<ul>' +
+        '<li>ton profil, ton email, ton adresse IP d’inscription ;</li>' +
+        '<li>tes œuvres que personne n’a achetées' + (apercu ? ' (' + _dashDelEsc(oe.effacees || 0) + ')' : '') +
+          ', avec leurs fichiers ;</li>' +
+        '<li>tes messages, abonnements, notifications et statistiques ;</li>' +
+        (rang ? '<li>ton rang Pionnier n°' + _dashDelEsc(rang) + ' (il passera au créateur suivant) ;</li>' : '') +
+        '<li>tes ventes en cours sur le marché secondaire.</li>' +
+      '</ul>' +
+      '<p><strong>Conservé, sans ton nom :</strong> les œuvres déjà achetées par d’autres' +
+        (apercu && oe.conservees_pour_acheteurs ? ' (' + _dashDelEsc(oe.conservees_pour_acheteurs) + ')' : '') +
+        ' restent dans leur bibliothèque (auteur affiché « Artiste supprimé »), et le registre des ' +
+        'transactions est gardé pour la comptabilité. ' +
+        '<a href="/legal#confidentialite" target="_blank" rel="noopener">En savoir plus</a></p>' +
+      '<p>Avant de partir, tu peux <a href="#" id="dash-del-export">télécharger une copie de tes données</a>.</p>' +
+      '<label class="dd-check"><input type="checkbox" id="dash-del-renonce" /> ' +
+        '<span>Je renonce définitivement à tous mes Smyles, y compris ceux gagnés en vendant, ' +
+        'et je comprends que la suppression est irréversible.</span></label>' +
+      '<label class="dd-lbl" for="dash-del-type">Pour confirmer, tape <strong>SUPPRIMER</strong> :</label>' +
+      '<input class="dd-type" id="dash-del-type" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />' +
+      '<div class="dd-err" id="dash-del-err"></div>' +
+      '<div class="dd-acts">' +
+        '<button type="button" class="dd-cancel" id="dash-del-cancel">Annuler</button>' +
+        '<button type="button" class="dd-go" id="dash-del-go" disabled>Supprimer mon compte</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+
+  const chk = document.getElementById('dash-del-renonce');
+  const inp = document.getElementById('dash-del-type');
+  const go = document.getElementById('dash-del-go');
+  const err = document.getElementById('dash-del-err');
+  const maj = function () { go.disabled = !(chk.checked && inp.value.trim() === 'SUPPRIMER'); };
+  chk.addEventListener('change', maj);
+  inp.addEventListener('input', maj);
+  const fermer = function () { ov.remove(); };
+  document.getElementById('dash-del-cancel').addEventListener('click', fermer);
+  ov.addEventListener('click', function (e) { if (e.target === ov) fermer(); });
+  document.getElementById('dash-del-export').addEventListener('click', function (e) {
+    e.preventDefault();
+    dashExportData(null);
+  });
+
+  go.addEventListener('click', async function () {
+    if (go.disabled) return;
+    go.disabled = true;
+    err.style.display = 'none';
+    try {
+      await apiFetch('/users/me', {
+        method: 'DELETE',
+        json: { confirmation: inp.value.trim(), renonce_smyles: chk.checked },
+      });
+    } catch (e) {
+      maj();
+      err.textContent = 'Échec de la suppression : ' + _humanizeApiError(e);
+      err.style.display = 'block';
+      return;
+    }
+    // Purge locale complète puis retour accueil (le JWT est déjà invalide
+    // côté serveur : l'email anonymisé ne résout plus aucun token).
+    try { if (typeof clearAuthToken === 'function') clearAuthToken(); } catch (_) {}
+    try { clearCurrentUser(); } catch (_) {}
+    try { safeStorage.removeItem('smyle_watt_profile'); } catch (_) {}
+    try { safeStorage.removeItem('smyle_watt_tracks'); } catch (_) {}
+    try { if (window.smyleClearPersonalData) window.smyleClearPersonalData(); } catch (_) {}
+    window.location.href = '/';
+  });
+  setTimeout(function () { try { chk.focus(); } catch (_) {} }, 50);
 }
 
 function dashLogout() {

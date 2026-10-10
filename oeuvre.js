@@ -112,6 +112,23 @@
       '</div>';
   }
 
+  // Lot D — « Signaler » une collection (playlist = face son, album = face
+  // visuelle), comme les autres contenus. Pas sur sa propre collection.
+  var _ownerId = null;
+  function _isSelf() {
+    try {
+      var me = JSON.parse(localStorage.getItem('smyle_current_user') || 'null');
+      return !!(me && me.id && _ownerId && String(me.id) === String(_ownerId));
+    } catch (_) { return false; }
+  }
+  function _reportBtn(type, id, title) {
+    if (!id || _isSelf()) return '';
+    return '<button type="button" class="mp-report-btn oeuvre-report" data-report-type="' + _esc(type) +
+      '" data-report-id="' + _esc(id) + '" data-report-title="' + _esc(title || '') + '" ' +
+      'title="Signaler cette collection" aria-label="Signaler cette collection" ' +
+      'style="background:none;border:none;color:#8b86a3;font-size:12px;cursor:pointer;padding:2px 0;margin-left:auto">⚑ Signaler</button>';
+  }
+
   // Tag identité IA · plateforme (Suno pour SON, ChatGPT pour VISUEL).
   function _iaTag(platform) {
     if (!platform) return '';
@@ -137,7 +154,7 @@
     }).join('');
     el.innerHTML =
       '<div class="oeuvre-col-hdr"><span class="oeuvre-col-face">🎵 MUSIQUE</span>' +
-        _iaTag('Suno') +
+        _iaTag('Suno') + _reportBtn('playlist', son.playlistId, son.title) +
         '<h2>' + _esc(son.title) + '</h2></div>' +
       _adnBlock({ icon: '🎚', label: 'ADN Musique', forSale: son.adnForSale, price: son.adnPrice,
                   desc: son.dnaDescription, drawerType: 'playlist', id: son.playlistId,
@@ -167,7 +184,7 @@
     }).join('');
     el.innerHTML =
       '<div class="oeuvre-col-hdr"><span class="oeuvre-col-face">🎨 VISUEL</span>' +
-        _iaTag('ChatGPT') +
+        _iaTag('ChatGPT') + _reportBtn('album', visuel.albumId, visuel.title) +
         '<h2>' + _esc(visuel.title) + '</h2></div>' +
       _adnBlock({ icon: '🎨', label: 'ADN Visuel', forSale: visuel.adnForSale, price: visuel.adnPrice,
                   desc: visuel.dnaDescription, drawerType: 'album-adn', id: visuel.albumId,
@@ -259,6 +276,7 @@
     window.apiFetch('/watt/oeuvre/' + encodeURIComponent(SLUG))
       .then(function (data) {
         if (!data || (!data.son && !data.visuel)) { _show('oeuvre-empty'); return; }
+        _ownerId = data.ownerId || null;
         document.getElementById('oeuvre-head').innerHTML = _renderHead(data);
         _renderSon(data.son);
         _renderVisuel(data.visuel);

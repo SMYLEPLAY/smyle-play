@@ -323,6 +323,12 @@ async function apiFetch(path, options = {}) {
     // Parcours V1 — filet de sécurité « visiteur » : une ACTION (POST, PUT,
     // PATCH, DELETE) refusée en 401 alors qu'aucun compte n'est connecté
     // ouvre l'inscription (retour ensuite sur cette page).
+    // Lot D — CGU en vigueur pas encore acceptées : le serveur refuse les
+    // écritures avec ce code ; on ouvre la fenêtre d'acceptation.
+    if (resp.status === 403 && parsed && parsed.code === 'cgu_a_accepter') {
+      _cguRequise(parsed.cgu_version);
+    }
+
     const _method = String(rest.method || 'GET').toUpperCase();
     if (resp.status === 401 && auth && !getAuthToken() && _method !== 'GET'
         && typeof window !== 'undefined' && window.SmyleGate) {
@@ -364,6 +370,36 @@ async function apiFetch(path, options = {}) {
 // Ce fichier est chargé en <script> classique (non-module) dans index.html,
 // dashboard.html, artiste.html, library.html. Les symboles sont donc déjà
 // globaux sans qu'on fasse rien. On les référence ici pour lint-friendly.
+
+// ── Lot D — fenêtre de ré-acceptation des CGU (ui/core/cgu-gate.js) ────────
+// Chargée à la demande : au chargement d'une page si un compte est connecté
+// (elle vérifie /users/me), ou dès qu'une écriture est refusée pour CGU.
+let _cguGateChargement = null;
+function _chargerCguGate() {
+  if (typeof document === 'undefined') return Promise.resolve();
+  if (window.SmyleCguGate) return Promise.resolve();
+  if (_cguGateChargement) return _cguGateChargement;
+  _cguGateChargement = new Promise(function (ok) {
+    const s = document.createElement('script');
+    s.src = '/ui/core/cgu-gate.js?v=20261010lotd';
+    s.onload = ok;
+    s.onerror = ok;
+    (document.head || document.documentElement).appendChild(s);
+  });
+  return _cguGateChargement;
+}
+function _cguRequise(version) {
+  _chargerCguGate().then(function () {
+    try {
+      window.dispatchEvent(new CustomEvent('smyle:cgu-required', { detail: { version: version } }));
+    } catch (_) { /* noop */ }
+  });
+}
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  const _cguAuDemarrage = function () { if (getAuthToken()) _chargerCguGate(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _cguAuDemarrage);
+  else _cguAuDemarrage();
+}
 
 if (typeof window !== 'undefined') {
   window.API_BASE        = API_BASE;

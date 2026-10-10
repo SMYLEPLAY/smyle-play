@@ -627,7 +627,8 @@
       </div>
       <div style="font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:12px;">
         Télécharge une copie de toutes les données de ton compte (profil,
-        contenus, achats, transactions) au format JSON — droit d'accès RGPD.
+        œuvres, achats, ventes, transactions, messages, signalements,
+        abonnements, consentements) dans un fichier JSON — droit d'accès RGPD.
       </div>
       <button type="button" class="dash-btn-ghost" onclick="dashExportData(this)">
         Exporter mes données
@@ -640,9 +641,10 @@
         Zone danger
       </div>
       <div style="font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:12px;">
-        Supprimer ton compte anonymise immédiatement ton profil et retire tes
-        contenus du public. Les exemplaires déjà achetés par d'autres restent
-        dans leur bibliothèque (auteur affiché « Artiste supprimé »).
+        Supprimer ton compte efface ton profil et tes œuvres invendues, et fait
+        perdre <strong>tous tes Smyles</strong>, y compris ceux gagnés en
+        vendant. Les exemplaires déjà achetés par d'autres restent dans leur
+        bibliothèque (auteur affiché « Artiste supprimé »).
         Action définitive — détail dans <a href="/legal#confidentialite"
         style="color:rgba(255,255,255,.7);">la politique de confidentialité</a>.
       </div>
@@ -2634,20 +2636,20 @@
   </div>
 </div>
 
-<script src="ui/core/api.js"></script>
+<script src="ui/core/api.js?v=20261010lotd"></script>
 <script src="/ui/core/visitor-gate.js?v=20261009pv1"></script>
 <script src="/ui/core/onboarding.js?v=20261009pv1" defer></script>
-<script src="ui/core/consent.js"></script>
-<script src="ui/core/telemetry.js"></script>
+<script src="ui/core/consent.js?v=20261010lotd"></script>
+<script src="ui/core/telemetry.js?v=20261010lotd"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
 <script src="/ui/modals/purchase-drawer.js?v=20260708parite"></script>
 <script src="/ui/modals/offer-modal.js?v=20260703offres3"></script>
-<script src="/ui/modals/report-modal.js?v=20260707dsa"></script>
+<script src="/ui/modals/report-modal.js?v=20261010lotd"></script>
 <script src="/ui/modals/oeuvre-compose.js?v=20260707oc" defer></script>
-<script src="/ui/playlists.js?v=20260708parite2" defer></script>
-<script src="dashboard.js?v=20261007lota"></script>
+<script src="/ui/playlists.js?v=20261010lotd" defer></script>
+<script src="dashboard.js?v=20261010lotd"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260708parite" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
@@ -3094,7 +3096,7 @@
 <script src="/ui/pioneer-counter.js" defer></script>
 <script src="/ui/goal-bar.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
-<script src="/ui/core/legal-footer.js" defer></script>
+<script src="/ui/core/legal-footer.js?v=20261010lotd" defer></script>
 <script src="/ui/player/mini-bar.js?v=20260707player" defer></script>
 </body>
 </html>
