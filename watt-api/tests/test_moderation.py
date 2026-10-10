@@ -86,7 +86,7 @@ async def test_non_admin_cannot_moderate(client: AsyncClient):
         tok = await _token(client, lambda_user)
         h = {"Authorization": f"Bearer {tok}"}
         r = await client.post(f"/admin/users/{victim['id']}/ban",
-                              json={"reason": "x"}, headers=h)
+                              json={"reason": "abus répété"}, headers=h)
         assert r.status_code == 403, r.text
     finally:
         await _cleanup(lambda_user["id"], victim["id"])
@@ -103,7 +103,7 @@ async def test_takedown_hides_reported_track(client: AsyncClient):
             await db.commit()
 
         # un signalement anonyme sur ce track
-        r = await client.post("/reports", json={
+        r = await client.post("/reports", json={"good_faith": True,
             "target_type": "track", "target_id": str(track_id),
             "reason": "contenu_illegal",
             "detail": "Contenu manifestement illégal.",
@@ -114,7 +114,7 @@ async def test_takedown_hides_reported_track(client: AsyncClient):
         admin_tok = await _token(client, admin)
         h = {"Authorization": f"Bearer {admin_tok}"}
         r = await client.post(f"/admin/reports/{report_id}/takedown",
-                              json={"ban_owner": False}, headers=h)
+                              json={"ban_owner": False, "reason": "contenu illégal"}, headers=h)
         assert r.status_code == 200, r.text
         assert r.json()["ok"] is True
 
@@ -156,7 +156,7 @@ async def test_takedown_notifie_lauteur(client: AsyncClient):
                          is_deleted=False))
             await db.commit()
 
-        r = await client.post("/reports", json={
+        r = await client.post("/reports", json={"good_faith": True,
             "target_type": "track", "target_id": str(track_id),
             "reason": "contenu_illegal",
             "detail": "Signalement de test.",
@@ -189,7 +189,7 @@ async def test_takedown_ban_owner_notifie_retrait_et_suspension(client: AsyncCli
                          is_deleted=False))
             await db.commit()
 
-        r = await client.post("/reports", json={
+        r = await client.post("/reports", json={"good_faith": True,
             "target_type": "track", "target_id": str(track_id),
             "reason": "haine_violence",
             "detail": "Signalement de test.",

@@ -44,8 +44,12 @@ async def test_export_me_requires_auth_and_returns_profile(
     assert r.status_code == 200, r.text
     assert "attachment" in (r.headers.get("content-disposition") or "")
     j = r.json()
-    for key in ("profile", "tracks", "prompts", "playlists", "transactions"):
+    # Lot D : export complet (œuvres regroupées, achats, ventes, messages…).
+    for key in ("profile", "consentements", "transactions", "achats", "ventes", "oeuvres",
+                "messages", "signalements_faits", "abonnements"):
         assert key in j, j.keys()
+    for key in ("sons", "recettes_et_images", "playlists", "albums"):
+        assert key in j["oeuvres"], j["oeuvres"].keys()
     assert j["profile"]["email"] == test_user["email"]
 
 

@@ -261,7 +261,7 @@ async def test_retrait_direct_admin_adn(client, test_user, auth_headers):
 
 async def test_signalement_accepte_les_adn_et_voix(client):
     for ttype in ("adn", "visual_adn", "voix"):
-        r = await client.post("/reports", json={
+        r = await client.post("/reports", json={"good_faith": True,
             "target_type": ttype, "target_id": str(uuid.uuid4()), "reason": "spam_arnaque",
             "detail": "Œuvres bâclées publiées en rafale",
         })

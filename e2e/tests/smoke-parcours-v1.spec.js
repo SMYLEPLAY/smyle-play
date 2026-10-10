@@ -137,6 +137,9 @@ test('signalement sans compte : message juste + invitation à s’inscrire', asy
   await page.waitForFunction(() => !!window.ReportModal);
   await page.evaluate(() => window.ReportModal.open({ targetType: 'track', targetId: '00000000-0000-0000-0000-000000000000' }));
   await expect(page.locator('.rm-join')).toContainText('compte gratuit');
+  // Lot D : la déclaration de bonne foi est obligatoire.
+  await expect(page.locator('#rm-submit')).toBeDisabled();
+  await page.locator('#rm-faith').check();
   await page.locator('#rm-submit').click();
   await expect(page.locator('#rm-err')).toContainText('ajoute une précision ou ton email');
   await expect(page.locator('#rm-err')).not.toContainText('Réessaie dans un instant');

@@ -51,7 +51,7 @@ async def _cleanup(user_ids, report_ids):
 async def test_report_anonymous(client):
     rid = None
     try:
-        r = await client.post("/reports", json={
+        r = await client.post("/reports", json={"good_faith": True,
             "target_type": "track",
             "target_id": str(uuid.uuid4()),
             "reason": "contenu_illegal",
@@ -71,7 +71,7 @@ async def test_report_authenticated(client):
     rid = None
     try:
         headers = await _login(client, email)
-        r = await client.post("/reports", headers=headers, json={
+        r = await client.post("/reports", headers=headers, json={"good_faith": True,
             "target_type": "image",
             "target_id": str(uuid.uuid4()),
             "reason": "contrefacon",

@@ -707,7 +707,7 @@ async def test_signalement_email_moderateur_echappe(client, monkeypatch):
 
     monkeypatch.setattr(emails, "_send", _send)
     monkeypatch.setenv("REPORT_NOTIFY_EMAIL", "modo@x.example")
-    r = await client.post("/reports", json={
+    r = await client.post("/reports", json={"good_faith": True,
         "target_type": "track", "target_id": str(uuid.uuid4()),
         "reason": "autre", "detail": "<script>alert(1)</script>",
         "reporter_email": "r@x.example",
