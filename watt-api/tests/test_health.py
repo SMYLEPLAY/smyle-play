@@ -114,3 +114,57 @@ def test_alembic_head_repli_si_ini_introuvable(monkeypatch, tmp_path):
         assert app_main._alembic_head() == app_main._ALEMBIC_HEAD_FALLBACK
     finally:
         app_main._alembic_head.cache_clear()
+
+
+# ─── Lot G — version réellement appliquée à la base ─────────────────────────
+
+async def test_health_expose_la_version_de_la_base(client):
+    from sqlalchemy import text
+
+    async with database.engine.connect() as conn:
+        attendu = (await conn.execute(text("SELECT version_num FROM alembic_version"))).scalar_one()
+
+    resp = await client.get("/health")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["alembic_db"] == attendu
+    # Base migrée par la CI : identique à la tête du code.
+    assert body["alembic_db"] == body["alembic_head"]
+
+
+async def test_health_alembic_db_illisible_ne_casse_rien(client, monkeypatch):
+    """Table alembic_version absente ou illisible : la sonde reste à 200 et
+    `alembic_db` vaut null (aucune erreur ne remonte)."""
+
+    class _Resultat:
+        def all(self):
+            return []
+
+    class _Connexion:
+        def __init__(self):
+            self.n = 0
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def execute(self, stmt):
+            self.n += 1
+            if "alembic_version" in str(stmt):
+                raise RuntimeError('relation "alembic_version" does not exist')
+            return _Resultat()
+
+    class _Moteur:
+        def connect(self):
+            return _Connexion()
+
+    monkeypatch.setattr(database, "engine", _Moteur())
+
+    resp = await client.get("/health")
+
+    assert resp.status_code == 200
+    assert resp.json()["db"] == "ok"
+    assert resp.json()["alembic_db"] is None
