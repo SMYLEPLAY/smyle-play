@@ -213,6 +213,11 @@ class Settings(BaseSettings):
     # elles réapparaissent au rallumage.
     # Lot 3 (décision Tom 23/09) : VISIBLE au lancement — c'est le seul moyen
     # d'acheter un ADN. L'interrupteur est gardé pour pouvoir le couper.
+    # Coordonnées de l'éditeur affichées sur /legal. Renseignées dans les
+    # variables Railway (jamais dans le dépôt, qui est public). Vides → texte
+    # de repli « communiqué sur demande » (à éviter en production).
+    EDITEUR_ADRESSE: str = ""
+    EDITEUR_TELEPHONE: str = ""
     SHOW_OFFRES_ADN: bool = True    # offres sur ADN (/adn-offers)
     SHOW_MESSAGERIE: bool = False   # messagerie privée (/messages)
     SHOW_SERIE: bool = False        # série quotidienne (/streak)

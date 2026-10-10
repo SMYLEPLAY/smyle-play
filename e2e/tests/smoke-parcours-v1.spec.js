@@ -178,6 +178,10 @@ test('guide d’accueil : une seule fois, puis depuis le menu « Guide »', asyn
 });
 
 test('email non vérifié : « Compte créé, vérifie ta boîte mail » + Renvoyer', async ({ page, request }) => {
+  // Variante « jour J » : un compte non vérifié ne peut pas se connecter (les
+  // comptes de test y sont vérifiés à la création) — ce bandeau n'a pas lieu
+  // d'être ; le refus de connexion est couvert par smoke-jour-j.spec.js.
+  test.skip(!!process.env.E2E_JOUR_J, 'sans objet quand REQUIRE_EMAIL_VERIFIED est allumé');
   const c = await compte(request);
   await request.post('/users/me/onboarding', { headers: c.h });
   await bootSessionAuthentifiee(page, c.token, { guide: true });

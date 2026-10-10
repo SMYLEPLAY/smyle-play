@@ -38,20 +38,18 @@
       border-bottom: 1px solid var(--sp-border, rgba(255,255,255,.1));
       padding-bottom: 8px; margin: 0 0 18px;
     }
-    h3 { font-size: .95rem; margin: 22px 0 8px; }
+    h3 { font-size: .95rem; margin: 22px 0 8px; scroll-margin-top: 24px; }
     p, li { color: var(--sp-text-muted, rgba(255,255,255,.72)); font-size: .9rem; }
     strong { color: var(--sp-text, #e8e8f0); }
-    .lg-placeholder {
-      background: rgba(255, 215, 0, .08); border: 1px dashed var(--sp-gold, #ffd700);
-      border-radius: 8px; padding: 3px 8px; color: var(--sp-gold, #ffd700);
-      font-size: .82rem; font-style: normal;
-    }
+    a { color: var(--sp-gold, #ffd700); }
     .lg-note {
       background: var(--sp-surface, rgba(255,255,255,.04));
       border: 1px solid var(--sp-border, rgba(255,255,255,.1));
       border-radius: 10px; padding: 14px 16px; font-size: .82rem;
       color: var(--sp-text-faint, rgba(255,255,255,.55)); margin-bottom: 30px;
     }
+    .lg-note ul { margin: 8px 0 0; padding-left: 20px; }
+    .lg-note li { margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -60,159 +58,345 @@
   <a href="/">← ⚡ WATT</a>
 </div>
 
+<!-- Textes légaux de WATT (watt.place). Version des CGU : 2026-11-01
+     (constante CGU_VERSION côté serveur). Toute modification de fond des CGU
+     doit changer cette date ET la constante, pour que chaque utilisateur les
+     accepte à nouveau. -->
 <div class="lg-wrap">
   <h1>Informations légales</h1>
-  <div class="lg-updated">Dernière mise à jour : 10 juin 2026 · Version 1 (pré-lancement)</div>
+  <div class="lg-updated">Version du 1er novembre 2026 · Conditions générales d'utilisation et de vente, confidentialité, modération</div>
 
-  <div class="lg-note">
-    ⚠️ WATT est en phase de test (bêta). Aucun paiement en argent réel n'est
-    actif : les « Smyles » sont des crédits de test sans valeur monétaire
-    jusqu'à l'activation officielle des paiements. Ce document sera complété
-    (entité juridique, médiation, TVA) avant l'ouverture commerciale.
+  <!-- ═══════════ RÉSUMÉ EN CLAIR ═══════════ -->
+  <div class="lg-note" id="resume">
+    <strong>Le résumé en clair.</strong> Ce résumé t'aide à comprendre l'essentiel. Seul le texte complet ci-dessous fait foi.
+    <ul>
+      <li><strong>Ce que tu peux faire</strong> : écouter des Œuvres (un son et une image créés avec l'IA), débloquer leur recette avec des Smyles, publier et vendre tes propres Œuvres. Sans compte, tu n'écoutes qu'un extrait de 30 secondes.</li>
+      <li><strong>Tes Smyles offerts</strong> (30 à l'inscription, parrainage, quêtes) se dépensent sur WATT. Ils ne se retirent <strong>jamais</strong> en euros.</li>
+      <li><strong>Les Smyles achetés</strong> (achat bientôt ouvert) se dépensent sur WATT. Ils ne se retirent pas en euros et ne sont pas remboursés une fois utilisés.</li>
+      <li><strong>Les Smyles gagnés en vendant</strong> pourront se retirer à 0,05 € le Smyle, à partir de 50 €, identité vérifiée, 30 jours après la vente. Les retraits ouvrent à 1 000 utilisateurs actifs, et au plus tard le 1er mai 2027.</li>
+      <li><strong>Sur chaque vente</strong>, WATT garde une commission de 20 % (10 % pour les 100 Pionniers, à vie). Tu fixes ton prix entre 10 et 150 Smyles.</li>
+      <li><strong>Ce que tu achètes reste à toi</strong> : si le créateur modifie, masque ou supprime son Œuvre, tu gardes l'écoute, le téléchargement et la recette.</li>
+      <li><strong>Tes données</strong> servent à faire marcher WATT. Elles ne sont jamais vendues ni utilisées pour de la publicité. La mesure d'audience n'a lieu que si tu l'acceptes. Tu peux exporter tes données ou supprimer ton compte depuis ton WATT BOARD.</li>
+      <li><strong>Un problème ?</strong> Écris à <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Tout le monde peut signaler un contenu avec le bouton « ⚑ Signaler ».</li>
+    </ul>
   </div>
 
   <nav class="lg-toc">
     <a href="#mentions">Mentions légales</a>
     <a href="#cgu">CGU / CGV</a>
+    <a href="#smyles">Les Smyles</a>
     <a href="#cgv-smyles">CGV — achat de Smyles</a>
     <a href="#confidentialite">Confidentialité (RGPD)</a>
-    <a href="#contenu">Contenu &amp; contrefaçon</a>
+    <a href="#contenu">Contenu &amp; modération</a>
   </nav>
 
   <!-- ═══════════ MENTIONS LÉGALES ═══════════ -->
   <section id="mentions">
     <h2>Mentions légales</h2>
-    <p><strong>Éditeur du service</strong> : <span class="lg-placeholder">[À COMPLÉTER — nom / raison sociale, statut juridique, SIRET]</span></p>
-    <p><strong>Directeur de la publication</strong> : <span class="lg-placeholder">[À COMPLÉTER]</span></p>
-    <p><strong>Contact</strong> : <span class="lg-placeholder">[À COMPLÉTER — email de contact officiel]</span></p>
+    <p><strong>Éditeur du service</strong> : Tom Lecomte, entrepreneur individuel. Numéro SIREN communiqué dès l'immatriculation (en cours).</p>
+    <p><strong>Adresse</strong> : {{EDITEUR_ADRESSE}}.</p>
+    <p><strong>Téléphone</strong> : {{EDITEUR_TELEPHONE}}.</p>
+    <p><strong>Email</strong> : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. C'est l'adresse de contact pour toute question, réclamation ou demande sur tes données.</p>
+    <p><strong>Directeur de la publication</strong> : Tom Lecomte.</p>
     <p><strong>Hébergement</strong> :</p>
     <ul>
-      <li>Application : <strong>Railway Corp.</strong>, 548 Market Street, PMB 68956, San Francisco, CA 94104, États-Unis — railway.com.</li>
-      <li>Fichiers médias (audio, images) : <strong>Cloudflare, Inc.</strong>, 101 Townsend Street, San Francisco, CA 94107, États-Unis — téléphone +1 (650) 319-8930 — cloudflare.com.</li>
+      <li>Application et base de données : <strong>Railway Corporation</strong>, 548 Market St PMB 68956, San Francisco, CA 94104, États-Unis. Téléphone : +1 (415) 707-7675. Site : <a href="https://railway.com/legal/terms" rel="noopener">railway.com</a>.</li>
+      <li>Fichiers médias (sons, images) : <strong>Cloudflare, Inc.</strong>, 101 Townsend Street, San Francisco, CA 94107, États-Unis. Téléphone : +1 (650) 319-8930. Site : <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">cloudflare.com</a>.</li>
     </ul>
-    <p>« WATT » désigne le service en ligne accessible à cette adresse, plateforme de création et d'échange de produits musicaux générés par intelligence artificielle.</p>
+    <p>« WATT » désigne le service en ligne accessible à l'adresse watt.place : une plateforme où des créateurs publient des Œuvres créées avec des outils d'intelligence artificielle, accompagnées de leur recette.</p>
   </section>
 
   <!-- ═══════════ CGU / CGV ═══════════ -->
   <section id="cgu">
     <h2>Conditions générales d'utilisation et de vente (CGU/CGV)</h2>
 
-    <h3>1. Objet</h3>
-    <p>WATT est une marketplace de <strong>créations 100 % générées par intelligence artificielle</strong>. Les utilisateurs peuvent publier, écouter, acheter, revendre et échanger des créations sonores accompagnées de leur <strong>recette</strong> (le prompt et les réglages ayant servi à les générer), ainsi que des fichiers de voix destinés à la création musicale par IA.</p>
+    <h3>1. Objet et mots utilisés</h3>
+    <p>Ces conditions fixent les règles d'utilisation de WATT, entre toi et l'éditeur indiqué dans les mentions légales (« WATT », « nous »).</p>
+    <ul>
+      <li><strong>Œuvre</strong> : un son et une image créés avec des outils d'IA, publiés par un créateur, avec leur recette.</li>
+      <li><strong>Recette</strong> : le texte (prompt) et les réglages qui ont servi à créer l'Œuvre.</li>
+      <li><strong>Smyles</strong> : l'unité interne de WATT, qui sert à débloquer des contenus (voir l'<a href="#smyles">article 5</a>).</li>
+      <li><strong>Créateur</strong> : l'utilisateur qui publie et vend un contenu. <strong>Acheteur</strong> : l'utilisateur qui le débloque.</li>
+      <li><strong>Visiteur</strong> : une personne qui consulte WATT sans compte.</li>
+    </ul>
 
-    <h3>2. Compte</h3>
-    <p>L'inscription requiert une adresse email valide. Chaque personne ne peut détenir qu'un seul compte. Tu es responsable de la confidentialité de tes identifiants et de l'activité de ton compte. L'âge minimum d'utilisation est de 15 ans ; l'achat de crédits (à l'ouverture commerciale) sera réservé aux majeurs ou aux mineurs autorisés par leur représentant légal.</p>
+    <h3 id="version-cgu">2. Acceptation et version des conditions</h3>
+    <p>En créant un compte, tu acceptes ces conditions. La version en vigueur est celle du <strong>1er novembre 2026</strong>. Si nous changeons ces conditions, la nouvelle version est publiée sur cette page avec sa date. Tu dois alors l'accepter à nouveau <strong>à ta prochaine connexion</strong> pour continuer à utiliser ton compte. Si tu ne l'acceptes pas, tu peux supprimer ton compte (<a href="#suppression">article 16</a>).</p>
 
-    <h3>3. Les Smyles (crédits)</h3>
-    <p>Les transactions internes s'effectuent en « Smyles », la monnaie virtuelle de la plateforme. <strong>Pendant la bêta, les Smyles n'ont aucune valeur monétaire</strong>, ne sont pas remboursables et peuvent être réinitialisés. Les conditions d'achat et de conversion des Smyles seront précisées dans une version ultérieure des présentes, avant l'activation des paiements réels.</p>
+    <h3>3. Utiliser WATT sans compte</h3>
+    <p>Sans compte, tu peux parcourir WATT et écouter <strong>un extrait de 30 secondes</strong> de chaque son. Pour écouter en entier, débloquer une recette ou publier, il faut un compte gratuit. Tu peux signaler un contenu même sans compte (<a href="#contenu">Contenu &amp; modération</a>).</p>
 
-    <h3>4. Achats et exemplaires</h3>
-    <p>Un achat porte sur un <strong>exemplaire</strong> d'une création, éventuellement numéroté (#X/N) lorsque l'édition est limitée. L'achat d'un exemplaire donne accès : au fichier de la création, et à sa recette lorsque la création en comporte une. Les fichiers de voix sont vendus sans recette (une voix générée n'est pas reproductible par son prompt).</p>
-    <p>Un exemplaire « vente unique » (1/1) est retiré de la vente dès son achat. La revente d'exemplaires entre utilisateurs est possible sur le marché secondaire de la plateforme ; elle déclenche une rétribution de l'artiste d'origine (royalties) et une commission de plateforme, affichées au moment de la revente.</p>
+    <h3>4. Compte</h3>
+    <p>L'inscription demande une adresse email valide. Une personne ne peut avoir qu'un seul compte. Tu es responsable de tes identifiants et de ce qui se passe sur ton compte. Il faut avoir au moins 15 ans pour utiliser WATT. L'achat de Smyles en euros (quand il sera ouvert) est réservé aux majeurs, ou aux mineurs autorisés par leur représentant légal.</p>
 
-    <h3>5. Licence accordée à l'acheteur</h3>
-    <p>Sauf mention contraire affichée sur la fiche du produit, l'achat d'un exemplaire confère à l'acheteur un droit d'utilisation de la création et de sa recette pour ses propres projets créatifs, y compris commerciaux (chanter sur une instrumentale, générer des œuvres dérivées à partir de la recette…). L'achat <strong>n'emporte pas</strong> le droit de revendre le fichier ou la recette en dehors de la plateforme, ni de les republier tels quels comme sa propre création.</p>
+    <h3 id="smyles">5. Les Smyles</h3>
+    <p><strong>5.1 Ce qu'est un Smyle.</strong> Les Smyles servent uniquement à débloquer des contenus sur WATT. Ils n'ont <strong>aucune valeur en dehors de la plateforme</strong>. Ce n'est <strong>ni de la monnaie électronique, ni un moyen de paiement, ni un placement</strong> : ils ne rapportent rien et leur valeur ne monte pas. Tu ne peux pas les donner, les vendre ou les transférer à un autre compte, sauf en débloquant un contenu sur WATT.</p>
+    <p><strong>5.2 Trois sortes de Smyles.</strong> Ton solde se divise en trois parts, visibles dans ton compte :</p>
+    <ul>
+      <li><strong>Smyles offerts</strong> : reçus gratuitement (bienvenue, parrainage, quêtes). Ils se dépensent sur WATT et ne sont <strong>jamais retirables en euros</strong>.</li>
+      <li><strong>Smyles achetés</strong> : achetés en euros (achat pas encore ouvert). Ils se dépensent sur WATT, ne sont <strong>pas retirables en euros</strong> et ne sont <strong>pas remboursables une fois utilisés</strong>.</li>
+      <li><strong>Smyles gagnés</strong> : reçus quand quelqu'un débloque un de tes contenus. Ils se dépensent sur WATT et sont <strong>les seuls convertibles en euros</strong>, aux conditions de l'article 5.5.</li>
+    </ul>
+    <p><strong>5.3 Ordre de dépense.</strong> Quand tu débloques un contenu, WATT utilise d'abord tes Smyles offerts, puis tes Smyles achetés, puis tes Smyles gagnés. Ainsi, tu gardes le plus longtemps possible ceux que tu pourras retirer.</p>
+    <p><strong>5.4 Smyles offerts.</strong> Tu reçois <strong>30 Smyles</strong> à l'inscription. Tu peux en recevoir d'autres grâce au parrainage et aux quêtes (<a href="#parrainage">article 6</a>). L'achat de Smyles sera ouvert prochainement, aux conditions de vente ci-dessous (<a href="#cgv-smyles">CGV — achat de Smyles</a>).</p>
+    <p><strong>5.5 Retirer ses Smyles gagnés en euros.</strong></p>
+    <ul>
+      <li><strong>Valeur</strong> : <strong>0,05 € par Smyle gagné</strong>.</li>
+      <li><strong>Ouverture</strong> : les retraits ouvriront quand WATT comptera <strong>1 000 utilisateurs actifs</strong>, et <strong>au plus tard le 1er mai 2027</strong>. Un utilisateur actif est un compte dont l'email est vérifié et qui a fait au moins une action réelle sur WATT dans les 30 derniers jours (publier une Œuvre, écouter, s'abonner à un créateur ou débloquer un contenu). Les comptes techniques, de test ou suspendus ne comptent pas.</li>
+      <li><strong>Délai</strong> : un gain devient retirable <strong>30 jours</strong> après la vente. Ce délai sert à lutter contre la fraude et les contestations de paiement. WATT pourra aussi garder au plus 10 % d'un gain jusqu'à 120 jours après la vente, pour la même raison.</li>
+      <li><strong>Minimum</strong> : <strong>50 € par retrait</strong>, soit 1 000 Smyles gagnés.</li>
+      <li><strong>Identité</strong> : tu dois faire vérifier ton identité avant ton premier retrait, par WATT ou par son prestataire de paiement.</li>
+      <li><strong>Impôts</strong> : les sommes retirées peuvent être des revenus imposables. Tu dois les déclarer toi-même. La loi peut obliger WATT à transmettre à l'administration fiscale des informations sur les vendeurs et leurs revenus.</li>
+      <li>Les autres modalités pratiques (prestataire de paiement, fréquence des retraits) seront publiées sur cette page avant l'ouverture des retraits.</li>
+    </ul>
+    <p><strong>5.6 Ventes payées avec des Smyles offerts.</strong> Si un acheteur paie un de tes contenus avec des Smyles offerts, la part correspondante de ton gain t'arrive en <strong>Smyles offerts</strong>, eux aussi non retirables. La répartition se fait au prorata, arrondie au Smyle supérieur côté offerts. Exemple au taux de 20 % : un acheteur paie 30 Smyles, dont 10 offerts. Ta part de 24 Smyles arrive en 8 Smyles offerts et 16 Smyles gagnés.</p>
+    <p><strong>5.7 Perte et annulation.</strong> Les Smyles obtenus par fraude, par erreur technique ou par un paiement ensuite contesté peuvent être retirés du compte. À la suppression du compte, les Smyles restants sont perdus (<a href="#suppression">article 16</a>).</p>
 
-    <h3>6. Obligations du vendeur</h3>
-    <p>En publiant sur WATT, tu déclares : que la création est générée par IA avec l'outil et la version que tu indiques (provenance affichée publiquement) ; que tu détiens les droits nécessaires sur les éléments publiés (notamment pour les voix : ta propre voix ou une voix IA originale — l'imitation d'une personne réelle identifiable est interdite) ; que le contenu ne viole aucun droit de tiers.</p>
+    <h3 id="parrainage">6. Parrainage et quêtes</h3>
+    <p><strong>Parrainage.</strong> Chaque compte a un code de parrainage. Quand une personne s'inscrit avec ton code puis fait sa première vraie action (publier un premier son ou faire un premier achat), <strong>vous recevez chacun 20 Smyles offerts</strong>. Pour éviter les faux comptes, au plus 20 filleuls par parrain et 3 filleuls par adresse IP d'inscription sont récompensés sur 24 heures.</p>
+    <p><strong>Quêtes de parrainage.</strong> Quand elles sont ouvertes, elles donnent des Smyles offerts en plus, une seule fois par palier :</p>
+    <ul>
+      <li>3 filleuls actifs : <strong>30 Smyles</strong> ;</li>
+      <li>10 filleuls actifs : <strong>100 Smyles</strong> ;</li>
+      <li>25 filleuls actifs : <strong>250 Smyles</strong> et le badge « Ambassadeur ».</li>
+    </ul>
+    <p>Un filleul compte s'il a déjà déclenché la récompense de parrainage et s'il est actif au sens de l'article 5.5. Pour limiter les abus, le total des quêtes versées sur toute la plateforme est plafonné sur 24 heures : au-delà, ton palier est versé plus tard, rien n'est perdu. Tous ces Smyles sont des Smyles offerts, jamais retirables. En cas de fraude (faux comptes, comptes multiples), WATT peut les annuler.</p>
 
-    <h3>7. Rémunération des artistes</h3>
-    <p>Les ventes créditent le solde Smyles de l'artiste après commission de plateforme. Les conditions de conversion en monnaie réelle (seuils, identité, fiscalité) seront définies à l'activation des paiements et feront l'objet d'une mise à jour des présentes.</p>
+    <h3>7. Publier et vendre</h3>
+    <p><strong>Prix libre.</strong> Tu fixes toi-même le prix de ta recette, de ton image ou de ton Œuvre, <strong>entre 10 et 150 Smyles</strong>. Prix conseillés : 15 Smyles pour une recette, 30 pour une Œuvre (son et image), 45 et plus pour une édition rare. D'autres contenus peuvent avoir leur propre fourchette de prix, indiquée au moment de la mise en vente.</p>
+    <p><strong>Éditions limitées.</strong> Tu peux limiter le nombre d'exemplaires (numérotés #X/N). Un exemplaire unique (1/1) est retiré de la vente dès son achat.</p>
+    <p><strong>Seuil d'abonnés pour vendre.</strong> Quand ce seuil est activé, il faut un nombre minimum d'<strong>abonnés réels</strong> pour mettre un contenu en vente. Ce nombre dépend de la taille de la plateforme :</p>
+    <ul>
+      <li>moins de 500 utilisateurs actifs : 5 abonnés ;</li>
+      <li>de 500 à 1 999 actifs : 15 abonnés ;</li>
+      <li>de 2 000 à 9 999 actifs : 30 abonnés ;</li>
+      <li>10 000 actifs et plus : 50 abonnés.</li>
+    </ul>
+    <p>Un abonné réel est un compte qui te suit, dont l'email est vérifié, et qui n'est ni suspendu, ni supprimé, ni un compte technique. Les Pionniers ne sont pas concernés. Un créateur qui avait déjà un contenu en vente avant l'activation du seuil garde le droit de vendre. Le seuil ne bloque que la mise en vente : débloquer des contenus et gagner des Smyles restent ouverts à tous. Ton WATT BOARD t'indique le seuil en vigueur.</p>
+    <p><strong>Modifier, masquer, supprimer.</strong> Tu peux à tout moment modifier ton Œuvre (titre, description, pochette, prix), la masquer ou la supprimer depuis « Mes Œuvres ». <strong>Ceux qui l'ont déjà achetée gardent leur accès</strong> : écoute, téléchargement et recette restent dans leur bibliothèque.</p>
 
-    <h3>8. Comportements interdits</h3>
-    <p>Sont notamment interdits : la fraude aux mécaniques d'engagement (multi-comptes, parrainages fictifs, achats croisés destinés à gonfler artificiellement des statistiques), la copie de recettes d'autrui pour les revendre, toute tentative de contournement des protections d'accès aux contenus payants, et tout contenu illicite (voir politique de contenu).</p>
+    <h3>8. Commission de la plateforme</h3>
+    <p>Sur chaque vente, WATT garde une commission. Le reste revient au créateur, en Smyles gagnés (sous réserve de l'article 5.6). La commission dépend du palier du créateur :</p>
+    <ul>
+      <li><strong>Standard</strong> (palier de départ, gratuit) : <strong>20 %</strong> ;</li>
+      <li><strong>Premium</strong> : <strong>12 %</strong> ;</li>
+      <li><strong>Mythique</strong> : <strong>10 %</strong>.</li>
+    </ul>
+    <p>Aujourd'hui, tous les créateurs sont au palier Standard. Les conditions des paliers Premium et Mythique seront publiées avant leur ouverture. Les Pionniers paient 10 % (article 9). Si tu cumules plusieurs avantages, le taux le plus bas s'applique, sans jamais descendre sous 10 %. Les calculs se font en Smyles entiers : l'arrondi va à la plateforme, de moins d'un Smyle. Exemples au taux de 20 % : une vente à 15 Smyles donne 12 au créateur et 3 à WATT ; à 30 Smyles, 24 et 6.</p>
 
-    <h3>9. Sanctions et résiliation</h3>
-    <p>En cas de manquement, WATT peut retirer un contenu, suspendre ou supprimer un compte, et annuler des transactions frauduleuses. Tu peux supprimer ton compte à tout moment (voir Confidentialité).</p>
+    <h3 id="pionnier">9. Programme Pionnier</h3>
+    <p><strong>L'avantage.</strong> Les 100 premiers créateurs Pionniers paient une commission réduite à <strong>10 % à vie</strong> sur la vente de leurs propres contenus, <strong>sauf fraude</strong>. Ce taux ne s'applique qu'à ces ventes directes.</p>
+    <p><strong>Comment la place est attribuée.</strong></p>
+    <ul>
+      <li>Quand le programme est ouvert, une place est attribuée automatiquement au créateur qui publie sa première Œuvre, tant qu'il reste des places sur 100. L'ordre est celui des publications.</li>
+      <li>L'Œuvre doit rester en ligne : une Œuvre retirée par la modération ne donne pas de place.</li>
+      <li>Ne peuvent pas être Pionniers : les comptes de l'équipe WATT, les comptes techniques, les comptes suspendus ou supprimés, et les comptes exclus pour fraude. Si WATT exige un email vérifié, il est aussi demandé pour obtenir une place.</li>
+      <li>Ton numéro de Pionnier (de 1 à 100) est fixé une fois pour toutes.</li>
+      <li>Le compteur des places restantes est affiché publiquement.</li>
+    </ul>
+    <p><strong>Retrait de la place.</strong> En cas de fraude (par exemple une publication faite seulement pour réserver une place, des comptes multiples ou des contenus copiés), WATT peut retirer la place. La décision est motivée et t'est envoyée par email, avec la possibilité de la contester (<a href="#contenu">Contenu &amp; modération</a>). Le compte concerné ne peut plus redevenir Pionnier. La place libérée revient au créateur éligible suivant, dans l'ordre de sa première Œuvre en ligne. La place est aussi libérée si tu supprimes ton compte.</p>
 
-    <h3>10. Responsabilité</h3>
-    <p>WATT est fourni « en l'état » pendant la bêta, sans garantie de disponibilité ni d'absence d'erreur. La plateforme n'est pas responsable de l'usage que les acheteurs font des créations en dehors du service.</p>
+    <h3>10. Débloquer un contenu</h3>
+    <p>Débloquer une Œuvre ou une recette avec des Smyles te donne, dans ta bibliothèque : l'écoute du son en entier, le téléchargement des fichiers prévus (par exemple l'image) et la recette. Le contenu t'est fourni <strong>immédiatement</strong>. Le déblocage est donc <strong>définitif</strong> : les Smyles dépensés ne sont pas rendus, sauf si le contenu n'a pas été fourni à cause d'un problème technique.</p>
+    <p>Ton accès reste acquis même si le créateur modifie, masque ou supprime son Œuvre, ou supprime son compte. <strong>Seule exception</strong> : si un contenu est retiré par la modération parce qu'il est illicite ou viole les droits de quelqu'un, il peut être coupé pour tout le monde, acheteurs compris.</p>
 
-    <h3>11. Droit de rétractation (achats)</h3>
-    <p>Conformément aux articles L221-18 et suivants du Code de la consommation, le consommateur dispose en principe d'un délai de quatorze (14) jours pour se rétracter d'un achat conclu à distance. Toutefois, les créations, recettes et voix vendues sur WATT sont des <strong>contenus numériques fournis sur un support immatériel</strong> dont l'exécution commence immédiatement après l'achat. En confirmant son achat, l'utilisateur <strong>demande expressément l'exécution immédiate</strong> et <strong>reconnaît perdre son droit de rétractation</strong> dès que le contenu est débloqué ou téléchargé (art. L221-28, 13° du Code de la consommation). Pendant la bêta, aucun achat en argent réel n'est proposé : cette clause s'appliquera à l'ouverture des paiements.</p>
+    <h3>11. Ce que tu peux faire de ce que tu débloques (licence de l'acheteur)</h3>
+    <p>Sauf mention contraire sur la fiche du contenu, le créateur te donne, dans la mesure des droits qu'il détient, une autorisation <strong>personnelle et non exclusive</strong> :</p>
+    <ul>
+      <li><strong>La recette</strong> : tu peux l'utiliser pour créer tes propres sons et images avec les outils d'IA de ton choix, et faire ce que tu veux de ces nouvelles créations, dans le respect des conditions de ces outils. Tu ne peux pas revendre ni publier la recette elle-même, telle quelle ou à peine modifiée.</li>
+      <li><strong>Le son et l'image</strong> : tu peux les écouter, les regarder, les télécharger et les garder, et t'en servir comme base pour tes propres créations, à titre <strong>personnel et non commercial</strong>.</li>
+    </ul>
+    <p>Tu ne peux pas : revendre, louer ou distribuer les fichiers bruts ; les publier tels quels comme ta propre création ; les exploiter commercialement (par exemple les mettre sur une plateforme de streaming ou dans une publicité) sans l'accord écrit du créateur.</p>
 
-    <h3>12. Droit applicable et litiges</h3>
-    <p>Les présentes sont soumises au droit français. En cas de litige, l'utilisateur consommateur peut recourir gratuitement à un médiateur de la consommation avant toute action judiciaire. <span class="lg-placeholder">[À COMPLÉTER à la création de la structure : nom et coordonnées du médiateur de la consommation, juridiction compétente]</span></p>
+    <h3>12. Ce que tu autorises à WATT (ta licence vers WATT)</h3>
+    <p>Tu restes titulaire des droits que tu détiens sur tes contenus. En publiant sur WATT, tu donnes à l'éditeur une autorisation <strong>non exclusive, gratuite et valable dans le monde entier</strong> pour :</p>
+    <ul>
+      <li>héberger, stocker, copier et afficher tes contenus, les diffuser en extrait ou en entier et les rendre téléchargeables, selon les règles de la plateforme ;</li>
+      <li>les adapter techniquement (formats, aperçus, extraits de 30 secondes) ;</li>
+      <li>les montrer pour faire la promotion de WATT (sur le site, dans des emails, sur les réseaux sociaux de WATT), en citant ton nom de créateur.</li>
+    </ul>
+    <p>Cette autorisation dure tant que ton contenu est publié. Après un retrait ou la suppression de ton compte, elle continue <strong>seulement pour ce qui reste nécessaire aux acheteurs existants</strong> (garder leur accès, leurs téléchargements et la recette) et pour conserver les preuves exigées par la loi.</p>
+
+    <h3>13. Contenus créés avec l'IA</h3>
+    <p>En publiant sur WATT, tu garantis :</p>
+    <ul>
+      <li>que tu as le droit de publier et de vendre ce contenu, <strong>y compris au regard des conditions des outils d'IA utilisés</strong>. Par exemple, certains outils de création musicale (comme Suno) réservent l'usage commercial à certains abonnements : vérifie les conditions de ton outil avant de vendre ;</li>
+      <li>que l'outil et la version que tu déclares sont exacts (ils sont affichés publiquement) ;</li>
+      <li>que ton contenu ne reprend pas sans autorisation une œuvre, une voix, l'image ou l'identité d'une autre personne ;</li>
+      <li>que tu dédommageras WATT si un tiers lui réclame quelque chose à cause de ton contenu.</li>
+    </ul>
+    <p>En cas de <strong>doute sérieux</strong> sur les droits d'un contenu, WATT peut le retirer, le temps de vérifier ou définitivement, selon la procédure décrite dans <a href="#contenu">Contenu &amp; modération</a>.</p>
+
+    <h3>14. Comportements interdits</h3>
+    <p>Sont notamment interdits : les comptes multiples, les parrainages fictifs, les achats croisés pour gonfler des statistiques ou obtenir des avantages ; la copie des recettes d'autrui pour les revendre ; toute tentative de contourner les protections des contenus payants ; tout contenu illicite (voir <a href="#contenu">Contenu &amp; modération</a>).</p>
+
+    <h3>15. Sanctions</h3>
+    <p>En cas de manquement, WATT peut retirer un contenu, suspendre ou fermer un compte, retirer une place de Pionnier et annuler des Smyles obtenus par fraude. Chaque décision est motivée et peut être contestée (<a href="#contenu">Contenu &amp; modération</a>). <strong>Pendant une suspension</strong>, tu ne peux plus te connecter, et tes contenus sont retirés de la vente et des listes publiques. Ceux qui les ont déjà achetés gardent leur accès, sauf si un contenu est retiré parce qu'il est illicite.</p>
+
+    <h3 id="suppression">16. Suppression du compte</h3>
+    <p>Tu peux supprimer ton compte à tout moment depuis ton WATT BOARD (section Identité, « Supprimer mon compte »).</p>
+    <ul>
+      <li><strong>Ce qui est supprimé</strong> : ton email, ton mot de passe, ton nom d'artiste, ta photo, ta bio, tes liens et les autres informations de ton profil. Tes contenus sont retirés du public et de la vente. Tu es déconnecté définitivement.</li>
+      <li><strong>Ce qui est gardé, sans ton nom</strong> : les exemplaires déjà achetés par d'autres restent dans leur bibliothèque (l'auteur apparaît comme « Artiste supprimé »), et l'historique des transactions est conservé de façon anonyme (voir <a href="#confidentialite">Confidentialité</a>).</li>
+      <li><strong>Tes Smyles</strong> : tous les Smyles restants sont <strong>perdus</strong>, y compris tes Smyles gagnés. Avant la suppression, WATT t'affiche ce que tu vas perdre et te demande de confirmer expressément que tu y renonces. Si tu as des Smyles gagnés retirables, pense à faire un retrait avant.</li>
+      <li><strong>Ta place de Pionnier</strong> est libérée et revient au créateur éligible suivant.</li>
+    </ul>
+    <p>La suppression est définitive : le compte ne peut pas être récupéré.</p>
+
+    <h3>17. Responsabilité</h3>
+    <p>WATT fait de son mieux pour que le service fonctionne bien, sans pouvoir garantir qu'il soit disponible en permanence et sans erreur. WATT n'est pas l'auteur des contenus publiés par les créateurs et n'est responsable ni de ces contenus avant d'en avoir été informé, ni de l'usage que les acheteurs en font hors de la plateforme. Rien dans ces conditions ne limite les droits que la loi te donne en tant que consommateur.</p>
+
+    <h3>18. Évolution du service</h3>
+    <p>D'autres fonctions pourront être ajoutées à WATT. Les présentes conditions seront alors mises à jour, et tu devras accepter la nouvelle version (<a href="#version-cgu">article 2</a>).</p>
+
+    <h3 id="litiges">19. Droit applicable, réclamations et médiation</h3>
+    <p>Ces conditions sont soumises au droit français. Pour toute réclamation, écris d'abord à <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a> : nous cherchons une solution amiable.</p>
+    <!-- MÉDIATEUR DE LA CONSOMMATION — paragraphe unique à remplacer dès que le
+         médiateur est choisi (nom, adresse postale, site internet). Il est
+         repris par lien depuis les CGV (article 8). À faire AVANT l'ouverture
+         de tout achat en euros. -->
+    <p id="mediateur"><strong>Médiateur de la consommation</strong> : le paiement par carte n'est pas encore ouvert sur WATT. Le médiateur de la consommation et ses coordonnées seront indiqués ici avant l'ouverture de tout achat. Tu pourras alors le saisir gratuitement si ta réclamation écrite n'a pas abouti.</p>
+    <p>À défaut d'accord, le litige relève des tribunaux français compétents. Si tu es consommateur, tu peux saisir le tribunal du lieu où tu habitais au moment de l'achat ou de l'événement à l'origine du litige.</p>
   </section>
 
-  <!-- ═══════════ CGV — ACHAT DE SMYLES (Lot 3, Brique 5) ═══════════
-       Brouillon à faire relire par un professionnel (expert-comptable /
-       juriste) avant l'ouverture de l'achat. Les champs entre crochets sont
-       à compléter par Tom. -->
+  <!-- ═══════════ CGV — ACHAT DE SMYLES ═══════════
+       L'achat n'est pas encore ouvert. Ces conditions s'appliqueront à son
+       ouverture. -->
   <section id="cgv-smyles">
     <h2>Conditions générales de vente — achat de Smyles</h2>
 
     <h3>1. Vendeur</h3>
-    <p>Les Smyles sont vendus par : <span class="lg-placeholder">[À COMPLÉTER — prénom et nom, ou dénomination]</span>,
-      <span class="lg-placeholder">[À COMPLÉTER — statut, ex. entrepreneur individuel (micro-entreprise)]</span>,
-      SIRET <span class="lg-placeholder">[À COMPLÉTER]</span>,
-      adresse <span class="lg-placeholder">[À COMPLÉTER]</span>,
-      email de contact <span class="lg-placeholder">[À COMPLÉTER]</span>.</p>
+    <p>Les Smyles sont vendus par Tom Lecomte, entrepreneur individuel (numéro SIREN communiqué dès l'immatriculation), {{EDITEUR_ADRESSE}}. Email : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Téléphone : {{EDITEUR_TELEPHONE}}.</p>
 
     <h3>2. Objet</h3>
-    <p>Les présentes conditions régissent l'achat en ligne de « Smyles », crédits d'usage de la plateforme WATT. Un Smyle permet de débloquer des contenus (recettes, créations, ADN…) sur la plateforme. Un Smyle acheté <strong>n'est ni remboursable en euros, ni convertible en argent, ni cessible en dehors de la plateforme</strong>.</p>
+    <p>Ces conditions régissent l'achat en ligne de Smyles. <strong>L'achat de Smyles sera ouvert prochainement</strong> : tant qu'il ne l'est pas, aucun paiement n'est possible. Les Smyles achetés servent à débloquer des contenus sur WATT (voir l'<a href="#smyles">article 5 des CGU</a>). Ils ne sont <strong>ni retirables en euros, ni convertibles en argent, ni cessibles hors de la plateforme</strong>, et ne sont <strong>pas remboursables une fois utilisés</strong>.</p>
 
     <h3>3. Offres et prix</h3>
-    <p>Les Smyles sont vendus par lots (« packs ») dont le contenu et le prix en euros, toutes taxes comprises, sont affichés avant la validation de l'achat. <span class="lg-placeholder">[Si franchise de TVA : « TVA non applicable, art. 293 B du CGI »]</span></p>
+    <p>Les Smyles sont vendus par packs :</p>
+    <ul>
+      <li><strong>100 Smyles</strong> : 8 € TTC ;</li>
+      <li><strong>500 Smyles</strong> : 35 € TTC ;</li>
+      <li><strong>2 000 Smyles</strong> : 120 € TTC.</li>
+    </ul>
+    <p>Le contenu et le prix toutes taxes comprises de chaque pack sont rappelés avant la validation de l'achat, avec le régime de TVA applicable. Le prix payé est celui affiché au moment de la commande.</p>
 
     <h3>4. Commande et paiement</h3>
-    <p>Le paiement s'effectue par carte bancaire sur la page de paiement sécurisée de notre prestataire <strong>Stripe</strong>. WATT ne reçoit ni ne conserve aucune donnée de carte. La commande est ferme à la confirmation du paiement par Stripe.</p>
+    <p>Le paiement se fait par carte bancaire sur la page de paiement sécurisée de notre prestataire <strong>Stripe</strong>. WATT ne reçoit ni ne conserve tes données de carte. La commande est ferme quand Stripe confirme le paiement.</p>
 
     <h3>5. Livraison</h3>
-    <p>Les Smyles sont crédités sur le compte de l'acheteur <strong>dès la confirmation du paiement</strong> par Stripe, en général en quelques secondes. En cas de retard anormal, contacte-nous à l'adresse ci-dessus.</p>
+    <p>Les Smyles sont ajoutés à ton compte <strong>dès que Stripe confirme le paiement</strong>, en général en quelques secondes. En cas de retard anormal, écris-nous à l'adresse ci-dessus.</p>
 
     <h3>6. Droit de rétractation</h3>
-    <p>Les Smyles sont un contenu numérique fourni immédiatement, sans support matériel. Avant de payer, l'acheteur <strong>demande expressément la fourniture immédiate du contenu et renonce à son droit de rétractation</strong> en cochant la case prévue à cet effet (article L221-28, 13° du Code de la consommation). Cette demande est enregistrée avec la date et l'heure de l'achat. Sans cette case cochée, l'achat n'est pas possible.</p>
+    <p>En principe, un consommateur dispose de 14 jours pour se rétracter d'un achat à distance. Mais les Smyles sont un contenu numérique fourni immédiatement, sans support matériel. Avant de payer, tu <strong>demandes expressément la fourniture immédiate et tu renonces à ton droit de rétractation</strong> en cochant la case prévue (article L221-28, 13° du Code de la consommation). Cet accord est enregistré avec la date et l'heure de l'achat, et rappelé dans ta confirmation d'achat. Sans case cochée, l'achat n'est pas possible.</p>
 
     <h3>7. Remboursement, opposition et contestation</h3>
-    <p>En cas de remboursement accordé ou de contestation bancaire d'un paiement, les Smyles correspondants sont retirés du compte, dans la limite de ceux qui y restent. Si les Smyles ont déjà été utilisés, WATT peut suspendre les fonctions d'achat et examiner la situation du compte.</p>
+    <p>Si un paiement est remboursé ou contesté auprès de la banque, les Smyles correspondants sont retirés du compte, dans la limite de ceux qui restent. S'ils ont déjà été utilisés, WATT peut suspendre les achats du compte et examiner la situation.</p>
 
     <h3>8. Réclamations et médiation</h3>
-    <p>Toute réclamation peut être adressée à l'email de contact ci-dessus. En cas de désaccord persistant, le consommateur peut recourir gratuitement au médiateur de la consommation : <span class="lg-placeholder">[À COMPLÉTER — nom, site et coordonnées du médiateur]</span>.</p>
+    <p>Toute réclamation peut être adressée à l'email ci-dessus. En cas de désaccord persistant, tu peux recourir gratuitement au médiateur de la consommation indiqué à l'<a href="#mediateur">article 19 des CGU</a>.</p>
 
     <h3>9. Droit applicable</h3>
-    <p>Les présentes conditions sont soumises au droit français.</p>
+    <p>Ces conditions sont soumises au droit français.</p>
   </section>
 
   <!-- ═══════════ CONFIDENTIALITÉ ═══════════ -->
   <section id="confidentialite">
     <h2>Politique de confidentialité (RGPD)</h2>
 
+    <h3>Responsable du traitement</h3>
+    <p>Tom Lecomte, entrepreneur individuel, {{EDITEUR_ADRESSE}} — <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>.</p>
+
     <h3>Données collectées</h3>
-    <p>Compte : email, mot de passe (haché, jamais stocké en clair), nom d'artiste et informations de profil que tu choisis de remplir. Activité : créations publiées, achats/ventes/échanges (nécessaires au fonctionnement du service et à l'intégrité de l'économie), messages internes, statistiques d'écoute. Technique : journaux d'erreurs (Sentry) destinés à la fiabilité du service.</p>
+    <ul>
+      <li><strong>Compte</strong> : email, mot de passe (stocké sous forme chiffrée irréversible, jamais en clair), nom d'artiste et informations de profil que tu choisis de remplir (photo, bio, ville, liens vers tes réseaux).</li>
+      <li><strong>Contenus</strong> : sons, images, recettes, titres et descriptions que tu publies, outil d'IA déclaré.</li>
+      <li><strong>Activité</strong> : déblocages, ventes, mouvements de Smyles, bibliothèque, playlists, abonnements, « j'aime », écoutes et téléchargements, parrainages, notifications.</li>
+      <li><strong>Sécurité</strong> : adresse IP au moment de l'inscription (contre les faux comptes et la fraude au parrainage), jetons de vérification d'email et de mot de passe oublié.</li>
+      <li><strong>Signalements</strong> : contenu signalé, motif, explication, et ton email si tu le donnes.</li>
+      <li><strong>Paiements</strong> (quand ils seront ouverts) : pack acheté, montant, date, accord de fourniture immédiate. Les données de carte sont traitées par Stripe, jamais par WATT. Pour les retraits : les informations demandées pour vérifier ton identité et te payer.</li>
+      <li><strong>Mesure d'audience</strong> (seulement si tu l'acceptes) : pages vues et étapes du parcours, rattachées à un identifiant aléatoire, sans ton nom ni ton email.</li>
+      <li><strong>Technique</strong> : journaux d'erreurs pour corriger les pannes.</li>
+    </ul>
 
-    <h3>Finalités et base légale</h3>
-    <p>Ces données servent exclusivement à fournir le service (exécution du contrat) : gérer ton compte, tes transactions, ta bibliothèque, et t'envoyer les emails transactionnels (confirmation de vente, reçu d'achat, emails de compte). <strong>Aucune donnée n'est vendue ni transmise à des fins publicitaires.</strong></p>
+    <h3>Pourquoi et sur quelle base</h3>
+    <ul>
+      <li><strong>Fournir le service</strong> (compte, publication, déblocages, Smyles, bibliothèque, emails liés à ton compte et à tes ventes) : exécution du contrat (les présentes conditions).</li>
+      <li><strong>Sécurité, lutte contre la fraude et les abus, correction des erreurs</strong> : intérêt légitime de WATT à protéger la plateforme et ses utilisateurs.</li>
+      <li><strong>Modération et signalements, comptabilité, obligations fiscales</strong> : obligations légales.</li>
+      <li><strong>Mesure d'audience</strong> : ton consentement, que tu peux retirer à tout moment.</li>
+    </ul>
+    <p><strong>Aucune donnée n'est vendue ni utilisée à des fins publicitaires.</strong></p>
 
-    <h3>Durée de conservation</h3>
-    <p>Les données sont conservées tant que ton compte est actif. Les enregistrements de transactions sont conservés après suppression du compte, sous forme anonymisée, pour préserver l'intégrité des achats des autres utilisateurs et répondre aux obligations comptables.</p>
+    <h3>Qui reçoit tes données (sous-traitants)</h3>
+    <p>Tes données ne sont partagées qu'avec les prestataires nécessaires au service, qui agissent sur nos instructions :</p>
+    <ul>
+      <li><strong>Railway Corporation</strong> (hébergement de l'application et de la base de données), 548 Market St PMB 68956, San Francisco, CA 94104, États-Unis — <a href="https://railway.com/legal/privacy" rel="noopener">politique de confidentialité</a>.</li>
+      <li><strong>Cloudflare, Inc.</strong> (stockage des fichiers sons et images, service R2), 101 Townsend Street, San Francisco, CA 94107, États-Unis — <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">politique de confidentialité</a>.</li>
+      <li><strong>Resend</strong> (Plus Five Five, Inc., envoi des emails), 2261 Market Street #5039, San Francisco, CA 94114, États-Unis — <a href="https://resend.com/legal/privacy-policy" rel="noopener">politique de confidentialité</a>.</li>
+      <li><strong>Sentry</strong> (Functional Software, Inc., suivi des erreurs techniques, sans données personnelles envoyées par défaut), 45 Fremont Street, 8th Floor, San Francisco, CA 94105, États-Unis — <a href="https://sentry.io/privacy/" rel="noopener">politique de confidentialité</a>.</li>
+      <li><strong>Stripe</strong> (paiement par carte, quand il sera ouvert ; entité pour l'Europe : Stripe Payments Europe, Limited, Irlande) — <a href="https://stripe.com/fr/privacy" rel="noopener">politique de confidentialité</a>.</li>
+    </ul>
+    <p><strong>Transferts hors de l'Union européenne.</strong> Ces prestataires peuvent traiter des données aux États-Unis. Ces transferts sont encadrés :</p>
+    <ul>
+      <li>Railway, Cloudflare, Sentry et Stripe déclarent adhérer au <strong>cadre de protection des données UE–États-Unis</strong> (Data Privacy Framework), reconnu par la Commission européenne. Cloudflare, Sentry et Stripe prévoient aussi les <strong>clauses contractuelles types</strong> de la Commission européenne ; Railway, un accord de traitement des données avec des clauses de protection standard.</li>
+      <li>Resend encadre les transferts depuis l'Europe par les <strong>clauses contractuelles types</strong> de la Commission européenne, et déclare aussi adhérer au Data Privacy Framework.</li>
+    </ul>
+
+    <h3>Combien de temps</h3>
+    <ul>
+      <li><strong>Compte et profil</strong> : tant que ton compte existe. À la suppression, ils sont effacés ou rendus anonymes immédiatement.</li>
+      <li><strong>Adresse IP d'inscription</strong> : tant que ton compte existe, puis effacée à sa suppression.</li>
+      <li><strong>Transactions et mouvements de Smyles</strong> : conservés sans ton nom après la suppression du compte, pour que les acheteurs gardent leurs achats et que les comptes restent justes. Les pièces comptables liées aux paiements en euros sont conservées 10 ans (article L123-22 du Code de commerce).</li>
+      <li><strong>Mesure d'audience</strong> : <strong>13 mois</strong> au plus.</li>
+      <li><strong>Journaux d'erreurs</strong> : 90 jours au plus.</li>
+      <li><strong>Signalements et décisions de modération</strong> : le temps du traitement, puis le temps nécessaire pour répondre à une contestation ou à une autorité.</li>
+    </ul>
 
     <h3>Tes droits</h3>
-    <p>Conformément au RGPD, tu disposes des droits d'accès, de rectification, d'effacement, de portabilité et d'opposition. <strong>Suppression de compte</strong> : disponible directement dans ton WATT BOARD (section Identité → Supprimer mon compte). La suppression anonymise immédiatement tes données personnelles et dépublie tes contenus invendus ; les exemplaires déjà achetés par d'autres utilisateurs restent dans leur bibliothèque (l'auteur apparaît comme « Artiste supprimé »).</p>
-    <p>Pour toute autre demande : <span class="lg-placeholder">[À COMPLÉTER — email de contact officiel]</span>. Tu peux aussi saisir la CNIL (cnil.fr).</p>
+    <p>Tu as le droit d'accéder à tes données, de les corriger, de les effacer, de les récupérer (portabilité), de t'opposer à certains usages, d'en limiter l'usage, et de retirer ton consentement à tout moment. Tu peux aussi donner des instructions sur le sort de tes données après ton décès.</p>
+    <ul>
+      <li><strong>Exporter tes données</strong> : depuis ton WATT BOARD (section Identité, « Exporter mes données »), au format JSON.</li>
+      <li><strong>Corriger ton profil</strong> : directement dans ton WATT BOARD.</li>
+      <li><strong>Supprimer ton compte</strong> : depuis ton WATT BOARD (section Identité, « Supprimer mon compte »). Voir l'<a href="#suppression">article 16 des CGU</a>.</li>
+      <li><strong>Toute autre demande</strong> : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Nous répondons dans un délai d'un mois.</li>
+    </ul>
+    <p>Si tu estimes que tes droits ne sont pas respectés, tu peux adresser une réclamation à la <strong>CNIL</strong> (Commission nationale de l'informatique et des libertés), 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 — <a href="https://www.cnil.fr/fr/plaintes" rel="noopener">cnil.fr</a>.</p>
 
     <h3>Cookies et stockage local</h3>
-    <p>WATT n'utilise pas de cookies publicitaires ni de traceurs tiers. Le stockage local de ton navigateur conserve uniquement ta session de connexion (jeton) et tes préférences d'interface — indispensables au fonctionnement.</p>
-    <p>WATT réalise une <strong>mesure d'audience anonyme</strong> (funnel de visite, sans donnée personnelle) pour améliorer le service. Elle est <strong>désactivée par défaut</strong> et ne s'active que si tu l'acceptes via la bannière de consentement ; tu peux refuser sans conséquence sur l'utilisation du site, et le signal « Do Not Track » de ton navigateur est respecté automatiquement.</p>
+    <p>WATT n'utilise ni cookies publicitaires ni traceurs de tiers. Le stockage local de ton navigateur garde ta session de connexion et tes préférences d'affichage : c'est indispensable au fonctionnement, sans consentement nécessaire.</p>
+    <p>WATT fait une <strong>mesure d'audience</strong> pour améliorer le service. Elle est <strong>désactivée par défaut</strong> et ne s'active que si tu l'acceptes dans le bandeau de consentement. Tu peux refuser sans aucune conséquence sur l'utilisation du site. Le signal « Do Not Track » de ton navigateur vaut refus automatique.</p>
   </section>
 
-  <!-- ═══════════ CONTENU & CONTREFAÇON ═══════════ -->
+  <!-- ═══════════ CONTENU & MODÉRATION ═══════════ -->
   <section id="contenu">
-    <h2>Politique de contenu &amp; contrefaçon</h2>
+    <h2>Contenu, modération et recours</h2>
 
     <h3>Règles de contenu</h3>
-    <p>Sont interdits sur WATT : les contenus illégaux, haineux, ou sexualisant des mineurs ; l'imitation de la voix ou de l'identité d'une personne réelle identifiable sans son consentement ; les contenus dont tu ne détiens pas les droits ; les fausses déclarations de provenance IA.</p>
+    <p>Sont interdits sur WATT : les contenus illégaux, haineux, violents ou sexualisant des mineurs ; l'imitation de la voix, de l'image ou de l'identité d'une personne réelle sans son accord ; les contenus dont tu ne détiens pas les droits ; les fausses déclarations sur l'outil d'IA utilisé ; le spam et les arnaques.</p>
 
-    <h3>Signaler une contrefaçon ou un abus</h3>
-    <p><strong>Signalement intégré (DSA)</strong> : chaque fiche produit et chaque profil comporte un bouton « ⚑ Signaler » — connecté ou non, avec accusé de réception. Motifs : contenu illégal, contrefaçon, haine ou violence, nudité, spam/arnaque, autre. C'est le canal recommandé.</p>
-    <p>Tu peux aussi envoyer un signalement à <span class="lg-placeholder">[À COMPLÉTER — email de contact officiel]</span> en précisant : l'URL du contenu en cause, la description de tes droits, et tout élément de preuve (lien vers ta publication originale, antériorité…).</p>
-    <p>Tout signalement étayé est traité sous 7 jours : le contenu peut être dépublié le temps de l'examen, puis retiré définitivement et le compte fautif sanctionné si la violation est avérée. Les signalements abusifs ou de mauvaise foi sont également sanctionnés.</p>
+    <h3>Signaler un contenu</h3>
+    <p><strong>Tout le monde peut signaler un contenu, même sans compte</strong>, avec le bouton « ⚑ Signaler » présent sur chaque Œuvre et chaque profil. Motifs proposés : contenu illégal, contrefaçon, haine ou violence, nudité, spam ou arnaque, autre. Ton signalement doit expliquer pourquoi le contenu pose problème. Sans compte, ajoute ton email pour recevoir les réponses. Tu dois cocher la case <strong>« je déclare de bonne foi que les informations de ce signalement sont exactes et complètes »</strong>. Tu reçois un accusé de réception.</p>
+    <p>Pour une <strong>contrefaçon</strong>, tu peux aussi écrire à <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a> en indiquant : l'adresse (URL) du contenu, tes droits et tout élément de preuve (lien vers ta publication d'origine, date de création…).</p>
+
+    <h3>Comment nous traitons un signalement</h3>
+    <p>Chaque signalement est examiné par une personne, de façon objective, en général sous 7 jours. Pendant l'examen, le contenu peut être masqué. Selon la gravité, WATT peut : ne rien faire, retirer le contenu, retirer une place de Pionnier, suspendre ou fermer le compte.</p>
+    <ul>
+      <li><strong>Le créateur</strong> reçoit par email une <strong>décision motivée</strong> : ce qui a été décidé, pourquoi, sur quels faits et quelle règle (loi ou présentes conditions), et comment la contester.</li>
+      <li><strong>Pour contester</strong>, il suffit de <strong>répondre à cet email</strong> ou d'écrire à <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. La décision est alors réexaminée et la réponse t'est envoyée par email. Tu peux aussi saisir le juge.</li>
+      <li><strong>La personne qui a signalé</strong> est informée de la décision, si elle a donné son email.</li>
+      <li><strong>Pendant une suspension</strong>, les contenus du compte sont retirés de la vente et des listes publiques.</li>
+    </ul>
+    <p>Les signalements abusifs ou de mauvaise foi répétés peuvent entraîner la suspension de leur auteur.</p>
+
+    <h3>Point de contact unique</h3>
+    <p>Pour les autorités, les utilisateurs et toute personne concernée, le point de contact unique de WATT (règlement européen sur les services numériques, dit « DSA ») est : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Langues acceptées : français et anglais.</p>
 
     <h3>Transparence IA</h3>
-    <p>Chaque création publiée sur WATT affiche sa provenance (outil IA et version, déclarés par l'artiste). Cette déclaration engage l'artiste ; une fausse déclaration constitue un manquement aux CGU.</p>
+    <p>Chaque Œuvre publiée sur WATT affiche l'outil d'IA et la version déclarés par son créateur. Cette déclaration engage le créateur. Une fausse déclaration est un manquement aux présentes conditions.</p>
   </section>
 
 </div>
-<script src="/ui/modals/report-modal.js?v=20260707dsa" defer></script>
+<script src="/ui/modals/report-modal.js?v=20261010lotd" defer></script>
+<script src="/ui/core/legal-footer.js?v=20261010lotd" defer></script>
 </body>
 </html>

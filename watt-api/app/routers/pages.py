@@ -647,9 +647,32 @@ async def library_page():
     return _page("library.html")
 
 
+_REPLI_COORDONNEES = "communiqué sur simple demande à smyletheplan@gmail.com"
+
+
+def _coordonnees_editeur(texte: str) -> str:
+    """Remplace les marqueurs de legal.html par les coordonnées de l'éditeur,
+    lues dans la configuration (variables Railway) : elles ne figurent jamais
+    dans le dépôt public."""
+    adresse = (settings.EDITEUR_ADRESSE or "").strip() or _REPLI_COORDONNEES
+    telephone = (settings.EDITEUR_TELEPHONE or "").strip() or _REPLI_COORDONNEES
+    return (texte.replace("{{EDITEUR_ADRESSE}}", _html.escape(adresse))
+                 .replace("{{EDITEUR_TELEPHONE}}", _html.escape(telephone)))
+
+
 @router.get("/legal", include_in_schema=False)
+@router.get("/legal.html", include_in_schema=False)
 async def legal_page():
-    return _page("legal.html")
+    path = REPO_ROOT / "legal.html"
+    try:
+        mtime_ns = path.stat().st_mtime_ns
+    except OSError:
+        raise HTTPException(status_code=404)
+    texte = _page_injectee(str(path), mtime_ns, pwa_active(), _commit())
+    return _PageHTML(
+        content=_coordonnees_editeur(texte),
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @router.get("/reset", include_in_schema=False)
