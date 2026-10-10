@@ -16,6 +16,7 @@ deux routes existantes (/products/{id}/download, /beats/{id}/download) qui
 restent INTACTES. La vérification de possession est identique (UnlockedPrompt
 current_owner_id OU artiste propriétaire).
 """
+import asyncio
 import json
 from datetime import datetime, timezone
 from typing import Optional
@@ -46,6 +47,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.config import settings
+from app.core.fichiers import lire_fichier_borne, max_octets, verifier_image
+from app.core.ratelimit import LIMIT_UPLOAD, limiter
 from app.database import get_db
 from app.models.prompt import Prompt
 from app.models.prompt_gallery_image import PromptGalleryImage
@@ -54,8 +57,6 @@ from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 from app.schemas.image import ImageCreate, ImageOwnerRead, ImageUpdate
 from app.services.images import (
-    ALLOWED_CONTENT_TYPES,
-    IMAGE_MAX_BYTES,
     IMAGE_MIME_BY_EXT,
     ImageUploadError,
     R2NotConfigured,
@@ -155,6 +156,18 @@ def _clean_image_tags(raw: str | None) -> str | None:
     return ",".join(out) if out else None
 
 
+# Formats d'image IA acceptés (le GIF est réservé aux avatars).
+_FORMATS_IMAGE_IA = ("png", "jpg", "webp")
+
+
+async def _lire_image_controlee(file: UploadFile) -> tuple[bytes, str]:
+    """Étape 5 — lit une image envoyée (taille bornée) et contrôle son type
+    réel. Renvoie (octets, extension réelle). Lève 400/413 en français."""
+    data = await lire_fichier_borne(file, max_octets(settings.UPLOAD_MAX_IMAGE_MB))
+    ext = await asyncio.to_thread(verifier_image, data, _FORMATS_IMAGE_IA)
+    return data, ext
+
+
 def _tags_to_list(csv: str | None) -> list[str]:
     """CSV stockée → liste de tags pour le payload public ([] si vide)."""
     if not csv:
@@ -167,7 +180,9 @@ def _tags_to_list(csv: str | None) -> list[str]:
     response_model=ImageOwnerRead,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(LIMIT_UPLOAD)
 async def create_my_image(
+    request: Request,
     file: UploadFile = File(...),
     title: str = Form(...),
     image_platform: str = Form(...),
@@ -256,31 +271,15 @@ async def create_my_image(
             detail=e.errors(include_url=False),
         )
 
-    # ── Validation fichier : type + taille ──────────────────────────────────
-    ct = (file.content_type or "").lower()
-    filename = file.filename or ""
-    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ct not in ALLOWED_CONTENT_TYPES and ext not in IMAGE_MIME_BY_EXT:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Format non supporté. Utilise PNG, JPG ou WebP.",
-        )
-    data = await file.read()
-    if not data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Fichier vide."
-        )
-    if len(data) > IMAGE_MAX_BYTES:
-        mb = len(data) / 1024 / 1024
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image trop lourde ({mb:.1f} Mo). Limite : 20 Mo.",
-        )
+    # ── Validation fichier (étape 5) : taille bornée, type RÉEL par
+    # signature, refus SVG/HTML/scripts, image décodable. Le nom et le
+    # Content-Type envoyés sont ignorés : l'extension stockée vient du contenu.
+    data, ext = await _lire_image_controlee(file)
 
     # ── Upload R2 (original + aperçu) ────────────────────────────────────────
     try:
         image_r2_key, preview_r2_key = await upload_image_assets(
-            data=data, filename=filename, content_type=ct
+            data=data, filename=f"image.{ext}", content_type=IMAGE_MIME_BY_EXT[ext]
         )
     except R2NotConfigured as e:
         raise HTTPException(
@@ -1535,7 +1534,9 @@ async def list_my_image_gallery(
     "/artist/me/images/{image_id}/gallery",
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(LIMIT_UPLOAD)
 async def add_my_image_gallery(
+    request: Request,
     image_id: UUID,
     files: list[UploadFile] = File(...),
     current_user: User = Depends(get_current_user),
@@ -1566,29 +1567,22 @@ async def add_my_image_gallery(
     )).scalar()
     next_position = (current_max + 1) if current_max is not None else 0
 
+    # Étape 5 : TOUS les fichiers sont contrôlés AVANT le premier envoi R2 —
+    # un fichier piégé au milieu du lot ne laisse pas d'envois orphelins.
+    # On ne garde que l'extension en mémoire (pas les octets de tout le lot) :
+    # chaque fichier est relu au moment de son envoi.
+    extensions: list[str] = []
     for f in files:
-        ct = (f.content_type or "").lower()
-        filename = f.filename or ""
-        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-        if ct not in ALLOWED_CONTENT_TYPES and ext not in IMAGE_MIME_BY_EXT:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format non supporté. Utilise PNG, JPG ou WebP.",
-            )
-        data = await f.read()
-        if not data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Fichier vide."
-            )
-        if len(data) > IMAGE_MAX_BYTES:
-            mb = len(data) / 1024 / 1024
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"Image trop lourde ({mb:.1f} Mo). Limite : 20 Mo.",
-            )
+        _octets, ext = await _lire_image_controlee(f)
+        extensions.append(ext)
+        del _octets
+        await f.seek(0)
+
+    for f, ext in zip(files, extensions):
+        data = await lire_fichier_borne(f, max_octets(settings.UPLOAD_MAX_IMAGE_MB))
         try:
             g_image_key, g_preview_key = await upload_image_assets(
-                data=data, filename=filename, content_type=ct
+                data=data, filename=f"image.{ext}", content_type=IMAGE_MIME_BY_EXT[ext]
             )
         except R2NotConfigured as e:
             raise HTTPException(

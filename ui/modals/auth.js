@@ -127,7 +127,9 @@ async function doLogin(email, password, { onAttempt } = {}) {
     } else if (e && e.status === 401) {
       msg = 'Email ou mot de passe incorrect.';
     } else if (e && e.status === 429) {
-      msg = 'Trop de tentatives — attends une minute puis réessaie.';
+      // Étape 5 : le serveur précise le délai (« Réessaie dans 12 minutes. »).
+      msg = (e.body && typeof e.body.detail === 'string' && e.body.detail)
+         || 'Trop de tentatives — attends une minute puis réessaie.';
     } else if (e && e.status >= 500) {
       msg = 'Erreur serveur — on est sur le coup, réessaie dans un instant.';
     } else {

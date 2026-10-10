@@ -299,6 +299,50 @@ class Settings(BaseSettings):
     # repris à la visite suivante du parrain, rien n'est perdu).
     QUETES_PARRAINAGE_PLAFOND_24H: int = 3000
 
+    # ══ Étape 5 — sécurité ═══════════════════════════════════════════════
+
+    # ── Limitation anti-attaques (rate limit) ─────────────────────────────
+    # REDIS_URL vide (cas actuel en prod) : compteur en MÉMOIRE, propre à
+    # chaque worker uvicorn (2 workers → limite effective ≈ 2×) et remis à
+    # zéro à chaque redéploiement — un avertissement est écrit au démarrage.
+    # REDIS_URL défini (ex. ${{Redis.REDIS_URL}} sur Railway) : compteur
+    # PARTAGÉ entre les workers et conservé entre deux déploiements. Si Redis
+    # tombe, la limite repasse automatiquement en mémoire (aucun blocage).
+    REDIS_URL: str | None = None
+    # Limites par famille (syntaxe « N/période », plusieurs séparées par « ; »).
+    # Clé = IP réelle du client (cf. app.core.ratelimit.client_ip).
+    # Calibrage : assez bas pour casser un robot, assez haut pour qu'un lieu
+    # partagé (Wi-Fi d'une soirée de lancement, opérateur mobile qui met
+    # beaucoup d'abonnés derrière une même IP) ne bloque pas des humains.
+    # Modifiables par variable d'environnement sans toucher au code.
+    RATE_LIMIT_LOGIN: str = "8/minute;60/hour"
+    RATE_LIMIT_REGISTER: str = "10/hour;40/day"
+    RATE_LIMIT_FORGOT_PASSWORD: str = "3/15minutes;10/day"
+    RATE_LIMIT_RESEND_VERIFICATION: str = "3/15minutes;10/day"
+    RATE_LIMIT_RESET_PASSWORD: str = "10/hour"
+    RATE_LIMIT_UPLOAD: str = "15/minute;120/hour"
+    RATE_LIMIT_PURCHASE: str = "20/minute;300/hour"
+
+    # ── Politique de sécurité du navigateur (CSP) ─────────────────────────
+    # false (défaut) : la CSP est envoyée en « Report-Only » — le navigateur
+    # SIGNALE les violations (console + POST /securite/csp-rapport → logs)
+    # mais ne bloque rien. true : la même politique BLOQUE. À allumer par Tom
+    # après vérification (aucune violation dans les logs sur les pages clés).
+    CSP_ENFORCE: bool = False
+
+    # ── Contrôle des fichiers envoyés (tailles max par type, en Mo) ───────
+    UPLOAD_MAX_IMAGE_MB: int = 20     # images IA vendables + galerie
+    UPLOAD_MAX_AVATAR_MB: int = 5     # avatar, bannière, pochette (/watt/upload-image)
+    UPLOAD_MAX_AUDIO_MB: int = 50     # sons (/watt/upload)
+    UPLOAD_MAX_VOICE_MB: int = 20     # échantillons de voix (/watt/upload-voice)
+    UPLOAD_MAX_VIDEO_MB: int = 25     # vidéo de couverture de playlist
+    # Plafond d'une requête d'envoi complète (plusieurs fichiers d'une galerie
+    # compris) : refusée AVANT d'être écrite sur le disque du serveur.
+    UPLOAD_MAX_REQUEST_MB: int = 300
+    # Garde-fou mémoire : une image de plus de N pixels est refusée (son
+    # aperçu serait décodé en entier en mémoire — bombe de décompression).
+    UPLOAD_MAX_IMAGE_PIXELS: int = 90_000_000
+
     def _item_visible(self, show: bool) -> bool:
         """VISIBLE si le mode lancement est désactivé, ou si l'item est
         explicitement rallumé via son drapeau SHOW_*."""

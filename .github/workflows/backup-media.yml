@@ -1,0 +1,104 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Sauvegarde quotidienne des MÉDIAS (sons, images, voix, vidéos) R2 → R2.
+#
+# Étape 5 sécurité (2026-10-02). Complète backup-db.yml : la base était
+# sauvegardée chaque nuit, mais pas les fichiers vers lesquels elle pointe.
+# Ce workflow copie le bucket public (smyle-play-audio) et, s'il est défini,
+# le bucket privé vers un bucket R2 DÉDIÉ de sauvegarde, sous public/ et prive/.
+#
+#   • Incrémental : ne recopie que les fichiers nouveaux ou modifiés
+#     (copie serveur à serveur chez Cloudflare, rien ne transite par GitHub).
+#   • Ne supprime JAMAIS rien (ni dans la source, ni dans la sauvegarde).
+#   • Sans réglages (secrets absents) : le run s'arrête proprement avec un
+#     avertissement, il ne passe pas en échec.
+#
+# Réglages à faire UNE fois par Tom (GitHub → Settings → Secrets and variables
+# → Actions) :
+#   Secrets :
+#     R2_MEDIA_BACKUP_ACCESS_KEY_ID     → jeton R2 « lecture » sur smyle-play-audio
+#     R2_MEDIA_BACKUP_SECRET_ACCESS_KEY    (+ bucket privé) et « écriture » sur
+#                                          le bucket de sauvegarde
+#   Variables (onglet « Variables ») :
+#     R2_BACKUP_BUCKET   → nom du bucket de sauvegarde (ex. smyleplay-media-backups)
+#     R2_PRIVATE_BUCKET  → nom du bucket privé (optionnel, seulement s'il existe)
+#
+# Lancement manuel : onglet Actions → « Backup médias » → Run workflow
+# (case « essai » cochée = n'écrit rien, affiche ce qui serait copié).
+# Restauration d'un fichier (sur un ordinateur, depuis watt-api/) :
+#   python tools/backup_media.py restaurer <clé> --origine public --dry-run
+# ─────────────────────────────────────────────────────────────────────────────
+name: Backup médias quotidien (R2 vers R2)
+
+on:
+  schedule:
+    - cron: "30 4 * * *" # 04:30 UTC, après la sauvegarde de la base (04:00)
+  workflow_dispatch:
+    inputs:
+      essai:
+        description: "Essai à blanc (n'écrit rien)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-media
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Vérifier les réglages
+        id: reglages
+        env:
+          AK: ${{ secrets.R2_MEDIA_BACKUP_ACCESS_KEY_ID }}
+          SK: ${{ secrets.R2_MEDIA_BACKUP_SECRET_ACCESS_KEY }}
+          BB: ${{ vars.R2_BACKUP_BUCKET }}
+        run: |
+          if [ -z "$AK" ] || [ -z "$SK" ] || [ -z "$BB" ]; then
+            echo "::warning::Sauvegarde des médias NON configurée (secrets R2_MEDIA_BACKUP_* ou variable R2_BACKUP_BUCKET absents). Rien n'a été copié."
+            echo "pret=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "pret=oui" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.reglages.outputs.pret == 'oui'
+
+      - name: Setup Python
+        if: steps.reglages.outputs.pret == 'oui'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Installer boto3 (même version que l'application)
+        if: steps.reglages.outputs.pret == 'oui'
+        run: pip install "$(grep -E '^boto3==' requirements.txt)"
+
+      - name: Copier les médias
+        if: steps.reglages.outputs.pret == 'oui'
+        working-directory: watt-api
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_MEDIA_BACKUP_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_MEDIA_BACKUP_SECRET_ACCESS_KEY }}
+          # En dur : identifiant de compte R2, pas un secret (comme backup-db.yml).
+          R2_ENDPOINT_URL: https://2376b01ec5baa2915948d63fcca6a367.r2.cloudflarestorage.com
+          R2_BUCKET: smyle-play-audio
+          R2_PRIVATE_BUCKET: ${{ vars.R2_PRIVATE_BUCKET }}
+          R2_BACKUP_BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
+          ESSAI: ${{ github.event_name == 'workflow_dispatch' && inputs.essai }}
+        run: |
+          set -o pipefail
+          OPTS=""
+          if [ "$ESSAI" = "true" ]; then OPTS="--dry-run"; fi
+          {
+            echo '### Sauvegarde des médias'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          python tools/backup_media.py sauvegarder $OPTS 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          rc=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
