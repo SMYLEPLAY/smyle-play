@@ -173,8 +173,11 @@ def _sql_meta(op_sql: str) -> str:
 
 
 def _registre(enable: bool) -> list[str]:
+    # « TRIGGER USER » : tous les déclencheurs posés par l'application sur le
+    # registre (immuabilité), quels que soient leurs noms exacts en production
+    # — les contraintes internes (clés étrangères) ne sont pas concernées.
     mot = "ENABLE" if enable else "DISABLE"
-    return [f"ALTER TABLE transactions {mot} TRIGGER {t}" for t in _TRIGGERS_REGISTRE]
+    return [f"ALTER TABLE transactions {mot} TRIGGER USER"]
 
 
 # ─── UPGRADE ────────────────────────────────────────────────────────────────
@@ -190,6 +193,45 @@ UPGRADE_SQL.append(
     "  'masse_avant', COALESCE(sum(credits_balance), 0), "
     "  'transactions', (SELECT count(*) FROM transactions)) "
     "FROM users"
+)
+
+# 0 bis. Réconciliation des comptes « legacy » dont les réserves ne tombent pas
+#    juste (antérieurs à 0088 : la contrainte de somme y est NOT VALID, donc
+#    non vérifiée sur ces lignes… jusqu'au premier UPDATE, qui échouerait).
+#    Règle : le solde affiché (credits_balance) fait foi ; l'écart est porté
+#    par la réserve « offerts » (non retirable, sans risque de trésorerie).
+#    Si les réserves dépassent le solde : offerts d'abord, puis gagnés, puis
+#    achetés. État AVANT tracé dans admin_journal (action
+#    'reconciliation_reserves'). Non annulé par le downgrade (correction).
+_ECART = "(credits_balance - smyles_achetes - smyles_gagnes)"
+_NOUV_GAGNES = (
+    f"CASE WHEN {_ECART} >= 0 THEN smyles_gagnes "
+    "WHEN credits_balance - smyles_achetes >= 0 THEN credits_balance - smyles_achetes "
+    "ELSE 0 END"
+)
+_NOUV_PROMO = f"GREATEST(0, {_ECART})"
+_INCOHERENT = (
+    "smyles_achetes + smyles_gagnes + smyles_promo <> credits_balance "
+    "AND credits_balance >= 0"
+)
+UPGRADE_SQL.append(
+    "INSERT INTO admin_journal (id, admin_id, action, cible_type, cible_id, motif, details) "
+    "SELECT gen_random_uuid(), NULL, 'reconciliation_reserves', 'user', CAST(id AS text), "
+    "'Redénomination : réserves réalignées sur le solde affiché avant le ×10.', "
+    "jsonb_build_object('solde', credits_balance, 'achetes', smyles_achetes, "
+    "  'gagnes', smyles_gagnes, 'promo', smyles_promo, "
+    "  'gagnes_bloque', smyles_gagnes_bloque, 'promo_gagnes', smyles_promo_gagnes) "
+    f"FROM users WHERE {_INCOHERENT}"
+)
+UPGRADE_SQL.append(
+    "UPDATE users SET "
+    f"smyles_promo = {_NOUV_PROMO}, "
+    f"smyles_gagnes = {_NOUV_GAGNES}, "
+    "smyles_achetes = CASE WHEN credits_balance - smyles_achetes >= 0 "
+    "  THEN smyles_achetes ELSE credits_balance END, "
+    f"smyles_gagnes_bloque = LEAST(smyles_gagnes_bloque, {_NOUV_GAGNES}), "
+    f"smyles_promo_gagnes = LEAST(smyles_promo_gagnes, {_NOUV_PROMO}) "
+    f"WHERE {_INCOHERENT}"
 )
 
 # 1. Les bornes qui bloqueraient la mise à l'échelle sont retirées d'abord.
@@ -264,6 +306,16 @@ UPGRADE_SQL.append(
     f"WHERE {_NOUVEAU_PRIX} <> p.price_credits * {FACTEUR}"
 )
 UPGRADE_SQL.append(f"UPDATE prompts p SET price_credits = {_NOUVEAU_PRIX}")
+
+# 5 bis. Toutes les lignes sont désormais cohérentes : la contrainte de somme,
+#    restée NOT VALID depuis 0088 en production, est enfin validée.
+UPGRADE_SQL.append(
+    "DO $$ BEGIN "
+    "IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_users_buckets_sum_eq_balance' "
+    "  AND conrelid = 'users'::regclass AND NOT convalidated) THEN "
+    "  ALTER TABLE users VALIDATE CONSTRAINT ck_users_buckets_sum_eq_balance; "
+    "END IF; END $$"
+)
 
 # 6. Nouvelles bornes.
 for _t, _n, _avant, _apres in _CHECKS:

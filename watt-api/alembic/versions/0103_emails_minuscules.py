@@ -8,7 +8,8 @@ Lot D. « Marie@Exemple.fr » et « marie@exemple.fr » pouvaient être deux
 comptes différents (l'index unique était sensible à la casse), et la
 connexion échouait si la casse tapée différait de celle de l'inscription.
 
-1. CONTRÔLE : s'il existe deux comptes dont l'email ne diffère que par la
+1. (Version initiale, remplacée le 10/10 par une version non bloquante,
+   voir plus bas.) CONTRÔLE : s'il existe deux comptes dont l'email ne diffère que par la
    casse (ou par des espaces autour), la migration ÉCHOUE avec un message
    clair et ne touche à rien. Elle ne fusionne jamais de comptes : c'est une
    décision humaine (quel compte garder, que faire des Smyles et des achats).
@@ -55,13 +56,41 @@ END $$;
 """
 
 
+# Version non bloquante (10/10/2026) : un doublon ne doit jamais empêcher la
+# mise en ligne. Les comptes SANS conflit passent en minuscules ; l'index
+# unique n'est créé que s'il ne reste aucun doublon, sinon un index simple +
+# un avertissement (les doublons apparaissent sur /pret-a-sortir et se
+# règlent à la main). Le code normalise déjà tout nouvel email.
+_MINUSCULES_SANS_CONFLIT = """
+UPDATE users u SET email = lower(btrim(u.email))
+ WHERE u.email <> lower(btrim(u.email))
+   AND NOT EXISTS (SELECT 1 FROM users v
+                    WHERE v.id <> u.id AND lower(btrim(v.email)) = lower(btrim(u.email)))
+"""
+
+_INDEX = """
+DO $$
+DECLARE
+    n integer;
+BEGIN
+    SELECT count(*) INTO n FROM (
+        SELECT 1 FROM users GROUP BY lower(btrim(email)) HAVING count(*) > 1) d;
+    IF n = 0 THEN
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_lower ON users (lower(email));
+    ELSE
+        CREATE INDEX IF NOT EXISTS ix_users_email_lower ON users (lower(email));
+        RAISE WARNING 'Migration 0103 : % email(s) en double à la casse près — index '
+                      'unique NON créé. Fusionner ces comptes (voir /pret-a-sortir).', n;
+    END IF;
+END $$;
+"""
+
+
 def upgrade() -> None:
-    op.execute(_CONTROLE)
-    op.execute(
-        "UPDATE users SET email = lower(btrim(email)) WHERE email <> lower(btrim(email))"
-    )
-    op.execute("CREATE UNIQUE INDEX ux_users_email_lower ON users (lower(email))")
+    op.execute(_MINUSCULES_SANS_CONFLIT)
+    op.execute(_INDEX)
 
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ux_users_email_lower")
+    op.execute("DROP INDEX IF EXISTS ix_users_email_lower")

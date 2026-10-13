@@ -280,3 +280,90 @@ async def test_migration_0100_sur_base_peuplee():
             assert retour == avant
         finally:
             await db.rollback()
+
+
+# ─── 4. Base « sale » (cas réel de production du 10/10/2026) ────────────────────
+
+@pytest.mark.asyncio
+async def test_migration_0100_reconcilie_les_reserves_legacy():
+    """En production, la contrainte de somme est NOT VALID depuis 0088 : des
+    comptes anciens ont des réserves qui ne tombent pas juste. Le premier
+    UPDATE ×10 les faisait échouer. La migration les réaligne sur le solde
+    affiché (écart → offerts), trace l'état d'avant, puis valide la contrainte."""
+    m = _migration()
+    async with SessionLocal() as db:
+        try:
+            for sql in m.DOWNGRADE_SQL:
+                await _exec(db, sql)
+            # Reproduire l'état de prod : contrainte de somme NOT VALID.
+            await _exec(db, "ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_buckets_sum_eq_balance")
+            tag = uuid.uuid4().hex[:8]
+            ids = {k: uuid.uuid4() for k in ("trop_peu", "trop", "beaucoup_trop", "sain")}
+            rows = [
+                # (clé, solde, achetés, gagnés, offerts, gagnés bloqués, offerts gagnés)
+                ("trop_peu", 50, 10, 5, 0, 5, 0),       # réserves < solde : écart → offerts
+                ("trop", 40, 10, 20, 30, 20, 30),        # réserves > solde : offerts réduits
+                ("beaucoup_trop", 8, 10, 20, 0, 20, 0),  # réserves > solde : gagnés puis achetés
+                ("sain", 30, 10, 10, 10, 0, 0),
+            ]
+            for cle, b, a, g, p, gb, pg in rows:
+                await _exec(db, "INSERT INTO users (id, email, credits_balance, smyles_achetes, smyles_gagnes, "
+                            "smyles_promo, smyles_gagnes_bloque, smyles_promo_gagnes, credits_earned_total) "
+                            "VALUES (:i, :e, :b, :a, :g, :p, :gb, :pg, 0)",
+                            {"i": ids[cle], "e": f"x10-sale-{cle}-{tag}@t.example",
+                             "b": b, "a": a, "g": g, "p": p, "gb": gb, "pg": pg})
+            await _exec(db, "ALTER TABLE users ADD CONSTRAINT ck_users_buckets_sum_eq_balance "
+                        "CHECK (smyles_achetes + smyles_gagnes + smyles_promo = credits_balance) NOT VALID")
+
+            for sql in m.UPGRADE_SQL:
+                await _exec(db, sql)
+
+            res = {}
+            for cle in ids:
+                r = (await _exec(db, "SELECT credits_balance, smyles_achetes, smyles_gagnes, smyles_promo, "
+                                 "smyles_gagnes_bloque, smyles_promo_gagnes FROM users WHERE id = :i",
+                                 {"i": ids[cle]})).one()
+                res[cle] = tuple(r)
+            assert res["trop_peu"] == (500, 100, 50, 350, 50, 0)
+            assert res["trop"] == (400, 100, 200, 100, 200, 100)
+            assert res["beaucoup_trop"] == (80, 80, 0, 0, 0, 0)
+            assert res["sain"] == (300, 100, 100, 100, 0, 0)
+            # La contrainte est désormais validée.
+            ok = (await _exec(db, "SELECT convalidated FROM pg_constraint "
+                              "WHERE conname = 'ck_users_buckets_sum_eq_balance'")).scalar_one()
+            assert ok is True
+            # L'état d'avant est tracé pour les 3 comptes réalignés seulement.
+            n = (await _exec(db, "SELECT count(*) FROM admin_journal WHERE action = 'reconciliation_reserves' "
+                             "AND cible_id IN (:a, :b, :c, :d)",
+                             {"a": str(ids["trop_peu"]), "b": str(ids["trop"]),
+                              "c": str(ids["beaucoup_trop"]), "d": str(ids["sain"])})).scalar_one()
+            assert n == 3
+        finally:
+            await db.rollback()
+
+
+@pytest.mark.asyncio
+async def test_migration_0103_ne_bloque_pas_sur_doublons():
+    spec = importlib.util.spec_from_file_location(
+        "m0103", MIGRATION.parent / "0103_emails_minuscules.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    async with SessionLocal() as db:
+        try:
+            await _exec(db, "DROP INDEX IF EXISTS ux_users_email_lower")
+            tag = uuid.uuid4().hex[:8]
+            await _exec(db, "INSERT INTO users (id, email) VALUES (:a, :ea), (:b, :eb), (:c, :ec)",
+                        {"a": uuid.uuid4(), "ea": f"Double-{tag}@T.example",
+                         "b": uuid.uuid4(), "eb": f"double-{tag}@t.example",
+                         "c": uuid.uuid4(), "ec": f"Seul-{tag}@T.example"})
+            await _exec(db, m._MINUSCULES_SANS_CONFLIT)
+            await _exec(db, m._INDEX)
+            emails = {e for (e,) in (await _exec(
+                db, "SELECT email FROM users WHERE lower(email) LIKE :p", {"p": f"%-{tag}@t.example"})).all()}
+            assert f"seul-{tag}@t.example" in emails           # sans conflit : minuscules
+            assert f"Double-{tag}@T.example" in emails          # en conflit : laissé tel quel
+            idx = {n for (n,) in (await _exec(
+                db, "SELECT indexname FROM pg_indexes WHERE tablename = 'users'")).all()}
+            assert "ix_users_email_lower" in idx and "ux_users_email_lower" not in idx
+        finally:
+            await db.rollback()

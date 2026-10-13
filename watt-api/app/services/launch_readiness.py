@@ -162,6 +162,10 @@ async def _controles(db: AsyncSession) -> list[dict]:
 
     oeuvres = await _oeuvres_son_image_en_ligne(db)
     incoherents = await count_bucket_inconsistencies(db)
+    doublons = int((await db.execute(text(
+        "SELECT count(*) FROM (SELECT 1 FROM users "
+        "GROUP BY lower(btrim(email)) HAVING count(*) > 1) d"
+    ))).scalar() or 0)
     return [
         {
             "cle": "oeuvres_en_ligne",
@@ -180,6 +184,17 @@ async def _controles(db: AsyncSession) -> list[dict]:
             "note": (
                 "Doit rester à 0 : pour chaque compte, Smyles achetés + gagnés + bonus "
                 "= solde total. Si ce n'est pas 0, préviens Claude avant toute autre action."
+            ),
+        },
+        {
+            "cle": "emails_en_double",
+            "libelle": "Emails utilisés par plusieurs comptes (à la casse près)",
+            "valeur": doublons,
+            "attendu": 0,
+            "ok": doublons == 0,
+            "note": (
+                "Doit rester à 0. Sinon, deux comptes partagent le même email : "
+                "préviens Claude pour décider lequel garder."
             ),
         },
     ]
