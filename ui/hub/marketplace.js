@@ -2304,8 +2304,12 @@
       ? `<div class="mp-id-desc">${_esc(im.description)}</div>`
       : '';
 
-    // Bloc « Œuvre complète » : son lié (aperçu only, achat séparé du son).
+    // Bloc « Œuvre complète » : son lié. Si le son a une recette et que
+    // l'Œuvre n'est ni à moi ni déjà possédée, le bouton met en avant l'offre
+    // groupée (son + image −10 %), achetée sur la page /o/<id>.
     const ls = im.linkedSound || null;
+    const offreGroupee = !!(ls && ls.priceCredits != null && !mine && !owned
+      && im.id && /^[0-9a-fA-F-]{36}$/.test(String(im.id)));
     const oeuvreBlockHTML = ls
       ? `<div class="mp-id-linked">
            <div class="mp-id-linked-label">Œuvre</div>
@@ -2319,7 +2323,7 @@
                  ? `🎵 ${_esc(ls.priceCredits)} <span>Smyles</span>`
                  : '🎵 En écoute libre'}</div>
              </div>
-             <button class="mp-id-linked-btn" id="mp-id-linked-btn" type="button">Voir l'œuvre</button>
+             <button class="mp-id-linked-btn${offreGroupee ? ' mp-id-linked-btn--offre' : ''}" id="mp-id-linked-btn" type="button">${offreGroupee ? '★ Acheter l\'œuvre −10 %' : 'Voir l\'œuvre'}</button>
            </div>
          </div>`
       : '';
@@ -2424,7 +2428,7 @@
       lsBtn.addEventListener('click', () => {
         // Lot 2 : chaque Œuvre a sa page /o/<id> (id = celui de l'image).
         if (im.id && /^[0-9a-fA-F-]{36}$/.test(String(im.id))) {
-          window.location.href = '/o/' + encodeURIComponent(im.id);
+          window.location.href = '/o/' + encodeURIComponent(im.id) + (offreGroupee ? '#offre' : '');
           return;
         }
         const track = (_state.tracks || []).find(t => String(t.promptId) === String(ls.id));
