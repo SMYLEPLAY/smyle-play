@@ -20,6 +20,8 @@
   'use strict';
 
   // Lot 2 : ADN, ADN visuels et voix signalables (anti-squat Pionnier).
+  // Lot G — longueur minimale de l'explication (même règle que le serveur).
+  var DETAIL_MIN = 10;
   var TARGET_TYPES = { track: 1, prompt: 1, image: 1, profil: 1, playlist: 1, album: 1, adn: 1, visual_adn: 1, voix: 1 };
   var REASONS = [
     ['contenu_illegal', 'Contenu illégal'],
@@ -59,6 +61,7 @@
       '.rm-input,.rm-msg{width:100%;box-sizing:border-box;background:#0e0e14;border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#eee;padding:9px 11px;font-size:13px;font-family:inherit}',
       '.rm-msg{min-height:64px;resize:vertical}',
       '.rm-err{display:none;margin-top:8px;font-size:12.5px;color:#ff6b6b}',
+      '.rm-hint{margin-top:4px;font-size:11.5px;color:#8b86a3}',
       '.rm-submit{width:100%;margin-top:12px;padding:11px;border:none;border-radius:10px;background:#e24b4a;color:#fff;font-weight:700;font-size:13.5px;cursor:pointer}',
       '.rm-submit[disabled]{opacity:.55;cursor:not-allowed}',
       '.rm-join{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);font-size:12.5px;line-height:1.45;color:#ffe9a8}',
@@ -95,7 +98,7 @@
         '</div>' +
         '<p class="rm-sub">Signale un contenu qui te semble illégal ou contraire ' +
           'aux règles. Ton signalement est examiné par la modération ' +
-          '(accusé de réception envoyé si ton email est connu).</p>' +
+          '(un numéro de suivi s’affiche à l’envoi).</p>' +
         // Parcours V1 : le visiteur est invité à créer son compte (signalement
         // en un clic). Le formulaire sans compte reste ouvert à tous (DSA).
         (!token
@@ -106,11 +109,14 @@
           return '<label class="rm-reason"><input type="radio" name="rm-reason" value="' +
             r[0] + '"' + (i === 0 ? ' checked' : '') + ' /> ' + _esc(r[1]) + '</label>';
         }).join('') +
-        '<label class="rm-lbl" for="rm-detail">Précisions (optionnel)</label>' +
-        '<textarea class="rm-msg" id="rm-detail" maxlength="2000" ' +
-          'placeholder="Décris le problème…"></textarea>' +
+        // Lot G : explication OBLIGATOIRE (CGU, DSA art. 16), 10 caractères
+        // minimum — vérifiée aussi par le serveur.
+        '<label class="rm-lbl" for="rm-detail">Explique ce qui pose problème (obligatoire)</label>' +
+        '<textarea class="rm-msg" id="rm-detail" maxlength="2000" required ' +
+          'placeholder="Décris le problème en quelques mots (' + DETAIL_MIN + ' caractères minimum)…"></textarea>' +
+        '<div class="rm-hint" id="rm-hint">' + DETAIL_MIN + ' caractères minimum.</div>' +
         (!token
-          ? '<label class="rm-lbl" for="rm-email">Ton email (pour l’accusé de réception ; sans compte, ajoute ton email ou une précision)</label>' +
+          ? '<label class="rm-lbl" for="rm-email">Ton email (facultatif, pour être informé de la décision)</label>' +
             '<input class="rm-input" id="rm-email" type="email" placeholder="toi@exemple.com" />'
           : '') +
         '<label class="rm-faith"><input type="checkbox" id="rm-faith" required /> ' +
@@ -133,12 +139,28 @@
 
     var btn = document.getElementById('rm-submit');
     var faith = document.getElementById('rm-faith');
-    faith.addEventListener('change', function () { btn.disabled = !faith.checked; });
+    var detailEl = document.getElementById('rm-detail');
+    var hintEl = document.getElementById('rm-hint');
+    function _detailOk() {
+      return (detailEl.value || '').replace(/\s+/g, ' ').trim().length >= DETAIL_MIN;
+    }
+    function _maj() {
+      btn.disabled = !(faith.checked && _detailOk());
+      var n = (detailEl.value || '').replace(/\s+/g, ' ').trim().length;
+      hintEl.textContent = _detailOk() ? '✓' : (n ? (DETAIL_MIN - n) + ' caractère(s) de plus.' : DETAIL_MIN + ' caractères minimum.');
+    }
+    faith.addEventListener('change', _maj);
+    detailEl.addEventListener('input', _maj);
     btn.addEventListener('click', async function () {
       var errEl = document.getElementById('rm-err');
       errEl.style.display = 'none';
       if (!faith.checked) {
         errEl.textContent = 'Coche la déclaration de bonne foi pour envoyer le signalement.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (!_detailOk()) {
+        errEl.textContent = 'Explique en quelques mots ce qui pose problème (' + DETAIL_MIN + ' caractères minimum).';
         errEl.style.display = 'block';
         return;
       }
@@ -163,14 +185,8 @@
         btn.disabled = false;
         btn.textContent = 'Envoyer le signalement';
         var st2 = err && err.status;
-        // Parcours V1 : sans compte, un signalement vide (ni précision ni
-        // email) est refusé (422) — le message le dit et invite à s'inscrire,
-        // au lieu d'un faux « réessaie dans un instant ».
         if (st2 === 429) {
           errEl.textContent = 'Trop de signalements récents — réessaie plus tard.';
-        } else if (!token && (st2 === 422 || st2 === 401)) {
-          errEl.innerHTML = 'Sans compte, ajoute une précision ou ton email pour qu’on puisse traiter ton signalement. ' +
-            'Ou <button type="button" id="rm-join" style="background:none;border:none;padding:0;color:#ffd700;font-weight:700;text-decoration:underline;cursor:pointer;font-size:12.5px">crée ton compte gratuit</button> pour signaler en un clic.';
         } else if (st2 === 422) {
           var d = err.body && err.body.detail;
           errEl.textContent = (typeof d === 'string' && d) ? d : 'Signalement incomplet : ajoute une précision.';

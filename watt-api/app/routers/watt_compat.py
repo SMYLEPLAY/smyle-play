@@ -95,7 +95,16 @@ async def stream_r2_audio(
     # on refuse toute clé du domaine image. Les images publiques passent par
     # /watt/images (serve_image, gaté + redirigé vers l'objet public) ; les
     # originales payantes par /images/{id}/download (gaté sur la possession).
-    _k = key.lstrip("/").lower()
+    # Lot G — clé ambiguë (« .. », « // », « . »…) refusée avant tout
+    # contrôle (services/media_ownership.py::cle_sure).
+    from app.services.media_ownership import cle_sure
+
+    if not cle_sure(key):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ressource introuvable.",
+        )
+    _k = key.lower()
     if _k.startswith("images/"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -511,6 +520,14 @@ async def _optional_current_user(
 
 @router.get("/tracks-catalog")
 async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
+    """Catalogue des univers officiels — Lot G : cache court (45 s) en
+    mémoire, la réponse ne dépend pas du visiteur."""
+    from app.core.cache_court import cache_accueil
+
+    return await cache_accueil.obtenir("tracks-catalog", lambda: _tracks_catalog(db))
+
+
+async def _tracks_catalog(db: AsyncSession) -> dict:
     """
     Équivalent direct de `GET /tracks.json` côté Flask.
 
@@ -560,6 +577,14 @@ async def tracks_catalog(db: AsyncSession = Depends(get_db)) -> dict:
 
 @router.get("/artists")
 async def list_artists(db: AsyncSession = Depends(get_db)) -> dict:
+    """Artistes publics — Lot G : cache court (45 s) en mémoire, la réponse
+    ne dépend pas du visiteur."""
+    from app.core.cache_court import cache_accueil
+
+    return await cache_accueil.obtenir("artists", lambda: _list_artists(db))
+
+
+async def _list_artists(db: AsyncSession) -> dict:
     """
     Équivalent de `GET /api/artists`.
     Renvoie {'artists': [...]} triés par total de plays décroissant.
@@ -2005,6 +2030,43 @@ async def serve_playlist_video(key: str):
 # Cache 24h côté browser (les images R2 sont immuables par UUID dans la clé).
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Lot G — aperçus des produits retirés par la modération, gardés 30 s en
+# mémoire : le proxy d'images ne fait pas une requête en base par image.
+_APERCUS_RETIRES_TTL = 30.0
+_apercus_retires_cache: dict = {"cles": frozenset(), "expire": 0.0}
+
+
+def oublier_apercus_retires() -> None:
+    """À appeler après un retrait ou une restauration (même process)."""
+    _apercus_retires_cache["expire"] = 0.0
+
+
+async def apercus_retires() -> frozenset:
+    import time
+
+    from sqlalchemy import text as _text
+
+    from app.database import SessionLocal
+
+    maintenant = time.monotonic()
+    if maintenant < _apercus_retires_cache["expire"]:
+        return _apercus_retires_cache["cles"]
+    try:
+        async with SessionLocal() as db:
+            rows = (await db.execute(_text(
+                "SELECT p.preview_r2_key AS k FROM prompts p "
+                "WHERE p.taken_down_at IS NOT NULL AND p.preview_r2_key IS NOT NULL "
+                "UNION SELECT g.preview_r2_key FROM prompt_gallery_images g "
+                "JOIN prompts p ON p.id = g.prompt_id "
+                "WHERE p.taken_down_at IS NOT NULL AND g.preview_r2_key IS NOT NULL"
+            ))).all()
+        _apercus_retires_cache["cles"] = frozenset(r.k for r in rows)
+        _apercus_retires_cache["expire"] = maintenant + _APERCUS_RETIRES_TTL
+    except Exception:  # noqa: BLE001 — base indisponible : on garde la dernière liste
+        pass
+    return _apercus_retires_cache["cles"]
+
+
 @router.get("/images/{key:path}")
 async def serve_image(key: str):
     """
@@ -2020,7 +2082,17 @@ async def serve_image(key: str):
                   gaté sur la possession) et toute clé hors `images/`.
     """
     # Gate dur : seuls les objets images publics sont servables ici.
-    if not key.startswith("images/") or key.startswith("images/originals/"):
+    # Lot G : clé ambiguë (« .. », « // »…) refusée (cle_sure).
+    from app.services.media_ownership import cle_sure
+
+    if (not cle_sure(key) or not key.startswith("images/")
+            or key.startswith("images/originals/")):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
+    # Lot G : aperçu d'un produit retiré par la modération → plus servi.
+    if key.startswith("images/previews/") and key in await apercus_retires():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found",

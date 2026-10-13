@@ -77,7 +77,12 @@
     var prix = _data.bundle.priceCredits;
     if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles ?')) return;
     btn.disabled = true;
-    window.apiFetch('/watt/oeuvres/' + encodeURIComponent(OID) + '/acheter', { method: 'POST' })
+    // Lot G — prix attendu envoyé : si le créateur l'a changé entre-temps,
+    // smyleAcheter demande de confirmer le nouveau prix avant de rejouer.
+    var _chemin = '/watt/oeuvres/' + encodeURIComponent(OID) + '/acheter';
+    (window.smyleAcheter
+      ? window.smyleAcheter(_chemin, prix)
+      : window.apiFetch(_chemin, { method: 'POST' }))
       .then(function () {
         _toast('Œuvre débloquée — le son et l\'image sont dans ta bibliothèque.', 'success');
         try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
@@ -86,6 +91,7 @@
       .catch(function (err) {
         btn.disabled = false;
         var s = err && err.status;
+        if (err && err.annule) { _toast('Achat annulé : le prix a changé.', 'info'); load(); return; }
         if (s === 402) _toast('Pas assez de Smyles pour cette œuvre.', 'error');
         else if (s === 409) _toast((err.body && typeof err.body.detail === 'string') ? err.body.detail : 'Tu possèdes déjà cette œuvre.', 'info');
         else _toast('Achat impossible pour le moment. Réessaie.', 'error');

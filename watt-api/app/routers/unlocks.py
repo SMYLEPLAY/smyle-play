@@ -18,7 +18,8 @@ Mapping HTTP des erreurs métier :
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.launch import require_launch_item
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
@@ -43,6 +44,7 @@ from app.services.unlocks import (
     AlreadyOwned,
     AlreadyUnlocked,
     InsufficientCredits,
+    PrixChange,
     PromptNotPurchasable,
     SelfPurchaseForbidden,
     unlock_adn_atomic,
@@ -63,7 +65,21 @@ router = APIRouter(prefix="/unlocks", tags=["unlocks"])
 # Mapping centralisé des exceptions métier → HTTP
 # -----------------------------------------------------------------------------
 
+class AchatIn(BaseModel):
+    """Lot G — corps FACULTATIF d'un achat : le prix affiché au client. S'il
+    ne correspond plus (prix modifié entre-temps), l'achat est refusé en 409
+    avec le nouveau prix ; l'interface propose de confirmer."""
+
+    model_config = ConfigDict(extra="ignore")
+    prix_attendu: int | None = Field(default=None, ge=0, le=10_000_000)
+
+
 def _raise_unlock_error(exc: ValueError) -> None:
+    if isinstance(exc, PrixChange):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "prix_change", "message": str(exc), "prix": exc.prix},
+        )
     if isinstance(exc, SelfPurchaseForbidden):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if isinstance(exc, InsufficientCredits):
@@ -100,6 +116,7 @@ def _raise_unlock_error(exc: ValueError) -> None:
 async def unlock_prompt(
     prompt_id: UUID,
     request: Request,
+    achat: AchatIn | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -116,6 +133,7 @@ async def unlock_prompt(
             db=db,
             buyer_id=current_user.id,
             prompt_id=prompt_id,
+            prix_attendu=achat.prix_attendu if achat else None,
         )
         await db.commit()
         await db.refresh(result.unlocked_prompt)

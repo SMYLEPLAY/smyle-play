@@ -1,11 +1,12 @@
 """
 Étape 1 — Gate "profil publié" avant publication d'un son.
 
-Un son ne doit pouvoir être publié QUE si l'utilisateur a au préalable
-publié son profil public (users.profile_public = True). Le backend doit
-refuser avec 409 CONFLICT et un payload structuré
-({"error": "profile_not_published", ...}) pour que le frontend puisse
-afficher une CTA de redirection.
+Lot G (décision de Tom) : le profil devient public AUTOMATIQUEMENT au
+premier son publié. Le 409 structuré ({"error": "profile_not_published",
+...}) ne reste que pour un compte SANS nom d'artiste (sa page publique n'a
+pas d'adresse) — c'est le cas du compte de test ci-dessous. Le cas « profil
+privé avec nom → publié automatiquement » est couvert par
+test_lot_g_correctifs.py.
 
 Ces tests couvrent le endpoint FastAPI POST /tracks/. Le miroir Flask
 sur POST /api/watt/tracks est couvert par les tests Flask.
@@ -50,7 +51,7 @@ class TestTrackCreateGate:
         client: AsyncClient,
         auth_headers: dict,
     ) -> None:
-        """Sans profil publié, POST /tracks/ → 409 profile_not_published."""
+        """Profil privé ET sans nom d'artiste → 409 profile_not_published."""
         r = await client.post(
             "/tracks/",
             headers=auth_headers,
@@ -61,7 +62,7 @@ class TestTrackCreateGate:
         # FastAPI emballe le payload dans "detail"
         detail = body.get("detail", body)
         assert detail.get("error") == "profile_not_published"
-        assert "publie" in detail.get("message", "").lower()
+        assert "nom d'artiste" in detail.get("message", "").lower()
         assert detail.get("redirect") == "/u/me"
 
     async def test_rejects_without_auth(self, client: AsyncClient) -> None:

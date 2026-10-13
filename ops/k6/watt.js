@@ -5,7 +5,8 @@
 //   BASE_URL=http://127.0.0.1:8000 PROFIL=fumee k6 run ops/k6/watt.js
 //
 // Le script crée lui-même ses comptes de test (setup) : un vendeur avec
-// quelques recettes à 3 Smyles, et un lot d'acheteurs (bonus de bienvenue).
+// quelques recettes à 15 Smyles (prix conseillé), et un lot d'acheteurs
+// (30 Smyles de bienvenue chacun, soit 2 achats).
 
 import http from 'k6/http';
 import { check, group, sleep, fail } from 'k6';
@@ -16,7 +17,10 @@ const BASE = (__ENV.BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 const PROFIL = __ENV.PROFIL || 'charge';          // fumee | charge | pic
 const NB_ACHETEURS = parseInt(__ENV.NB_ACHETEURS || '40', 10);
 const NB_RECETTES = 4;
-const PRIX = 3;                                   // minimum autorisé (PROMPT_PRICE_MIN)
+// Prix en vigueur depuis la redénomination ×10 (migration 0100) : recette
+// entre 10 et 150 Smyles (15 = prix conseillé), ADN à 300 Smyles minimum.
+const PRIX = 15;
+const PRIX_ADN = 300;
 const MOT_DE_PASSE = 'K6-Charge-123456';
 
 // ── Garde-fou : cible locale uniquement, sauf autorisation explicite ──────
@@ -106,7 +110,7 @@ export function setup() {
       'Signature sonore de test de charge : nappes chaudes, basse ronde, batterie ' +
       'feutree, tempo lent, ambiance nocturne et enveloppante. Ecrite uniquement ' +
       'pour mesurer la tenue en charge du parcours d achat, sans valeur artistique.',
-    price_credits: 30,
+    price_credits: PRIX_ADN,
   }), v);
   if (r.status !== 201) fail(`ADN vendeur : ${r.status} ${r.body}`);
 
@@ -121,6 +125,7 @@ export function setup() {
       price_credits: PRIX,
       is_published: true,
       prompt_platform: 'suno',
+      prompt_model_version: 'v4.5',
       prompt_weirdness: '30%',
       prompt_style_influence: 'deep house, dub techno',
       prompt_vocal_gender: 'instrumental',
@@ -164,13 +169,15 @@ export function connexion(data) {
 
 // ── Parcours 3 : achat d'une recette (débit réel en Smyles) ───────────────
 // 201 = acheté ; 402 = solde épuisé ; 409 = déjà acheté. Les trois sont des
-// réponses normales : chaque acheteur n'a que 10 Smyles (3 achats à 3).
+// réponses normales : chaque acheteur n'a que 30 Smyles (2 achats à 15).
+// Le prix affiché est envoyé (« prix attendu », Lot G), comme le fait le site.
 export function achat(data) {
   const a = data.acheteurs[exec.vu.idInTest % data.acheteurs.length];
   const id = data.recettes[Math.floor(Math.random() * data.recettes.length)];
   group('achat', () => {
     suivre(http.get(`${BASE}/users/me`, { ...authH(a.token), tags: { nom: 'solde' } }), [200]);
-    suivre(http.post(`${BASE}/unlocks/prompts/${id}`, null, { ...authH(a.token), tags: { nom: 'unlock' } }),
+    suivre(http.post(`${BASE}/unlocks/prompts/${id}`, JSON.stringify({ prix_attendu: PRIX }),
+      { ...authH(a.token), tags: { nom: 'unlock' } }),
       [201, 402, 409]);
     suivre(http.get(`${BASE}/me/library/prompts`, { ...authH(a.token), tags: { nom: 'bibliothèque' } }), [200]);
   });

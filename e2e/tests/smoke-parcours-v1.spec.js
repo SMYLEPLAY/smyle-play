@@ -57,8 +57,13 @@ async function sonPublie(request, c, titre) {
   });
   expect(up.status(), await up.text()).toBe(200);
   const { key } = await up.json();
+  // Lot G : pochette et outil d'IA obligatoires pour publier un son.
   const t = await request.post('/tracks/', {
-    headers: c.h, data: { title: titre, full_prompt: 'deep house 124 bpm', r2_key: key },
+    headers: c.h,
+    data: {
+      title: titre, full_prompt: 'deep house 124 bpm', r2_key: key,
+      cover_url: `/watt/images/images/track-cover/${c.id}/pochette.png`, platform: 'suno',
+    },
   });
   expect(t.status(), await t.text()).toBe(201);
   return (await t.json()).track.id;
@@ -132,7 +137,7 @@ test('pas de redirection ouverte : return= externe ignoré', async ({ page, requ
   expect(page.url()).not.toContain('evil');
 });
 
-test('signalement sans compte : message juste + invitation à s’inscrire', async ({ page }) => {
+test('signalement sans compte : explication obligatoire + invitation à s’inscrire', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.ReportModal);
   await page.evaluate(() => window.ReportModal.open({ targetType: 'track', targetId: '00000000-0000-0000-0000-000000000000' }));
@@ -140,9 +145,15 @@ test('signalement sans compte : message juste + invitation à s’inscrire', asy
   // Lot D : la déclaration de bonne foi est obligatoire.
   await expect(page.locator('#rm-submit')).toBeDisabled();
   await page.locator('#rm-faith').check();
+  // Lot G : l'explication aussi (10 caractères minimum).
+  await expect(page.locator('#rm-submit')).toBeDisabled();
+  await page.locator('#rm-detail').fill('court');
+  await expect(page.locator('#rm-submit')).toBeDisabled();
+  await expect(page.locator('#rm-hint')).toContainText('de plus');
+  await page.locator('#rm-detail').fill('Ce son copie une œuvre connue');
+  await expect(page.locator('#rm-submit')).toBeEnabled();
   await page.locator('#rm-submit').click();
-  await expect(page.locator('#rm-err')).toContainText('ajoute une précision ou ton email');
-  await expect(page.locator('#rm-err')).not.toContainText('Réessaie dans un instant');
+  await expect(page.locator('#rm-overlay')).toHaveCount(0);
 });
 
 // ── Compte ──────────────────────────────────────────────────────────────────

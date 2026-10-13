@@ -122,8 +122,10 @@ async def _son_payload(
             .where(
                 PlaylistTrack.playlist_id == p.id,
                 # Lot A (E3) : ni sons supprimés ni sons retirés.
+                # Lot G : ni sons masqués par leur créateur (« Mes Œuvres »).
                 Track.is_deleted.is_(False),
                 Track.taken_down_at.is_(None),
+                Track.hidden_at.is_(None),
             )
             .order_by(PlaylistTrack.position.asc())
         )

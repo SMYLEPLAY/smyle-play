@@ -4317,3 +4317,13 @@ html { scroll-behavior: smooth; }
   color: #fff;
   font-weight: 600;
 }
+
+/* Lot G — la pochette devient obligatoire : son bloc doit rester lisible sur
+   téléphone. Les champs « vendre la pochette comme image » ne s'affichent
+   que si la case est cochée (l'attribut hidden était annulé par le style
+   en ligne), et le bloc passe à la ligne au lieu de déborder. */
+#dashSellCoverWrap[hidden] { display: none !important; }
+@media (max-width: 860px) {
+  .dash-cover-col { flex-wrap: wrap; }
+  .dash-cover-col > * { max-width: 100%; }
+}

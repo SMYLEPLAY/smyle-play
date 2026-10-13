@@ -7,25 +7,8 @@
 
 // ── 0. HELPERS GLOBAUX ────────────────────────────────────────────────────────
 
-// Limite freemium — version gratuite bêta
-const FREE_LIMIT = 6;
-
-// Comptes officiels / fondateur — exemptés de la limite freemium bêta.
-// IMPORTANT : on matche sur le slug ET sur le nom d'artiste slugifié.
-// Le slug de profil est recalculé à la volée côté backend et peut dériver
-// (cf. audit B2) ; ne tester que `p.slug` faisait "revenir" le plafond quand
-// le slug changeait. Matcher aussi le nom slugifié (stable) rend l'exemption
-// résiliente à cette dérive.
-const OFFICIAL_SLUGS = ['smyle', 'tom-lecomte'];
-function _isOfficialAccount() {
-  const p = (typeof getWattProfile === 'function') ? getWattProfile() : null;
-  if (!p) return false;
-  const candidates = [
-    (p.slug || ''),
-    (typeof slugify === 'function' ? slugify(p.artistName || '') : ''),
-  ].map(s => String(s).toLowerCase().trim()).filter(Boolean);
-  return candidates.some(s => OFFICIAL_SLUGS.includes(s));
-}
+// Lot G (décision de Tom) : la limite « 6 sons offerts » tenue par le
+// navigateur est SUPPRIMÉE — aucune limite de nombre de sons publiés.
 
 // ── Wrapper sécurisé localStorage (Safari Private Mode / quota 0 octet) ──────
 const safeStorage = {
@@ -744,36 +727,10 @@ function _initUserDropdown() {
   });
 }
 
-// ── Gestion état section upload (compteur + teaser premium) ─────────────────
+// ── Section upload : plus de compteur ni de plafond (Lot G) ─────────────────
 function renderUploadState() {
-  const tracks  = getMyTracks();
-  const count   = tracks.length;
-  const limited = count >= FREE_LIMIT && !_isOfficialAccount();
-
-  // Compteur freemium
-  const counterVal = document.getElementById('dashFreeCounterVal');
-  const barFill    = document.getElementById('dashFreeBarFill');
-  if (counterVal) {
-    counterVal.textContent = _isOfficialAccount()
-      ? `${count} sons publiés`
-      : limited
-        ? 'Playlist complète ✓'
-        : `${count} / ${FREE_LIMIT} sons utilisés`;
-    counterVal.style.color = limited ? '#FFD700' : '';
-  }
-  if (barFill) {
-    const pct = _isOfficialAccount() ? 0 : Math.min((count / FREE_LIMIT) * 100, 100);
-    barFill.style.width = pct + '%';
-    barFill.style.background = limited
-      ? 'linear-gradient(90deg, #FFD700, #FFEC6B)'
-      : 'linear-gradient(90deg, rgba(255,215,0,.7), rgba(255,215,0,.35))';
-  }
-
-  // Zone upload vs teaser
   const uploadLayout = document.getElementById('dashUploadLayout');
-  const teaser       = document.getElementById('dashPremiumTeaser');
-  if (uploadLayout) uploadLayout.style.display = limited ? 'none' : '';
-  if (teaser)       teaser.style.display       = limited ? '' : 'none';
+  if (uploadLayout) uploadLayout.style.display = '';
 }
 
 function renderMyTracks() {
@@ -782,13 +739,9 @@ function renderMyTracks() {
   const listEl  = document.getElementById('myTracksList');
   const countEl = document.getElementById('myTracksCount');
 
-  // Compteur "X / 6 sons" dans l'en-tête "Mes Sons"
+  // Nombre de sons dans l'en-tête « Mes Sons » (aucun plafond, Lot G).
   if (countEl) {
-    const limited = tracks.length >= FREE_LIMIT && !_isOfficialAccount();
-    countEl.textContent = _isOfficialAccount()
-      ? `${tracks.length} son${tracks.length !== 1 ? 's' : ''}`
-      : `${tracks.length}\u202f/\u202f${FREE_LIMIT} son${tracks.length !== 1 ? 's' : ''}`;
-    countEl.style.color = limited ? '#FFD700' : '';
+    countEl.textContent = `${tracks.length} son${tracks.length !== 1 ? 's' : ''}`;
   }
 
   // Mise à jour du compteur upload
@@ -2114,11 +2067,13 @@ async function uploadTrack() {
   // refuse l'appel réseau si on SAIT que ça va renvoyer 409. On préserve
   // le comportement original si l'état n'a pas encore été chargé (!loaded),
   // pour ne pas pénaliser un démarrage API lent.
-  if (_dashPublishState.loaded && !_dashPublishState.isPublic) {
-    dashToast('Publie d\'abord ton profil pour pouvoir poster un son.');
+  if (_dashPublishState.loaded && !_dashPublishState.isPublic && !_dashPublishState.hasName) {
+    dashToast('Choisis d\'abord ton nom d\'artiste pour publier un son.');
     renderCreationGate();
     return;
   }
+  // Lot G — le profil sera rendu public par ce premier son : on le dit après.
+  const _profilEtaitPrive = _dashPublishState.loaded && !_dashPublishState.isPublic;
 
   const name = document.getElementById('dashTrackName').value.trim();
   if (!name) { dashToast('⚠ Le titre est obligatoire.'); return; }
@@ -2134,6 +2089,12 @@ async function uploadTrack() {
   const _platformEarly = (document.getElementById('dashTrackPlatform')?.value || '').trim();
   if (!_platformEarly) {
     dashToast('⚠ Indique l\'IA avec laquelle ce son a été généré (plateforme d\'origine).');
+    return;
+  }
+  // Lot G (décision de Tom) — une Œuvre = un son ET une image : la pochette
+  // est obligatoire (le serveur la refuse aussi).
+  if (!_pendingCoverFile) {
+    dashToast('⚠ Ajoute une pochette : une Œuvre, c\'est un son et son image.');
     return;
   }
 
@@ -2202,6 +2163,8 @@ async function uploadTrack() {
     const _pr = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
     const _errs = [];
     if (_pt.length < 100)  _errs.push('une recette d\'au moins 100 caractères');
+    // Lot G — la version de l'outil est affichée sur l'Œuvre (CGU) : obligatoire.
+    if (!(document.getElementById('dashPromptModelVersion')?.value || '').trim()) _errs.push('la version de l\'outil (ex. Suno v4.5)');
     if (_pt.length > 1000) _errs.push('une recette de 1000 caractères au plus');
     if (!Number.isInteger(_pr) || _pr < 10 || _pr > 150) _errs.push('un prix entre 10 et 150 Smyles');
     if (!(document.getElementById('dashPromptWeirdness')?.value || '').trim())      _errs.push('le réglage « weirdness »');
@@ -2226,14 +2189,6 @@ async function uploadTrack() {
     /* autre erreur : le serveur revérifie de toute façon à la publication */
   }
 
-  // ── Vérification limite freemium (comptes officiels exemptés) ───────────
-  const _existing = getMyTracks();
-  if (_existing.length >= FREE_LIMIT && !_isOfficialAccount()) {
-    dashToast('Ta playlist est complète (6 / 6) pour le moment.');
-    renderUploadState();
-    cancelUpload();
-    return;
-  }
 
   const genre    = document.getElementById('dashGenre').value.trim();
   const tags     = document.getElementById('dashTags').value.trim();
@@ -2257,7 +2212,7 @@ async function uploadTrack() {
 
   setProgress(10, 'Préparation...');
   await wait(300);
-  setProgress(35, 'Envoi vers Cloudflare R2...');
+  setProgress(35, 'Envoi du fichier…');
 
   const user = getCurrentUser();
   let uploaded  = false;
@@ -2318,6 +2273,14 @@ async function uploadTrack() {
   if (_pendingCoverFile) {
     coverUrl = await _uploadTrackCover(_pendingCoverFile, name);
   }
+  if (!coverUrl) {
+    // Lot G : pas de son sans pochette — on s'arrête avant d'enregistrer.
+    setProgress(100, '⚠ Pochette non envoyée');
+    dashToast('⚠ Ton son n\'a pas été publié : la pochette n\'a pas pu être envoyée. Vérifie le fichier image et réessaie.');
+    const pw2 = document.getElementById('dashProgressWrap');
+    setTimeout(() => { if (pw2) pw2.style.display = 'none'; }, 2500);
+    return;
+  }
 
   setProgress(85, 'Sauvegarde en base…');
 
@@ -2374,10 +2337,10 @@ async function uploadTrack() {
     //   - autre = message générique avec détail Pydantic si dispo
     const status = e && e.status;
     if (status === 409) {
-      setProgress(100, '⚠ Profil non publié');
+      setProgress(100, '⚠ Nom d\'artiste manquant');
       try { await loadPublishStatus(); } catch (_) {}
       try { renderCreationGate(); } catch (_) {}
-      dashToast('Publie d\'abord ton profil pour pouvoir poster un son.');
+      dashToast('Choisis d\'abord ton nom d\'artiste pour publier un son.');
     } else if (status === 401) {
       setProgress(100, '⚠ Connexion expirée');
       dashToast('Ta session a expiré. Reconnecte-toi pour publier.');
@@ -2404,6 +2367,14 @@ async function uploadTrack() {
 
   dbTrackId = fastApiTrack.id;
   window._lastFastApiTrack = fastApiTrack;
+
+  // Lot G — le premier son rend le profil public (côté serveur) : on le dit.
+  if (_profilEtaitPrive) {
+    _dashPublishState.isPublic = true;
+    try { renderPublishBlock(); } catch (_) {}
+    try { renderPlugSection(); } catch (_) {}
+    dashToast('✨ Ton profil est maintenant public : ton premier son le met en vitrine sur WATT.');
+  }
 
   await wait(300);
   setProgress(95, 'Finalisation…');
@@ -2966,6 +2937,7 @@ function renderProfileView() {
 let _dashPublishState = {
   loaded:   false,           // a-t-on reçu une réponse /users/me ?
   isPublic: false,           // profil actuellement en vitrine ?
+  hasName:  false,           // nom d'artiste choisi ? (seul prérequis, Lot G)
   missing:  [],              // champs manquants renvoyés par un 422
   loading:  false,           // une requête est-elle en cours ?
 };
@@ -2976,6 +2948,7 @@ async function loadPublishStatus() {
   try {
     const me = await apiFetch('/users/me');
     _dashPublishState.isPublic = !!(me && me.profile_public);
+    _dashPublishState.hasName  = !!(me && String(me.artist_name || '').trim());
     _dashPublishState.loaded   = true;
     _dashPublishState.missing  = [];
 
@@ -3066,37 +3039,19 @@ async function loadPublishStatus() {
 function renderCreationGate() {
   const gate   = document.getElementById('dashCreationGate');
   const layout = document.getElementById('dashUploadLayout');
-  const freeCt = document.getElementById('dashFreeCounter');
   if (!gate || !layout) return;
 
-  // Tant qu'on n'a pas eu le retour /users/me on est optimistes : on ne
-  // bloque pas. Sinon au premier paint l'user a une UI fermée le temps
-  // d'un aller-retour API.
-  if (!_dashPublishState.loaded) {
+  // Lot G (décision de Tom) : le profil devient public AUTOMATIQUEMENT au
+  // premier son publié. Seul prérequis : un nom d'artiste (adresse de la
+  // page publique). Tant qu'on n'a pas la réponse /users/me, on ne bloque pas.
+  if (!_dashPublishState.loaded || _dashPublishState.isPublic || _dashPublishState.hasName) {
     gate.style.display = 'none';
     layout.classList.remove('is-gated');
-    return;
-  }
-
-  // Profil publié → on cache la banner, on retire le dimming du layout
-  // et on laisse renderUploadState() gérer le reste (teaser freemium etc.).
-  if (_dashPublishState.isPublic) {
-    gate.style.display = 'none';
-    layout.classList.remove('is-gated');
-    if (freeCt) freeCt.style.display = '';
     try { renderUploadState(); } catch (_) { /* noop */ }
     return;
   }
-
-  // Profil non publié → banner visible + form dégradé ("is-gated" ajoute
-  // l'opacité et désactive les pointer-events). On ne masque plus le
-  // layout : l'user doit VOIR l'aspect vente prompt / upload pour être
-  // motivé à publier son profil.
   gate.style.display = '';
   layout.classList.add('is-gated');
-  if (freeCt) freeCt.style.display = '';
-  const teaser = document.getElementById('dashPremiumTeaser');
-  if (teaser) teaser.style.display = 'none';
 }
 
 // Intercepte tout clic sur le layout dégradé quand la gate est active :
@@ -3104,7 +3059,7 @@ function renderCreationGate() {
 // toast pour expliquer le pourquoi. Câblé en capture pour préempter les
 // onclick inline (dropzone, boutons mode, presets couleur…).
 function handleGatedLayoutClick(ev) {
-  if (!_dashPublishState.loaded || _dashPublishState.isPublic) return;
+  if (!_dashPublishState.loaded || _dashPublishState.isPublic || _dashPublishState.hasName) return;
   ev.preventDefault();
   ev.stopPropagation();
   const gate = document.getElementById('dashCreationGate');
@@ -3113,7 +3068,7 @@ function handleGatedLayoutClick(ev) {
     gate.classList.add('is-flash');
     setTimeout(() => gate.classList.remove('is-flash'), 900);
   }
-  dashToast('Crée d\'abord ton profil public pour débloquer l\'upload.');
+  dashToast('Choisis d\'abord ton nom d\'artiste pour publier un son.');
 }
 
 // Redirige vers la page profil de l'user en FORÇANT le mode édition. On
@@ -4625,6 +4580,9 @@ async function dashDeleteAccount() {
         'et je comprends que la suppression est irréversible.</span></label>' +
       '<label class="dd-lbl" for="dash-del-type">Pour confirmer, tape <strong>SUPPRIMER</strong> :</label>' +
       '<input class="dd-type" id="dash-del-type" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />' +
+      // Lot G — le mot de passe est redemandé (vérifié par le serveur).
+      '<label class="dd-lbl" for="dash-del-pwd">Ton mot de passe :</label>' +
+      '<input class="dd-type" id="dash-del-pwd" type="password" autocomplete="current-password" />' +
       '<div class="dd-err" id="dash-del-err"></div>' +
       '<div class="dd-acts">' +
         '<button type="button" class="dd-cancel" id="dash-del-cancel">Annuler</button>' +
@@ -4635,11 +4593,13 @@ async function dashDeleteAccount() {
 
   const chk = document.getElementById('dash-del-renonce');
   const inp = document.getElementById('dash-del-type');
+  const pwd = document.getElementById('dash-del-pwd');
   const go = document.getElementById('dash-del-go');
   const err = document.getElementById('dash-del-err');
-  const maj = function () { go.disabled = !(chk.checked && inp.value.trim() === 'SUPPRIMER'); };
+  const maj = function () { go.disabled = !(chk.checked && inp.value.trim() === 'SUPPRIMER' && pwd.value); };
   chk.addEventListener('change', maj);
   inp.addEventListener('input', maj);
+  pwd.addEventListener('input', maj);
   const fermer = function () { ov.remove(); };
   document.getElementById('dash-del-cancel').addEventListener('click', fermer);
   ov.addEventListener('click', function (e) { if (e.target === ov) fermer(); });
@@ -4655,11 +4615,13 @@ async function dashDeleteAccount() {
     try {
       await apiFetch('/users/me', {
         method: 'DELETE',
-        json: { confirmation: inp.value.trim(), renonce_smyles: chk.checked },
+        json: { confirmation: inp.value.trim(), renonce_smyles: chk.checked, mot_de_passe: pwd.value },
       });
     } catch (e) {
       maj();
-      err.textContent = 'Échec de la suppression : ' + _humanizeApiError(e);
+      err.textContent = (e && e.status === 403)
+        ? 'Mot de passe incorrect : ton compte n’a pas été supprimé.'
+        : 'Échec de la suppression : ' + _humanizeApiError(e);
       err.style.display = 'block';
       return;
     }

@@ -82,7 +82,10 @@ class Settings(BaseSettings):
     # Défaut dev-friendly ; en prod DOIT être défini via SECRET_KEY env var.
     SECRET_KEY: str = "dev-secret-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 60
+    # Lot G (décision de Tom) : session de 7 jours (avant : 60 minutes, on
+    # était déconnecté en pleine écoute). Révocable à tout moment par
+    # `token_version` (changement de mot de passe, suppression de compte).
+    JWT_EXPIRE_MINUTES: int = 7 * 24 * 60
 
     # --- Vérification d'email (Phase A — ouverture gratuite) ─────────────
     # NON bloquant par défaut. Tant que False, le login n'exige PAS un email

@@ -471,8 +471,10 @@ async def list_user_library_prompts(
             for g in _gallery_by_prompt.get(p.id, [])
         ]
 
+    from app.services.moderation import CONTENU_RETIRE
+
     items = [
-        {
+        _masquer_si_retire(p, {
             "unlocked_id": up.id,
             "unlocked_at": up.unlocked_at,
             "prompt_id": p.id,
@@ -521,10 +523,25 @@ async def list_user_library_prompts(
             # sur les beats possédés (download gaté /beats/{id}/download).
             "product_type": p.product_type,
             "license_type": p.license_type,
-        }
+        }, CONTENU_RETIRE)
         for up, p, u, audio_url, cover_url, track_color in rows
     ]
     return items, int(total)
+
+
+def _masquer_si_retire(p, item: dict, message: str) -> dict:
+    """Lot G — un produit retiré par la modération reste listé dans la
+    bibliothèque de l'acheteur (trace de son achat), mais son contenu (recette,
+    paroles, réglages, image, galerie, son) n'est plus servi à personne."""
+    if getattr(p, "taken_down_at", None) is None:
+        return item
+    for champ in ("lyrics", "preview_r2_key", "image_settings", "negative_prompt",
+                  "prompt_weirdness", "prompt_style_influence", "audio_url", "cover_url"):
+        item[champ] = None
+    item["prompt_text"] = message
+    item["gallery"] = []
+    item["retire"] = True
+    return item
 
 
 # -----------------------------------------------------------------------------

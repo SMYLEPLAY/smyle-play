@@ -27,8 +27,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # 0,50 € — règle d'or « on ne rachète jamais un Smyle plus cher que le prix net
 # le plus bas auquel on le vend » (pack de 200 = 0,49 € net après TVA + Stripe).
 # Sert à valoriser la dette encaissable (et donc la réserve de sécurité). Les
-# prix des packs (8 / 35 / 120 €) ne dépendent PAS de cette valeur.
+# prix des packs (8 / 35 / 130 €) ne dépendent PAS de cette valeur.
 PAYOUT_RATE_CENTS = 5
+
+# Retraits (analyse financière du 13/10/2026) : minimum 50 € (1 000 Smyles
+# gagnés) et 1 € de frais par retrait, déduit du montant versé — un virement
+# via un prestataire coûte ~2 à 2,50 € ; sans frais, un retrait de 50 €
+# mangeait la moitié de la marge des packs moyens. Le code des retraits n'est
+# pas encore écrit (ouverture au plus tard le 1er mai 2027) : ces constantes
+# en sont la source unique, et les CGU les citent.
+RETRAIT_MINIMUM_CENTS = 5000
+FRAIS_RETRAIT_CENTS = 100
 
 _POCHES = ("payout", "tax", "refund", "cash")
 

@@ -339,7 +339,9 @@ async def test_inscription_emails_en_arriere_plan(client, monkeypatch):
     try:
         assert r.status_code == 201, r.text
         assert auth_router._emails_inscription in ajouts
-        assert ("bienvenue", email) in appels
+        # Lot G (décision de Tom) : plus d'email de bienvenue, seul l'email
+        # de vérification part à l'inscription.
+        assert ("bienvenue", email) not in appels
         verif = [a for a in appels if a[0] == "verification"]
         assert verif and "#token=" in verif[0][2]
     finally:

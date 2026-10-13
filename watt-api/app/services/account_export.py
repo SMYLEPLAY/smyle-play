@@ -171,10 +171,13 @@ async def export_account_data(db: AsyncSession, user: User) -> dict:
             "JOIN message_threads t ON t.id = m.thread_id "
             "LEFT JOIN users su ON su.id = m.sender_id "
             "WHERE t.participant_a = :u OR t.participant_b = :u ORDER BY m.created_at"),
+        # Lot G : les signalements ANONYMES ne sont rattachés par leur email
+        # que si l'adresse du compte est VÉRIFIÉE (preuve qu'elle est à lui).
         "signalements_faits": await q(
             "SELECT id, target_type, target_id, reason, detail, status, created_at, resolved_at "
-            "FROM content_reports WHERE reporter_id = :u OR lower(reporter_email) = lower(:e) "
-            "ORDER BY created_at", e=user.email or ""),
+            "FROM content_reports WHERE reporter_id = :u "
+            "OR (:verifie AND lower(reporter_email) = lower(:e)) "
+            "ORDER BY created_at", e=user.email or "", verifie=bool(user.email_verified)),
         "abonnements": {
             "je_suis": await q(
                 "SELECT f.followee_id AS compte_id, x.artist_name AS pseudo, f.created_at "

@@ -78,7 +78,10 @@ PERMISSIONS_POLICY = (
 )
 
 # Préfixes de proxy binaire : réponse transmise telle quelle (streaming R2).
-SEC_SKIP_PREFIXES = ("/watt/images", "/watt/stream", "/images")
+# Lot G : « /images » retiré de la liste (il couvrait aussi des routes d'API
+# et des scripts du site). Le middleware ne touche qu'aux en-têtes : le
+# streaming n'est pas affecté.
+SEC_SKIP_PREFIXES = ("/watt/images/", "/watt/stream/")
 
 
 def nom_entete_csp() -> str:

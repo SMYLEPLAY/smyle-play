@@ -325,7 +325,9 @@ async def test_direct_via_vraie_requete_de_publication(client, test_user, auth_h
         await db.commit()
     r = await client.post("/tracks/", headers=auth_headers,
                           json={"title": "Premier son", "full_prompt": "deep house",
-                                "r2_key": f"tracks/{test_user['id']}/premier-0123abcd.wav"})
+                                "r2_key": f"tracks/{test_user['id']}/premier-0123abcd.wav",
+                                "cover_url": f"/watt/images/images/track-cover/{test_user['id']}/c.png",
+                                "platform": "suno"})
     assert r.status_code == 201, r.text
     assert (await _rang(test_user["id"])).pioneer_rank is not None
 

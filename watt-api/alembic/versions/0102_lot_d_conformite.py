@@ -66,6 +66,14 @@ def upgrade() -> None:
             "FOR EACH ROW EXECUTE FUNCTION keep_taken_down_private()"
         )
 
+    # Lot G (revue avant la mise en production) : l'ancienne version reste en
+    # ligne pendant la migration et enregistre encore `user_id` pour les
+    # visiteurs connectés. Sans verrou, une ligne insérée entre l'UPDATE et
+    # l'ajout du CHECK ferait échouer la validation, donc le déploiement. Le
+    # verrou (relâché au commit) met ces écritures en attente quelques
+    # instants ; elles échouent ensuite sur le CHECK, ce que la télémétrie
+    # ignore déjà (envoi best-effort).
+    op.execute("LOCK TABLE analytics_events IN SHARE ROW EXCLUSIVE MODE")
     op.execute("UPDATE analytics_events SET user_id = NULL WHERE user_id IS NOT NULL")
     op.create_check_constraint(
         "ck_analytics_events_sans_compte", "analytics_events", "user_id IS NULL"

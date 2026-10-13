@@ -26,6 +26,7 @@ from app.models.unlocked_prompt import UnlockedPrompt
 from app.models.user import User
 from app.schemas.beat import BeatCreate, BeatRead, PackBuyResult
 from app.services.beats import create_beat
+from app.services.moderation import CONTENU_RETIRE
 from app.services.pack_purchase import PackNotPurchasable, buy_pack_atomic
 from app.services.unlocks import (
     AlreadyUnlocked,
@@ -160,11 +161,10 @@ async def download_beat(
     l'user ne le possède pas. La vérification de possession précède tout
     accès R2 (testable sans R2).
     """
+    # Lot G : PAS de filtre is_deleted — un acheteur garde son fichier quand
+    # le créateur supprime l'œuvre (le filtre le privait de son achat).
     product = (await db.execute(
-        select(Prompt).where(
-            Prompt.id == beat_id,
-            Prompt.is_deleted.is_(False),
-        )
+        select(Prompt).where(Prompt.id == beat_id)
     )).scalar_one_or_none()
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
@@ -177,10 +177,16 @@ async def download_beat(
         )
     )).scalar_one_or_none()
     if owns is None and product.artist_id != current_user.id:
+        if product.is_deleted:
+            # Œuvre supprimée : introuvable pour qui ne l'a pas achetée.
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Achète cet exemplaire pour pouvoir le télécharger.",
         )
+    # Lot G : contenu retiré par la modération → plus servi à personne.
+    if product.taken_down_at is not None:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail=CONTENU_RETIRE)
 
     # Journal de téléchargement (H0.5+) — best-effort, n'interrompt jamais le DL.
     from app.services.downloads import log_download
@@ -192,12 +198,21 @@ async def download_beat(
 
     # Lot A (E2) : seul un morceau du CRÉATEUR du produit fait foi — un autre
     # compte ne peut pas glisser son fichier derrière la recette d'autrui.
+    porte = (
+        _or(Track.prompt_id == beat_id, Track.beat_id == beat_id),
+        Track.artist_id == product.artist_id,
+    )
+    # Lot G : un son retiré par la modération rend l'audio indisponible pour
+    # tous, même s'il existe une autre version non retirée.
+    if (await db.execute(
+        select(Track.id).where(*porte, Track.taken_down_at.is_not(None)).limit(1)
+    )).scalar_one_or_none() is not None:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail=CONTENU_RETIRE)
     track = (await db.execute(
         select(Track).where(
-            _or(Track.prompt_id == beat_id, Track.beat_id == beat_id),
-            Track.artist_id == product.artist_id,
+            *porte,
             # Parcours V1 — l'acheteur garde son fichier même si le créateur
-            # a supprimé le son (pas s'il a été retiré par la modération).
+            # a supprimé le son.
             Track.taken_down_at.is_(None),
         ).order_by(Track.is_deleted.asc(), Track.created_at.desc()).limit(1)
     )).scalar_one_or_none()
@@ -215,10 +230,9 @@ async def download_beat(
 
     ext = key.rsplit(".", 1)[-1].lower() if "." in key else ""
     mime = _AUDIO_MIME_BY_EXT.get(ext, "application/octet-stream")
-    safe_name = (product.title or "exemplaire").replace('"', "").strip() or "exemplaire"
-    filename = f"{safe_name}.{ext}" if ext else safe_name
+    from app.core.fichiers import entete_piece_jointe
 
-    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    headers = {"Content-Disposition": entete_piece_jointe(product.title, ext, defaut="exemplaire")}
     content_length = obj.get("ContentLength")
     if content_length:
         headers["Content-Length"] = str(content_length)

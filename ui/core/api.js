@@ -345,6 +345,13 @@ async function apiFetch(path, options = {}) {
       if (hadToken && typeof window !== 'undefined' && typeof window.clearCurrentUser === 'function') {
         try { window.clearCurrentUser(); } catch (_) { /* noop */ }
       }
+      // Lot G — session expirée : nettoyage COMPLET, comme une déconnexion
+      // (profil local, cache des sons, préférences liées au compte). Avant,
+      // seuls le jeton et l'utilisateur en cache étaient effacés : la
+      // personne suivante sur le même appareil voyait encore des données.
+      if (hadToken) {
+        try { smyleClearPersonalData(); } catch (_) { /* noop */ }
+      }
       if (hadToken && typeof window !== 'undefined') {
         const now = Date.now();
         const last = window.__smyleSessionExpiredAt || 0;
@@ -401,9 +408,33 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   else _cguAuDemarrage();
 }
 
+// ── Lot G — achat avec « prix attendu » ─────────────────────────────────────
+// Le client envoie le prix qu'il a affiché. S'il a changé entre-temps (le
+// créateur l'a modifié), le serveur répond 409 { code: 'prix_change', prix,
+// message } : on demande confirmation au nouveau prix, puis on rejoue.
+// Annulation → l'erreur est relancée avec `annule = true`.
+async function smyleAcheter(chemin, prixAttendu) {
+  const corps = (prixAttendu != null && isFinite(Number(prixAttendu)))
+    ? { prix_attendu: Number(prixAttendu) } : undefined;
+  try {
+    return await apiFetch(chemin, { method: 'POST', json: corps });
+  } catch (err) {
+    const d = err && err.body && err.body.detail;
+    if (err && err.status === 409 && d && d.code === 'prix_change') {
+      const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
+        ? window.confirm(d.message + '.\nConfirmer l’achat à ce nouveau prix ?')
+        : false;
+      if (!ok) { err.annule = true; throw err; }
+      return apiFetch(chemin, { method: 'POST', json: { prix_attendu: d.prix } });
+    }
+    throw err;
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.API_BASE        = API_BASE;
   window.apiFetch        = apiFetch;
+  window.smyleAcheter    = smyleAcheter;
   window.smyleClearPersonalData = smyleClearPersonalData;
   window.ApiError        = ApiError;
   window.getAuthToken    = getAuthToken;

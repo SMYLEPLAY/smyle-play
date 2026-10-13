@@ -13,7 +13,7 @@ les deux produits doivent appartenir a l'utilisateur courant (404 sinon).
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
+from app.routers.unlocks import AchatIn
 from app.services.links import (
     LinkError,
     link_image_to_track,
@@ -233,6 +234,7 @@ async def _optional_viewer_id(request: Request, db: AsyncSession):
 async def buy_oeuvre(
     oeuvre_id: UUID,
     request: Request,
+    achat: AchatIn | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -243,7 +245,10 @@ async def buy_oeuvre(
     from app.services.oeuvre_c4_purchase import OeuvreNotBundlable, buy_oeuvre_atomic
 
     try:
-        out = await buy_oeuvre_atomic(db, buyer_id=current_user.id, oeuvre_id=oeuvre_id)
+        out = await buy_oeuvre_atomic(
+            db, buyer_id=current_user.id, oeuvre_id=oeuvre_id,
+            prix_attendu=achat.prix_attendu if achat else None,
+        )
         await db.commit()
     except OeuvreNotBundlable as e:
         await db.rollback()

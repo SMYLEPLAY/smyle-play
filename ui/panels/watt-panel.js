@@ -440,7 +440,7 @@ function _renderArtistTab(container) {
             <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Créer mon compte
           </a>
-          <span class="artist-cta-note">Bêta gratuite · 6 sons offerts</span>
+          <span class="artist-cta-note">Gratuit · 30 Smyles offerts</span>
         </div>
       </div>
     `;

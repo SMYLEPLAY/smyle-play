@@ -41,7 +41,7 @@ EUR_PER_CREDIT: float = 0.07
 CREDIT_PACKS: list[dict] = [
     {"id": "pack_100", "credits": 100, "price_eur_cents": 800},
     {"id": "pack_500", "credits": 500, "price_eur_cents": 3500},
-    {"id": "pack_2000", "credits": 2000, "price_eur_cents": 12000},
+    {"id": "pack_2000", "credits": 2000, "price_eur_cents": 13000},
 ]
 
 # Anciens identifiants (avant la redénomination) : un lien ou un onglet resté

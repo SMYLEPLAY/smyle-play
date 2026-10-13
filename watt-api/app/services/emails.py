@@ -396,9 +396,12 @@ async def send_decision_auteur(
             nom = f" « {esc(titre)} »" if titre else ""
             sujet = "Un de tes contenus a été retiré de WATT"
             titre_h = "Contenu retiré"
-            intro = (f"La modération a retiré {esc(quoi)}{nom} de la vitrine. "
-                     "Il n'est plus visible ni en vente ; ceux qui l'ont déjà "
-                     "acheté gardent leur accès.")
+            # Lot G : un contenu retiré n'est plus servi à personne, acheteurs
+            # compris (écoute, image, recette, téléchargement).
+            intro = (f"La modération a retiré {esc(quoi)}{nom} de WATT. "
+                     "Il n'est plus visible, plus en vente, et ne peut plus être "
+                     "écouté ni téléchargé, y compris par les personnes qui l'ont "
+                     "déjà acheté.")
         corps = (
             _paragraphe(intro)
             + _paragraphe(f"<strong style=\"color:{_TEXT};\">Motif</strong> : {esc(motif)}")

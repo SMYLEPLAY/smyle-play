@@ -57,6 +57,9 @@ async def _create_track(client: AsyncClient, auth_headers: dict, tags) -> dict:
             "full_prompt": "deep house 128 bpm dark nocturne",
             "tags": tags,
             "r2_key": f"tracks/{me['id']}/tags-0123abcd.wav",
+            # Lot G : pochette et outil d'IA obligatoires.
+            "cover_url": f"/watt/images/images/track-cover/{me['id']}/c.png",
+            "platform": "suno",
         },
     )
     assert r.status_code == 201, r.text

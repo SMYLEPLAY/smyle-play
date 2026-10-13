@@ -203,6 +203,9 @@ class LibraryPromptItem(BaseModel):
     # `gallery` pour télécharger tout le set à l'achat. L'original lui-même n'est
     # JAMAIS sérialisé — uniquement le chemin de download gaté.
     gallery: list[dict] = Field(default_factory=list)
+    # Lot G — produit retiré par la modération : listé (trace de l'achat),
+    # contenu masqué pour tous.
+    retire: bool = False
 
 
 class LibraryPromptsResponse(BaseModel):

@@ -8,13 +8,16 @@ que d'autres personnes ont payé ou que la loi oblige à garder.
    - les œuvres que PERSONNE n'a achetées : sons, recettes, images, ADN, ADN
      visuels, voix, playlists, albums (lignes supprimées, avec leurs likes,
      galeries, empreintes et statistiques d'écoute) ;
-   - les messages (conversations où le compte participe), les abonnements
-     (dans les deux sens), les notifications, les statistiques personnelles
-     (téléchargements, jours d'activité, trophées, likes), les jetons d'email ;
+   - les abonnements (dans les deux sens), les notifications, les
+     statistiques personnelles (téléchargements, jours d'activité, trophées,
+     likes), les jetons d'email ;
    - l'IP d'inscription et tous les champs de profil ;
-   - les fichiers stockés de ces œuvres et du profil (avatar, bannière) :
-     purgés en TÂCHE DE FOND après la réponse (`purger_fichiers`), et seulement
-     s'ils ne sont plus référencés par aucune ligne restante.
+   - les fichiers stockés de ces œuvres et du profil (avatar, bannière,
+     extraits de voix, vidéos de playlist) : inscrits dans la table
+     `fichiers_a_traiter` DANS la transaction de la suppression (Lot G), puis
+     supprimés après la réponse, et seulement s'ils ne sont plus référencés
+     par aucune ligne restante. Une purge interrompue (redémarrage, stockage
+     indisponible) est rejouée chaque jour.
 
 2. ANONYMISÉ (conservé)
    - les œuvres DÉJÀ ACHETÉES par quelqu'un d'autre : la ligne et le fichier
@@ -25,6 +28,9 @@ que d'autres personnes ont payé ou que la loi oblige à garder.
      exemplaires (#X/N). Une fois le compte anonymisé, l'œuvre ne porte plus
      aucune donnée personnelle de l'auteur.
    - les contenus RETIRÉS par la modération : conservés comme preuve (DSA).
+   - les conversations (Lot G) : l'autre personne garde son historique ; les
+     messages du compte supprimé restent, signés « Artiste supprimé » (la
+     ligne `users` anonymisée ne porte plus ni email ni nom).
    - le registre des transactions (obligation comptable) : intact. Ses lignes
      pointent vers la ligne `users` anonymisée (plus d'email, de nom, d'IP) :
      le lien ne désigne plus personne.
@@ -117,15 +123,32 @@ async def _oeuvres_gardees(db: AsyncSession, uid: uuid.UUID) -> dict[str, list[u
     return gardes
 
 
-def _cles_depuis_urls(urls, uid) -> set[str]:
+def _cle_du_compte(key: str | None, uid, *, voix: bool = False) -> bool:
+    """La clé désigne-t-elle un fichier envoyé par CE compte ? Dossiers au
+    nom du compte (sons, images, vidéos de playlist `PLAYLISTS/<id>/`), et —
+    seulement pour les URL lues sur SES voix — le dossier commun `voices/`
+    (les extraits de voix n'ont pas de dossier par compte)."""
+    from app.services.media_ownership import cle_sure, key_owned_by
+
+    if not cle_sure(key):
+        return False
+    if key_owned_by(key, uid):
+        return True
+    parts = key.split("/")
+    if len(parts) == 3 and parts[0] == "PLAYLISTS" and parts[1].lower() == str(uid).lower():
+        return True
+    return voix and len(parts) == 2 and parts[0] == "voices"
+
+
+def _cles_depuis_urls(urls, uid, *, voix: bool = False) -> set[str]:
     """Clés de stockage désignées par des URL (avatar, pochettes, extraits…),
-    limitées aux fichiers envoyés par CE compte (dossier au nom du compte)."""
-    from app.services.media_ownership import key_owned_by, media_url_key
+    limitées aux fichiers envoyés par CE compte."""
+    from app.services.media_ownership import media_url_key
 
     out: set[str] = set()
     for url in urls:
         ours, key = media_url_key(url)
-        if ours and key and key_owned_by(key, uid):
+        if ours and key and _cle_du_compte(key, uid, voix=voix):
             out.add(key)
     return out
 
@@ -161,10 +184,12 @@ async def _cles_a_purger(db: AsyncSession, uid: uuid.UUID, gardes: dict) -> set[
             "WHERE prompt_id = ANY(:ids)"), {"ids": produits})).all():
             cles.update(k for k in (r.image_r2_key, r.preview_r2_key) if k)
 
+    urls_voix: list[str | None] = []
     for r in (await db.execute(text(
         "SELECT sample_url, preview_url FROM voices_for_sale "
         "WHERE artist_id = :u AND NOT (id = ANY(:g))"), {**p, "g": gardes["voices_for_sale"]})).all():
-        urls += [r.sample_url, r.preview_url]
+        urls_voix += [r.sample_url, r.preview_url]
+    cles |= _cles_depuis_urls([u for u in urls_voix if u], uid, voix=True)
     for r in (await db.execute(text(
         "SELECT cover_video_url FROM playlists "
         "WHERE owner_id = :u AND NOT (id = ANY(:g))"), {**p, "g": gardes["playlists"]})).all():
@@ -253,12 +278,29 @@ async def _liberer_pionnier(db: AsyncSession, user: User) -> None:
         pass
 
 
-async def delete_account(db: AsyncSession, user: User) -> list[str]:
+async def _verrouiller(db: AsyncSession, uid: uuid.UUID) -> None:
+    """Lot G — verrous pris AVANT de calculer ce qui est conservé : la ligne
+    du compte (tout achat d'une de ses œuvres la verrouille aussi, pour
+    créditer le vendeur) puis ses produits en vente. Un achat simultané
+    attend la fin de la suppression (puis échoue proprement : œuvre
+    introuvable), ou la suppression attend l'achat (et voit alors l'œuvre
+    comme achetée, donc conservée). Aucun achat ne peut se perdre entre les
+    deux. Même ordre que l'achat : comptes, puis produits."""
+    await db.execute(text("SELECT id FROM users WHERE id = :u FOR UPDATE"), {"u": uid})
+    await db.execute(text("SELECT id FROM prompts WHERE artist_id = :u ORDER BY id FOR UPDATE"),
+                     {"u": uid})
+
+
+async def delete_account(db: AsyncSession, user: User) -> list:
     """Supprime le compte (voir le docstring du module). Commit.
-    Renvoie les clés de fichiers à purger en tâche de fond."""
+    Renvoie les identifiants des opérations de purge de fichiers inscrites
+    (table fichiers_a_traiter), à traiter en tâche de fond."""
+    from app.services.fichiers_a_traiter import programmer
+
     uid = user.id
     p = {"u": uid}
 
+    await _verrouiller(db, uid)
     gardes = await _oeuvres_gardees(db, uid)
     cles = await _cles_a_purger(db, uid, gardes)
 
@@ -281,8 +323,9 @@ async def delete_account(db: AsyncSession, user: User) -> list[str]:
         await db.execute(text(f"UPDATE {table} SET visibility = 'private', adn_for_sale = false "  # noqa: S608
                               "WHERE owner_id = :u"), p)
 
-    # 2. Données personnelles d'activité.
-    await db.execute(text("DELETE FROM message_threads WHERE participant_a = :u OR participant_b = :u"), p)
+    # 2. Données personnelles d'activité. Lot G : les conversations ne sont
+    #    plus effacées (l'autre personne perdait son historique) — elles
+    #    restent, rattachées au compte anonymisé.
     await db.execute(text("DELETE FROM user_follows WHERE follower_id = :u OR followee_id = :u"), p)
     await db.execute(text("DELETE FROM notifications WHERE user_id = :u"), p)
     await db.execute(text("UPDATE notifications SET actor_id = NULL WHERE actor_id = :u"), p)
@@ -315,51 +358,19 @@ async def delete_account(db: AsyncSession, user: User) -> list[str]:
     user.email_verified = False
     user.streak_count = 0
 
+    ids = await programmer(db, sorted(cles), "supprimer", "suppression_compte")
     await db.commit()
-    return sorted(cles)
-
-
-async def _encore_reference(db: AsyncSession, cle: str) -> bool:
-    """Le fichier est-il encore désigné par une ligne restante ?"""
-    row = (await db.execute(text(
-        "SELECT 1 FROM tracks WHERE r2_key = :k OR position(:k in coalesce(audio_url, '')) > 0 "
-        "  OR position(:k in coalesce(cover_url, '')) > 0 "
-        "UNION ALL SELECT 1 FROM prompts WHERE image_r2_key = :k OR preview_r2_key = :k "
-        "UNION ALL SELECT 1 FROM prompt_gallery_images WHERE image_r2_key = :k OR preview_r2_key = :k "
-        "UNION ALL SELECT 1 FROM users WHERE position(:k in coalesce(avatar_url, '')) > 0 "
-        "  OR position(:k in coalesce(cover_photo_url, '')) > 0 "
-        "UNION ALL SELECT 1 FROM voices_for_sale WHERE position(:k in coalesce(sample_url, '')) > 0 "
-        "  OR position(:k in coalesce(preview_url, '')) > 0 "
-        "UNION ALL SELECT 1 FROM playlists WHERE position(:k in coalesce(cover_video_url, '')) > 0 "
-        "LIMIT 1"), {"k": cle})).first()
-    return row is not None
+    return ids
 
 
 async def purger_fichiers(cles: list[str]) -> dict:
-    """Tâche de fond (après la réponse) : supprime du stockage les fichiers des
-    œuvres effacées et du profil, sauf ceux encore référencés. Ne lève
-    jamais : un fichier non supprimé reste orphelin, sans effet."""
-    from app.config import settings
+    """Compatibilité (outils) : inscrit puis traite tout de suite la purge de
+    ces clés. Le chemin normal passe par `delete_account`, qui inscrit les
+    opérations dans sa propre transaction."""
     from app.database import SessionLocal
-    from app.services.r2 import delete_r2_object
+    from app.services.fichiers_a_traiter import programmer, traiter_en_attente
 
-    buckets = [settings.R2_BUCKET]
-    prive = settings.effective_private_bucket
-    if prive and prive not in buckets:
-        buckets.append(prive)
-    supprimes, gardes = 0, 0
-    try:
-        async with SessionLocal() as db:
-            for cle in cles:
-                if await _encore_reference(db, cle):
-                    gardes += 1
-                    continue
-                ok = False
-                for b in buckets:
-                    ok = (await delete_r2_object(cle, bucket=b)) or ok
-                supprimes += int(ok)
-    except Exception:  # noqa: BLE001
-        logger.warning("[suppression] purge des fichiers : échec partiel", exc_info=True)
-    logger.info("[suppression] purge des fichiers : %s supprimés, %s encore utilisés, %s demandés",
-                supprimes, gardes, len(cles))
-    return {"supprimes": supprimes, "gardes": gardes, "demandes": len(cles)}
+    async with SessionLocal() as db:
+        ids = await programmer(db, cles, "supprimer", "suppression_compte")
+        await db.commit()
+    return await traiter_en_attente(ids)

@@ -127,6 +127,9 @@ async function doLogin(email, password, { onAttempt } = {}) {
       // API down / offline / CORS / timeout → le message est déjà formaté
       // par api.js (ex: "Serveur injoignable — l'API ne répond pas…").
       msg = e.message || 'Serveur injoignable — réessaie dans un instant.';
+    } else if (e && e.status === 403 && e.body && e.body.jeton_rgpd) {
+      // Lot G — compte suspendu : jeton limité à l'export / la suppression.
+      return { ok: false, msg: String(e.body.detail || 'Compte suspendu.'), jetonRgpd: e.body.jeton_rgpd };
     } else if (e && e.status === 401) {
       msg = 'Email ou mot de passe incorrect.';
     } else if (e && e.status === 429) {
@@ -420,7 +423,54 @@ async function submitLogin() {
   };
   const result = await doLogin(email, password, { onAttempt });
   if (result.ok) _afterAuthSuccess();
+  else if (result.jetonRgpd) _panneauRgpd(msg, result.msg, result.jetonRgpd, password);
   else msg.textContent = result.msg;
+}
+
+// Lot G — compte suspendu : il garde le droit d'exporter ou de supprimer ses
+// données (RGPD). Le serveur remet un jeton de 30 minutes limité à ces
+// deux actions ; il n'est jamais enregistré dans le navigateur.
+function _panneauRgpd(msgEl, texte, jeton, password) {
+  msgEl.textContent = '';
+  const p = document.createElement('div');
+  p.className = 'auth-rgpd';
+  p.style.cssText = 'margin-top:8px;line-height:1.5';
+  const t = document.createElement('p');
+  t.textContent = texte;
+  const exp = document.createElement('button');
+  exp.type = 'button'; exp.className = 'modal-submit'; exp.textContent = 'Télécharger mes données';
+  const sup = document.createElement('button');
+  sup.type = 'button'; sup.className = 'modal-submit'; sup.textContent = 'Supprimer mon compte';
+  sup.style.cssText = 'margin-top:8px;background:#e2304f';
+  p.append(t, exp, sup);
+  msgEl.appendChild(p);
+  const h = { Authorization: 'Bearer ' + jeton };
+  exp.addEventListener('click', async () => {
+    try {
+      const r = await fetch('/users/me/export', { headers: h });
+      if (!r.ok) throw new Error(String(r.status));
+      const blob = await r.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'mes-donnees-watt.json';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (_) { t.textContent = 'Téléchargement impossible pour le moment. Reconnecte-toi et réessaie.'; }
+  });
+  sup.addEventListener('click', async () => {
+    const ok = window.confirm('Supprimer définitivement ton compte ? Tu renonces à tous tes Smyles, ' +
+      'y compris ceux gagnés en vendant. Cette action est irréversible.');
+    if (!ok) return;
+    try {
+      const r = await fetch('/users/me/delete', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, h),
+        body: JSON.stringify({ confirmation: 'SUPPRIMER', renonce_smyles: true, mot_de_passe: password }),
+      });
+      if (r.status !== 204) throw new Error(String(r.status));
+      t.textContent = 'Ton compte a été supprimé.';
+      exp.remove(); sup.remove();
+    } catch (_) { t.textContent = 'Suppression impossible pour le moment. Reconnecte-toi et réessaie.'; }
+  });
 }
 
 // Parcours V1 — après inscription ou connexion : retour EXACT à la page de

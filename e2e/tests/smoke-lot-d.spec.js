@@ -68,7 +68,7 @@ test('CGU : une écriture refusée (cgu_a_accepter) rouvre la fenêtre', async (
   await expect(page.locator('#cgu-gate')).toContainText('1er novembre 2026');
 });
 
-test('suppression de compte : renonciation exigée, puis compte supprimé', async ({ page, request }) => {
+test('suppression de compte : renonciation et mot de passe exigés, puis compte supprimé', async ({ page, request }) => {
   const c = await compte(request);
   await choixMesure(page, 'denied');
   await bootSessionAuthentifiee(page, c.token);
@@ -84,7 +84,12 @@ test('suppression de compte : renonciation exigée, puis compte supprimé', asyn
   await page.locator('#dash-del-type').fill('SUPPRIMER');
   await expect(go).toBeDisabled();            // case non cochée
   await page.locator('#dash-del-renonce').check();
+  await expect(go).toBeDisabled();            // Lot G : mot de passe demandé
+  await page.locator('#dash-del-pwd').fill('mauvais-mot-de-passe');
   await expect(go).toBeEnabled();
+  await go.click();
+  await expect(page.locator('#dash-del-err')).toContainText('Mot de passe incorrect');
+  await page.locator('#dash-del-pwd').fill(PWD);
   await go.click();
   await page.waitForURL((u) => new URL(u).pathname === '/', { timeout: 15000 });
   const me = await request.get('/users/me', { headers: c.h });

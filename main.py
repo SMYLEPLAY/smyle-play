@@ -15,8 +15,9 @@ import os
 import sys
 
 # Prioriser watt-api/ dans sys.path pour que `from app.main` résolve le
-# package FastAPI. Le root reste accessible (config.py utilisé par les
-# scripts locaux watcher/scanner).
+# package FastAPI. La racine reste dans le chemin pour les modules partagés
+# éventuels (Lot G : les anciens scripts locaux config.py, scanner.py,
+# watcher_pipeline.py… ont été supprimés).
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _API_DIR = os.path.join(_ROOT, "watt-api")
 if _API_DIR not in sys.path:

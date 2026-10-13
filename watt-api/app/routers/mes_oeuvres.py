@@ -15,11 +15,12 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
+from app.core.ratelimit import LIMIT_OEUVRES_ACTIONS, limiter
 from app.database import get_db
 from app.models.user import User
 from app.services import mes_oeuvres as svc
@@ -53,7 +54,9 @@ async def lister_mes_oeuvres(
 
 
 @router.post("/actions")
+@limiter.limit(LIMIT_OEUVRES_ACTIONS)
 async def action_sur_mes_oeuvres(
+    request: Request,
     body: ActionGroupee,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

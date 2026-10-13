@@ -62,6 +62,11 @@ def validate_media_url(v: str | None) -> str | None:
     return v
 
 
+
+# Lot G — prix maximal d'un pack « recette + beat » : deux produits au prix
+# maximal d'un produit (150 Smyles chacun).
+PACK_PRICE_MAX = 300
+
 class TrackCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     full_prompt: str = Field(min_length=1)
@@ -131,7 +136,8 @@ class TrackUpdate(BaseModel):
     beat_id: UUID | None = None
     # Prix du pack recette+beat (crédits). Pertinent seulement si le track
     # a un prompt_id ET un beat_id — consommé par POST /pack/{track_id}/buy.
-    pack_price_credits: int | None = Field(default=None, ge=1)
+    # Lot G : plafonné à PACK_PRICE_MAX (recette + beat au prix maximal).
+    pack_price_credits: int | None = Field(default=None, ge=1, le=PACK_PRICE_MAX)
     # Tags libres — séparés par des virgules ("chill, dark, guitare, 90bpm")
     tags: str | None = Field(default=None, max_length=500)
     # C2 — drapeau beat + BPM modifiables après coup.

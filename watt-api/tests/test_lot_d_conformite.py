@@ -150,7 +150,7 @@ async def test_retrait_sur_signalement_motif_obligatoire_emails_et_journal(clien
         hs = await _h(client, signaleur)
         r = await client.post("/reports", headers=hs, json={
             "good_faith": True, "target_type": "prompt", "target_id": str(pid),
-            "reason": "contrefacon", "detail": "copie"})
+            "reason": "contrefacon", "detail": "copie d'une œuvre existante"})
         assert r.status_code == 201, r.text
         rid = r.json()["id"]
         emails.clear()  # accusé de réception
@@ -189,7 +189,8 @@ async def test_rejet_du_signalement_informe_le_signaleur_anonyme(client, emails)
     try:
         r = await client.post("/reports", json={
             "good_faith": True, "target_type": "track", "target_id": str(uuid.uuid4()),
-            "reason": "autre", "reporter_email": "Anonyme.Lotd@Example.org"})
+            "reason": "autre", "detail": "Contenu qui pose problème",
+            "reporter_email": "Anonyme.Lotd@Example.org"})
         assert r.status_code == 201, r.text
         rid = r.json()["id"]
         emails.clear()
@@ -427,16 +428,21 @@ async def test_suppression_complete(client, monkeypatch):
         assert apercu["smyles"]["total"] == 30
         assert apercu["oeuvres"]["conservees_pour_acheteurs"] == 2  # recette vendue + son lié
 
-        from app.services import account_deletion
-        purges = []
+        from app.services import fichiers_a_traiter
 
-        async def _faux_purger(cles):
-            purges.extend(cles)
+        async def _rien(*a, **k):
+            return {}
 
-        monkeypatch.setattr(account_deletion, "purger_fichiers", _faux_purger)
+        # Lot G : la purge est inscrite en base (fichiers_a_traiter) puis
+        # traitée en tâche de fond — ici on lit seulement ce qui est inscrit.
+        monkeypatch.setattr(fichiers_a_traiter, "traiter_en_attente", _rien)
         r = await client.request("DELETE", "/users/me", headers=h,
-                                 json={"confirmation": "SUPPRIMER", "renonce_smyles": True})
+                                 json={"confirmation": "SUPPRIMER", "renonce_smyles": True,
+                                       "mot_de_passe": PWD})
         assert r.status_code == 204, r.text
+        purges = [x.cle for x in await _sql(
+            "SELECT cle FROM fichiers_a_traiter WHERE action = 'supprimer' "
+            "AND motif = 'suppression_compte' AND cle LIKE :m", m=f"%{uid}%")]
         assert (await client.get("/users/me", headers=h)).status_code == 401
 
         u = (await _sql("SELECT * FROM users WHERE id = :u", u=uid))[0]
@@ -452,8 +458,10 @@ async def test_suppression_complete(client, monkeypatch):
         # Œuvres jamais achetées : effacées.
         for table, i in (("prompts", p_invendu), ("tracks", t_invendu), ("playlists", pl), ("adns", adn_id)):
             assert (await _sql(f"SELECT count(*) AS n FROM {table} WHERE id = :i", i=i))[0].n == 0, table
-        # Messages, abonnements effacés.
-        assert (await _sql("SELECT count(*) AS n FROM message_threads WHERE id = :t", t=th))[0].n == 0
+        # Lot G : conversations CONSERVÉES pour l'autre personne (auteur
+        # anonymisé) ; abonnements effacés.
+        assert (await _sql("SELECT count(*) AS n FROM message_threads WHERE id = :t", t=th))[0].n == 1
+        assert (await _sql("SELECT count(*) AS n FROM messages WHERE thread_id = :t", t=th))[0].n == 1
         assert (await _sql("SELECT count(*) AS n FROM user_follows WHERE follower_id = :u OR followee_id = :u",
                            u=uid))[0].n == 0
         # Registre intact (+ la destruction du solde).
@@ -483,9 +491,9 @@ async def test_purge_des_fichiers_epargne_ceux_encore_utilises(monkeypatch):
 
     async def _faux_delete(key, *, bucket=None):
         supprimes.append(key)
-        return True
 
-    monkeypatch.setattr(r2, "delete_r2_object", _faux_delete)
+    monkeypatch.setattr(r2, "is_configured", lambda: True)
+    monkeypatch.setattr(r2, "supprimer_objet", _faux_delete)
     try:
         utilise = f"tracks/{u['id']}/encore.mp3"
         await _track(u["id"])
@@ -493,8 +501,12 @@ async def test_purge_des_fichiers_epargne_ceux_encore_utilises(monkeypatch):
         orphelin = f"tracks/{u['id']}/orphelin.mp3"
         out = await account_deletion.purger_fichiers([utilise, orphelin])
         assert orphelin in supprimes and utilise not in supprimes
-        assert out["gardes"] == 1
+        assert out["faites"] == 2
+        res = {x.cle: x.resultat for x in await _sql(
+            "SELECT cle, resultat FROM fichiers_a_traiter WHERE cle IN (:a, :b)", a=utilise, b=orphelin)}
+        assert res == {utilise: "encore_utilise", orphelin: "supprime"}
     finally:
+        await _sql("DELETE FROM fichiers_a_traiter WHERE cle LIKE :m", m=f"%{u['id']}%")
         await _cleanup(u["id"])
 
 
@@ -514,7 +526,7 @@ async def test_export_couvre_toutes_les_donnees(client):
         h = await _h(client, u)
         r = await client.post("/reports", headers=h, json={
             "good_faith": True, "target_type": "track", "target_id": str(uuid.uuid4()),
-            "reason": "spam_arnaque"})
+            "reason": "spam_arnaque", "detail": "Arnaque manifeste au paiement"})
         assert r.status_code == 201, r.text
         r = await client.get("/users/me/export", headers=h)
         assert r.status_code == 200

@@ -23,3 +23,8 @@ CODE_CGU_A_ACCEPTER = "cgu_a_accepter"
 
 # Durée de conservation des données de mesure d'audience (CNIL : 13 mois max).
 MESURE_RETENTION_MOIS = 13
+
+# Lot G — durée de conservation d'un signalement après la DÉCISION
+# (retrait ou rejet) : 3 ans (délai de prescription des actions civiles
+# courantes liées au contenu), annoncée dans la politique de confidentialité.
+SIGNALEMENTS_RETENTION_ANS = 3

@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.marketplace import (
     PROMPT_DESCRIPTION_MAX,
+    PROMPT_PRICE_MAX,
     PROMPT_PRICE_MIN,
     PROMPT_TITLE_MAX,
     PROMPT_TITLE_MIN,
@@ -38,8 +39,9 @@ class BeatCreate(BaseModel):
 
     title: str = Field(min_length=PROMPT_TITLE_MIN, max_length=PROMPT_TITLE_MAX)
     description: str | None = Field(default=None, max_length=PROMPT_DESCRIPTION_MAX)
-    # Prix 10–150 Smyles, comme les prompts. Pas de plafond ressenti.
-    price_credits: int = Field(ge=PROMPT_PRICE_MIN)
+    # Prix 10–150 Smyles, comme les prompts. Lot G : plafond posé ici aussi
+    # (la base refusait déjà au-delà de 150, mais par une erreur 500).
+    price_credits: int = Field(ge=PROMPT_PRICE_MIN, le=PROMPT_PRICE_MAX)
     license_type: BeatLicense
     # Édition limitée pour les lease (None = illimité). Ignoré si exclusive.
     max_supply: int | None = Field(default=None, ge=1)

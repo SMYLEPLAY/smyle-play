@@ -25,8 +25,20 @@ logger = logging.getLogger(__name__)
 # watt-api/alembic/ (source de vérité) ; si l'ini est introuvable (paquet
 # installé sans les migrations), on retombe sur la constante ci-dessous — à
 # mettre à jour à chaque nouvelle migration.
-_ALEMBIC_HEAD_FALLBACK = "0103_emails_minuscules"
+_ALEMBIC_HEAD_FALLBACK = "0104_fichiers_a_traiter"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+
+async def _alembic_db(conn) -> str | None:
+    """Version Alembic lue dans la base (`alembic_version`). Ne lève jamais :
+    table absente, droits refusés… → None (la sonde reste à 200 si la base
+    répond). Plusieurs lignes (têtes multiples) → jointes par une virgule."""
+    try:
+        rows = (await conn.execute(text("SELECT version_num FROM alembic_version"))).all()
+        return ",".join(sorted(str(r[0]) for r in rows)) or None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("healthcheck : alembic_version illisible (%s)", type(exc).__name__)
+        return None
 
 
 @lru_cache(maxsize=1)
@@ -125,7 +137,7 @@ from app.core.securite import SEC_SKIP_PREFIXES as _SEC_SKIP_PREFIXES  # noqa: E
 # compressee. Les reponses de /auth/* portent le JWT (et /auth/register
 # reflete l'email soumis) : ce sont exactement les conditions de l'attaque.
 # Ces reponses sont minuscules — la compression n'y apportait rien.
-_GZIP_SKIP_PREFIXES = _SEC_SKIP_PREFIXES + ("/auth",)
+_GZIP_SKIP_PREFIXES = _SEC_SKIP_PREFIXES + ("/images/", "/auth")
 
 
 # ── Compression HTTP selective (F1-2, 2026-08-02) ──────────────────────────
@@ -288,14 +300,15 @@ def create_app() -> FastAPI:
         from app.database import engine
         from app.services.r2 import is_configured
 
-        async def _db_ping() -> None:
+        async def _db_ping() -> str | None:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
+                return await _alembic_db(conn)
 
         try:
             # asyncio.wait_for et non asyncio.timeout : ce dernier n'existe
             # qu'à partir de Python 3.11 (le bac à sable de l'agent est en 3.10).
-            await asyncio.wait_for(_db_ping(), timeout=3)
+            alembic_db = await asyncio.wait_for(_db_ping(), timeout=3)
         except Exception as exc:  # timeout, connexion refusée, pool épuisé…
             logger.warning("healthcheck : base injoignable (%s)", exc)
             return JSONResponse(
@@ -307,6 +320,10 @@ def create_app() -> FastAPI:
             "db": "ok",
             "commit": os.getenv("RAILWAY_GIT_COMMIT_SHA", "")[:7],
             "alembic_head": _alembic_head(),
+            # Lot G : version RÉELLEMENT appliquée à la base (table
+            # alembic_version). Différente de alembic_head = migrations en
+            # retard ou en avance sur le code servi. None si illisible.
+            "alembic_db": alembic_db,
             "r2_configured": is_configured(),
         }
 

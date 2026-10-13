@@ -29,7 +29,7 @@ que lui affiche l'id. On ajoute la recherche admin et le crédit par email.
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -520,6 +520,7 @@ async def contenu_restaurer(
     cible_type: str,
     cible_id: str,
     payload: MotifIn,
+    background_tasks: BackgroundTasks,
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -536,6 +537,10 @@ async def contenu_restaurer(
         await db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     await db.commit()
+    # Lot G — fichiers remis dans le bucket public après la réponse.
+    from app.services.fichiers_a_traiter import traiter_en_attente
+
+    background_tasks.add_task(traiter_en_attente)
     return out
 
 
