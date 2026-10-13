@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Veille du site en ligne : toutes les 5 minutes, watt.place doit répondre.
+#
+# Pourquoi : sans alerte, une panne le soir n'était vue que le lendemain matin
+# (agent admin quotidien). Ici, aucun compte ni réglage en plus : si le site ne
+# répond pas (3 essais sur ~1 minute pour éviter les fausses alertes), le run
+# devient ROUGE et GitHub envoie son email « Run failed » au compte qui a
+# poussé ce fichier.
+#
+# Contrôles (lecture seule, pages publiques) :
+#   • /health : status "ok", base "ok", version de base = version du code ;
+#   • /, /legal et /watt/tracks-catalog répondent 200.
+#
+# Lancement manuel : onglet Actions → « Veille du site » → Run workflow.
+# Note : GitHub peut retarder un déclenchement planifié de quelques minutes.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Veille du site
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: veille-site
+  cancel-in-progress: true
+
+jobs:
+  veille:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Le site répond-il ?
+        env:
+          SITE: https://watt.place
+        run: |
+          verifier() {
+            sante=$(curl -fsS -m 20 "$SITE/health") || { echo "/health ne répond pas"; return 1; }
+            echo "$sante" | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          ok = d.get("status") == "ok" and d.get("db") == "ok"
+          base = d.get("alembic_db") == d.get("alembic_head")
+          print("version", d.get("commit"), "| base", d.get("alembic_db"))
+          sys.exit(0 if ok and base else 1)
+          ' || { echo "/health signale un problème : $sante"; return 1; }
+            for page in / /legal /watt/tracks-catalog; do
+              code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' "$SITE$page")
+              [ "$code" = "200" ] || { echo "$page répond $code"; return 1; }
+            done
+            return 0
+          }
+          for essai in 1 2 3; do
+            if verifier; then echo "Site en ligne."; exit 0; fi
+            echo "Essai $essai raté, nouvel essai dans 25 s…"
+            sleep 25
+          done
+          echo "::error::watt.place ne répond pas correctement depuis plus d'une minute."
+          exit 1

@@ -209,7 +209,14 @@ async def _passage_purge() -> None:
         from app.services.moderation import purger_signalements_anciens
 
         s = await purger_signalements_anciens(db)
+        # Lot H — sons pas encore protégés (version d'écoute légère) : la
+        # protection est inscrite dans la file, traitée juste en dessous.
+        from app.services.apercu_audio import programmer_protections_manquantes
+
+        a = await programmer_protections_manquantes(db)
         await db.commit()
+        if a:
+            _log.info("[audio] %s fichiers de sons à protéger", a)
         if n:
             _log.info("[mesure] purge : %s événements de plus de 13 mois supprimés", n)
         if s:

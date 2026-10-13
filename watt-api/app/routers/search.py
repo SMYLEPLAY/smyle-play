@@ -238,6 +238,10 @@ async def search_tracks(
         _r2_ok = False
 
     def _audio_url(t: Track) -> str:
+        if t.apercu_key:  # Lot H — version d'écoute publique
+            from app.services.apercu_audio import url_ecoute
+
+            return url_ecoute(t.apercu_key)
         if t.audio_url:
             return t.audio_url
         if t.r2_key and _r2_ok:

@@ -49,6 +49,10 @@ class Track(Base):
     )
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     r2_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Lot H (migration 0105) — version d'ÉCOUTE publique (MP3 128 kb/s).
+    # Quand elle existe, r2_key désigne l'original sous une clé secrète, lu
+    # uniquement par le téléchargement réservé aux acheteurs.
+    apercu_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     plays: Mapped[int] = mapped_column(
         Integer,
         nullable=False,

@@ -91,15 +91,20 @@ async def _enrich_offer(offer: TradeOffer, db: AsyncSession) -> TradeOfferRead:
         # premier track non supprimé pointant sur ce prompt. audio_url direct
         # si présent, sinon le proxy /watt/stream à partir de la clé R2.
         trow = (await db.execute(
-            select(Track.audio_url, Track.r2_key)
+            select(Track.audio_url, Track.r2_key, Track.apercu_key)
             .where(Track.prompt_id == pid, Track.is_deleted.is_(False))
             .limit(1)
         )).first()
         audio_url = None
         if trow:
-            audio_url = trow.audio_url or (
-                f"/watt/stream/{trow.r2_key}" if trow.r2_key else None
-            )
+            if trow.apercu_key:  # Lot H — version d'écoute publique
+                from app.services.apercu_audio import url_ecoute
+
+                audio_url = url_ecoute(trow.apercu_key)
+            else:
+                audio_url = trow.audio_url or (
+                    f"/watt/stream/{trow.r2_key}" if trow.r2_key else None
+                )
             # S-03 (2026-09-02) — défense en profondeur : la valeur part
             # dans un `src="…"` côté front (écran « Proposition d'échange »).
             # Une audio_url historique non conforme (guillemet, javascript:)
