@@ -1,6 +1,6 @@
 """Redénomination ×10 du Smyle (décision Tom du 9/10/2026) — migration 0100.
 
-1. Constantes : packs 100/500/2000 pour 8/35/120 €, retrait 5 c/Smyle,
+1. Constantes : packs 100/500/2000 pour 8/35/130 €, retrait 5 c/Smyle,
    bienvenue 30, parrainage 20, quêtes 30/100/250, et tout le reste ×10.
 2. Partage entier exact sur les prix conseillés (10, 15, 30, 45 Smyles).
 3. Migration sur une base PEUPLÉE : on se replace dans l'état d'avant (0099)
@@ -41,7 +41,7 @@ def test_packs_et_valeur_de_retrait():
     from app.services.reserve import PAYOUT_RATE_CENTS
 
     assert [(p["id"], p["credits"], p["price_eur_cents"]) for p in CREDIT_PACKS] == [
-        ("pack_100", 100, 800), ("pack_500", 500, 3500), ("pack_2000", 2000, 12000),
+        ("pack_100", 100, 800), ("pack_500", 500, 3500), ("pack_2000", 2000, 13000),
     ]
     # Anciens identifiants encore acceptés (onglet resté ouvert).
     assert get_pack_by_id("pack_10")["credits"] == 100
@@ -49,8 +49,8 @@ def test_packs_et_valeur_de_retrait():
     assert PAYOUT_RATE_CENTS == 5
     assert EUR_PER_CREDIT == pytest.approx(0.07)
     # La règle d'or tient toujours : le Smyle gagné ne se rachète jamais plus
-    # cher que le prix net le plus bas (pack de 2000 : 120 € / 2000 = 6 c TTC).
-    assert PAYOUT_RATE_CENTS * 2000 < 12000
+    # cher que le prix net le plus bas (pack de 2000 : 130 € / 2000 = 6,5 c TTC).
+    assert PAYOUT_RATE_CENTS * 2000 < 13000
 
 
 def test_recompenses_et_mecaniques():
@@ -367,3 +367,16 @@ async def test_migration_0103_ne_bloque_pas_sur_doublons():
             assert "ix_users_email_lower" in idx and "ux_users_email_lower" not in idx
         finally:
             await db.rollback()
+
+
+def test_frais_et_minimum_de_retrait_annonces_dans_les_cgu():
+    """Analyse financière du 13/10 : 1 € de frais par retrait, minimum 50 €,
+    pack de 2000 à 130 €. Les CGU citent exactement les constantes du code."""
+    from app.services.reserve import FRAIS_RETRAIT_CENTS, RETRAIT_MINIMUM_CENTS, PAYOUT_RATE_CENTS
+    legal = (Path(__file__).resolve().parents[2] / "legal.html").read_text(encoding="utf-8")
+    assert FRAIS_RETRAIT_CENTS == 100 and RETRAIT_MINIMUM_CENTS == 5000
+    assert "1 € par retrait" in legal and "50 € par retrait" in legal
+    assert "130 € TTC" in legal
+    # Un retrait au minimum reste positif pour le créateur et couvre les frais.
+    assert RETRAIT_MINIMUM_CENTS - FRAIS_RETRAIT_CENTS == 4900
+    assert RETRAIT_MINIMUM_CENTS // PAYOUT_RATE_CENTS == 1000
