@@ -121,7 +121,8 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
 
     Visiteur anonyme : prix public (somme des prix affichés − 10 %).
     Acheteur connecté : prix réel pour lui (perks compris), ou prix plein de
-    la moitié manquante s'il en possède déjà une. None si pas d'achat groupé.
+    la moitié manquante s'il en possède déjà une. Créateur : mode « createur »
+    (aperçu du prix public, rien à acheter). None si pas d'achat groupé.
     """
     try:
         img, recipe = await _resolve(db, oeuvre_id)
@@ -134,7 +135,12 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
         return {"priceCredits": prix, "fullPriceCredits": recipe.price_credits + img.price_credits,
                 "discountPct": OEUVRE_DISCOUNT_PCT, "mode": "oeuvre"}
     if buyer_id == img.artist_id:
-        return None
+        # Le créateur ne peut pas acheter sa propre Œuvre, mais il doit voir
+        # l'offre telle que ses visiteurs la voient (prix public).
+        prix, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits)
+        return {"priceCredits": None, "publicPriceCredits": prix,
+                "fullPriceCredits": recipe.price_credits + img.price_credits,
+                "discountPct": OEUVRE_DISCOUNT_PCT, "mode": "createur"}
     owned = set((await db.execute(
         select(UnlockedPrompt.prompt_id).where(
             UnlockedPrompt.current_owner_id == buyer_id,

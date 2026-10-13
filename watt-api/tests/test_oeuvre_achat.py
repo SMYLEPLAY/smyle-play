@@ -29,6 +29,7 @@ from app.services.oeuvre_c4_purchase import (
     OeuvreNotBundlable,
     buy_oeuvre_atomic,
     oeuvre_bundle_price,
+    oeuvre_offer,
 )
 from app.services.treasury import treasury_balance
 from app.services.unlocks import AlreadyUnlocked, InsufficientCredits, unlock_prompt_atomic
@@ -269,5 +270,19 @@ async def test_api_offre_et_achat(client, test_user, auth_headers):
         assert d["bundle"]["mode"] == "possedee"
         r = await client.post(f"/watt/oeuvres/{oid}/acheter", headers=auth_headers)
         assert r.status_code == 409
+    finally:
+        await _cleanup(artiste)
+
+
+async def test_createur_voit_l_offre_sans_pouvoir_acheter():
+    """Le créateur voit l'offre groupée telle que ses visiteurs la voient
+    (prix public), mais rien n'est achetable pour lui."""
+    artiste = await _user(public=True)
+    oid, _ = await _oeuvre(artiste)
+    try:
+        async with SessionLocal() as db:
+            offre = await oeuvre_offer(db, oeuvre_id=oid, buyer_id=artiste)
+        assert offre == {"priceCredits": None, "publicPriceCredits": 63,
+                         "fullPriceCredits": 70, "discountPct": 10, "mode": "createur"}
     finally:
         await _cleanup(artiste)

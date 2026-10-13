@@ -162,6 +162,17 @@
       bundle.hidden = false;
       bundle.innerHTML = '<p class="o-bundle-note">Cette œuvre est masquée : seuls son créateur et ceux qui l\'ont achetée la voient.</p>';
       document.querySelectorAll('[data-o-buy]').forEach(function (n) { n.remove(); });
+    } else if (b && b.mode === 'createur') {
+      // C'est l'Œuvre de la personne connectée : rien à acheter. On lui montre
+      // l'offre exactement comme ses visiteurs la voient.
+      document.querySelectorAll('[data-o-buy]').forEach(function (n) { n.remove(); });
+      bundle.hidden = false;
+      bundle.innerHTML =
+        '<p class="o-bundle-tag">★ Meilleure offre</p>' +
+        '<button type="button" class="o-btn o-btn--bundle" disabled>Acheter l\'œuvre · ' + _esc(b.publicPriceCredits) + ' Smyles</button>' +
+        '<p class="o-bundle-note">C\'est ton œuvre : voici l\'offre que voient tes visiteurs. Le son et l\'image ensemble : <s>' +
+        _esc(b.fullPriceCredits) + '</s> ' + _esc(b.publicPriceCredits) + ' Smyles (−' + _esc(b.discountPct) + ' %). ' +
+        'Gère-la depuis <a href="/mes-oeuvres">Mes Œuvres</a>.</p>';
     } else if (b && b.mode === 'possedee') {
       bundle.hidden = false;
       bundle.innerHTML = '<p class="o-bundle-note">Tu possèdes cette œuvre — retrouve-la dans ta bibliothèque.</p>';
@@ -174,12 +185,17 @@
           '</s> ' + _esc(b.priceCredits) + ' Smyles (−' + _esc(b.discountPct) + ' %).</p>'
         : '<p class="o-bundle-note">Tu as déjà une moitié : l\'autre est au prix normal.</p>';
       bundle.hidden = false;
-      bundle.innerHTML = '<button type="button" class="o-btn o-btn--bundle" data-o-buy="bundle">' + label + '</button>' + detail;
+      bundle.innerHTML = (b.mode === 'oeuvre' ? '<p class="o-bundle-tag">★ Meilleure offre</p>' : '') +
+        '<button type="button" class="o-btn o-btn--bundle" data-o-buy="bundle">' + label + '</button>' + detail;
     } else {
       bundle.hidden = true;
       bundle.innerHTML = '';
     }
     _show('o-content');
+    // Arrivée depuis « Acheter l'œuvre » d'une fiche : on amène l'offre à l'écran.
+    if (window.location.hash === '#offre' && !bundle.hidden) {
+      try { bundle.scrollIntoView({ block: 'center' }); } catch (_) {}
+    }
   }
 
   function _wire() {

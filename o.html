@@ -50,6 +50,10 @@
     .o-btn:focus-visible, .o-share:focus-visible { outline: 2px solid var(--sp-gold, #ffd700); outline-offset: 2px; }
     .o-bundle[hidden] { display: none; }
     .o-btn--bundle { width: 100%; padding: 13px 16px; font-size: 14px; background: linear-gradient(120deg, #ffd700, #ff9f1a); color: #1a1206; }
+    .o-bundle { padding: 12px; border-radius: 14px; border: 1px solid rgba(255,215,0,.45); background: rgba(255,215,0,.06); }
+    .o-bundle-tag { margin: 0 0 8px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--sp-gold, #ffd700); }
+    .o-btn--bundle[disabled] { opacity: .85; cursor: default; }
+    .o-bundle-note a { color: var(--sp-gold, #ffd700); }
     .o-bundle-note { margin: 6px 0 0; font-size: 12px; color: var(--sp-text-muted, rgba(255,255,255,.72)); }
     .o-report { align-self: flex-start; background: none; border: none; padding: 4px 0; cursor: pointer;
       color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: 12px; text-decoration: underline; }
@@ -83,12 +87,13 @@
       <div class="o-side">
         <div class="o-player" id="o-player"></div>
 
+        <!-- Achat de l'Œuvre entière (Lot 3) : son + image − 10 %, un seul achat.
+             Placé AVANT les moitiés : c'est l'offre mise en avant. Chaque moitié
+             reste aussi achetable à part. -->
+        <div class="o-bundle" id="o-bundle" hidden></div>
+
         <div class="o-half" id="o-half-son"></div>
         <div class="o-half" id="o-half-image"></div>
-
-        <!-- Achat de l'Œuvre entière (Lot 3) : son + image − 10 %, un seul achat.
-             Chaque moitié reste aussi achetable à part. -->
-        <div class="o-bundle" id="o-bundle" hidden></div>
 
         <button type="button" class="o-share" id="o-share">Copier le lien de l'œuvre</button>
         <button type="button" class="o-report" id="o-report">Signaler l'image</button>
@@ -111,7 +116,7 @@
 <script src="/ui/topbar/topbar.js?v=20261011lotg" defer></script>
 <script src="/ui/modals/purchase-drawer.js?v=20261011lotg"></script>
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
-<script src="/oeuvre-c4.js?v=20261011lotg" defer></script>
+<script src="/oeuvre-c4.js?v=20261013offre" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <!-- Lot D : pied de page légal (Mentions, CGU, Confidentialité, Cookies, Contact) -->

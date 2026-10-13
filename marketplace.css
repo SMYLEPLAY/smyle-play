@@ -1680,6 +1680,12 @@ body.mp-mode-image {
   transition: background .15s, border-color .15s;
 }
 .mp-id-linked-btn:hover { background: rgba(204,136,255,.3); border-color: #cc88ff; }
+/* Offre groupée (son + image −10 %) : mise en avant dorée. */
+.mp-id-linked-btn--offre {
+  background: linear-gradient(120deg, #ffd700, #ff9f1a);
+  border-color: #ffd700; color: #1a1206;
+}
+.mp-id-linked-btn--offre:hover { background: linear-gradient(120deg, #ffe14d, #ffb347); border-color: #ffe14d; }
 
 /* CTA achat / état possession. */
 .mp-id-cta { margin-top: 8px; }
