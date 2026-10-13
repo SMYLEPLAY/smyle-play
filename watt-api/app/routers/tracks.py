@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import get_current_user
@@ -32,6 +32,7 @@ router = APIRouter(prefix="/tracks", tags=["tracks"])
 )
 async def create(
     data: TrackCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -91,6 +92,19 @@ async def create(
             await db.commit()
     except Exception:
         await db.rollback()
+    # Lot H — version d'écoute légère + original sous clé secrète, préparées
+    # juste après la réponse (file durable : rejouée chaque jour si besoin).
+    try:
+        from app.services.fichiers_a_traiter import programmer, traiter_en_attente
+
+        ids = await programmer(db, [track.r2_key or ""], "proteger_audio")
+        if ids:
+            await db.commit()
+            background_tasks.add_task(traiter_en_attente, ids)
+    except Exception:
+        await db.rollback()
+        import logging
+        logging.getLogger(__name__).warning("protection audio non programmée", exc_info=True)
     return TrackWithDNA(
         track=TrackRead.model_validate(track),
         dna=DNARead.model_validate(dna),

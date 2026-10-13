@@ -620,8 +620,9 @@ async def test_e3_inventaire_des_requetes_track():
         "oeuvre.py": 2,        # collection : filtrée ; calcul de possession
         "search.py": 2,        # recherche + compteurs : visible_track_clause
         "trades.py": 1,        # échange : is_deleted
-        "watt_compat.py": 13,  # listes filtrées ; plays/suppression par id (Lot E : /watt/adns retirée) ;
+        "watt_compat.py": 14,  # listes filtrées ; plays/suppression par id (Lot E : /watt/adns retirée) ;
                                # + Parcours V1 : retrait modération (proxy audio)
+                               # + Lot H : refus de l'original d'un son protégé (proxy audio)
     }, trouve
 
 

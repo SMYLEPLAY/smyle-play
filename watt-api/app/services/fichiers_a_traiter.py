@@ -9,7 +9,9 @@ UNE clé de stockage :
                (R2_PRIVATE_BUCKET) puis suppression du bucket public. Le
                fichier n'a alors plus AUCUNE adresse publique ;
   vers_public  restauration : copie retour vers le public, puis suppression
-               du privé.
+               du privé ;
+  proteger_audio  (Lot H) version d'écoute légère + original sous clé
+               secrète (app.services.apercu_audio).
 
 Les lignes sont écrites DANS la transaction de l'action (suppression de
 compte, retrait, restauration) : si l'action est annulée, rien n'est
@@ -35,7 +37,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = ("supprimer", "vers_prive", "vers_public")
+ACTIONS = ("supprimer", "vers_prive", "vers_public", "proteger_audio")
+# Lot H — voir app.services.apercu_audio (valeurs dupliquées pour éviter un
+# import circulaire au chargement).
+MOTIF_ANCIEN_ORIGINAL = "ancien_original"
+DELAI_SUPPRESSION_ANCIEN_JOURS = 3
 MAX_PAR_PASSAGE = 500
 
 
@@ -153,6 +159,15 @@ async def _executer(db: AsyncSession, cle: str, action: str) -> str:
             return "remis"
         return "deja_public"
 
+    if action == "proteger_audio":
+        # Lot H — version d'écoute légère + original sous clé secrète.
+        from app.services.apercu_audio import OutilAudioAbsent, proteger_audio
+
+        try:
+            return await proteger_audio(db, cle)
+        except OutilAudioAbsent:
+            raise _Attente("ffmpeg absent")
+
     raise ValueError(action)
 
 
@@ -167,8 +182,14 @@ async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_P
             filtre = "AND id = ANY(:ids)" if ids else ""
             lignes = (await db.execute(text(
                 "SELECT id, cle, action FROM fichiers_a_traiter "
-                f"WHERE fait_le IS NULL {filtre} ORDER BY cree_le LIMIT :l"),  # noqa: S608
-                {"ids": list(ids or []), "l": limite})).all()
+                f"WHERE fait_le IS NULL {filtre} "  # noqa: S608
+                # Lot H — l'ancienne adresse d'un original n'est supprimée
+                # qu'après quelques jours (sauvegarde des médias faite).
+                "AND NOT (action = 'supprimer' AND coalesce(motif, '') = :m_ancien "
+                "         AND cree_le > now() - make_interval(days => :j)) "
+                "ORDER BY cree_le LIMIT :l"),
+                {"ids": list(ids or []), "l": limite,
+                 "m_ancien": MOTIF_ANCIEN_ORIGINAL, "j": DELAI_SUPPRESSION_ANCIEN_JOURS})).all()
             for ligne in lignes:
                 # La ligne a pu être annulée entre-temps (restauration).
                 encore = (await db.execute(text(

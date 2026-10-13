@@ -130,6 +130,15 @@ async def stream_r2_audio(
     # Parcours V1 — exception pour les ACHETEURS : un son supprimé par son
     # créateur reste écoutable avec l'adresse signée de leur bibliothèque
     # (app.services.acces_audio). Un son retiré par la modération, jamais.
+    # Lot H — l'ORIGINAL d'un son protégé ne s'écoute jamais : seule sa
+    # version d'écoute est publique (le téléchargement des acheteurs lit
+    # l'original côté serveur).
+    if await _cle_originale_protegee(db, key):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ressource introuvable.",
+        )
+
     if await _key_only_on_removed_tracks(db, key):
         from app.services.acces_audio import verifier
 
@@ -189,6 +198,14 @@ async def stream_r2_audio(
     )
 
 
+async def _cle_originale_protegee(db: AsyncSession, key: str) -> bool:
+    """True si la clé est l'ORIGINAL d'un son qui a une version d'écoute."""
+    k = key.lstrip("/")
+    return (await db.execute(
+        select(Track.id).where(Track.r2_key == k, Track.apercu_key.is_not(None)).limit(1)
+    )).scalar_one_or_none() is not None
+
+
 async def _key_only_on_removed_tracks(db: AsyncSession, key: str) -> bool:
     """True si des sons portent cette clé audio et qu'AUCUN n'est visible."""
     from sqlalchemy import or_ as _or
@@ -196,7 +213,7 @@ async def _key_only_on_removed_tracks(db: AsyncSession, key: str) -> bool:
     from app.services.tracks import visible_track_clause
 
     k = key.lstrip("/")
-    porte = _or(Track.r2_key == k, Track.audio_url == f"/watt/stream/{k}")
+    porte = _or(Track.r2_key == k, Track.apercu_key == k, Track.audio_url == f"/watt/stream/{k}")
     total, visibles = (await db.execute(
         select(
             func.count(Track.id),
@@ -211,7 +228,7 @@ async def _key_on_moderated_track(db: AsyncSession, key: str) -> bool:
     from sqlalchemy import or_ as _or
 
     k = key.lstrip("/")
-    porte = _or(Track.r2_key == k, Track.audio_url == f"/watt/stream/{k}")
+    porte = _or(Track.r2_key == k, Track.apercu_key == k, Track.audio_url == f"/watt/stream/{k}")
     return (await db.execute(
         select(Track.id).where(porte, Track.taken_down_at.is_not(None)).limit(1)
     )).scalar_one_or_none() is not None
@@ -328,6 +345,11 @@ def _build_stream_url(track: Track) -> str:
     → audio cassé partout. Maintenant on privilégie l'URL R2 directe
     déjà connue.
     """
+    # Lot H — version d'écoute publique en priorité.
+    if getattr(track, "apercu_key", None):
+        from app.services.apercu_audio import url_ecoute
+
+        return url_ecoute(track.apercu_key)
     if track.audio_url:
         return track.audio_url
     if track.r2_key:
@@ -562,7 +584,8 @@ async def _tracks_catalog(db: AsyncSession) -> dict:
         out[univ_slug]["tracks"].append({
             "id":        t.legacy_id or str(t.id),
             "trackUuid": str(t.id),           # UUID réel pour wishlist/playlist
-            "file":      (t.r2_key or "").split("/", 1)[-1] if t.r2_key else "",
+            # Lot H : jamais la clé de l'original d'un son protégé.
+            "file":      ((t.apercu_key or t.r2_key or "").split("/", 1)[-1]),
             "name":      t.title,
             "duration":  t.duration_seconds,
             "url":       _build_stream_url(t),

@@ -179,6 +179,9 @@ class TrackRead(BaseModel):
     # `stream_url`, mais JAMAIS renvoyée au navigateur (exclude=True). Le
     # front écoute via `stream_url` (ou `audio_url`).
     r2_key: str | None = Field(default=None, exclude=True)
+    # Lot H — version d'écoute publique ; quand elle existe, r2_key est
+    # l'original sous clé secrète et ne sert JAMAIS d'adresse d'écoute.
+    apercu_key: str | None = Field(default=None, exclude=True)
     color: str | None
     cover_url: str | None = None
     prompt_id: UUID | None = None
@@ -209,8 +212,9 @@ class TrackRead(BaseModel):
         La r2_key est encodée segment par segment pour gérer les espaces
         et caractères spéciaux (tirets, accents…) dans les noms de fichiers.
         """
-        if self.r2_key:
-            encoded = "/".join(quote(seg, safe="") for seg in self.r2_key.split("/"))
+        cle = self.apercu_key or self.r2_key
+        if cle:
+            encoded = "/".join(quote(seg, safe="") for seg in cle.split("/"))
             return f"/watt/stream/{encoded}"
         if self.audio_url:
             return self.audio_url
