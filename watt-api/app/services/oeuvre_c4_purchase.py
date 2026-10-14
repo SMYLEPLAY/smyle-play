@@ -1,7 +1,8 @@
 """Achat d'une ŒUVRE entière (1 son + 1 image) — Lot 3, décision Tom 23/09.
 
 Règles actées :
-  - prix = prix du son + prix de l'image − 10 % ;
+  - prix = prix du son + prix de l'image − la remise choisie par le créateur
+    (0, 10 ou 20 %, 10 par défaut — décision Tom du 14/10) ;
   - UN SEUL achat atomique des deux moitiés (un savepoint, verrous pris une
     fois : trésorerie puis acheteur/créateur) ;
   - la remise est répartie AU PRORATA sur chaque moitié, puis chaque moitié
@@ -47,7 +48,14 @@ from app.services.unlocks import (
     verifier_prix_attendu,
 )
 
-OEUVRE_DISCOUNT_PCT = 10
+OEUVRE_DISCOUNT_PCT = 10          # remise par défaut
+REMISES_OEUVRE = (0, 10, 20)      # remises que le créateur peut choisir
+
+
+def remise_de(img) -> int:
+    """Remise de l'offre groupée choisie sur l'image de l'Œuvre."""
+    pct = getattr(img, "remise_oeuvre_pct", None)
+    return pct if pct in REMISES_OEUVRE else OEUVRE_DISCOUNT_PCT
 
 
 class OeuvreIntrouvable(PromptNotPurchasable):
@@ -58,14 +66,14 @@ class OeuvreNotBundlable(UnlockError):
     """Achat groupé impossible (son en écoute libre, beat). → 409."""
 
 
-def oeuvre_bundle_price(p_son: int, p_image: int) -> tuple[int, int, int]:
+def oeuvre_bundle_price(p_son: int, p_image: int, pct: int = OEUVRE_DISCOUNT_PCT) -> tuple[int, int, int]:
     """(prix de l'Œuvre, remise imputée au son, remise imputée à l'image).
 
-    Prix = somme − 10 % arrondi à l'entier INFÉRIEUR (au profit de
+    Prix = somme − `pct` % arrondi à l'entier INFÉRIEUR (au profit de
     l'acheteur). Remise répartie au prorata des prix ; l'arrondi va à l'image.
     """
     total = p_son + p_image
-    prix = total * (100 - OEUVRE_DISCOUNT_PCT) // 100
+    prix = total * (100 - pct) // 100
     remise = total - prix
     r_son = remise * p_son // total if total else 0
     return prix, r_son, remise - r_son
@@ -130,17 +138,18 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
         return None
     if recipe is None or recipe.product_type == "beat":
         return None
+    pct = remise_de(img)
     if buyer_id is None:
-        prix, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits)
+        prix, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits, pct)
         return {"priceCredits": prix, "fullPriceCredits": recipe.price_credits + img.price_credits,
-                "discountPct": OEUVRE_DISCOUNT_PCT, "mode": "oeuvre"}
+                "discountPct": pct, "mode": "oeuvre"}
     if buyer_id == img.artist_id:
         # Le créateur ne peut pas acheter sa propre Œuvre, mais il doit voir
         # l'offre telle que ses visiteurs la voient (prix public).
-        prix, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits)
+        prix, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits, pct)
         return {"priceCredits": None, "publicPriceCredits": prix,
                 "fullPriceCredits": recipe.price_credits + img.price_credits,
-                "discountPct": OEUVRE_DISCOUNT_PCT, "mode": "createur"}
+                "discountPct": pct, "mode": "createur"}
     owned = set((await db.execute(
         select(UnlockedPrompt.prompt_id).where(
             UnlockedPrompt.current_owner_id == buyer_id,
@@ -154,9 +163,9 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
     if owned:
         manquante = p_img if recipe.id in owned else p_son
         return {"priceCredits": manquante, "discountPct": 0, "mode": "moitie_manquante"}
-    prix, _, _ = oeuvre_bundle_price(p_son, p_img)
+    prix, _, _ = oeuvre_bundle_price(p_son, p_img, pct)
     return {"priceCredits": prix, "fullPriceCredits": p_son + p_img,
-            "discountPct": OEUVRE_DISCOUNT_PCT, "mode": "oeuvre"}
+            "discountPct": pct, "mode": "oeuvre"}
 
 
 async def buy_oeuvre_atomic(
@@ -214,8 +223,9 @@ async def buy_oeuvre_atomic(
         else:
             p_son, _, _ = await _effective_prompt_price(db, buyer_id=buyer_id, prompt_row=recipe)
             p_img, _, _ = await _effective_prompt_price(db, buyer_id=buyer_id, prompt_row=img)
-            prix, r_son, r_img = oeuvre_bundle_price(p_son, p_img)
-            prix_public, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits)
+            pct = remise_de(img)  # relue sous verrou avec l'image
+            prix, r_son, r_img = oeuvre_bundle_price(p_son, p_img, pct)
+            prix_public, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits, pct)
             verifier_prix_attendu(prix_attendu, prix_public, prix)
             balance = int((await db.execute(
                 text("SELECT credits_balance FROM users WHERE id = :u"), {"u": buyer_id}

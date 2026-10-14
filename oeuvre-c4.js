@@ -9,7 +9,7 @@
      • les deux moitiés, chacune achetable SÉPARÉMENT (drawer unifié) — la
        moitié son n'est achetable que si le morceau a une recette ;
      • un lien vers le profil du créateur ;
-     • « Acheter l'Œuvre » (#o-bundle, Lot 3) : son + image − 10 %, en un
+     • « Acheter l'Œuvre » (#o-bundle, Lot 3) : son + image, remise choisie par le créateur (0/10/20 %), en un
        seul achat (POST /watt/oeuvres/<id>/acheter). Si une moitié est déjà
        possédée, le bouton complète l'Œuvre au prix plein de l'autre.
 
@@ -98,6 +98,13 @@
       });
   }
 
+  // Texte de l'offre groupée : avec remise (prix barré) ou sans (0 %).
+  function _detailOffre(plein, prix, pct) {
+    if (!pct) return 'Le son et l\'image en un seul achat : ' + _esc(prix) + ' Smyles.';
+    return 'Le son et l\'image ensemble : <s>' + _esc(plein) + '</s> ' + _esc(prix) +
+      ' Smyles (−' + _esc(pct) + ' %).';
+  }
+
   function _render(d) {
     _data = d;
     var creator = d.creator || {};
@@ -151,7 +158,7 @@
         ? '<button type="button" class="o-btn" data-o-buy="image">Débloquer · ' + _esc(img.priceCredits) + ' Smyles</button>'
         : '');
 
-    // Achat de l'Œuvre entière (Lot 3) : son + image − 10 %.
+    // Achat de l'Œuvre entière (Lot 3) : son + image, remise 0/10/20 % (créateur).
     var bundle = document.getElementById('o-bundle');
     var b = d.bundle;
     var repSon = document.getElementById('o-report-son');
@@ -168,11 +175,10 @@
       document.querySelectorAll('[data-o-buy]').forEach(function (n) { n.remove(); });
       bundle.hidden = false;
       bundle.innerHTML =
-        '<p class="o-bundle-tag">★ Meilleure offre</p>' +
+        (b.discountPct > 0 ? '<p class="o-bundle-tag">★ Meilleure offre</p>' : '') +
         '<button type="button" class="o-btn o-btn--bundle" disabled>Acheter l\'œuvre · ' + _esc(b.publicPriceCredits) + ' Smyles</button>' +
-        '<p class="o-bundle-note">C\'est ton œuvre : voici l\'offre que voient tes visiteurs. Le son et l\'image ensemble : <s>' +
-        _esc(b.fullPriceCredits) + '</s> ' + _esc(b.publicPriceCredits) + ' Smyles (−' + _esc(b.discountPct) + ' %). ' +
-        'Gère-la depuis <a href="/mes-oeuvres">Mes Œuvres</a>.</p>';
+        '<p class="o-bundle-note">C\'est ton œuvre : voici l\'offre que voient tes visiteurs. ' + _detailOffre(b.fullPriceCredits, b.publicPriceCredits, b.discountPct) +
+        ' Change la remise (0, 10 ou 20 %) depuis <a href="/mes-oeuvres">Mes Œuvres</a>.</p>';
     } else if (b && b.mode === 'possedee') {
       bundle.hidden = false;
       bundle.innerHTML = '<p class="o-bundle-note">Tu possèdes cette œuvre — retrouve-la dans ta bibliothèque.</p>';
@@ -181,11 +187,10 @@
         ? 'Compléter l\'œuvre · ' + _esc(b.priceCredits) + ' Smyles'
         : 'Acheter l\'œuvre · ' + _esc(b.priceCredits) + ' Smyles';
       var detail = (b.mode === 'oeuvre' && b.fullPriceCredits != null)
-        ? '<p class="o-bundle-note">Le son et l\'image ensemble : <s>' + _esc(b.fullPriceCredits) +
-          '</s> ' + _esc(b.priceCredits) + ' Smyles (−' + _esc(b.discountPct) + ' %).</p>'
+        ? '<p class="o-bundle-note">' + _detailOffre(b.fullPriceCredits, b.priceCredits, b.discountPct) + '</p>'
         : '<p class="o-bundle-note">Tu as déjà une moitié : l\'autre est au prix normal.</p>';
       bundle.hidden = false;
-      bundle.innerHTML = (b.mode === 'oeuvre' ? '<p class="o-bundle-tag">★ Meilleure offre</p>' : '') +
+      bundle.innerHTML = (b.mode === 'oeuvre' && b.discountPct > 0 ? '<p class="o-bundle-tag">★ Meilleure offre</p>' : '') +
         '<button type="button" class="o-btn o-btn--bundle" data-o-buy="bundle">' + label + '</button>' + detail;
     } else {
       bundle.hidden = true;

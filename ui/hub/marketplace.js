@@ -2306,7 +2306,7 @@
 
     // Bloc « Œuvre complète » : son lié. Si le son a une recette et que
     // l'Œuvre n'est ni à moi ni déjà possédée, le bouton met en avant l'offre
-    // groupée (son + image −10 %), achetée sur la page /o/<id>.
+    // groupée (son + image, remise choisie par le créateur), sur la page /o/<id>.
     const ls = im.linkedSound || null;
     const offreGroupee = !!(ls && ls.priceCredits != null && !mine && !owned
       && im.id && /^[0-9a-fA-F-]{36}$/.test(String(im.id)));
@@ -2323,7 +2323,7 @@
                  ? `🎵 ${_esc(ls.priceCredits)} <span>Smyles</span>`
                  : '🎵 En écoute libre'}</div>
              </div>
-             <button class="mp-id-linked-btn${offreGroupee ? ' mp-id-linked-btn--offre' : ''}" id="mp-id-linked-btn" type="button">${offreGroupee ? '★ Acheter l\'œuvre −10 %' : 'Voir l\'œuvre'}</button>
+             <button class="mp-id-linked-btn${offreGroupee ? ' mp-id-linked-btn--offre' : ''}" id="mp-id-linked-btn" type="button">${offreGroupee ? '★ Acheter l\'œuvre complète' : 'Voir l\'œuvre'}</button>
            </div>
          </div>`
       : '';

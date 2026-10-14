@@ -286,3 +286,76 @@ async def test_createur_voit_l_offre_sans_pouvoir_acheter():
                          "fullPriceCredits": 70, "discountPct": 10, "mode": "createur"}
     finally:
         await _cleanup(artiste)
+
+
+# ─── Remise choisie par le créateur (décision Tom du 14/10) ───────────────────
+
+async def _remise(oid, pct):
+    async with SessionLocal() as db:
+        await db.execute(text("UPDATE prompts SET remise_oeuvre_pct = :p WHERE id = :i"), {"p": pct, "i": oid})
+        await db.commit()
+
+
+def test_prix_selon_la_remise():
+    assert oeuvre_bundle_price(35, 35, 0) == (70, 0, 0)
+    assert oeuvre_bundle_price(35, 35, 10)[0] == 63
+    assert oeuvre_bundle_price(35, 35, 20)[0] == 56
+    prix, r_son, r_img = oeuvre_bundle_price(15, 30, 20)
+    assert prix == 36 and r_son + r_img == 9
+
+
+@pytest.mark.parametrize("pct,attendu", [(0, 70), (20, 56)])
+async def test_offre_et_achat_avec_la_remise_du_createur(pct, attendu):
+    artiste, acheteur = await _user(public=True), await _user(achetes=500)
+    oid, rec = await _oeuvre(artiste)
+    await _remise(oid, pct)
+    try:
+        async with SessionLocal() as db:
+            offre = await oeuvre_offer(db, oeuvre_id=oid, buyer_id=None)
+        assert offre["priceCredits"] == attendu and offre["discountPct"] == pct
+        out = await _acheter(acheteur, oid)
+        assert out["paid"] == attendu and out["remise"] == 70 - attendu
+        assert (await _bk(acheteur))["b"] == 500 - attendu
+        assert await _possede(acheteur, oid, rec) == 2
+    finally:
+        await _cleanup(artiste, acheteur)
+
+
+async def test_la_base_refuse_une_remise_hors_choix():
+    artiste = await _user(public=True)
+    oid, _ = await _oeuvre(artiste)
+    try:
+        with pytest.raises(Exception):
+            await _remise(oid, 15)
+    finally:
+        await _cleanup(artiste)
+
+
+async def test_mes_oeuvres_change_la_remise():
+    from app.models.user import User as _U
+    from app.services import mes_oeuvres
+
+    artiste = await _user(public=True)
+    oid, _ = await _oeuvre(artiste)
+    try:
+        async with SessionLocal() as db:
+            user = await db.get(_U, artiste)
+            items = await mes_oeuvres.lister(db, user)
+            assert items[0]["oeuvreDiscountPct"] == 10 and items[0]["oeuvrePrice"] == 63
+            tid = items[0]["trackId"]
+            with pytest.raises(mes_oeuvres.OeuvreErreur):
+                await mes_oeuvres.action_groupee(db, user, track_ids=[uuid.UUID(tid)], action="remise", remise=15)
+            res = await mes_oeuvres.action_groupee(db, user, track_ids=[uuid.UUID(tid)], action="remise", remise=20)
+            assert res["faits"] == [tid]
+            await db.commit()
+        async with SessionLocal() as db:
+            user = await db.get(_U, artiste)
+            items = await mes_oeuvres.lister(db, user)
+            assert items[0]["oeuvreDiscountPct"] == 20 and items[0]["oeuvrePrice"] == 56
+            await mes_oeuvres.modifier(db, user, uuid.UUID(tid), {"oeuvre_discount": 0})
+            await db.commit()
+        async with SessionLocal() as db:
+            offre = await oeuvre_offer(db, oeuvre_id=oid, buyer_id=None)
+            assert offre["discountPct"] == 0 and offre["priceCredits"] == 70
+    finally:
+        await _cleanup(artiste)

@@ -116,6 +116,11 @@ class Prompt(Base):
     # Nullable car la majorité des morceaux sont instrumentaux ; rempli pour HIT MIX.
     lyrics: Mapped[str | None] = mapped_column(Text, nullable=True)
     price_credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Remise de l'offre groupée « Acheter l'Œuvre » (son + image), choisie par
+    # le créateur sur l'IMAGE de l'Œuvre : 0, 10 ou 20 %. Migration 0106.
+    remise_oeuvre_pct: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=10, server_default="10",
+    )
     is_published: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

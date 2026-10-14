@@ -3,7 +3,7 @@
    ─────────────────────────────────────────────────────────────────────────
    Liste de mes Œuvres (vignette, titre, écoute, recette, prix, statut,
    ventes), sélection multiple et actions groupées (Masquer, Republier,
-   Changer le prix 10–150, Supprimer), bouton « Modifier » par Œuvre (titre,
+   Changer le prix 10–150, Remise de l'Œuvre 0/10/20 %, Supprimer), bouton « Modifier » par Œuvre (titre,
    description, image, prix).
 
    Rien n'enlève l'accès de ceux qui ont déjà payé : c'est garanti côté
@@ -14,6 +14,7 @@
 
   var PRIX_MIN = 10;
   var PRIX_MAX = 150;
+  var REMISES = [0, 10, 20];  // remise de l'offre groupée (décision Tom du 14/10)
   var CONFIRM_SUPPR = 'Ton œuvre disparaît de la plateforme. Ceux qui l\'ont déjà achetée la gardent.';
 
   var _items = [];
@@ -68,6 +69,10 @@
         : '<span>Pas de recette en vente</span>';
       var image = it.image ? '<span>Image <b>' + _esc(it.image.priceCredits) + ' Smyles</b></span>' : '';
       var ventes = '<span><b>' + _esc(it.sales) + '</b> vente' + (it.sales > 1 ? 's' : '') + '</span>';
+      var offre = (it.oeuvrePrice != null)
+        ? '<span>Œuvre <b>' + _esc(it.oeuvrePrice) + ' Smyles</b>' +
+          (it.oeuvreDiscountPct ? ' (−' + _esc(it.oeuvreDiscountPct) + ' %)' : ' (sans remise)') + '</span>'
+        : '';
       return '<article class="mo-row' + (sel ? ' is-selected' : '') + (it.status !== 'publiee' ? ' is-hidden' : '') +
           '" data-id="' + _esc(it.trackId) + '">' +
         '<input type="checkbox" class="mo-check" data-check="' + _esc(it.trackId) + '"' + (sel ? ' checked' : '') +
@@ -80,7 +85,7 @@
           '<p class="mo-name">' + _esc(it.title) + '</p>' +
           '<div class="mo-meta">' +
             '<span class="mo-pill mo-pill--' + _esc(it.status) + '">' + _esc(STATUTS[it.status] || it.status) + '</span>' +
-            recette + image + ventes +
+            recette + image + offre + ventes +
           '</div>' +
         '</div>' +
         '<div class="mo-actions">' +
@@ -193,6 +198,32 @@
       });
   }
 
+  function _remiseRadios(name, actuelle) {
+    return '<div class="mo-radio">' + REMISES.map(function (r) {
+      return '<label><input type="radio" name="' + name + '" value="' + r + '"' + (r === actuelle ? ' checked' : '') + ' /> ' +
+        (r ? '−' + r + ' %' : 'Pas de remise') + (r === 10 ? ' (conseillé)' : '') + '</label>';
+    }).join('') + '</div>';
+  }
+
+  function _openRemise() {
+    var n = _sel.size;
+    _open(
+      '<h2 id="mo-modal-title">Remise de l\'Œuvre</h2>' +
+      '<p>Quand un visiteur achète le son <b>et</b> l\'image en une fois, il paie moins cher. ' +
+        'Choisis la remise pour ' + n + ' Œuvre' + (n > 1 ? 's' : '') + '. ' +
+        'Ta part est calculée sur le prix payé : une remise plus forte fait vendre plus, mais rapporte un peu moins par vente.</p>' +
+      '<div class="mo-field">Remise' + _remiseRadios('mo-remise', 10) + '</div>' +
+      '<div class="mo-err"></div>' +
+      '<div class="mo-modal-actions"><button type="button" class="mo-btn" data-close>Annuler</button>' +
+        '<button type="button" class="mo-btn mo-btn--main" data-ok>Enregistrer la remise</button></div>',
+      function (box) {
+        box.querySelector('[data-ok]').addEventListener('click', function () {
+          var v = parseInt((box.querySelector('input[name="mo-remise"]:checked') || {}).value, 10);
+          _bulk('remise', { remise: isNaN(v) ? 10 : v }, box);
+        });
+      });
+  }
+
   function _openDelete() {
     var n = _sel.size;
     _open(
@@ -210,6 +241,7 @@
     masquer: function (n) { return n + ' Œuvre' + (n > 1 ? 's masquées' : ' masquée') + '. Tes acheteurs y gardent accès.'; },
     republier: function (n) { return n + ' Œuvre' + (n > 1 ? 's republiées' : ' republiée') + '.'; },
     prix: function (n) { return 'Prix mis à jour sur ' + n + ' Œuvre' + (n > 1 ? 's' : '') + '.'; },
+    remise: function (n) { return 'Remise mise à jour sur ' + n + ' Œuvre' + (n > 1 ? 's' : '') + '.'; },
     supprimer: function (n) { return n + ' Œuvre' + (n > 1 ? 's supprimées' : ' supprimée') + '. Ceux qui l\'ont achetée la gardent.'; },
   };
 
@@ -227,7 +259,9 @@
         var msg = MESSAGES[action](faits);
         if (r && r.ignores && r.ignores.length) {
           msg += ' ' + r.ignores.length + ' non modifiée' + (r.ignores.length > 1 ? 's' : '') +
-            (action === 'prix' ? ' (rien en vente de ce côté).' : ' (retirée par la modération).');
+            (action === 'prix' ? ' (rien en vente de ce côté).'
+              : action === 'remise' ? ' (il faut un son avec recette et une image pour l\'offre groupée).'
+              : ' (retirée par la modération).');
         }
         _toast(msg);
         if (action === 'supprimer') _sel.clear();
@@ -260,6 +294,8 @@
       (it.image ? '<label class="mo-field" for="mo-e-iprice">Prix de l\'image (Smyles)<input class="mo-input" id="mo-e-iprice" type="number" inputmode="numeric" min="' +
           PRIX_MIN + '" max="' + PRIX_MAX + '" value="' + _esc(it.image.priceCredits) + '" /></label>' : '') +
       (it.recipe || it.image ? _priceAdvice() : '') +
+      (it.recipe && it.image ? '<div class="mo-field">Remise si on achète le son et l\'image ensemble' +
+          _remiseRadios('mo-e-remise', it.oeuvreDiscountPct != null ? it.oeuvreDiscountPct : 10) + '</div>' : '') +
       '<div class="mo-err"></div>' +
       '<div class="mo-modal-actions"><button type="button" class="mo-btn" data-close>Annuler</button>' +
         '<button type="button" class="mo-btn mo-btn--main" data-ok>Enregistrer</button></div>',
@@ -285,6 +321,11 @@
       var ip = _readPrice(box, 'mo-e-iprice');
       if (ip === null) { _showErr(box, 'Prix de l\'image : entre ' + PRIX_MIN + ' et ' + PRIX_MAX + ' Smyles.'); return; }
       if (ip !== it.image.priceCredits) body.image_price = ip;
+    }
+    var rem = box.querySelector('input[name="mo-e-remise"]:checked');
+    if (rem) {
+      var rv = parseInt(rem.value, 10);
+      if (rv !== it.oeuvreDiscountPct) body.oeuvre_discount = rv;
     }
     var btn = box.querySelector('[data-ok]');
     btn.disabled = true;
@@ -335,6 +376,7 @@
       b.addEventListener('click', function () {
         var a = b.getAttribute('data-bulk');
         if (a === 'prix') _openPrice();
+        else if (a === 'remise') _openRemise();
         else if (a === 'supprimer') _openDelete();
         else _bulk(a, {}, null);
       });

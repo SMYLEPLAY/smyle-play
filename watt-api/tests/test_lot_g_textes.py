@@ -14,13 +14,16 @@ TEXTE = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", LEGAL))
 
 
 def test_remises_acheteur_annoncees_et_justes():
-    # −30 % (ADN de l'artiste), −20 % (ADN de playlist), cumul, −10 % (Œuvre).
+    # −30 % (ADN de l'artiste), −20 % (ADN de playlist), cumul ; remise de
+    # l'Œuvre choisie par le créateur (0, 10 ou 20 %, 10 par défaut).
     assert compute_effective_price(100, True) == 70
     assert compute_effective_price(100, False, True) == 80
     assert compute_effective_price(100, True, True) == 56
     assert OEUVRE_DISCOUNT_PCT == 10 and oeuvre_bundle_price(50, 50)[0] == 90
-    for t in ("−30 %", "−20 %", "−10 %", "−44 %"):
+    for t in ("−30 %", "−20 %", "−44 %", "0, 10 ou 20 %"):
         assert t in TEXTE, t
+    from app.services.oeuvre_c4_purchase import REMISES_OEUVRE
+    assert REMISES_OEUVRE == (0, 10, 20)
     assert "Ta part et la commission sont calculées sur le prix réellement payé" in TEXTE
     # L'exemple chiffré correspond au code.
     paye = compute_effective_price(30, True)
