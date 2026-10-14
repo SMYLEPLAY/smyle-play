@@ -31,8 +31,9 @@ router = APIRouter(prefix="/artist/me/oeuvres", tags=["mes-oeuvres"])
 
 class ActionGroupee(BaseModel):
     track_ids: list[UUID] = Field(min_length=1, max_length=svc.MAX_PAR_LOT)
-    action: Literal["masquer", "republier", "prix", "supprimer"]
+    action: Literal["masquer", "republier", "prix", "remise", "supprimer"]
     prix: int | None = None
+    remise: int | None = None
     cible: Literal["les_deux", "recette", "image"] = "les_deux"
 
 
@@ -42,6 +43,7 @@ class Modification(BaseModel):
     cover_url: str | None = Field(default=None, max_length=2048)
     recipe_price: int | None = None
     image_price: int | None = None
+    oeuvre_discount: int | None = None
 
 
 @router.get("")
@@ -64,7 +66,7 @@ async def action_sur_mes_oeuvres(
     try:
         res = await svc.action_groupee(
             db, current_user, track_ids=body.track_ids, action=body.action,
-            prix=body.prix, cible=body.cible,
+            prix=body.prix, cible=body.cible, remise=body.remise,
         )
     except svc.OeuvreErreur as e:
         await db.rollback()

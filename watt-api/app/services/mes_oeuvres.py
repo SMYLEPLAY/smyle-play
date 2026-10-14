@@ -9,6 +9,8 @@ Actions (toutes limitées aux Œuvres du compte connecté) :
                    l'image passent en non publiées ;
   - republier    : l'inverse (soumis au seuil d'abonnés pour vendre) ;
   - prix         : entre 10 et 150 Smyles, sur la recette, l'image ou les deux ;
+  - remise       : remise de l'offre groupée « Acheter l'Œuvre » (son + image),
+                   0, 10 ou 20 % (décision Tom du 14/10) ;
   - supprimer    : suppression DOUCE (rien n'est effacé en base ni sur le
                    stockage) — le son, sa recette et son image disparaissent ;
   - modifier     : titre, description, pochette, prix.
@@ -37,7 +39,7 @@ from app.schemas.marketplace import (
     PROMPT_TITLE_MIN,
 )
 
-ACTIONS = ("masquer", "republier", "prix", "supprimer")
+ACTIONS = ("masquer", "republier", "prix", "remise", "supprimer")
 CIBLES_PRIX = ("les_deux", "recette", "image")
 MAX_PAR_LOT = 200
 
@@ -48,6 +50,18 @@ class OeuvreErreur(ValueError):
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _remise_valide(remise) -> int:
+    from app.services.oeuvre_c4_purchase import REMISES_OEUVRE
+
+    try:
+        r = int(remise)
+    except (TypeError, ValueError):
+        r = -1
+    if r not in REMISES_OEUVRE:
+        raise OeuvreErreur("La remise de l'Œuvre doit être de 0, 10 ou 20 %.")
+    return r
 
 
 def _prix_valide(prix) -> int:
@@ -118,7 +132,7 @@ async def _rattachements(db: AsyncSession, user_id: UUID, tracks: list[Track]) -
 
 async def lister(db: AsyncSession, user: User) -> list[dict]:
     from app.routers.watt_compat import _build_stream_url
-    from app.services.oeuvre_c4_purchase import oeuvre_bundle_price
+    from app.services.oeuvre_c4_purchase import oeuvre_bundle_price, remise_de
 
     tracks = await _mes_sons(db, user.id)
     liens = await _rattachements(db, user.id, tracks)
@@ -137,7 +151,7 @@ async def lister(db: AsyncSession, user: User) -> list[dict]:
         retiree = t.taken_down_at is not None
         prix_oeuvre = None
         if r is not None and img is not None:
-            prix_oeuvre = oeuvre_bundle_price(r.price_credits, img.price_credits)[0]
+            prix_oeuvre = oeuvre_bundle_price(r.price_credits, img.price_credits, remise_de(img))[0]
         out.append({
             "trackId": str(t.id),
             "title": t.title,
@@ -158,6 +172,7 @@ async def lister(db: AsyncSession, user: User) -> list[dict]:
                 if r is not None else None
             ),
             "oeuvrePrice": prix_oeuvre,
+            "oeuvreDiscountPct": remise_de(img) if img is not None else None,
             "status": "retiree" if retiree else ("masquee" if masquee else "publiee"),
             "sales": int(sum(ventes.get(p.id, 0) for p in (r, img) if p is not None)),
             "oeuvreUrl": f"/o/{img.id}" if img is not None else None,
@@ -207,7 +222,7 @@ def _retiree(t, r, img) -> bool:
 
 async def action_groupee(
     db: AsyncSession, user: User, *, track_ids: list[UUID], action: str,
-    prix: int | None = None, cible: str = "les_deux",
+    prix: int | None = None, cible: str = "les_deux", remise: int | None = None,
 ) -> dict:
     """Applique `action` aux Œuvres demandées qui appartiennent au compte.
     Les identifiants inconnus ou d'un autre compte sont ignorés (comptés dans
@@ -223,6 +238,8 @@ async def action_groupee(
         prix = _prix_valide(prix)
         if cible not in CIBLES_PRIX:
             raise OeuvreErreur("Cible de prix inconnue.")
+    if action == "remise":
+        remise = _remise_valide(remise)
     tracks = await _mes_sons(db, user.id, ids)
     liens = await _rattachements(db, user.id, tracks)
 
@@ -260,6 +277,11 @@ async def action_groupee(
             if not touche:
                 ignores.append(str(t.id))  # rien à vendre sur cette cible
                 continue
+        elif action == "remise":
+            if img is None or r is None:
+                ignores.append(str(t.id))  # pas d'offre groupée sans son ET image en vente
+                continue
+            img.remise_oeuvre_pct = remise
         elif action == "supprimer":
             await _supprimer(db, t, r, img)
         faits.append(str(t.id))
@@ -320,5 +342,9 @@ async def modifier(db: AsyncSession, user: User, track_id: UUID, data: dict) -> 
         if img is None:
             raise OeuvreErreur("Cette Œuvre n'a pas d'image en vente.")
         img.price_credits = _prix_valide(data["image_price"])
+    if data.get("oeuvre_discount") is not None:
+        if img is None:
+            raise OeuvreErreur("Cette Œuvre n'a pas d'image : pas d'offre groupée.")
+        img.remise_oeuvre_pct = _remise_valide(data["oeuvre_discount"])
     await db.flush()
     return {"trackId": str(t.id), "title": t.title}
