@@ -400,7 +400,11 @@ async function libDownloadImage(imageId, btn) {
   try {
     const resp = await apiFetch('/images/' + encodeURIComponent(imageId) + '/download', { raw: true });
     if (!resp || !resp.ok) {
-      if (window.smyleToast) window.smyleToast('Téléchargement indisponible.', { type: 'error' });
+      // Lot I bis : on affiche la raison donnée par le serveur (ex. contenu
+      // retiré par la modération, 410) au lieu d'un message générique.
+      let raison = '';
+      try { const j = await resp.json(); raison = (j && typeof j.detail === 'string') ? j.detail : ''; } catch (_) {}
+      if (window.smyleToast) window.smyleToast(raison || 'Téléchargement indisponible.', { type: 'error' });
       return;
     }
     const cd = resp.headers.get('Content-Disposition') || '';
@@ -731,7 +735,11 @@ async function libDownloadProduct(productId, btn) {
   try {
     const resp = await apiFetch('/products/' + encodeURIComponent(productId) + '/download', { raw: true });
     if (!resp || !resp.ok) {
-      if (window.smyleToast) window.smyleToast('Téléchargement indisponible.', { type: 'error' });
+      // Lot I bis : on affiche la raison donnée par le serveur (ex. contenu
+      // retiré par la modération, 410) au lieu d'un message générique.
+      let raison = '';
+      try { const j = await resp.json(); raison = (j && typeof j.detail === 'string') ? j.detail : ''; } catch (_) {}
+      if (window.smyleToast) window.smyleToast(raison || 'Téléchargement indisponible.', { type: 'error' });
       return;
     }
     const cd = resp.headers.get('Content-Disposition') || '';

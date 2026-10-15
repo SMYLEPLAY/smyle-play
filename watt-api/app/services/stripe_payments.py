@@ -289,6 +289,9 @@ async def _on_paid(db: AsyncSession, session: dict) -> str:
                   # vrai argent) — distingués et exclus des chiffres.
                   **({"stripe_test": True} if row.mode_test else {})},
         idempotency_key=f"stripe_session:{row.session_id}",
+        # Lot I : carte de TEST = aucun euro réel → Smyles « promo » (non
+        # retirables, et qui ne deviennent jamais « gagnés » chez un vendeur).
+        bucket="promo" if row.mode_test else None,
     )
     await db.execute(
         text("UPDATE stripe_payments SET status = 'paye', payment_intent = :pi, "

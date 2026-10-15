@@ -48,6 +48,8 @@ async function _fetchMeAndSync() {
       email: me.email,
       name: me.artist_name || me.display_name || (me.email || '').split('@')[0],
       artist_name: me.artist_name || null,
+      slug: me.slug || null,               // Lot I : slug public donné par le serveur
+      pioneer_rank: me.pioneer_rank || null,
       credits_balance: (typeof me.credits_balance === 'number') ? me.credits_balance : 0,
       // Parcours V1 — bandeau « vérifie ta boîte mail » + guide d'accueil.
       email_verified: me.email_verified !== false,
@@ -216,7 +218,9 @@ function _userMenuSlug() {
   // priorité à `artist_name` (slugifié), fallback sur le local-part de l'email.
   // Sans cet alignement, dès que l'user remplit son artist_name, le lien
   // topbar renvoie vers une URL obsolète et le backend 404.
-  const source = u.artist_name || (String(u.email || '').split('@')[0] || '');
+  // Lot I : sans nom d'artiste, slug donné par le serveur (jamais l'email).
+  if (!u.artist_name && u.slug) return String(u.slug);
+  const source = u.artist_name || '';
   return source
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // retirer accents
@@ -485,6 +489,14 @@ async function _codePionnierUtiliser() {
   const code = _codePionnierLire();
   if (!code || typeof getAuthToken !== 'function' || !getAuthToken()) return;
   const toast = (m, type) => { if (typeof window.smyleToast === 'function') window.smyleToast(m, { type, duration: 6000 }); };
+  // Lot I bis — confirmation : un code ne sert qu'une fois, on ne le
+  // consomme pas sur le mauvais compte (appareil partagé, lien testé…).
+  const u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  const qui = (u && (u.artist_name || u.email)) || 'ce compte';
+  if (!window.confirm('Utiliser le code Pionnier ' + code + ' sur ' + qui + ' ? Un code ne sert qu\'une seule fois.')) {
+    _codePionnierOublier();
+    return;
+  }
   try {
     const r = await apiFetch('/pioneer/code', { method: 'POST', json: { code } });
     _codePionnierOublier();
@@ -614,12 +626,24 @@ async function submitSignup() {
     msg.textContent = 'Accepte les CGU et confirme avoir 15 ans ou plus.';
     return;
   }
+  // Lot I bis — page de retour gardée pour après la confirmation de l'email
+  // (le lien de l'email ouvre une autre page, parfois un autre onglet).
+  try {
+    const retour = window.__smyleReturnPath ||
+      ((location.pathname && location.pathname !== '/') ? location.pathname + location.search : '');
+    if (retour) localStorage.setItem('watt_retour_apres_verif', retour);
+  } catch (_) { /* noop */ }
   msg.textContent = 'Création du compte…';
   const onAttempt = ({ willRetry }) => {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
   const result = await doSignup(email, password, { onAttempt, referralCode, pioneerCode, acceptTerms, ageConfirmed });
   if (result.ok) _afterAuthSuccess();
+  else if (result.emailNonVerifie) {
+    // Lot I bis — compte créé, email à confirmer : on le dit clairement.
+    _panneauEmailNonVerifie(msg, 'Compte créé ✓ Un email de confirmation vient de partir à ' + email +
+      ' : clique sur le lien qu\'il contient, puis connecte-toi.', email);
+  }
   else msg.textContent = result.msg;
 }
 
@@ -662,6 +686,9 @@ function _ensureReferralModal() {
 }
 
 async function openReferralModal() {
+  // Lot I bis : le panneau complet (avec les quêtes de parrainage) quand il
+  // est chargé ; sinon cette fenêtre simple.
+  if (typeof window.openReferralPanel === 'function') { window.openReferralPanel(); return; }
   _closeUserMenu();
   const modal = _ensureReferralModal();
   modal.style.display = 'flex';

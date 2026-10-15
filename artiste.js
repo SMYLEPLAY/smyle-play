@@ -64,7 +64,7 @@ function currentUserMatchesSlug(slug) {
   const candidates = [];
   if (u.artist_name) candidates.push(slugify(u.artist_name));
   if (u.artistName)  candidates.push(slugify(u.artistName));
-  if (u.email)       candidates.push(slugify(String(u.email).split('@')[0]));
+  if (u.slug)        candidates.push(String(u.slug));  // Lot I : plus jamais l'email
   return candidates.some(c => c && c === slug);
 }
 
@@ -581,8 +581,10 @@ async function _setupFollowButton(artist) {
   try {
     const r = await fetch('/watt/me/following', { credentials: 'same-origin', headers: _hdr() });
     if (r.ok) {
-      const list = await r.json();
-      following = Array.isArray(list) && list.some(f => f.slug === slug || f.artistSlug === slug);
+      const data = await r.json();
+      // Lot I bis : la route renvoie { count, following: [...] }.
+      const list = Array.isArray(data) ? data : ((data && data.following) || []);
+      following = list.some(f => f.slug === slug || f.artistSlug === slug);
     }
   } catch (_) {}
   function _setBtnState(isFollowing) {
@@ -607,10 +609,14 @@ async function _setupFollowButton(artist) {
         method: method, credentials: 'same-origin', headers: _hdr()
       });
       if (r.ok || r.status === 204) {
-        _setBtnState(!wasFollowing);
+        let rep = null;
+        try { rep = r.status === 204 ? null : await r.json(); } catch (_) {}
+        _setBtnState(rep && typeof rep.isFollowing === 'boolean' ? rep.isFollowing : !wasFollowing);
         if (countEl) {
           const cur = Number(artist.followersCount || 0);
-          const newN = wasFollowing ? Math.max(0, cur - 1) : cur + 1;
+          // Chiffre du serveur quand il est donné (évite +1 sur « déjà suivi »).
+          const newN = (rep && typeof rep.followersCount === 'number') ? rep.followersCount
+            : (wasFollowing ? Math.max(0, cur - 1) : cur + 1);
           artist.followersCount = newN;
           countEl.textContent = newN + ' follower' + (newN !== 1 ? 's' : '');
         }

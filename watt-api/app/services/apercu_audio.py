@@ -239,8 +239,15 @@ async def proteger_audio(db: AsyncSession, cle: str) -> str:
 async def programmer_protections_manquantes(db: AsyncSession) -> int:
     """Inscrit `proteger_audio` pour chaque fichier original de son pas encore
     protégé et sans opération en attente. Ne commit pas."""
-    from app.services.fichiers_a_traiter import programmer
+    from app.services.fichiers_a_traiter import MAX_TENTATIVES_PROTECTION, programmer
 
+    # Lot I bis — un son bloqué après 5 essais (panne longue du stockage…)
+    # retente UNE fois par passage de la boucle d'entretien (chaque jour) :
+    # son original ne reste jamais public pour toujours.
+    await db.execute(text(
+        "UPDATE fichiers_a_traiter SET tentatives = :t "
+        "WHERE action = 'proteger_audio' AND fait_le IS NULL AND tentatives >= :m"),
+        {"t": MAX_TENTATIVES_PROTECTION - 1, "m": MAX_TENTATIVES_PROTECTION})
     cles = (await db.execute(text(
         "SELECT DISTINCT t.r2_key FROM tracks t "
         "WHERE t.r2_key IS NOT NULL AND t.apercu_key IS NULL AND t.taken_down_at IS NULL "

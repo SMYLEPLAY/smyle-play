@@ -137,7 +137,14 @@
         msg('ve-verify-msg',
             'Ton email est vérifié ✔ Tu peux te connecter et profiter de WATT.',
             'ok');
-        setTimeout(function () { location.href = '/?auth=login'; }, 2200);
+        // Lot I bis — retour à la page d'où l'inscription est partie
+        // (une Œuvre, le tableau de bord…), mémorisée dans ce navigateur.
+        var retour = '';
+        try { retour = localStorage.getItem('watt_retour_apres_verif') || ''; localStorage.removeItem('watt_retour_apres_verif'); } catch (_) {}
+        if (!/^\/(?![\/\\])[^\u0000-\u001f\\]*$/.test(retour)) retour = '';
+        setTimeout(function () {
+          location.href = '/?auth=login' + (retour ? '&return=' + encodeURIComponent(retour) : '');
+        }, 2200);
       } catch (e) {
         // Jeton invalide ou expiré : on propose de renvoyer un lien.
         msg('ve-verify-msg', e.message, 'error');

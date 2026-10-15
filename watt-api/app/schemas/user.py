@@ -219,6 +219,11 @@ class UserRead(BaseModel):
     profile_bg_color:    str | None = None
     profile_brand_color: str | None = None
     profile_public: bool = False  # Chantier 1 — visible sur la vitrine /watt
+    # Lot I — slug public calculé par le serveur (le front ne le devine plus
+    # à partir de l'email).
+    slug: str | None = None
+    # Lot I — rang Pionnier (None = pas Pionnier).
+    pioneer_rank: int | None = None
     # Vérification d'email (migration 0087, Phase A). Exposé pour que le front
     # affiche l'état « email à confirmer » et le CTA de renvoi. Non bloquant
     # par défaut (cf. settings.REQUIRE_EMAIL_VERIFIED).

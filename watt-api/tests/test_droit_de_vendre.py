@@ -144,7 +144,8 @@ async def test_publier_un_prompt_bloque_sans_abonnes(client, test_user, auth_hea
         r = await client.patch(f"/artist/me/prompts/{pid}", headers=auth_headers,
                                json={"is_published": True})
         assert r.status_code == 403, r.text
-        assert r.json()["detail"].startswith("Encore 5 abonnés pour pouvoir vendre")
+        assert r.json()["detail"].startswith("Pour publier et vendre tes créations, il te faut 5 abonnés")
+        assert "encore 5." in r.json()["detail"]
         async with SessionLocal() as db:
             assert (await db.get(Prompt, pid)).is_published is False
         # Le brouillon reste modifiable (pas de mise en vente) :
@@ -175,7 +176,7 @@ async def test_seuil_atteint_avec_abonnes_reels(client, test_user, auth_headers,
     try:
         st = await _statut(uid)
         assert st["abonnes"] == 4 and st["peut_vendre"] is False
-        assert st["message"].startswith("Encore 1 abonné pour pouvoir vendre")
+        assert "encore 1." in st["message"]
         r = await client.patch(f"/artist/me/prompts/{pid}", headers=auth_headers,
                                json={"is_published": True})
         assert r.status_code == 403

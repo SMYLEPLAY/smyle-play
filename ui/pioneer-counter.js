@@ -15,6 +15,18 @@
   'use strict';
 
   function render(el, d) {
+    // Lot I bis : un Pionnier voit SON rang plutôt que l'appel à publier.
+    var moi = null;
+    try { moi = (typeof getCurrentUser === 'function') ? getCurrentUser() : null; } catch (_) {}
+    if (moi && moi.pioneer_rank) {
+      el.textContent = '';
+      var b = document.createElement('strong');
+      b.textContent = '🏅 Tu es Pionnier n°' + moi.pioneer_rank;
+      el.appendChild(b);
+      el.appendChild(document.createTextNode(' — commission plafonnée à 10 % à vie.'));
+      el.hidden = false;
+      return;
+    }
     var restantes = Number(d && d.restantes);
     var total = Number(d && d.total) || 100;
     if (!isFinite(restantes) || restantes <= 0) return;
@@ -24,7 +36,7 @@
     fort.textContent = restantes + ' / ' + total + ' ' + mot;
     el.appendChild(fort);
     el.appendChild(document.createTextNode(
-      ' — publie ta première œuvre pour décrocher ton rang : commission plafonnée à 10 % à vie.'
+      ' — sur invitation : avec ton code Pionnier, publie ta première œuvre pour décrocher ton rang (commission plafonnée à 10 % à vie).'
     ));
     el.hidden = false;
   }

@@ -248,6 +248,7 @@ async def retro_confirm(
     *,
     exclude_ids: list[UUID],
     expected_user_ids: list[UUID],
+    need_code: bool = False,
 ) -> dict:
     """CONFIRMATION du rattrapage — écrit. L'appelant commit.
 
@@ -279,7 +280,7 @@ async def retro_confirm(
         )
 
     attendu = [str(u) for u in expected_user_ids]
-    recalcule = [c["user_id"] for c in await retro_candidates(db, exclude)]
+    recalcule = [c["user_id"] for c in await retro_candidates(db, exclude, need_code=need_code)]
 
     if recalcule != attendu:
         # Double clic / relance : tout est déjà appliqué → no-op, pas d'erreur.

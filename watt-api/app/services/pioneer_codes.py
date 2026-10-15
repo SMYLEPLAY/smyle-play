@@ -42,6 +42,10 @@ class CodeDejaUtilise(Exception):
     """Ce compte a déjà utilisé un code."""
 
 
+class CompteNonEligible(Exception):
+    """Compte admin, exclu, ou déjà Pionnier : le code n'est pas consommé."""
+
+
 def normaliser(code: str | None) -> str:
     """« watt 7k3-qx9 » → « WATT-7K3QX9 ». Tolère espaces, tirets, minuscules."""
     brut = re.sub(r"[^0-9A-Za-z]", "", code or "").upper()
@@ -70,7 +74,7 @@ async def generer(db: AsyncSession, n: int, *, note: str | None, admin_id: UUID 
     return codes
 
 
-async def lister(db: AsyncSession, limit: int = 500) -> list[dict]:
+async def lister(db: AsyncSession, limit: int = 2000) -> list[dict]:
     rows = (await db.execute(text(
         "SELECT c.code, c.note, c.created_at, c.used_at, u.artist_name, u.pioneer_rank "
         "FROM pioneer_codes c LEFT JOIN users u ON u.id = c.used_by "
@@ -99,12 +103,23 @@ async def utiliser(db: AsyncSession, user_id: UUID, code: str) -> str:
     Lève CodeDejaUtilise si le compte en a déjà un, CodeInvalide sinon."""
     if await a_un_code(db, user_id):
         raise CodeDejaUtilise("Tu as déjà utilisé un code Pionnier.")
+    # Lot I bis — un code n'est jamais gaspillé sur un compte qui ne peut pas
+    # (ou n'a pas besoin de) devenir Pionnier : admin (Tom qui teste un lien),
+    # compte exclu, compte déjà Pionnier.
+    u = (await db.execute(text(
+        "SELECT is_admin, is_official, is_treasury, pioneer_excluded, pioneer_rank "
+        "FROM users WHERE id = :u"), {"u": user_id})).first()
+    if u is None or u.is_admin or u.is_official or u.is_treasury or u.pioneer_excluded:
+        raise CompteNonEligible("Ce compte ne peut pas recevoir de place Pionnier : "
+                                "le code n'a pas été utilisé.")
+    if u.pioneer_rank is not None:
+        raise CompteNonEligible("Tu es déjà Pionnier : garde ce code pour quelqu'un d'autre.")
     c = normaliser(code)
     if not c:
         raise CodeInvalide("Code Pionnier invalide ou déjà utilisé.")
     ok = (await db.execute(text(
         "UPDATE pioneer_codes SET used_by = :u, used_at = now() "
-        "WHERE code = :c AND used_by IS NULL RETURNING code"),
+        "WHERE code = :c AND used_at IS NULL RETURNING code"),
         {"u": user_id, "c": c})).scalar_one_or_none()
     if ok is None:
         raise CodeInvalide("Code Pionnier invalide ou déjà utilisé.")

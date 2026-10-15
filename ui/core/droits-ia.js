@@ -75,9 +75,8 @@
       const r = await window.apiFetch('/users/me/droits-ia');
       if (r && r.confirme) { _confirme = true; return true; }
     } catch (_) {
-      // Lecture impossible : on ne bloque pas la publication sur une panne
-      // passagère ; la question sera reposée à la prochaine publication.
-      return true;
+      // Lecture impossible : on pose la question quand même (l'envoi de la
+      // confirmation dira s'il y a un vrai problème de connexion).
     }
     return _modale();
   }

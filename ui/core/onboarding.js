@@ -52,7 +52,7 @@
     ];
   }
   var _pionnierStep = { icon: '🏅', t: 'Devenir Pionnier',
-    d: 'Les premiers créateurs qui publient une Œuvre deviennent Pionniers : la commission de WATT sur leurs ventes reste plafonnée à 10 %, à vie.' };
+    d: 'Les créateurs invités avec un code Pionnier deviennent Pionniers en publiant leur première Œuvre : la commission de WATT sur leurs ventes reste plafonnée à 10 %, à vie.' };
 
   function _checkPionnier() {
     if (_pionnier !== null || typeof window.apiFetch !== 'function') return Promise.resolve(_pionnier);

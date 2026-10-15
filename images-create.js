@@ -423,13 +423,13 @@
     if (imgTags.length) fd.append('image_tags', imgTags.join(','));
 
     /* Lot I — droits commerciaux confirmés une fois, avant la 1re publication. */
+    setBusy(true); /* tout de suite : un double clic ne publie pas deux fois */
     var _droits = (window.SmyleDroitsIA && window.SmyleDroitsIA.ensure) ? window.SmyleDroitsIA.ensure() : Promise.resolve(true);
     _droits.then(function (ok) {
-      if (!ok) { return; }
+      if (!ok) { setBusy(false); return; }
       envoyer();
     });
     function envoyer() {
-    setBusy(true);
     /* apiFetch ajoute le Bearer JWT ; body FormData => pas de Content-Type
        forcé (le navigateur pose le boundary multipart lui-même). */
     /* C4 galerie avatar — n'uploade la galerie QUE si le tag avatar est actif

@@ -190,6 +190,11 @@ async def add_track(
     track = track_res.scalar_one_or_none()
     if track is None:
         raise TrackNotFound()
+    # Lot I — une playlist PUBLIQUE ne contient que les sons de son
+    # propriétaire (même règle qu'au passage en public). Sinon, son ADN mis en
+    # vente donnait −20 % sur les recettes d'autres artistes, sans leur accord.
+    if playlist.visibility == "public" and track.artist_id != owner.id:
+        raise PlaylistPublicOwnerMismatch()
 
     # Règle retirée (2026-05-14) : on autorise l'ajout de n'importe quelle
     # track dans n'importe quelle playlist. La restriction public/owner

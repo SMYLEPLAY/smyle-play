@@ -163,8 +163,8 @@
    */
   function _meSlug(user) {
     if (!user) return null;
-    const raw = (user.artistName || user.artist_name ||
-                 (user.email && user.email.split('@')[0]) || '').trim();
+    if (user.slug) return user.slug;   // Lot I : slug donné par le serveur
+    const raw = (user.artistName || user.artist_name || '').trim();
     if (!raw) return null;
     return raw
       .toLowerCase()

@@ -117,7 +117,7 @@ async def register(
 
         code_pionnier = normaliser(user.pioneer_code)
         libre = (await db.execute(
-            text("SELECT 1 FROM pioneer_codes WHERE code = :c AND used_by IS NULL"),
+            text("SELECT 1 FROM pioneer_codes WHERE code = :c AND used_at IS NULL"),
             {"c": code_pionnier},
         )).first()
         if libre is None:
@@ -129,13 +129,16 @@ async def register(
     # Capture l'IP d'inscription (anti-abus H0.4 : plafond parrainage par IP).
     new_user = await create_user(db, user, signup_ip=client_ip(request))
     if code_pionnier:
-        try:
-            from app.services.pioneer_codes import utiliser
+        from app.services.pioneer_codes import utiliser
 
-            await utiliser(db, new_user.id, code_pionnier)
+        try:
+            # Point de sauvegarde : un échec n'annule que l'usage du code, sans
+            # périmer le compte chargé (un rollback complet le rendait illisible
+            # → erreur 500 alors que le compte était déjà créé).
+            async with db.begin_nested():
+                await utiliser(db, new_user.id, code_pionnier)
             await db.commit()
         except Exception:  # course : code pris entre-temps → compte sans code
-            await db.rollback()
             logger.info("[auth] code Pionnier pris pendant l'inscription")
     # Lien de parrainage — best-effort, silencieux. Un code invalide / absent
     # ne casse jamais l'inscription. Aucun crédit versé ici : seulement le lien

@@ -131,6 +131,14 @@ async def statut_vente(db: AsyncSession, user) -> dict:
         return {**base, "raison": "exempte"}
     if getattr(user, "is_pioneer", False):
         return {**base, "raison": "pionnier"}
+    # Lot I — un créateur INVITÉ (code Pionnier utilisé) publie sans seuil :
+    # c'est sa première publication qui lui donne son rang. Sans cette
+    # exemption, aucun invité arrivé après le 1er novembre ne pouvait publier,
+    # donc jamais devenir Pionnier.
+    from app.services.pioneer_codes import a_un_code
+
+    if await a_un_code(db, user.id):
+        return {**base, "raison": "invite_pionnier"}
     requis = abonnes_requis(await actifs_en_cache(db))
     abonnes = await compter_abonnes_reels(db, user.id)
     if abonnes >= requis:
@@ -146,9 +154,11 @@ async def statut_vente(db: AsyncSession, user) -> dict:
         "requis": requis,
         "manquants": manquants,
         "message": (
-            f"Encore {manquants} abonné{'s' if manquants > 1 else ''} pour pouvoir "
-            f"vendre (il en faut {requis}). Tu peux déjà publier gratuitement, "
-            f"gagner et dépenser des Smyles."
+            f"Pour publier et vendre tes créations, il te faut {requis} abonnés "
+            f"(comptes à l'email vérifié) : encore {manquants}. Partage le lien de "
+            f"ton profil pour qu'on te suive. En attendant, tu peux écouter, suivre "
+            f"et débloquer des œuvres avec tes Smyles. Tu as reçu un code Pionnier ? "
+            f"Ajoute-le depuis le lien reçu : tu pourras publier tout de suite."
         ),
     }
 

@@ -269,8 +269,8 @@ async def unlock_visual_adn_atomic(
         )).scalar_one()
         if int(sold_count) >= int(visual_adn_row.max_supply):
             raise AdnNotPurchasable(
-                f"Visual ADN sold out "
-                f"({sold_count}/{visual_adn_row.max_supply})"
+                f"Édition épuisée : les {visual_adn_row.max_supply} exemplaires sont "
+                f"vendus ({sold_count}/{visual_adn_row.max_supply})."
             )
 
     artist_id = visual_adn_row.artist_id

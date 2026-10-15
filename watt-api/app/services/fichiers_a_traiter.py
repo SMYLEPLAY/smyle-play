@@ -235,21 +235,11 @@ async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_P
 
 # ── Clés concernées par un retrait de la modération ─────────────────────────
 
-async def _cle_partagee(db: AsyncSession, cle: str, track_id) -> bool:
-    """La pochette `cle` sert-elle ailleurs qu'au son `track_id` ?"""
-    motif = "%" + cle.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return (await db.execute(text(
-        "SELECT 1 WHERE EXISTS (SELECT 1 FROM tracks WHERE id <> :t AND cover_url LIKE :m) "
-        "OR EXISTS (SELECT 1 FROM prompts WHERE preview_r2_key = :k OR image_r2_key = :k) "
-        "OR EXISTS (SELECT 1 FROM prompt_gallery_images WHERE preview_r2_key = :k OR image_r2_key = :k) "
-        "OR EXISTS (SELECT 1 FROM users WHERE avatar_url LIKE :m)"),
-        {"t": track_id, "m": motif, "k": cle})).first() is not None
-
 async def cles_du_contenu(db: AsyncSession, ttype: str, tid) -> list[str]:
-    """Fichiers propres au contenu retiré : audio d'un son (+ sa pochette si
-    elle ne sert à rien d'autre, Lot I), original + aperçu (+ galerie) d'une
-    image, extraits d'une voix. Une pochette PARTAGÉE (avec une autre ligne,
-    une image du catalogue ou un avatar) n'est pas déplacée."""
+    """Fichiers du contenu retiré : audio et pochette d'un son (Lot I),
+    original + aperçu (+ galerie) d'une image, extraits d'une voix. Un fichier
+    encore utilisé par un contenu en ligne reste public (contrôle à
+    l'exécution)."""
     from app.services.media_ownership import media_url_key
 
     cles: list[str] = []
@@ -259,9 +249,10 @@ async def cles_du_contenu(db: AsyncSession, ttype: str, tid) -> list[str]:
         if r:
             cles.append(r.r2_key or "")
             cles.append(media_url_key(r.audio_url)[1] or "")
-            cle_cover = media_url_key(r.cover_url)[1]
-            if cle_cover and not await _cle_partagee(db, cle_cover, tid):
-                cles.append(cle_cover)
+            # Lot I : la pochette suit le retrait. Si elle sert encore à un
+            # contenu en ligne (partagée), l'exécution la laisse publique
+            # (`utilise_hors_retrait`, contrôle complet).
+            cles.append(media_url_key(r.cover_url)[1] or "")
     elif ttype in ("image", "prompt"):
         r = (await db.execute(text(
             "SELECT image_r2_key, preview_r2_key FROM prompts WHERE id = :i"), {"i": tid})).first()

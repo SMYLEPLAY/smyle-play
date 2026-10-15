@@ -18,7 +18,13 @@ from app.core.ratelimit import LIMIT_CODE_PIONNIER, limiter
 from app.database import get_db
 from app.models.user import User
 from app.services.pioneer import award_pioneer, pioneer_stats
-from app.services.pioneer_codes import CodeDejaUtilise, CodeInvalide, a_un_code, utiliser
+from app.services.pioneer_codes import (
+    CodeDejaUtilise,
+    CodeInvalide,
+    CompteNonEligible,
+    a_un_code,
+    utiliser,
+)
 
 router = APIRouter(prefix="/pioneer", tags=["pioneer"])
 
@@ -62,7 +68,7 @@ async def utiliser_code_pionnier(
     try:
         code = await utiliser(db, user.id, payload.code)
         await db.commit()
-    except CodeDejaUtilise as e:
+    except (CodeDejaUtilise, CompteNonEligible) as e:
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(e))
     except CodeInvalide as e:

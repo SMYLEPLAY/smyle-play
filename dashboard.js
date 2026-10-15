@@ -570,11 +570,14 @@ function renderArtistCard() {
    `_derive_artist_slug` du backend pour garantir qu'on tape la bonne URL
    /artiste/<slug> sans aller-retour serveur. */
 function _deriveArtistSlug(user, profile) {
+  // Lot I : sans nom d'artiste, le slug vient du serveur (« membre-… »),
+  // jamais de l'email.
+  if (!(profile && profile.artistName) && !(user && user.artist_name) && user && user.slug) {
+    return String(user.slug);
+  }
   const source =
     (profile && profile.artistName) ||
     (user && user.artist_name) ||
-    (user && user.name) ||
-    (user && String(user.email || '').split('@')[0]) ||
     '';
   return String(source)
     .toLowerCase()
@@ -2078,11 +2081,6 @@ async function uploadTrack() {
   const name = document.getElementById('dashTrackName').value.trim();
   if (!name) { dashToast('⚠ Le titre est obligatoire.'); return; }
   if (!_pendingFile) { dashToast('⚠ Aucun fichier sélectionné.'); return; }
-  // Lot I — droits commerciaux confirmés une fois, avant la 1re publication.
-  if (window.SmyleDroitsIA && !(await window.SmyleDroitsIA.ensure())) {
-    dashToast('Publication annulée : la confirmation des droits est nécessaire.');
-    return;
-  }
 
   // C2 — plus de modes : validation précoce du seul flag beat (plus bas).
 
@@ -2192,6 +2190,12 @@ async function uploadTrack() {
       return;
     }
     /* autre erreur : le serveur revérifie de toute façon à la publication */
+  }
+
+  // Lot I (après le seuil de vente et les contrôles du formulaire) — droits commerciaux confirmés une fois, avant la 1re publication.
+  if (window.SmyleDroitsIA && !(await window.SmyleDroitsIA.ensure())) {
+    dashToast('Publication annulée : la confirmation des droits est nécessaire.');
+    return;
   }
 
 
@@ -2817,8 +2821,13 @@ async function saveProfile() {
       await apiFetch('/users/me', { method: 'PATCH', json: payload });
     }
   } catch (err) {
-    // Pas bloquant — le profil local est déjà sauvegardé.
+    // Lot I bis : le serveur a refusé → on le DIT (avant : « Profil
+    // sauvegardé » quand même, puis la publication échouait faute de nom).
     console.warn('[dashboard] Sync FastAPI échec :', err);
+    const m = (typeof window._humanizeApiError === 'function') ? window._humanizeApiError(err) : '';
+    dashToast('⚠ Profil non enregistré' + (m ? ' : ' + m : '') +
+      '. Vérifie tes liens (ils doivent commencer par https://) puis réessaie.');
+    return;
   }
 
   toggleProfileEdit();

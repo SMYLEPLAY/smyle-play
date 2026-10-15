@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import decode_access_token, get_current_user
 from app.config import settings
+from app.core.launch import require_launch_item
 from app.core.fichiers import (
     lire_fichier_borne,
     max_octets,
@@ -2301,7 +2302,11 @@ async def upload_audio(
     return result
 
 
-@router.post("/upload-voice")
+@router.post(
+    "/upload-voice",
+    # Lot I : les voix sont masquées au lancement → pas d'envoi de fichiers.
+    dependencies=[Depends(require_launch_item("voix"))],
+)
 @limiter.limit(LIMIT_UPLOAD)
 async def upload_voice_sample(
     request: Request,

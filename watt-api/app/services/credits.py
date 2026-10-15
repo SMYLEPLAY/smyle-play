@@ -480,9 +480,12 @@ async def grant_credits_atomic(
     tx_type: TransactionType = TransactionType.GRANT,
     metadata: dict | None = None,
     idempotency_key: str | None = None,
+    bucket: str | None = None,
 ) -> Transaction:
     """
     Ajoute des crédits au user de manière atomique.
+    Lot I : `bucket` force la catégorie (ex. achat avec une carte de TEST →
+    « promo » : aucun euro réel derrière, donc jamais « achetés »).
 
     Pattern:
       1. Savepoint (rollback propre si quoi que ce soit échoue)
@@ -570,7 +573,7 @@ async def grant_credits_atomic(
         # le bon bucket selon le type de transaction (credit_bucket met aussi à
         # jour credits_balance, donc somme(buckets) == credits_balance).
         await credit_bucket(
-            db, user_id, amount, bucket=_TXTYPE_BUCKET.get(tx_type, "achetes")
+            db, user_id, amount, bucket=bucket or _TXTYPE_BUCKET.get(tx_type, "achetes")
         )
 
         # 4. Finaliser la transaction
