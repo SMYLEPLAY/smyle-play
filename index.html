@@ -614,6 +614,8 @@
       <!-- Parrainage (mécanique 1) : code optionnel. Pré-rempli si l'URL
            contient ?ref=CODE (lien de parrainage partagé). -->
       <input class="modal-input" id="signup-referral" type="text" placeholder="Code de parrainage (optionnel)" autocomplete="off" autocapitalize="characters" />
+      <!-- Lot I : code Pionnier (invitation). Pré-rempli par ?pionnier=CODE. -->
+      <input class="modal-input" id="signup-pioneer" type="text" placeholder="Code Pionnier (si tu en as reçu un)" autocomplete="off" autocapitalize="characters" maxlength="20" />
       <!-- Inscription encadrée (Phase 3) : CGU + âge obligatoires (exigés aussi côté API). -->
       <label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#b8b0cc;margin:4px 2px 0;line-height:1.4;cursor:pointer">
         <input type="checkbox" id="signup-terms" style="margin-top:2px;flex:none" />
@@ -697,7 +699,7 @@
 <script src="ui/player/audio.js"></script>
 <script src="ui/panels/playlist.js?v=20260613a"></script>
 <script src="ui/panels/mix.js"></script>
-<script src="ui/modals/auth.js?v=20261011lotg"></script>
+<script src="ui/modals/auth.js?v=20261015loti"></script>
 <!-- C2 — drawer d'achat unifié (un seul composant d'achat pour tout le site) -->
 <script src="ui/modals/purchase-drawer.js?v=20261011lotg"></script>
 <script src="/ui/modals/offer-modal.js?v=20261011lotg"></script>
@@ -718,7 +720,7 @@
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
 <script src="/ui/playlists.js?v=20261011lotg" defer></script>
 <script src="/ui/albums.js?v=20261011lotg" defer></script>
-<script src="ui/hub/marketplace.js?v=20261014remise"></script>
+<script src="ui/hub/marketplace.js?v=20261015loti"></script>
 <script src="ui/app.js?v=20261011lotg"></script>
 <script src="ui/player/mini-bar.js?v=20260707player" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
@@ -732,7 +734,7 @@
 <script src="/ui/core/page-services.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
 <script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>
-<script src="/ui/core/onboarding.js?v=20261011lotg" defer></script>
+<script src="/ui/core/onboarding.js?v=20261015loti" defer></script>
 <script src="/ui/goal-bar.js" defer></script>
 </body>
 </html>

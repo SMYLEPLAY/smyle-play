@@ -124,7 +124,8 @@ async def _make_user(initial_balance: int = 1000, artist_name: str | None = None
                 # Seed cohérent A1.4 : buckets alignés sur le solde (tout en achetés).
                 "UPDATE users SET credits_balance = :b, "
                 "smyles_achetes = :b, smyles_gagnes = 0, smyles_promo = 0, "
-                "artist_name = COALESCE(:n, artist_name) WHERE id = :u"
+                # Lot I : parrainage versé seulement aux emails vérifiés.
+                "artist_name = COALESCE(:n, artist_name), email_verified = TRUE WHERE id = :u"
             ),
             {"b": initial_balance, "n": artist_name, "u": user_id},
         )

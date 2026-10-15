@@ -75,6 +75,17 @@
 
   <section class="panel" id="p-pio" role="tabpanel" aria-labelledby="t-pio">
     <p class="sub">Les 100 premiers créateurs gardent une commission réduite à vie, sauf fraude. Si un compte a pris une place en trichant (œuvres bâclées, faux compte…), retire-lui le statut : sa place revient automatiquement au créateur suivant.</p>
+    <h2>Codes d'invitation</h2>
+    <p class="sub">Une place Pionnier ne s'obtient qu'avec un code. Crée des codes, puis envoie à chaque créateur son lien personnel en message privé. Un code ne sert qu'une fois.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
+      <label for="code-n">Combien ?</label>
+      <input id="code-n" type="number" min="1" max="200" value="10" style="width:70px">
+      <input id="code-note" type="text" maxlength="120" placeholder="Note (ex. : DM TikTok du 20/10)" style="flex:1;min-width:180px">
+      <button class="act" type="button" id="code-gen">Créer les codes</button>
+    </div>
+    <p class="count" id="code-count"></p>
+    <div id="code-list"><p class="msg">Chargement…</p></div>
+    <h2>Pionniers</h2>
     <p class="count" id="pio-count"></p>
     <div id="pio-list"><p class="msg">Chargement…</p></div>
     <h2>Statuts retirés</h2>
@@ -112,7 +123,7 @@
 
 <script src="/ui/core/api.js?v=20261011lotg"></script>
 <script src="/ui/core/visitor-gate.js?v=20261011lotg"></script>
-<script src="/ui/core/onboarding.js?v=20261011lotg" defer></script>
+<script src="/ui/core/onboarding.js?v=20261015loti" defer></script>
 <script>
 (function () {
   'use strict';
@@ -205,6 +216,43 @@
       }).join('') : '<p class="msg">Aucun statut retiré.</p>';
     }).catch(function (e) { erreur(hist, e); });
   }
+  // Lot I — codes d'invitation Pionnier
+  function lienCode(c) { return location.origin + '/?pionnier=' + encodeURIComponent(c); }
+  function chargerCodes() {
+    var list = document.getElementById('code-list');
+    apiFetch('/admin/pioneer/codes').then(function (d) {
+      document.getElementById('code-count').textContent =
+        (d.libres || 0) + ' code(s) libre(s) · ' + (d.utilises || 0) + ' utilisé(s).';
+      var c = d.codes || [];
+      list.innerHTML = c.length ? c.map(function (x) {
+        var etat = x.utilise_le
+          ? 'Utilisé par ' + esc(x.utilise_par) + ' le ' + esc(date(x.utilise_le)) + (x.rang ? ' · Pionnier n°' + esc(x.rang) : ' · pas encore publié')
+          : 'Libre';
+        return '<div class="card"><div class="row"><div>' +
+          '<span class="who">' + esc(x.code) + '</span>' + (x.note ? ' <span class="meta">— ' + esc(x.note) + '</span>' : '') +
+          '<div class="meta">' + etat + '</div></div>' +
+          (x.utilise_le ? '' : '<button class="act" type="button" data-copier="' + esc(x.code) + '">Copier le lien</button>') +
+          '</div></div>';
+      }).join('') : '<p class="msg">Aucun code pour l\'instant.</p>';
+    }).catch(function (e) { erreur(list, e); });
+  }
+  document.getElementById('code-gen').addEventListener('click', function () {
+    var b = this, n = parseInt(document.getElementById('code-n').value, 10) || 1;
+    b.disabled = true;
+    apiFetch('/admin/pioneer/codes', { method: 'POST', json: { n: Math.max(1, Math.min(200, n)), note: document.getElementById('code-note').value.trim() || null } })
+      .then(function (r) { flash((r.codes || []).length + ' code(s) créé(s).', true); chargerCodes(); },
+            function (e) { flash(detail(e, 'Impossible de créer les codes.'), false); })
+      .then(function () { b.disabled = false; });
+  });
+  document.getElementById('code-list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-copier]');
+    if (!b) return;
+    var lien = lienCode(b.getAttribute('data-copier'));
+    (navigator.clipboard ? navigator.clipboard.writeText(lien) : Promise.reject())
+      .then(function () { flash('Lien copié : ' + lien, true); }, function () { window.prompt('Copie ce lien :', lien); });
+  });
+  chargerCodes();
+
   document.getElementById('pio-list').addEventListener('click', function (e) {
     var b = e.target.closest('[data-revoke]');
     if (!b) return;

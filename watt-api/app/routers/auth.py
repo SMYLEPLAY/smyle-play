@@ -2,6 +2,7 @@ import logging
 import os
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import create_access_token
@@ -92,13 +93,50 @@ async def register(
             detail="Tu dois accepter les CGU et confirmer avoir 15 ans ou plus.",
         )
     existing = await get_user_by_email(db, user.email)
+    if existing is None:
+        # Lot I — une même boîte mail = un seul compte : « tom+2@gmail.com »
+        # ou « t.om@gmail.com » sont refusés si « tom@gmail.com » existe.
+        from app.core.emails_canoniques import email_canonique
+        from app.models.user import User as _User
+
+        canon = email_canonique(user.email)
+        if canon:
+            existing = (await db.execute(
+                select(_User.id).where(_User.email_canonical == canon).limit(1)
+            )).scalar_one_or_none()
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         )
+    # Lot I — code Pionnier : vérifié AVANT de créer le compte (un code faux
+    # ne doit pas laisser un compte créé sans rang à son insu).
+    code_pionnier = None
+    if (user.pioneer_code or "").strip():
+        from app.services.pioneer_codes import normaliser
+
+        code_pionnier = normaliser(user.pioneer_code)
+        libre = (await db.execute(
+            text("SELECT 1 FROM pioneer_codes WHERE code = :c AND used_by IS NULL"),
+            {"c": code_pionnier},
+        )).first()
+        if libre is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Code Pionnier invalide ou déjà utilisé. Vérifie-le, ou "
+                       "inscris-toi sans code et ajoute-le plus tard.",
+            )
     # Capture l'IP d'inscription (anti-abus H0.4 : plafond parrainage par IP).
     new_user = await create_user(db, user, signup_ip=client_ip(request))
+    if code_pionnier:
+        try:
+            from app.services.pioneer_codes import utiliser
+
+            await utiliser(db, new_user.id, code_pionnier)
+            await db.commit()
+        except Exception:  # course : code pris entre-temps → compte sans code
+            await db.rollback()
+            logger.info("[auth] code Pionnier pris pendant l'inscription")
     # Lien de parrainage — best-effort, silencieux. Un code invalide / absent
     # ne casse jamais l'inscription. Aucun crédit versé ici : seulement le lien
     # PENDING, débloqué plus tard à la 1ère action du filleul.
@@ -186,6 +224,13 @@ async def login(
                 "detail": ("Compte suspendu. Tu peux encore télécharger tes "
                            "données ou supprimer ton compte."),
                 "code": "compte_suspendu",
+                # Lot I (DSA art. 17) : le motif est donné à la connexion, pas
+                # seulement par un email qui peut se perdre.
+                "motif": user.ban_reason or None,
+                "suspendu_le": user.banned_at.isoformat() if user.banned_at else None,
+                "recours": ("Tu peux contester cette décision en répondant à "
+                            "l'email reçu ou en écrivant à l'adresse de contact "
+                            "de la page légale (watt.place/legal)."),
                 "jeton_rgpd": create_access_token(
                     subject=str(user.id), token_version=user.token_version or 0,
                     portee=PORTEE_RGPD, minutes=RGPD_JETON_MINUTES,
@@ -197,9 +242,17 @@ async def login(
     # vérifié se connecte normalement — on n'enferme pas dehors les comptes
     # bêta existants.
     if settings.REQUIRE_EMAIL_VERIFIED and not user.email_verified:
-        raise HTTPException(
+        # Lot I : `code` permet au front d'afficher « Renvoyer l'email » au
+        # lieu d'une simple erreur (l'utilisateur croyait son inscription ratée).
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Confirme ton adresse email avant de te connecter.",
+            content={
+                "detail": ("Confirme ton adresse email avant de te connecter : "
+                           "clique sur le lien reçu par email."),
+                "code": "email_non_verifie",
+            },
         )
     token = create_access_token(
         subject=str(user.id), token_version=user.token_version or 0

@@ -457,6 +457,44 @@ async def pioneer_revocations(
     return {"revocations": await list_revocations(db)}
 
 
+# ── Codes Pionnier (Lot I) — le rang se gagne sur invitation ────────────────
+
+class PioneerCodesIn(BaseModel):
+    n: int = Field(default=10, ge=1, le=200)
+    note: str | None = Field(default=None, max_length=120)
+
+
+@router.post("/pioneer/codes")
+async def pioneer_codes_generer(
+    payload: PioneerCodesIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Génère `n` codes Pionnier à usage unique (à envoyer en message privé,
+    par exemple « https://watt.place/?pionnier=WATT-7K3QX9 »)."""
+    from app.services.pioneer_codes import generer
+
+    codes = await generer(db, payload.n, note=payload.note, admin_id=admin.id)
+    await db.commit()
+    return {"codes": codes}
+
+
+@router.get("/pioneer/codes")
+async def pioneer_codes_liste(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Tous les codes, avec qui les a utilisés et le rang obtenu."""
+    from app.services.pioneer_codes import lister
+
+    codes = await lister(db)
+    return {
+        "codes": codes,
+        "libres": sum(1 for c in codes if not c["utilise_le"]),
+        "utilises": sum(1 for c in codes if c["utilise_le"]),
+    }
+
+
 # ── « Prêt à sortir » (Lot 2) — base du futur agent analytique ──────────────
 
 @router.get("/pret-a-sortir")

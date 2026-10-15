@@ -32,6 +32,8 @@ la publication, déjà validée.
     comptes administrateurs (`is_admin`), comptes suspendus (`is_banned`),
     comptes supprimés (email `…@deleted.watt`), et comptes exclus par l'admin
     (`pioneer_excluded`, exclusion PERSISTÉE) ;
+  - code Pionnier (Lot I) : en direct et pour la remise en jeu d'une place,
+    exigé si `PIONEER_CODE_REQUIRED` (défaut) ; jamais au rattrapage ;
   - email vérifié : NON exigé au rattrapage (la vérification d'email est récente
     et non bloquante : les premiers créateurs n'ont pour la plupart jamais
     vérifié, l'exiger les écarterait tous) ; en direct, exigé SEULEMENT si
@@ -86,6 +88,9 @@ _SQL_EXCLUSIONS = (
     "AND u.email NOT LIKE :deleted_pattern"
 )
 
+# Lot I — le compte a utilisé un code Pionnier (app/services/pioneer_codes.py).
+_SQL_A_UN_CODE = "EXISTS (SELECT 1 FROM pioneer_codes pc WHERE pc.used_by = u.id)"
+
 
 def _mask_email(email: str | None) -> str | None:
     """« tom.lecomte@gmail.com » -> « to***@gmail.com » : assez pour reconnaître
@@ -137,14 +142,17 @@ async def is_eligible(db: AsyncSession, user_id: UUID, *, live: bool) -> bool:
     """Le compte peut-il recevoir un rang MAINTENANT ? (ne regarde pas s'il
     reste des places, ni s'il en a déjà un)."""
     need_email = bool(live and settings.REQUIRE_EMAIL_VERIFIED)
+    need_code = bool(live and settings.PIONEER_CODE_REQUIRED)
     row = (await db.execute(
         text(
             "SELECT 1 FROM users u WHERE u.id = :uid AND " + _SQL_EXCLUSIONS + " "
             "AND (NOT :need_email OR u.email_verified) "
+            "AND (NOT :need_code OR " + _SQL_A_UN_CODE + ") "
             "AND EXISTS (SELECT 1 FROM (" + SQL_OEUVRES_EN_LIGNE + ") o "
             "            WHERE o.uid = u.id)"
         ),
-        {"uid": user_id, "need_email": need_email, "deleted_pattern": _DELETED_PATTERN},
+        {"uid": user_id, "need_email": need_email, "need_code": need_code,
+         "deleted_pattern": _DELETED_PATTERN},
     )).first()
     return row is not None
 
@@ -189,6 +197,7 @@ async def retro_candidates(
     exclude_ids: list[UUID] | None = None,
     *,
     need_email: bool = False,
+    need_code: bool = False,
     limit: int | None = None,
 ) -> list[dict]:
     """APERÇU du rattrapage — n'écrit RIEN. Comptes qui recevraient un rang,
@@ -209,6 +218,7 @@ async def retro_candidates(
             "FROM premieres p JOIN users u ON u.id = p.uid "
             "WHERE u.pioneer_rank IS NULL AND " + _SQL_EXCLUSIONS + " "
             "AND (NOT :need_email OR u.email_verified) "
+            "AND (NOT :need_code OR " + _SQL_A_UN_CODE + ") "
             "AND NOT (u.id = ANY(CAST(:exclude AS uuid[]))) "
             "ORDER BY p.premiere ASC, u.id ASC LIMIT :lim"
         ),
@@ -216,6 +226,7 @@ async def retro_candidates(
             "exclude": list(exclude_ids or []),
             "lim": lim,
             "need_email": need_email,
+            "need_code": need_code,
             "deleted_pattern": _DELETED_PATTERN,
         },
     )).all()
@@ -356,7 +367,8 @@ async def revoke_pioneer(
     )).scalar_one()
 
     suivant = await retro_candidates(
-        db, need_email=bool(settings.REQUIRE_EMAIL_VERIFIED), limit=1
+        db, need_email=bool(settings.REQUIRE_EMAIL_VERIFIED),
+        need_code=bool(settings.PIONEER_CODE_REQUIRED), limit=1
     )
     reattribue = None
     if suivant:

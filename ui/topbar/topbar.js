@@ -536,10 +536,12 @@
         href = '/dashboard';
       }
 
-      const followBtn = (n.type === 'follow' && n.actor_id) ? `
+      // Lot I : on suit par le slug (seule route qui existe). Les anciennes
+      // notifications sans slug n'affichent pas le bouton.
+      const _fbSlug = n.type === 'follow' && n.metadata_json && n.metadata_json.follower_slug;
+      const followBtn = _fbSlug ? `
         <button class="stb-notif-followback" type="button"
-                data-actor="${_esc(n.actor_id)}"
-                onclick="window.SmyleTopbar.followBack(event, '${_esc(n.actor_id)}')">
+                data-follow-slug="${_esc(_fbSlug)}">
           + Suivre
         </button>` : '';
 
@@ -617,15 +619,25 @@
     // Badge déjà à 0 depuis l'ouverture — on ne le touche pas
   }
 
-  async function _followBack(ev, actorId) {
+  // Lot I : délégation d'événement (pas de gestionnaire en ligne interpolé).
+  document.addEventListener('click', (ev) => {
+    const b = ev.target && ev.target.closest && ev.target.closest('.stb-notif-followback[data-follow-slug]');
+    if (b) _followBack(ev, b.getAttribute('data-follow-slug'), b);
+  });
+
+  async function _followBack(ev, slug, bouton) {
     if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-    const btn = ev && ev.currentTarget;
+    const btn = bouton || (ev && ev.currentTarget);
     if (btn) { btn.textContent = '...'; btn.disabled = true; }
     try {
-      await apiFetch(`/users/${actorId}/follow`, { method: 'POST' });
-      if (btn) { btn.textContent = 'Suivi ✓'; btn.classList.add('stb-notif-followback-done'); }
+      const r = await apiFetch(`/watt/artists/${encodeURIComponent(slug)}/follow`, { method: 'POST' });
+      if (btn) {
+        btn.textContent = (r && r.alreadyFollowing) ? 'Déjà suivi' : 'Suivi ✓';
+        btn.classList.add('stb-notif-followback-done');
+      }
     } catch (_) {
-      if (btn) { btn.textContent = 'Déjà suivi'; btn.disabled = true; }
+      // Lot I : une erreur n'est plus déguisée en « Déjà suivi ».
+      if (btn) { btn.textContent = 'Réessaie'; btn.disabled = false; }
     }
   }
 

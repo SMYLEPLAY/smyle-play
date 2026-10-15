@@ -144,6 +144,9 @@ class UserCreate(BaseModel):
     # Code de parrainage optionnel saisi à l'inscription (mécanique 1).
     # Best-effort : un code invalide n'empêche pas l'inscription.
     referral_code: str | None = Field(default=None, max_length=16)
+    # Lot I — code Pionnier facultatif (invitation). Invalide → 400, avant
+    # toute écriture : le créateur corrige au lieu de perdre sa place.
+    pioneer_code: str | None = Field(default=None, max_length=20)
     # Inscription encadrée (Phase 3) : l'utilisateur DOIT accepter les CGU et
     # confirmer avoir l'âge minimum. Défaut False → un front qui ne les envoie
     # pas est refusé (validation dans le endpoint register).

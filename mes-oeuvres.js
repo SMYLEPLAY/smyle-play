@@ -149,9 +149,9 @@
 
   function _priceAdvice() {
     return '<div class="mo-advice">Prix libre, entre ' + PRIX_MIN + ' et ' + PRIX_MAX + ' Smyles. Prix conseillés :' +
-      '<ul><li><b>15</b> pour une recette (≈ 1 €)</li>' +
-      '<li><b>30</b> pour une Œuvre son + image (≈ 2 €)</li>' +
-      '<li><b>45 et plus</b> pour une édition rare (≈ 3 €)</li></ul>' +
+      '<ul><li><b>15</b> pour une recette</li>' +
+      '<li><b>30</b> pour une Œuvre son + image</li>' +
+      '<li><b>45 et plus</b> pour une édition rare</li></ul>' +
       'Les prix montent avec la rareté et le travail de création.' +
       '<div class="mo-chips"><button type="button" class="mo-chip" data-chip="15">15</button>' +
       '<button type="button" class="mo-chip" data-chip="30">30</button>' +

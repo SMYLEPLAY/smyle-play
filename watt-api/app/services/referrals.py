@@ -130,6 +130,15 @@ async def maybe_reward_referral(db: AsyncSession, referred_user_id: UUID) -> boo
     if referral is None:
         return False
 
+    # Lot I — anti-fermes : pas de récompense tant que le filleul n'a pas
+    # vérifié son email (le lien reste PENDING ; il est débloqué à sa
+    # prochaine action — publication ou achat — une fois l'email vérifié).
+    verifie = await db.scalar(
+        select(User.email_verified).where(User.id == referred_user_id)
+    )
+    if not verifie:
+        return False
+
     # Anti-abus : plafond glissant 24h de filleuls récompensés pour ce parrain.
     # Au-delà, on ne verse pas (le lien reste PENDING). Borne le farming.
     since = datetime.now(timezone.utc) - timedelta(hours=24)

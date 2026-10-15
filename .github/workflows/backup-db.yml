@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Backup quotidien de la base Postgres (Railway) vers Cloudflare R2.
+# Backup de la base Postgres (Railway) vers Cloudflare R2, toutes les 6 h.
 #
 # Pourquoi : les backups natifs Railway exigent le plan Pro et le PITR n'est
 # pas restaurable hors Pro (constat 2026-06-11). Ce workflow est donc le
@@ -14,7 +14,7 @@
 #   R2_ACCESS_KEY_ID     → token R2 scopé sur le bucket backups uniquement
 #   R2_SECRET_ACCESS_KEY → idem
 #
-# Rotation : 14 jours glissants (≈ 14 dumps), purge automatique en fin de run.
+# Rotation : 14 jours glissants (≈ 56 dumps, 4 par jour), purge automatique en fin de run.
 # Restauration (jour J, guidée) :
 #   gunzip -c smyleplay_<date>.sql.gz | psql "<DATABASE_URL d'une base neuve>"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -22,7 +22,9 @@ name: Backup DB quotidien (pg_dump vers R2)
 
 on:
   schedule:
-    - cron: "0 4 * * *" # 04:00 UTC chaque nuit (06:00 Paris été)
+    # Lot I : toutes les 6 h (04:00, 10:00, 16:00, 22:00 UTC). Au lancement,
+    # une perte de base coûterait au plus 6 h d'activité au lieu de 24 h.
+    - cron: "0 4,10,16,22 * * *"
   workflow_dispatch: {} # bouton "Run workflow" pour test manuel
 
 jobs:

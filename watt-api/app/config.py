@@ -248,6 +248,11 @@ class Settings(BaseSettings):
     # true : attribution en direct à la première publication, compteur
     # « places restantes » public, et taux Pionnier appliqué.
     FEATURE_PIONEER: bool = False
+    # Lot I — le rang Pionnier EN DIRECT exige un code d'invitation à usage
+    # unique (app/services/pioneer_codes.py). true (défaut) : lancement « sur
+    # invitation » ; false : retour au « premier qui publie ». Le rattrapage
+    # admin des créateurs bêta n'exige jamais de code.
+    PIONEER_CODE_REQUIRED: bool = True
 
     # ── Brique 5 — achat de Smyles par carte (Stripe Checkout), Lot 3 ────
     # Clés UNIQUEMENT par variables d'environnement (Railway) — jamais dans le

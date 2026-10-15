@@ -168,6 +168,23 @@ async def _copier_vers(cle: str, nouvelle: str, bucket: str) -> None:
 
 # ── Opération de la file ────────────────────────────────────────────────────
 
+async def _etat_sons(db: AsyncSession, cle: str, *, verrou: bool) -> str | None:
+    """None si les sons de `cle` sont à protéger ; sinon la raison de ne rien
+    faire. `verrou=True` : lignes verrouillées jusqu'à la fin de la transaction."""
+    sql = "SELECT id, apercu_key, taken_down_at FROM tracks WHERE r2_key = :k"
+    if verrou:
+        sql += " FOR UPDATE"
+    sons = (await db.execute(text(sql), {"k": cle})).all()
+    if not sons:
+        return "aucun_son"
+    if all(s.apercu_key for s in sons):
+        return "deja_protege"
+    if any(s.taken_down_at is not None for s in sons):
+        # Retiré par la modération : son fichier suit le circuit du retrait.
+        return "retire"
+    return None
+
+
 async def proteger_audio(db: AsyncSession, cle: str) -> str:
     """Protège le fichier `cle` (original d'un ou plusieurs sons). Écrit en
     base dans la transaction de l'appelant (qui commit). Lève une exception
@@ -176,16 +193,14 @@ async def proteger_audio(db: AsyncSession, cle: str) -> str:
     from app.services.fichiers_a_traiter import programmer
     from app.services.r2 import envoyer_objet
 
-    sons = (await db.execute(text(
-        "SELECT id, apercu_key, taken_down_at FROM tracks WHERE r2_key = :k FOR UPDATE"),
-        {"k": cle})).all()
-    if not sons:
-        return "aucun_son"
-    if all(s.apercu_key for s in sons):
-        return "deja_protege"
-    if any(s.taken_down_at is not None for s in sons):
-        # Retiré par la modération : son fichier suit le circuit du retrait.
-        return "retire"
+    # Lot I — AUCUN verrou sur les sons pendant le long travail (lecture R2,
+    # ffmpeg jusqu'à plusieurs minutes, envois) : avant, la ligne restait
+    # verrouillée tout ce temps et bloquait les écoutes de ce son. On vérifie
+    # l'état sans verrou, on prépare les fichiers, puis on verrouille juste
+    # pour la mise à jour finale, en revérifiant que rien n'a changé.
+    etat = await _etat_sons(db, cle, verrou=False)
+    if etat:
+        return etat
 
     bucket = settings.R2_BUCKET
     taille = await _taille(cle, bucket)
@@ -204,6 +219,11 @@ async def proteger_audio(db: AsyncSession, cle: str) -> str:
     if await _taille(cle_hd, bucket) != taille:
         raise ConversionImpossible("copie de l'original incomplète")
 
+    etat = await _etat_sons(db, cle, verrou=True)
+    if etat:
+        # Changement pendant la conversion (retrait, protection parallèle…) :
+        # les copies faites restent orphelines (quelques Mo), rien n'est cassé.
+        return etat
     await db.execute(text(
         "UPDATE tracks SET r2_key = :hd, apercu_key = :ap, audio_url = :url "
         "WHERE r2_key = :k"),
@@ -211,8 +231,8 @@ async def proteger_audio(db: AsyncSession, cle: str) -> str:
     # L'ancienne adresse de l'original a été publique : supprimée plus tard
     # (après la sauvegarde des médias), seulement si plus rien ne la désigne.
     await programmer(db, [cle], "supprimer", motif=MOTIF_ANCIEN_ORIGINAL)
-    logger.info("[audio] son protégé (%s sons, %s Ko → %s Ko d'écoute)",
-                len(sons), taille // 1024, len(apercu) // 1024)
+    logger.info("[audio] son protégé (%s Ko → %s Ko d'écoute)",
+                taille // 1024, len(apercu) // 1024)
     return "protege"
 
 

@@ -291,13 +291,14 @@ def _derive_artist_slug(user: User) -> str:
     Slug public d'un artiste.
 
     - User-univers (email '<slug>@smyleplay.local')  → slug = <slug>
-    - Autre user                                      → slug = slugify(artist_name) ou email local-part
+    - Autre user                                      → slug = slugify(artist_name)
+    - Sans nom d'artiste (Lot I, RGPD)                → `membre-<8 car. de l'id>`.
+      Avant, c'était le début de son email (« jean.dupont ») : fuite de
+      données personnelles sur les pages publiques.
     """
-    if user.email and user.email.endswith("@smyleplay.local"):
-        return user.email.split("@", 1)[0]
-    if user.artist_name:
-        return _slugify(user.artist_name)
-    return _slugify(user.email.split("@", 1)[0] if user.email else "artiste")
+    from app.core.slug import derive_artist_slug
+
+    return derive_artist_slug(user)
 
 
 def _adn_public_teaser(adn) -> dict:
@@ -854,6 +855,9 @@ async def build_artist_detail_payload(
         select(User)
         .join(UserFollow, UserFollow.follower_id == User.id)
         .where(UserFollow.followee_id == target.id)
+        # Lot I (RGPD) : un profil privé n'apparaît pas dans le réseau public
+        # d'un autre (même règle que routers/follows.py).
+        .where(User.profile_public.is_(True))
         .order_by(desc(UserFollow.created_at))
         .limit(6)
     )
@@ -862,7 +866,8 @@ async def build_artist_detail_payload(
         {
             "id":         str(u.id),
             "slug":       _derive_artist_slug(u),
-            "artistName": u.artist_name or u.email.split("@", 1)[0] if u.email else "",
+            # Lot I : jamais le début de l'email (RGPD) — « Membre » à défaut.
+            "artistName": u.artist_name or "Membre",
             "brandColor": u.brand_color or "",
         }
         for u in sample_users
@@ -2195,6 +2200,36 @@ def _audio_duration_seconds(data: bytes) -> float | None:
     jamais pour ça. pydub s'appuie sur ffmpeg-headless (auto-installé par
     nixpacks via la dep pydub, cf. nixpacks.toml).
     """
+    if not data:
+        return None
+    # Lot I — ffprobe lit la durée SANS décoder le son. Avant, pydub décodait
+    # tout le fichier en mémoire (≈ 0,5 Go pour un MP3 de 50 Mo) : quelques
+    # envois simultanés pouvaient faire tomber le serveur. pydub ne sert plus
+    # que de secours si ffprobe est absent (développement).
+    import shutil
+
+    ffprobe = shutil.which("ffprobe")
+    if ffprobe:
+        import os
+        import subprocess  # noqa: S404 — arguments fixes, aucun shell
+        import tempfile
+
+        try:
+            with tempfile.NamedTemporaryFile(prefix="watt-duree-", delete=False) as f:
+                f.write(data)
+                chemin = f.name
+            try:
+                out = subprocess.run(  # noqa: S603
+                    [ffprobe, "-v", "error", "-show_entries", "format=duration",
+                     "-of", "default=noprint_wrappers=1:nokey=1", chemin],
+                    capture_output=True, timeout=30, check=True,
+                ).stdout.decode().strip()
+            finally:
+                os.unlink(chemin)
+            duree = float(out)
+            return round(duree, 2) if duree > 0 else None
+        except Exception:
+            return None
     try:
         import io
 

@@ -82,7 +82,8 @@ async def _make_user(balance: int = 1000, name: str = "AdnOfferUser") -> tuple:
             text("UPDATE users SET credits_balance = :b, "
                  # Seed cohérent A1.4 : buckets alignés sur le solde (tout en achetés).
                  "smyles_achetes = :b, smyles_gagnes = 0, smyles_promo = 0, "
-                 "artist_name = :n WHERE id = :u"),
+                 # Lot I : parrainage versé seulement aux emails vérifiés.
+                 "artist_name = :n, email_verified = TRUE WHERE id = :u"),
             {"b": balance, "n": name, "u": uid},
         )
         await db.commit()

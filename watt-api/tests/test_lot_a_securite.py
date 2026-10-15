@@ -747,6 +747,9 @@ async def test_parrainage_verse_une_seule_fois():
 
     parrain, filleul = await _user(), await _user()
     async with SessionLocal() as db:
+        # Lot I : parrainage versé seulement aux emails vérifiés.
+        await db.execute(text("UPDATE users SET email_verified = TRUE WHERE id = :u"),
+                         {"u": filleul["id"]})
         db.add(Referral(referrer_id=parrain["id"], referred_id=filleul["id"],
                         status=ReferralStatus.PENDING, reward_credits=10))
         await db.commit()
