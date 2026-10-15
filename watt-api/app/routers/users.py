@@ -168,6 +168,39 @@ async def mark_onboarding_done(
     return {"onboarding_done_at": current_user.onboarding_done_at.isoformat()}
 
 
+class DroitsIAIn(BaseModel):
+    confirme: bool
+
+
+@router.get("/me/droits-ia")
+async def lire_droits_ia(current_user: User = Depends(get_current_user)):
+    """Lot I — le créateur a-t-il confirmé détenir les droits commerciaux de
+    ses contenus générés par IA ?"""
+    d = current_user.ia_rights_confirmed_at
+    return {"confirme": d is not None, "le": d.isoformat() if d else None}
+
+
+@router.post("/me/droits-ia")
+async def confirmer_droits_ia(
+    payload: DroitsIAIn,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lot I — preuve datée : « je détiens les droits commerciaux de ce que je
+    publie (abonnement payant de l'outil d'IA utilisé) ». Demandée une fois,
+    avant la première publication. La première date est conservée."""
+    from datetime import datetime, timezone
+
+    if not payload.confirme:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail="La confirmation est nécessaire pour publier.")
+    if current_user.ia_rights_confirmed_at is None:
+        current_user.ia_rights_confirmed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(current_user)
+    return {"confirme": True, "le": current_user.ia_rights_confirmed_at.isoformat()}
+
+
 @router.get("/me/listing-slots")
 async def read_my_listing_slots(
     current_user: User = Depends(get_current_user),

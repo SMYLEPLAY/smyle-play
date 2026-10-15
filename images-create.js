@@ -422,6 +422,13 @@
     var imgTags = selectedImageTags();
     if (imgTags.length) fd.append('image_tags', imgTags.join(','));
 
+    /* Lot I — droits commerciaux confirmés une fois, avant la 1re publication. */
+    var _droits = (window.SmyleDroitsIA && window.SmyleDroitsIA.ensure) ? window.SmyleDroitsIA.ensure() : Promise.resolve(true);
+    _droits.then(function (ok) {
+      if (!ok) { return; }
+      envoyer();
+    });
+    function envoyer() {
     setBusy(true);
     /* apiFetch ajoute le Bearer JWT ; body FormData => pas de Content-Type
        forcé (le navigateur pose le boundary multipart lui-même). */
@@ -513,6 +520,7 @@
         alert("Échec de l'enregistrement : " + msg);
       })
       .finally(function () { setBusy(false); });
+    }
   }
 
   /* ── Câblage (idempotent : init peut courir après injection tardive) ──── */

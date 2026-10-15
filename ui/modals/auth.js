@@ -61,7 +61,7 @@ async function _fetchMeAndSync() {
   }
 }
 
-async function doSignup(email, password, { onAttempt, referralCode, acceptTerms, ageConfirmed } = {}) {
+async function doSignup(email, password, { onAttempt, referralCode, pioneerCode, acceptTerms, ageConfirmed } = {}) {
   try {
     // Signup minimal : email + password (+ code de parrainage optionnel).
     // Le profil artiste (artist_name, bio, slug) se crée via le WATT board
@@ -74,6 +74,8 @@ async function doSignup(email, password, { onAttempt, referralCode, acceptTerms,
     };
     const ref = (referralCode || '').trim();
     if (ref) payload.referral_code = ref;   // mécanique 1 — best-effort côté API
+    const pio = (pioneerCode || '').trim();
+    if (pio) payload.pioneer_code = pio;    // Lot I — invalide → 400 explicite
     await apiFetch('/auth/register', {
       method: 'POST',
       json: payload,
@@ -98,6 +100,8 @@ async function doSignup(email, password, { onAttempt, referralCode, acceptTerms,
     }
     return { ok: false, msg: String(msg) };
   }
+  // Le code a servi à l'inscription : on l'oublie (pas de second essai).
+  if ((pioneerCode || '').trim()) _codePionnierOublier();
   // Auto-login après register
   return doLogin(email, password);
 }
@@ -129,7 +133,13 @@ async function doLogin(email, password, { onAttempt } = {}) {
       msg = e.message || 'Serveur injoignable — réessaie dans un instant.';
     } else if (e && e.status === 403 && e.body && e.body.jeton_rgpd) {
       // Lot G — compte suspendu : jeton limité à l'export / la suppression.
-      return { ok: false, msg: String(e.body.detail || 'Compte suspendu.'), jetonRgpd: e.body.jeton_rgpd };
+      let txt = String(e.body.detail || 'Compte suspendu.');
+      if (e.body.motif) txt += ' Motif : ' + String(e.body.motif) + '.';
+      if (e.body.recours) txt += ' ' + String(e.body.recours);
+      return { ok: false, msg: txt, jetonRgpd: e.body.jeton_rgpd };
+    } else if (e && e.status === 403 && e.body && e.body.code === 'email_non_verifie') {
+      // Lot I — email pas encore confirmé : on propose de renvoyer le lien.
+      return { ok: false, msg: String(e.body.detail), emailNonVerifie: email };
     } else if (e && e.status === 401) {
       msg = 'Email ou mot de passe incorrect.';
     } else if (e && e.status === 429) {
@@ -424,7 +434,69 @@ async function submitLogin() {
   const result = await doLogin(email, password, { onAttempt });
   if (result.ok) _afterAuthSuccess();
   else if (result.jetonRgpd) _panneauRgpd(msg, result.msg, result.jetonRgpd, password);
+  else if (result.emailNonVerifie) _panneauEmailNonVerifie(msg, result.msg, result.emailNonVerifie);
   else msg.textContent = result.msg;
+}
+
+// Lot I — connexion refusée tant que l'email n'est pas confirmé : message
+// clair + bouton « Renvoyer l'email » (avant : une simple erreur, et le
+// nouvel inscrit croyait que son inscription avait échoué).
+function _panneauEmailNonVerifie(msgEl, texte, email) {
+  msgEl.textContent = '';
+  const box = document.createElement('div');
+  box.style.cssText = 'margin-top:8px;line-height:1.5';
+  const t = document.createElement('p');
+  t.textContent = texte + ' Pense à regarder dans tes spams.';
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'modal-submit'; b.textContent = "Renvoyer l'email";
+  box.append(t, b);
+  msgEl.appendChild(box);
+  b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      await apiFetch('/auth/resend-verification', { method: 'POST', json: { email }, auth: false });
+      t.textContent = "C'est reparti : un nouveau lien vient d'être envoyé à " + email +
+        '. Clique dessus, puis reconnecte-toi.';
+      b.remove();
+    } catch (e) {
+      b.disabled = false;
+      t.textContent = (e && e.status === 429)
+        ? 'Trop de demandes : attends quelques minutes avant de réessayer.'
+        : 'Envoi impossible pour le moment. Réessaie dans un instant.';
+    }
+  });
+}
+
+// ── Lot I : code Pionnier (invitation) ──────────────────────────────────────
+// Lien reçu en message privé : https://watt.place/?pionnier=WATT-XXXXXX.
+// Visiteur → le code pré-remplit l'inscription. Déjà connecté → il est
+// utilisé tout de suite. Gardé le temps de la visite (sessionStorage).
+const _CLE_CODE_PIONNIER = 'watt_code_pionnier';
+function _codePionnierLire() {
+  try { return sessionStorage.getItem(_CLE_CODE_PIONNIER) || ''; } catch (_) { return ''; }
+}
+function _codePionnierGarder(c) {
+  try { sessionStorage.setItem(_CLE_CODE_PIONNIER, c); } catch (_) { /* noop */ }
+}
+function _codePionnierOublier() {
+  try { sessionStorage.removeItem(_CLE_CODE_PIONNIER); } catch (_) { /* noop */ }
+}
+async function _codePionnierUtiliser() {
+  const code = _codePionnierLire();
+  if (!code || typeof getAuthToken !== 'function' || !getAuthToken()) return;
+  const toast = (m, type) => { if (typeof window.smyleToast === 'function') window.smyleToast(m, { type, duration: 6000 }); };
+  try {
+    const r = await apiFetch('/pioneer/code', { method: 'POST', json: { code } });
+    _codePionnierOublier();
+    toast(r && r.rang
+      ? `Bienvenue Pionnier n°${r.rang} ! Ta commission est de 10 % à vie.`
+      : 'Code Pionnier enregistré : ta place sera confirmée à ta première publication.', 'success');
+  } catch (e) {
+    if (e && (e.status === 400 || e.status === 409)) {
+      _codePionnierOublier();
+      toast(String((e.body && e.body.detail) || 'Code Pionnier refusé.'), 'error');
+    }
+  }
 }
 
 // Lot G — compte suspendu : il garde le droit d'exporter ou de supprimer ses
@@ -491,6 +563,7 @@ function _afterAuthSuccess() {
   }
   if (window.SmyleGate) window.SmyleGate.refresh();
   if (window.SmyleOnboarding) window.SmyleOnboarding.check();
+  _codePionnierUtiliser();
 }
 
 // Consomme ?return=/chemin après un login/signup réussi : l'utilisateur
@@ -525,6 +598,8 @@ async function submitSignup() {
   const password = document.getElementById('signup-password').value;
   const refEl    = document.getElementById('signup-referral');
   const referralCode = refEl ? refEl.value.trim() : '';
+  const pioEl    = document.getElementById('signup-pioneer');
+  const pioneerCode = pioEl ? pioEl.value.trim() : '';
   const termsEl  = document.getElementById('signup-terms');
   const ageEl    = document.getElementById('signup-age');
   const acceptTerms  = !!(termsEl && termsEl.checked);
@@ -543,7 +618,7 @@ async function submitSignup() {
   const onAttempt = ({ willRetry }) => {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
-  const result = await doSignup(email, password, { onAttempt, referralCode, acceptTerms, ageConfirmed });
+  const result = await doSignup(email, password, { onAttempt, referralCode, pioneerCode, acceptTerms, ageConfirmed });
   if (result.ok) _afterAuthSuccess();
   else msg.textContent = result.msg;
 }
@@ -936,14 +1011,23 @@ async function _bootstrapAuthFromToken() {
 // (défini plus haut) : retour direct vers la page protégée d'origine.
 function _maybeAutoOpenFromQuery() {
   try {
-    // Si déjà connecté, on ne ré-ouvre rien.
-    if (typeof getAuthToken === 'function' && getAuthToken()) return;
     const params = new URLSearchParams(location.search || '');
+    // Lot I — lien d'invitation Pionnier : ?pionnier=CODE.
+    const pio = (params.get('pionnier') || '').trim().slice(0, 20);
+    if (pio) {
+      _codePionnierGarder(pio.toUpperCase());
+      params.delete('pionnier');
+      const q = params.toString();
+      history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+    }
+    // Si déjà connecté, on ne ré-ouvre rien (le code est utilisé tout de suite).
+    if (typeof getAuthToken === 'function' && getAuthToken()) { _codePionnierUtiliser(); return; }
+    const codePio = _codePionnierLire();
     // Lien de parrainage : ?ref=CODE → on ouvre directement le signup et on
     // pré-remplit le champ code (mécanique 1). Le ref prime sur ?auth=.
     const ref = (params.get('ref') || '').trim();
     let tab = params.get('auth');
-    if (ref) tab = 'signup';
+    if (ref || pio) tab = 'signup';
     if (tab !== 'login' && tab !== 'signup') return;
     // Arrivée depuis une autre page (barrière visiteur) : chemin de retour.
     const back = window.SmyleGate ? window.SmyleGate.safeReturn(params.get('return') || '') : null;
@@ -954,6 +1038,10 @@ function _maybeAutoOpenFromQuery() {
       if (ref) {
         const refEl = document.getElementById('signup-referral');
         if (refEl) refEl.value = ref.toUpperCase();
+      }
+      if (codePio) {
+        const pioEl = document.getElementById('signup-pioneer');
+        if (pioEl) pioEl.value = codePio;
       }
     }, 50);
   } catch (_) { /* noop */ }

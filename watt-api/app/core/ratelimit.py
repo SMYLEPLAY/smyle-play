@@ -65,6 +65,7 @@ LIMIT_CSP_REPORT = "30/minute"
 # Lot G — actions lourdes d'un compte connecté. Un humain ne les atteint
 # jamais ; un script qui les martèlerait chargerait la base.
 LIMIT_OEUVRES_ACTIONS = "30/minute;300/hour"   # « Mes Œuvres » : actions groupées
+LIMIT_CODE_PIONNIER = "10/hour;30/day"       # Lot I : essais de codes Pionnier
 LIMIT_EXPORT = "5/hour;20/day"                 # export RGPD (JSON complet)
 LIMIT_SUPPRESSION_COMPTE = "5/hour"            # suppression de compte (mot de passe)
 

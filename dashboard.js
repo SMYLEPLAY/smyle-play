@@ -2078,6 +2078,11 @@ async function uploadTrack() {
   const name = document.getElementById('dashTrackName').value.trim();
   if (!name) { dashToast('⚠ Le titre est obligatoire.'); return; }
   if (!_pendingFile) { dashToast('⚠ Aucun fichier sélectionné.'); return; }
+  // Lot I — droits commerciaux confirmés une fois, avant la 1re publication.
+  if (window.SmyleDroitsIA && !(await window.SmyleDroitsIA.ensure())) {
+    dashToast('Publication annulée : la confirmation des droits est nécessaire.');
+    return;
+  }
 
   // C2 — plus de modes : validation précoce du seul flag beat (plus bas).
 

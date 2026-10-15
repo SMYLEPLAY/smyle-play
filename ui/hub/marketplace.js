@@ -735,7 +735,9 @@
               `</button>`
             : `<button type="button" class="mp-socle-pont" title="Voir l'œuvre complète (son + image)">` +
                 `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
-                `<span class="mp-socle-pont-lbl">💠 Œuvre${pontTotal != null ? ' · ' + pontTotal + ' S' : ''}</span>` +
+                // Lot I : plus de prix ici (c'était la SOMME des deux faces, sans
+                // la remise choisie par le créateur). Le vrai prix est sur la fiche.
+                `<span class="mp-socle-pont-lbl">💠 Œuvre complète</span>` +
                 `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
               `</button>`)
         : '';

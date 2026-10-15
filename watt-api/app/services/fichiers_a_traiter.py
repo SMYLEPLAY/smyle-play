@@ -171,6 +171,9 @@ async def _executer(db: AsyncSession, cle: str, action: str) -> str:
     raise ValueError(action)
 
 
+MAX_TENTATIVES_PROTECTION = 5
+
+
 async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_PASSAGE) -> dict:
     """Traite les opérations en attente (toutes, ou celles de `ids`), dans
     l'ordre d'arrivée. Ne lève jamais. Renvoie un résumé."""
@@ -187,8 +190,12 @@ async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_P
                 # qu'après quelques jours (sauvegarde des médias faite).
                 "AND NOT (action = 'supprimer' AND coalesce(motif, '') = :m_ancien "
                 "         AND cree_le > now() - make_interval(days => :j)) "
+                # Lot I — un son qui ne se convertit pas n'est plus rejoué sans
+                # fin (à chaque démarrage et chaque jour) : 5 essais, puis il
+                # reste visible en attente avec sa dernière erreur.
+                "AND NOT (action = 'proteger_audio' AND tentatives >= :max_t) "
                 "ORDER BY cree_le LIMIT :l"),
-                {"ids": list(ids or []), "l": limite,
+                {"ids": list(ids or []), "l": limite, "max_t": MAX_TENTATIVES_PROTECTION,
                  "m_ancien": MOTIF_ANCIEN_ORIGINAL, "j": DELAI_SUPPRESSION_ANCIEN_JOURS})).all()
             for ligne in lignes:
                 # La ligne a pu être annulée entre-temps (restauration).
@@ -228,19 +235,33 @@ async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_P
 
 # ── Clés concernées par un retrait de la modération ─────────────────────────
 
+async def _cle_partagee(db: AsyncSession, cle: str, track_id) -> bool:
+    """La pochette `cle` sert-elle ailleurs qu'au son `track_id` ?"""
+    motif = "%" + cle.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return (await db.execute(text(
+        "SELECT 1 WHERE EXISTS (SELECT 1 FROM tracks WHERE id <> :t AND cover_url LIKE :m) "
+        "OR EXISTS (SELECT 1 FROM prompts WHERE preview_r2_key = :k OR image_r2_key = :k) "
+        "OR EXISTS (SELECT 1 FROM prompt_gallery_images WHERE preview_r2_key = :k OR image_r2_key = :k) "
+        "OR EXISTS (SELECT 1 FROM users WHERE avatar_url LIKE :m)"),
+        {"t": track_id, "m": motif, "k": cle})).first() is not None
+
 async def cles_du_contenu(db: AsyncSession, ttype: str, tid) -> list[str]:
-    """Fichiers propres au contenu retiré : audio d'un son, original + aperçu
-    (+ galerie) d'une image, extraits d'une voix. Les pochettes et avatars
-    (partagés entre plusieurs lignes) ne sont pas déplacés."""
+    """Fichiers propres au contenu retiré : audio d'un son (+ sa pochette si
+    elle ne sert à rien d'autre, Lot I), original + aperçu (+ galerie) d'une
+    image, extraits d'une voix. Une pochette PARTAGÉE (avec une autre ligne,
+    une image du catalogue ou un avatar) n'est pas déplacée."""
     from app.services.media_ownership import media_url_key
 
     cles: list[str] = []
     if ttype == "track":
         r = (await db.execute(text(
-            "SELECT r2_key, audio_url FROM tracks WHERE id = :i"), {"i": tid})).first()
+            "SELECT r2_key, audio_url, cover_url FROM tracks WHERE id = :i"), {"i": tid})).first()
         if r:
             cles.append(r.r2_key or "")
             cles.append(media_url_key(r.audio_url)[1] or "")
+            cle_cover = media_url_key(r.cover_url)[1]
+            if cle_cover and not await _cle_partagee(db, cle_cover, tid):
+                cles.append(cle_cover)
     elif ttype in ("image", "prompt"):
         r = (await db.execute(text(
             "SELECT image_r2_key, preview_r2_key FROM prompts WHERE id = :i"), {"i": tid})).first()

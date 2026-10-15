@@ -346,6 +346,7 @@ async def delete_account(db: AsyncSession, user: User) -> list:
     # 4. Profil anonymisé.
     await db.refresh(user)
     user.email = f"deleted-{uid}{DELETED_EMAIL_SUFFIX}"
+    user.email_canonical = None  # Lot I : plus aucune trace de l'adresse
     user.password_hash = "!"  # ne peut matcher aucun hash bcrypt valide
     user.token_version = int(user.token_version or 0) + 1
     user.artist_name = "Artiste supprimé"

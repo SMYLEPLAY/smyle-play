@@ -37,6 +37,15 @@ from app.services.pioneer import (
 )
 from app.services.users import create_user
 
+
+@pytest.fixture(autouse=True)
+def _sans_code_pionnier(monkeypatch):
+    """Lot I — ces tests couvrent la règle « premier qui publie » ; le code
+    d'invitation a ses propres tests (test_lot_i_lancement.py)."""
+    from app.config import settings as _s
+
+    monkeypatch.setattr(_s, "PIONEER_CODE_REQUIRED", False)
+
 # Date de première œuvre très ancienne : garantit que le candidat du test est
 # le PREMIER de la file de réattribution, quel que soit l'état de la base.
 _TRES_ANCIEN = datetime(2000, 1, 1, tzinfo=timezone.utc)
