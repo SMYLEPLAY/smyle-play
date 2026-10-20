@@ -316,6 +316,23 @@ async def test_droits_ia(client, test_user, auth_headers):
     assert r.json()["le"] == premiere  # la première date est conservée
 
 
+async def test_droits_ia_confirmation_ancienne_redemandee(client, test_user, auth_headers):
+    """Une confirmation donnée avant la règle « ce qui est en vente est
+    réutilisable » ne compte plus : la question est reposée."""
+    async with SessionLocal() as db:
+        await db.execute(text("UPDATE users SET ia_rights_confirmed_at = "
+                              "'2026-10-16T10:00:00+00' WHERE id = :u"),
+                         {"u": test_user["id"]})
+        await db.commit()
+    r = await client.get("/users/me/droits-ia", headers=auth_headers)
+    assert r.json() == {"confirme": False, "le": None}
+    r = await client.post("/users/me/droits-ia", headers=auth_headers, json={"confirme": True})
+    assert r.json()["confirme"] is True
+    assert r.json()["le"] >= "2026-10-20"
+    r = await client.get("/users/me/droits-ia", headers=auth_headers)
+    assert r.json()["confirme"] is True
+
+
 # ── Retrait : pochette ──────────────────────────────────────────────────────
 
 async def test_retrait_inclut_la_pochette_et_l_execution_garde_les_partagees():
