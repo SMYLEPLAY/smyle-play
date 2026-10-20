@@ -36,6 +36,15 @@ from app.services.pioneer import (
 from app.services.users import create_user
 
 
+@pytest.fixture(autouse=True)
+def _sans_code_pionnier(monkeypatch):
+    """Lot I — ces tests couvrent la règle « premier qui publie » ; le code
+    d'invitation a ses propres tests (test_lot_i_lancement.py)."""
+    from app.config import settings as _s
+
+    monkeypatch.setattr(_s, "PIONEER_CODE_REQUIRED", False)
+
+
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
 async def _user(**flags) -> uuid.UUID:

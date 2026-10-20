@@ -254,6 +254,9 @@ async def test_son_valide_et_son_deguise(client, auth_headers, faux_r2):
 
 async def test_voix_trop_lourde(client, auth_headers, faux_r2, monkeypatch):
     monkeypatch.setattr(settings, "UPLOAD_MAX_VOICE_MB", 1)
+    # Lot I bis : l'envoi de voix suit l'interrupteur « voix » (masqué au
+    # lancement) ; on le rallume ici pour tester la limite de taille.
+    monkeypatch.setattr(settings, "SHOW_VOIX", True)
     r = await client.post(
         "/watt/upload-voice",
         files={"file": ("v.mp3", MP3_ID3 + b"\x00" * (1024 * 1024), "audio/mpeg")},
@@ -414,3 +417,15 @@ async def test_galerie_lot_valide(client, auth_headers, image_possedee, faux_r2_
     )
     # Le type stocké vient du contenu, pas du nom ni du Content-Type annoncés.
     assert originaux == ["image/jpeg", "image/png"]
+
+
+async def test_voix_masquee_pas_d_envoi(client, auth_headers, faux_r2, monkeypatch):
+    """Lot I bis : voix masquées au lancement → l'envoi de fichiers voix est fermé."""
+    monkeypatch.setattr(settings, "MODE_LANCEMENT", True)
+    monkeypatch.setattr(settings, "SHOW_VOIX", False)
+    r = await client.post(
+        "/watt/upload-voice",
+        files={"file": ("v.mp3", MP3_ID3 + b"\x00" * 2048, "audio/mpeg")},
+        headers=auth_headers,
+    )
+    assert r.status_code == 404

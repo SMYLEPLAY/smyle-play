@@ -40,7 +40,7 @@
   function _baseSteps() {
     return [
       { icon: '⚡', t: 'Les Smyles',
-        d: 'Les Smyles sont la monnaie de WATT. <b>Tu en as reçu 30, offerts</b>, pour commencer. Ils servent à débloquer ce qui te plaît.' },
+        d: 'Les Smyles sont les crédits de WATT. <b>Tu en as reçu 30, offerts</b>, pour commencer. Ils servent à débloquer ce qui te plaît.' },
       { icon: '🎧🖼️', t: 'Une Œuvre = un son + une image',
         d: 'Sur WATT, chaque Œuvre réunit un son et son image. Tu peux écouter librement, et débloquer le son, l\'image, ou l\'Œuvre entière.' },
       { icon: '🔓', t: 'Débloquer une recette',
@@ -52,7 +52,7 @@
     ];
   }
   var _pionnierStep = { icon: '🏅', t: 'Devenir Pionnier',
-    d: 'Les premiers créateurs qui publient une Œuvre deviennent Pionniers : la commission de WATT sur leurs ventes reste plafonnée à 10 %, à vie.' };
+    d: 'Les créateurs invités avec un code Pionnier deviennent Pionniers en publiant leur première Œuvre : la commission de WATT sur leurs ventes reste plafonnée à 10 %, à vie.' };
 
   function _checkPionnier() {
     if (_pionnier !== null || typeof window.apiFetch !== 'function') return Promise.resolve(_pionnier);

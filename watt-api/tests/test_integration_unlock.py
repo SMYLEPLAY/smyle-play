@@ -273,7 +273,7 @@ async def _setup_owned_playlist_adn(
     from app.models.owned_playlist_adn import OwnedPlaylistAdn
     from app.models.playlist import Playlist, PlaylistTrack
     async with SessionLocal() as db:
-        pl = Playlist(owner_id=owner_id, title="PerkPlaylist")
+        pl = Playlist(owner_id=owner_id, title="PerkPlaylist", visibility="public")
         db.add(pl)
         await db.flush()
         db.add(PlaylistTrack(playlist_id=pl.id, track_id=track_id, position=0))

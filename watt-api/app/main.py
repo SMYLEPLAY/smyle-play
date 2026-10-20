@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # watt-api/alembic/ (source de vérité) ; si l'ini est introuvable (paquet
 # installé sans les migrations), on retombe sur la constante ci-dessous — à
 # mettre à jour à chaque nouvelle migration.
-_ALEMBIC_HEAD_FALLBACK = "0106_remise_oeuvre"
+_ALEMBIC_HEAD_FALLBACK = "0108_reclasse_achetes_promo"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 

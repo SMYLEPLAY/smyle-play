@@ -133,7 +133,10 @@
         '<span class="reason ' + esc(r.reason) + '">⚑ ' + esc(reason) + '</span>' +
         '<span class="status ' + esc(r.status) + '">' + esc(r.status) + '</span>' +
       '</div>' +
-      '<div class="target">Cible : <b>' + esc(type) + '</b> · <span class="meta">' + esc(r.target_id) + '</span></div>' +
+      '<div class="target">Cible : <b>' + esc(type) + '</b>' +
+        (r.titre ? ' « ' + esc(r.titre) + ' »' : '') +
+        (r.auteur ? ' de <b>' + esc(r.auteur) + '</b>' : '') +
+        ' · <span class="meta">' + esc(r.target_id) + '</span></div>' +
       (r.detail ? '<div class="detail">' + esc(r.detail) + '</div>' : '') +
       '<div class="meta">' + esc(when) + (r.reporter_email ? ' · signalé par ' + esc(r.reporter_email) : ' · signalement anonyme') + '</div>' +
       (acts ? '<div class="acts">' + acts + '</div>' : '') +
@@ -184,7 +187,7 @@
     }
     p.then(load).catch(function(e){
       b.disabled = false;
-      flash((e && e.detail) || 'Échec de l\'action.', false);
+      flash((e && ((e.body && (typeof e.body.detail === 'string' ? e.body.detail : (e.body.detail && e.body.detail.message))) || e.detail)) || 'Échec de l\'action.', false);
     });
   });
 
@@ -197,7 +200,7 @@
     if (!confirm('Suspendre ce compte ? Il ne pourra plus se connecter et ses contenus seront retirés jusqu\'à la levée.')) return;
     apiFetch('/admin/users/' + id + '/ban', { method:'POST', json:{ reason: reason } })
       .then(function(res){ flash((res && res.detail) || 'Compte suspendu.', true); })
-      .catch(function(e){ flash((e && e.detail) || 'Échec.', false); });
+      .catch(function(e){ flash((e && ((e.body && (typeof e.body.detail === 'string' ? e.body.detail : (e.body.detail && e.body.detail.message))) || e.detail)) || 'Échec.', false); });
   });
   document.getElementById('unbanBtn').addEventListener('click', function(){
     var id = document.getElementById('uid').value.trim();
@@ -205,7 +208,7 @@
     var reasonU = document.getElementById('ureason').value.trim();
     apiFetch('/admin/users/' + id + '/unban', { method:'POST', json:{ reason: reasonU || null } })
       .then(function(res){ flash((res && res.detail) || 'Compte rétabli.', true); })
-      .catch(function(e){ flash((e && e.detail) || 'Échec.', false); });
+      .catch(function(e){ flash((e && ((e.body && (typeof e.body.detail === 'string' ? e.body.detail : (e.body.detail && e.body.detail.message))) || e.detail)) || 'Échec.', false); });
   });
 
   // Sécurité : re-clé des originaux d'images (réutilise apiFetch → Bearer JWT).
@@ -241,7 +244,7 @@
         flash('Terminé : ' + totMig + ' image(s) sécurisée(s)' + (allErr.length ? ', ' + allErr.length + ' erreur(s)' : '') + '.', allErr.length === 0);
       })
       .catch(function(e){
-        var m = (e && e.detail) || (e && e.status === 403 ? 'Réservé à l\'administration.' : 'Échec de la migration.');
+        var m = (e && ((e.body && (typeof e.body.detail === 'string' ? e.body.detail : (e.body.detail && e.body.detail.message))) || e.detail)) || (e && e.status === 403 ? 'Réservé à l\'administration.' : 'Échec de la migration.');
         secOut.textContent = 'Interrompu après ' + totMig + ' image(s). ' + String(m) + ' — reclique pour reprendre (c\'est idempotent).';
         flash(String(m), false);
       })
@@ -288,7 +291,7 @@
           last = { exclude_ids: ids, expected_user_ids: (res.candidats || []).map(function(c){ return c.user_id; }) };
           confBtn.disabled = last.expected_user_ids.length === 0;
         })
-        .catch(function(e){ flash((e && e.detail) || (e && e.status === 403 ? 'Réservé à l\'administration.' : 'Aperçu impossible.'), false); })
+        .catch(function(e){ flash((e && ((e.body && (typeof e.body.detail === 'string' ? e.body.detail : (e.body.detail && e.body.detail.message))) || e.detail)) || (e && e.status === 403 ? 'Réservé à l\'administration.' : 'Aperçu impossible.'), false); })
         .then(function(){ prevBtn.disabled = false; });
     });
 
@@ -305,7 +308,7 @@
           last = null;
         })
         .catch(function(e){
-          var m = (e && e.status === 409) ? 'La liste a changé depuis l\'aperçu : relance l\'aperçu.' : ((e && e.detail) || 'Échec de la confirmation.');
+          var m = (e && e.status === 409) ? 'La liste a changé depuis l\'aperçu : relance l\'aperçu.' : ((e && ((e.body && (typeof e.body.detail === 'string' ? e.body.detail : (e.body.detail && e.body.detail.message))) || e.detail)) || 'Échec de la confirmation.');
           flash(m, false); confBtn.disabled = true; last = null;
         });
     });

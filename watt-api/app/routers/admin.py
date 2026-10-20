@@ -35,6 +35,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_admin
+from app.config import settings
 from app.core.ratelimit import LIMIT_PURCHASE, limiter
 from app.database import get_db
 from app.models.transaction import Transaction, TransactionType
@@ -382,6 +383,14 @@ class PioneerRetroConfirmIn(BaseModel):
     expected_user_ids: list[UUID] = Field(default_factory=list, max_length=100)
 
 
+def _retro_exige_code() -> bool:
+    """Lot I bis — le rattrapage sans code sert AVANT l'ouverture du programme
+    (créateurs de la bêta). Une fois FEATURE_PIONEER allumé, il n'attribue
+    plus de place qu'aux comptes invités (code), sinon des comptes sans
+    invitation pourraient remplir les places restantes."""
+    return bool(settings.FEATURE_PIONEER and settings.PIONEER_CODE_REQUIRED)
+
+
 @router.post("/pioneer/retro/preview")
 async def pioneer_retro_preview(
     payload: PioneerRetroPreviewIn,
@@ -392,7 +401,8 @@ async def pioneer_retro_preview(
     rang Pionnier si l'on confirmait maintenant (exclusions appliquées)."""
     return {
         "places": await pioneer_stats(db),
-        "candidats": await retro_candidates(db, payload.exclude_ids),
+        "candidats": await retro_candidates(db, payload.exclude_ids,
+                                            need_code=_retro_exige_code()),
         "ecrit": False,
     }
 
@@ -409,6 +419,7 @@ async def pioneer_retro_confirm(
             db,
             exclude_ids=payload.exclude_ids,
             expected_user_ids=payload.expected_user_ids,
+            need_code=_retro_exige_code(),
         )
     except PioneerRetroConflict as e:
         await db.rollback()
@@ -455,6 +466,44 @@ async def pioneer_revocations(
 ):
     """Journal des révocations de rang Pionnier (le plus récent d'abord)."""
     return {"revocations": await list_revocations(db)}
+
+
+# ── Codes Pionnier (Lot I) — le rang se gagne sur invitation ────────────────
+
+class PioneerCodesIn(BaseModel):
+    n: int = Field(default=10, ge=1, le=200)
+    note: str | None = Field(default=None, max_length=120)
+
+
+@router.post("/pioneer/codes")
+async def pioneer_codes_generer(
+    payload: PioneerCodesIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Génère `n` codes Pionnier à usage unique (à envoyer en message privé,
+    par exemple « https://watt.place/?pionnier=WATT-7K3QX9 »)."""
+    from app.services.pioneer_codes import generer
+
+    codes = await generer(db, payload.n, note=payload.note, admin_id=admin.id)
+    await db.commit()
+    return {"codes": codes}
+
+
+@router.get("/pioneer/codes")
+async def pioneer_codes_liste(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Tous les codes, avec qui les a utilisés et le rang obtenu."""
+    from app.services.pioneer_codes import lister
+
+    codes = await lister(db)
+    return {
+        "codes": codes,
+        "libres": sum(1 for c in codes if not c["utilise_le"]),
+        "utilises": sum(1 for c in codes if c["utilise_le"]),
+    }
 
 
 # ── « Prêt à sortir » (Lot 2) — base du futur agent analytique ──────────────

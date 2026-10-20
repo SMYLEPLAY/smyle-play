@@ -19,7 +19,7 @@ la mesure annoncée comme anonyme l'est réellement. Conservation : 13 mois
 Best-effort : la collecte ne bloque jamais ; en cas d'erreur on renvoie 202.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import ADMIN_FORBIDDEN_DETAIL, is_admin_user
@@ -38,6 +38,22 @@ class EventIn(BaseModel):
     path: str | None = None
     referrer: str | None = None
     props: dict | None = None
+
+    @field_validator("props")
+    @classmethod
+    def _props_bornees(cls, v):
+        """Lot I bis : propriétés libres bornées (30 clés, 2 Ko) — sinon un
+        envoi anonyme pouvait gonfler la base sans limite. Au-delà : ignorées."""
+        if v is None:
+            return None
+        import json as _json
+
+        try:
+            if len(v) > 30 or len(_json.dumps(v, default=str)) > 2048:
+                return None
+        except (TypeError, ValueError):
+            return None
+        return v
 
 
 class EventsBatch(BaseModel):

@@ -299,7 +299,6 @@ _HANDLERS_TOLERES = {
     ("ui/topbar/topbar.js", """onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','reject')\""""): 1,
     ("ui/topbar/topbar.js", """onclick="SmyleTopbar._adnOfferAct('${esc(o.id)}','cancel')\""""): 1,
     ("ui/topbar/topbar.js", """onclick="if(window.SmyleMessaging){document.getElementById('smyle-adnofferview').remove();SmyleMessaging.open('${esc(otherId)}');}\""""): 1,
-    ("ui/topbar/topbar.js", """onclick="window.SmyleTopbar.followBack(event, '${_esc(n.actor_id)}')\""""): 1,
     # `${extraClick}` est un fragment de code construit dans le module, dont la
     # seule partie variable est `_esc(n.actor_id)` / `_esc(n.target_id)` (UUID).
     ("ui/topbar/topbar.js", """onclick="window.SmyleTopbar.markRead(event, '${_esc(n.id)}');${extraClick}\""""): 1,

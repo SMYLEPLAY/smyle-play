@@ -48,6 +48,8 @@ async function _fetchMeAndSync() {
       email: me.email,
       name: me.artist_name || me.display_name || (me.email || '').split('@')[0],
       artist_name: me.artist_name || null,
+      slug: me.slug || null,               // Lot I : slug public donné par le serveur
+      pioneer_rank: me.pioneer_rank || null,
       credits_balance: (typeof me.credits_balance === 'number') ? me.credits_balance : 0,
       // Parcours V1 — bandeau « vérifie ta boîte mail » + guide d'accueil.
       email_verified: me.email_verified !== false,
@@ -61,7 +63,7 @@ async function _fetchMeAndSync() {
   }
 }
 
-async function doSignup(email, password, { onAttempt, referralCode, acceptTerms, ageConfirmed } = {}) {
+async function doSignup(email, password, { onAttempt, referralCode, pioneerCode, acceptTerms, ageConfirmed } = {}) {
   try {
     // Signup minimal : email + password (+ code de parrainage optionnel).
     // Le profil artiste (artist_name, bio, slug) se crée via le WATT board
@@ -74,6 +76,8 @@ async function doSignup(email, password, { onAttempt, referralCode, acceptTerms,
     };
     const ref = (referralCode || '').trim();
     if (ref) payload.referral_code = ref;   // mécanique 1 — best-effort côté API
+    const pio = (pioneerCode || '').trim();
+    if (pio) payload.pioneer_code = pio;    // Lot I — invalide → 400 explicite
     await apiFetch('/auth/register', {
       method: 'POST',
       json: payload,
@@ -98,6 +102,8 @@ async function doSignup(email, password, { onAttempt, referralCode, acceptTerms,
     }
     return { ok: false, msg: String(msg) };
   }
+  // Le code a servi à l'inscription : on l'oublie (pas de second essai).
+  if ((pioneerCode || '').trim()) _codePionnierOublier();
   // Auto-login après register
   return doLogin(email, password);
 }
@@ -129,7 +135,13 @@ async function doLogin(email, password, { onAttempt } = {}) {
       msg = e.message || 'Serveur injoignable — réessaie dans un instant.';
     } else if (e && e.status === 403 && e.body && e.body.jeton_rgpd) {
       // Lot G — compte suspendu : jeton limité à l'export / la suppression.
-      return { ok: false, msg: String(e.body.detail || 'Compte suspendu.'), jetonRgpd: e.body.jeton_rgpd };
+      let txt = String(e.body.detail || 'Compte suspendu.');
+      if (e.body.motif) txt += ' Motif : ' + String(e.body.motif) + '.';
+      if (e.body.recours) txt += ' ' + String(e.body.recours);
+      return { ok: false, msg: txt, jetonRgpd: e.body.jeton_rgpd };
+    } else if (e && e.status === 403 && e.body && e.body.code === 'email_non_verifie') {
+      // Lot I — email pas encore confirmé : on propose de renvoyer le lien.
+      return { ok: false, msg: String(e.body.detail), emailNonVerifie: email };
     } else if (e && e.status === 401) {
       msg = 'Email ou mot de passe incorrect.';
     } else if (e && e.status === 429) {
@@ -206,7 +218,9 @@ function _userMenuSlug() {
   // priorité à `artist_name` (slugifié), fallback sur le local-part de l'email.
   // Sans cet alignement, dès que l'user remplit son artist_name, le lien
   // topbar renvoie vers une URL obsolète et le backend 404.
-  const source = u.artist_name || (String(u.email || '').split('@')[0] || '');
+  // Lot I : sans nom d'artiste, slug donné par le serveur (jamais l'email).
+  if (!u.artist_name && u.slug) return String(u.slug);
+  const source = u.artist_name || '';
   return source
     .toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // retirer accents
@@ -424,7 +438,77 @@ async function submitLogin() {
   const result = await doLogin(email, password, { onAttempt });
   if (result.ok) _afterAuthSuccess();
   else if (result.jetonRgpd) _panneauRgpd(msg, result.msg, result.jetonRgpd, password);
+  else if (result.emailNonVerifie) _panneauEmailNonVerifie(msg, result.msg, result.emailNonVerifie);
   else msg.textContent = result.msg;
+}
+
+// Lot I — connexion refusée tant que l'email n'est pas confirmé : message
+// clair + bouton « Renvoyer l'email » (avant : une simple erreur, et le
+// nouvel inscrit croyait que son inscription avait échoué).
+function _panneauEmailNonVerifie(msgEl, texte, email) {
+  msgEl.textContent = '';
+  const box = document.createElement('div');
+  box.style.cssText = 'margin-top:8px;line-height:1.5';
+  const t = document.createElement('p');
+  t.textContent = texte + ' Pense à regarder dans tes spams.';
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'modal-submit'; b.textContent = "Renvoyer l'email";
+  box.append(t, b);
+  msgEl.appendChild(box);
+  b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      await apiFetch('/auth/resend-verification', { method: 'POST', json: { email }, auth: false });
+      t.textContent = "C'est reparti : un nouveau lien vient d'être envoyé à " + email +
+        '. Clique dessus, puis reconnecte-toi.';
+      b.remove();
+    } catch (e) {
+      b.disabled = false;
+      t.textContent = (e && e.status === 429)
+        ? 'Trop de demandes : attends quelques minutes avant de réessayer.'
+        : 'Envoi impossible pour le moment. Réessaie dans un instant.';
+    }
+  });
+}
+
+// ── Lot I : code Pionnier (invitation) ──────────────────────────────────────
+// Lien reçu en message privé : https://watt.place/?pionnier=WATT-XXXXXX.
+// Visiteur → le code pré-remplit l'inscription. Déjà connecté → il est
+// utilisé tout de suite. Gardé le temps de la visite (sessionStorage).
+const _CLE_CODE_PIONNIER = 'watt_code_pionnier';
+function _codePionnierLire() {
+  try { return sessionStorage.getItem(_CLE_CODE_PIONNIER) || ''; } catch (_) { return ''; }
+}
+function _codePionnierGarder(c) {
+  try { sessionStorage.setItem(_CLE_CODE_PIONNIER, c); } catch (_) { /* noop */ }
+}
+function _codePionnierOublier() {
+  try { sessionStorage.removeItem(_CLE_CODE_PIONNIER); } catch (_) { /* noop */ }
+}
+async function _codePionnierUtiliser() {
+  const code = _codePionnierLire();
+  if (!code || typeof getAuthToken !== 'function' || !getAuthToken()) return;
+  const toast = (m, type) => { if (typeof window.smyleToast === 'function') window.smyleToast(m, { type, duration: 6000 }); };
+  // Lot I bis — confirmation : un code ne sert qu'une fois, on ne le
+  // consomme pas sur le mauvais compte (appareil partagé, lien testé…).
+  const u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
+  const qui = (u && (u.artist_name || u.email)) || 'ce compte';
+  if (!window.confirm('Utiliser le code Pionnier ' + code + ' sur ' + qui + ' ? Un code ne sert qu\'une seule fois.')) {
+    _codePionnierOublier();
+    return;
+  }
+  try {
+    const r = await apiFetch('/pioneer/code', { method: 'POST', json: { code } });
+    _codePionnierOublier();
+    toast(r && r.rang
+      ? `Bienvenue Pionnier n°${r.rang} ! Ta commission est de 10 % à vie.`
+      : 'Code Pionnier enregistré : ta place sera confirmée à ta première publication.', 'success');
+  } catch (e) {
+    if (e && (e.status === 400 || e.status === 409)) {
+      _codePionnierOublier();
+      toast(String((e.body && e.body.detail) || 'Code Pionnier refusé.'), 'error');
+    }
+  }
 }
 
 // Lot G — compte suspendu : il garde le droit d'exporter ou de supprimer ses
@@ -491,6 +575,7 @@ function _afterAuthSuccess() {
   }
   if (window.SmyleGate) window.SmyleGate.refresh();
   if (window.SmyleOnboarding) window.SmyleOnboarding.check();
+  _codePionnierUtiliser();
 }
 
 // Consomme ?return=/chemin après un login/signup réussi : l'utilisateur
@@ -525,6 +610,8 @@ async function submitSignup() {
   const password = document.getElementById('signup-password').value;
   const refEl    = document.getElementById('signup-referral');
   const referralCode = refEl ? refEl.value.trim() : '';
+  const pioEl    = document.getElementById('signup-pioneer');
+  const pioneerCode = pioEl ? pioEl.value.trim() : '';
   const termsEl  = document.getElementById('signup-terms');
   const ageEl    = document.getElementById('signup-age');
   const acceptTerms  = !!(termsEl && termsEl.checked);
@@ -539,12 +626,24 @@ async function submitSignup() {
     msg.textContent = 'Accepte les CGU et confirme avoir 15 ans ou plus.';
     return;
   }
+  // Lot I bis — page de retour gardée pour après la confirmation de l'email
+  // (le lien de l'email ouvre une autre page, parfois un autre onglet).
+  try {
+    const retour = window.__smyleReturnPath ||
+      ((location.pathname && location.pathname !== '/') ? location.pathname + location.search : '');
+    if (retour) localStorage.setItem('watt_retour_apres_verif', retour);
+  } catch (_) { /* noop */ }
   msg.textContent = 'Création du compte…';
   const onAttempt = ({ willRetry }) => {
     if (willRetry) msg.textContent = 'Connexion lente — nouvelle tentative…';
   };
-  const result = await doSignup(email, password, { onAttempt, referralCode, acceptTerms, ageConfirmed });
+  const result = await doSignup(email, password, { onAttempt, referralCode, pioneerCode, acceptTerms, ageConfirmed });
   if (result.ok) _afterAuthSuccess();
+  else if (result.emailNonVerifie) {
+    // Lot I bis — compte créé, email à confirmer : on le dit clairement.
+    _panneauEmailNonVerifie(msg, 'Compte créé ✓ Un email de confirmation vient de partir à ' + email +
+      ' : clique sur le lien qu\'il contient, puis connecte-toi.', email);
+  }
   else msg.textContent = result.msg;
 }
 
@@ -587,6 +686,9 @@ function _ensureReferralModal() {
 }
 
 async function openReferralModal() {
+  // Lot I bis : le panneau complet (avec les quêtes de parrainage) quand il
+  // est chargé ; sinon cette fenêtre simple.
+  if (typeof window.openReferralPanel === 'function') { window.openReferralPanel(); return; }
   _closeUserMenu();
   const modal = _ensureReferralModal();
   modal.style.display = 'flex';
@@ -936,14 +1038,23 @@ async function _bootstrapAuthFromToken() {
 // (défini plus haut) : retour direct vers la page protégée d'origine.
 function _maybeAutoOpenFromQuery() {
   try {
-    // Si déjà connecté, on ne ré-ouvre rien.
-    if (typeof getAuthToken === 'function' && getAuthToken()) return;
     const params = new URLSearchParams(location.search || '');
+    // Lot I — lien d'invitation Pionnier : ?pionnier=CODE.
+    const pio = (params.get('pionnier') || '').trim().slice(0, 20);
+    if (pio) {
+      _codePionnierGarder(pio.toUpperCase());
+      params.delete('pionnier');
+      const q = params.toString();
+      history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+    }
+    // Si déjà connecté, on ne ré-ouvre rien (le code est utilisé tout de suite).
+    if (typeof getAuthToken === 'function' && getAuthToken()) { _codePionnierUtiliser(); return; }
+    const codePio = _codePionnierLire();
     // Lien de parrainage : ?ref=CODE → on ouvre directement le signup et on
     // pré-remplit le champ code (mécanique 1). Le ref prime sur ?auth=.
     const ref = (params.get('ref') || '').trim();
     let tab = params.get('auth');
-    if (ref) tab = 'signup';
+    if (ref || pio) tab = 'signup';
     if (tab !== 'login' && tab !== 'signup') return;
     // Arrivée depuis une autre page (barrière visiteur) : chemin de retour.
     const back = window.SmyleGate ? window.SmyleGate.safeReturn(params.get('return') || '') : null;
@@ -954,6 +1065,10 @@ function _maybeAutoOpenFromQuery() {
       if (ref) {
         const refEl = document.getElementById('signup-referral');
         if (refEl) refEl.value = ref.toUpperCase();
+      }
+      if (codePio) {
+        const pioEl = document.getElementById('signup-pioneer');
+        if (pioEl) pioEl.value = codePio;
       }
     }, 50);
   } catch (_) { /* noop */ }

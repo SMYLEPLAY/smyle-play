@@ -213,9 +213,14 @@ async def get_playlist_containing_adn_track(
         )
         .join(Track, Track.id == PlaylistTrack.track_id)
         .join(Adn, Adn.artist_id == Track.artist_id)
+        # Lot I — la remise ne vaut que pour les sons du PROPRIÉTAIRE de la
+        # playlist (playlist publique) : jamais pour ceux d'un autre artiste.
+        .join(Playlist, Playlist.id == PlaylistTrack.playlist_id)
         .where(
             OwnedPlaylistAdn.user_id == user_id,
             Adn.id == adn_id,
+            Playlist.visibility == "public",
+            Playlist.owner_id == Track.artist_id,
         )
         .limit(1)
     )
@@ -239,9 +244,13 @@ async def user_owns_playlist_adn_for_prompt(
             PlaylistTrack.playlist_id == OwnedPlaylistAdn.playlist_id,
         )
         .join(Track, Track.id == PlaylistTrack.track_id)
+        # Lot I — même règle : seulement les sons du propriétaire de la playlist.
+        .join(Playlist, Playlist.id == PlaylistTrack.playlist_id)
         .where(
             OwnedPlaylistAdn.user_id == user_id,
             Track.prompt_id == prompt_id,
+            Playlist.visibility == "public",
+            Playlist.owner_id == Track.artist_id,
         )
         .limit(1)
     )

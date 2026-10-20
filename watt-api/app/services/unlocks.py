@@ -236,7 +236,7 @@ async def _assert_prompt_in_stock(db: AsyncSession, prompt_row: Prompt) -> None:
     )).scalar_one()
     if int(sold) >= int(prompt_row.max_supply):
         raise PromptNotPurchasable(
-            f"Prompt sold out ({sold}/{prompt_row.max_supply})"
+            f"Édition épuisée : les {prompt_row.max_supply} exemplaires sont vendus ({sold}/{prompt_row.max_supply})."
         )
 
 
@@ -526,7 +526,7 @@ async def unlock_adn_atomic(
         )).scalar_one()
         if int(sold_count) >= int(adn_row.max_supply):
             raise AdnNotPurchasable(
-                f"ADN sold out ({sold_count}/{adn_row.max_supply})"
+                f"Édition épuisée : les {adn_row.max_supply} exemplaires sont vendus ({sold_count}/{adn_row.max_supply})."
             )
 
     artist_id = adn_row.artist_id
@@ -562,7 +562,7 @@ async def unlock_adn_atomic(
             )).scalar_one()
             if int(sold_now) >= int(adn_row.max_supply):
                 raise AdnNotPurchasable(
-                    f"ADN sold out ({sold_now}/{adn_row.max_supply})"
+                    f"Édition épuisée : les {adn_row.max_supply} exemplaires sont vendus ({sold_now}/{adn_row.max_supply})."
                 )
 
         # C6 : commission selon le palier de l'artiste (80/88/90).

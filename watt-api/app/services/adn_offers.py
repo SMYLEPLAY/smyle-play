@@ -78,6 +78,12 @@ async def resolve_adn_target(db, *, target_type: str, target_id) -> AdnTarget:
         )
 
     if target_type == "album_adn":
+        # Lot I — les albums sont masqués au lancement : leur ADN ne doit pas
+        # se vendre par une offre tant que l'interrupteur n'est pas allumé.
+        from app.config import settings as _settings
+
+        if not _settings.launch_flags_dict().get("albums", False):
+            raise AdnNotPurchasable("ADN album introuvable ou non proposé à la vente")
         from app.models.album import Album
         row = (await db.execute(
             select(Album).where(Album.id == target_id)

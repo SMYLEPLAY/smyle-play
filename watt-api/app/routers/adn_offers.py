@@ -70,7 +70,7 @@ async def _get_adn_offer_or_404(offer_id: UUID, db: AsyncSession,
         TradeOffer.target_type.is_not(None),  # une offre ADN, pas un trade
     )
     if for_update:
-        q = q.with_for_update()
+        q = q.with_for_update().execution_options(populate_existing=True)
     offer = (await db.execute(q)).scalar_one_or_none()
     if not offer:
         raise HTTPException(status.HTTP_404_NOT_FOUND,
@@ -343,7 +343,9 @@ async def reject_adn_offer(
     db: AsyncSession = Depends(get_db),
 ) -> AdnOfferRead:
     """Refuse une offre ADN (vendeur uniquement)."""
-    offer = await _get_adn_offer_or_404(offer_id, db)
+    # Lot I bis : verrou — une acceptation en cours (qui a déjà payé) ne peut
+    # plus être écrasée par un refus ou une annulation simultanés.
+    offer = await _get_adn_offer_or_404(offer_id, db, for_update=True)
 
     if offer.receiver_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN,
@@ -378,7 +380,9 @@ async def cancel_adn_offer(
     db: AsyncSession = Depends(get_db),
 ) -> AdnOfferRead:
     """Annule une offre ADN (acheteur uniquement, avant acceptation)."""
-    offer = await _get_adn_offer_or_404(offer_id, db)
+    # Lot I bis : verrou — une acceptation en cours (qui a déjà payé) ne peut
+    # plus être écrasée par un refus ou une annulation simultanés.
+    offer = await _get_adn_offer_or_404(offer_id, db, for_update=True)
 
     if offer.sender_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN,

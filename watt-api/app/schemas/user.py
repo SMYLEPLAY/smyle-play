@@ -144,6 +144,9 @@ class UserCreate(BaseModel):
     # Code de parrainage optionnel saisi à l'inscription (mécanique 1).
     # Best-effort : un code invalide n'empêche pas l'inscription.
     referral_code: str | None = Field(default=None, max_length=16)
+    # Lot I — code Pionnier facultatif (invitation). Invalide → 400, avant
+    # toute écriture : le créateur corrige au lieu de perdre sa place.
+    pioneer_code: str | None = Field(default=None, max_length=20)
     # Inscription encadrée (Phase 3) : l'utilisateur DOIT accepter les CGU et
     # confirmer avoir l'âge minimum. Défaut False → un front qui ne les envoie
     # pas est refusé (validation dans le endpoint register).
@@ -216,6 +219,11 @@ class UserRead(BaseModel):
     profile_bg_color:    str | None = None
     profile_brand_color: str | None = None
     profile_public: bool = False  # Chantier 1 — visible sur la vitrine /watt
+    # Lot I — slug public calculé par le serveur (le front ne le devine plus
+    # à partir de l'email).
+    slug: str | None = None
+    # Lot I — rang Pionnier (None = pas Pionnier).
+    pioneer_rank: int | None = None
     # Vérification d'email (migration 0087, Phase A). Exposé pour que le front
     # affiche l'état « email à confirmer » et le CTA de renvoi. Non bloquant
     # par défaut (cf. settings.REQUIRE_EMAIL_VERIFIED).

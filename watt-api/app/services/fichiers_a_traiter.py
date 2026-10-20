@@ -171,6 +171,9 @@ async def _executer(db: AsyncSession, cle: str, action: str) -> str:
     raise ValueError(action)
 
 
+MAX_TENTATIVES_PROTECTION = 5
+
+
 async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_PASSAGE) -> dict:
     """Traite les opérations en attente (toutes, ou celles de `ids`), dans
     l'ordre d'arrivée. Ne lève jamais. Renvoie un résumé."""
@@ -187,8 +190,12 @@ async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_P
                 # qu'après quelques jours (sauvegarde des médias faite).
                 "AND NOT (action = 'supprimer' AND coalesce(motif, '') = :m_ancien "
                 "         AND cree_le > now() - make_interval(days => :j)) "
+                # Lot I — un son qui ne se convertit pas n'est plus rejoué sans
+                # fin (à chaque démarrage et chaque jour) : 5 essais, puis il
+                # reste visible en attente avec sa dernière erreur.
+                "AND NOT (action = 'proteger_audio' AND tentatives >= :max_t) "
                 "ORDER BY cree_le LIMIT :l"),
-                {"ids": list(ids or []), "l": limite,
+                {"ids": list(ids or []), "l": limite, "max_t": MAX_TENTATIVES_PROTECTION,
                  "m_ancien": MOTIF_ANCIEN_ORIGINAL, "j": DELAI_SUPPRESSION_ANCIEN_JOURS})).all()
             for ligne in lignes:
                 # La ligne a pu être annulée entre-temps (restauration).
@@ -229,18 +236,23 @@ async def traiter_en_attente(ids: list | None = None, *, limite: int = MAX_PAR_P
 # ── Clés concernées par un retrait de la modération ─────────────────────────
 
 async def cles_du_contenu(db: AsyncSession, ttype: str, tid) -> list[str]:
-    """Fichiers propres au contenu retiré : audio d'un son, original + aperçu
-    (+ galerie) d'une image, extraits d'une voix. Les pochettes et avatars
-    (partagés entre plusieurs lignes) ne sont pas déplacés."""
+    """Fichiers du contenu retiré : audio et pochette d'un son (Lot I),
+    original + aperçu (+ galerie) d'une image, extraits d'une voix. Un fichier
+    encore utilisé par un contenu en ligne reste public (contrôle à
+    l'exécution)."""
     from app.services.media_ownership import media_url_key
 
     cles: list[str] = []
     if ttype == "track":
         r = (await db.execute(text(
-            "SELECT r2_key, audio_url FROM tracks WHERE id = :i"), {"i": tid})).first()
+            "SELECT r2_key, audio_url, cover_url FROM tracks WHERE id = :i"), {"i": tid})).first()
         if r:
             cles.append(r.r2_key or "")
             cles.append(media_url_key(r.audio_url)[1] or "")
+            # Lot I : la pochette suit le retrait. Si elle sert encore à un
+            # contenu en ligne (partagée), l'exécution la laisse publique
+            # (`utilise_hors_retrait`, contrôle complet).
+            cles.append(media_url_key(r.cover_url)[1] or "")
     elif ttype in ("image", "prompt"):
         r = (await db.execute(text(
             "SELECT image_r2_key, preview_r2_key FROM prompts WHERE id = :i"), {"i": tid})).first()

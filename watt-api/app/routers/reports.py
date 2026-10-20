@@ -73,6 +73,9 @@ class ReportRead(BaseModel):
     status: ReportStatus
     created_at: datetime
     resolved_at: datetime | None = None
+    # Lot I bis — pour que la modération voie CE qu'elle juge (liste admin).
+    titre: str | None = None
+    auteur: str | None = None
 
 
 class ReportPatch(BaseModel):
@@ -218,7 +221,13 @@ async def list_reports(
         desc(ContentReport.created_at),
     ).limit(200)
     rows = (await db.execute(q)).scalars().all()
-    return [ReportRead.model_validate(r) for r in rows]
+    out = []
+    for r in rows:
+        item = ReportRead.model_validate(r)
+        item.titre = await _titre_cible(db, r.target_type, r.target_id)
+        item.auteur = await _auteur_cible(db, r.target_type, r.target_id)
+        out.append(item)
+    return out
 
 
 @router.patch("/admin/reports/{report_id}", response_model=ReportRead)
@@ -361,6 +370,27 @@ async def _titre_cible(db: AsyncSession, target_type: str, target_id: str) -> st
     return (await db.execute(
         _text(f"SELECT {col} FROM {table} WHERE id = :i"), {"i": tid}  # noqa: S608
     )).scalar_one_or_none()
+
+
+async def _auteur_cible(db: AsyncSession, target_type: str, target_id: str) -> str | None:
+    """Nom d'artiste de l'auteur du contenu visé (liste de modération)."""
+    from sqlalchemy import text as _text
+
+    table, col = {
+        "track": ("tracks", "artist_id"), "prompt": ("prompts", "artist_id"),
+        "image": ("prompts", "artist_id"), "playlist": ("playlists", "owner_id"),
+        "album": ("albums", "owner_id"), "voix": ("voices_for_sale", "artist_id"),
+        "profil": ("users", "id"),
+    }.get((target_type or "").strip().lower(), (None, None))
+    if table is None:
+        return None
+    try:
+        tid = UUID(str(target_id))
+    except (ValueError, TypeError):
+        return None
+    return (await db.execute(_text(
+        f"SELECT u.artist_name FROM {table} t JOIN users u ON u.id = t.{col} "  # noqa: S608
+        "WHERE t.id = :i"), {"i": tid})).scalar_one_or_none()
 
 
 async def _destinataires_signaleurs(db: AsyncSession, reports) -> list[tuple[str, str]]:

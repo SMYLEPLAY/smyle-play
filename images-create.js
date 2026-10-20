@@ -422,7 +422,14 @@
     var imgTags = selectedImageTags();
     if (imgTags.length) fd.append('image_tags', imgTags.join(','));
 
-    setBusy(true);
+    /* Lot I — droits commerciaux confirmés une fois, avant la 1re publication. */
+    setBusy(true); /* tout de suite : un double clic ne publie pas deux fois */
+    var _droits = (window.SmyleDroitsIA && window.SmyleDroitsIA.ensure) ? window.SmyleDroitsIA.ensure() : Promise.resolve(true);
+    _droits.then(function (ok) {
+      if (!ok) { setBusy(false); return; }
+      envoyer();
+    });
+    function envoyer() {
     /* apiFetch ajoute le Bearer JWT ; body FormData => pas de Content-Type
        forcé (le navigateur pose le boundary multipart lui-même). */
     /* C4 galerie avatar — n'uploade la galerie QUE si le tag avatar est actif
@@ -513,6 +520,7 @@
         alert("Échec de l'enregistrement : " + msg);
       })
       .finally(function () { setBusy(false); });
+    }
   }
 
   /* ── Câblage (idempotent : init peut courir après injection tardive) ──── */

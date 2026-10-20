@@ -882,9 +882,9 @@
           <div class="dash-help" id="dashPromptPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
             <div class="dash-help" id="dashPromptPriceAdvice">
               Prix libre, entre 10 et 150 Smyles. Prix conseillés :
-              <strong>15&nbsp;Smyles</strong> (≈&nbsp;1&nbsp;€) pour une recette ·
-              <strong>30</strong> (≈&nbsp;2&nbsp;€) pour une Œuvre son&nbsp;+&nbsp;image ·
-              <strong>45 et plus</strong> (≈&nbsp;3&nbsp;€) pour une édition rare ou limitée.
+              <strong>15&nbsp;Smyles</strong> pour une recette ·
+              <strong>30</strong> pour une Œuvre son&nbsp;+&nbsp;image ·
+              <strong>45 et plus</strong> pour une édition rare ou limitée.
               Les prix montent avec la rareté et le travail de création.
               Si l'acheteur possède ton ADN, il a −30&nbsp;% automatiquement.
             </div>
@@ -1060,7 +1060,7 @@
                 <div>
                   <label class="dash-label" for="dashCoverImgPrice">Prix de l'image <span class="dash-req">*</span></label>
                   <input class="dash-input" id="dashCoverImgPrice" type="number" min="10" max="150" value="15" />
-                  <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15). Son&nbsp;+&nbsp;image achetés ensemble reviennent à environ 30&nbsp;Smyles (≈&nbsp;2&nbsp;€). Les prix montent avec la rareté et le travail de création.</div>
+                  <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15). Son&nbsp;+&nbsp;image achetés ensemble bénéficient de la remise que tu choisis dans « Mes Œuvres » (10&nbsp;% par défaut). Les prix montent avec la rareté et le travail de création.</div>
                 </div>
                 <div>
                   <label class="dash-label" for="dashCoverImgSupply">Nombre d'exemplaires <span style="font-weight:400">(optionnel)</span></label>
@@ -2313,7 +2313,7 @@
         <input type="number" class="dash-input" id="imgcPrice" min="10" max="150" value="15" />
         <span class="dash-voice-price-suffix">Smyles</span>
       </div>
-      <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15, ≈ 1 €). Les prix montent avec la rareté et le travail de création.</div>
+      <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15). Les prix montent avec la rareté et le travail de création.</div>
 
       <label class="dash-label">Visibilité</label>
       <div class="wb3-license-choice">
@@ -2610,7 +2610,7 @@
 
 <script src="ui/core/api.js?v=20261011lotg"></script>
 <script src="/ui/core/visitor-gate.js?v=20261011lotg"></script>
-<script src="/ui/core/onboarding.js?v=20261011lotg" defer></script>
+<script src="/ui/core/onboarding.js?v=20261015lotib" defer></script>
 <script src="ui/core/consent.js?v=20261011lotg"></script>
 <script src="ui/core/telemetry.js?v=20261011lotg"></script>
 <script src="ui/core/events.js"></script>
@@ -2621,12 +2621,13 @@
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
 <script src="/ui/modals/oeuvre-compose.js?v=20260707oc" defer></script>
 <script src="/ui/playlists.js?v=20261011lotg" defer></script>
-<script src="dashboard.js?v=20261011lotg"></script>
+<script src="ui/core/droits-ia.js?v=20261015lotib"></script>
+<script src="dashboard.js?v=20261015lotib"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20260708parite" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
 <script src="/ui/modals/oeuvre-invite.js?v=20260923o" defer></script>
-<script src="images-create.js?v=20261011lotg" defer></script>
+<script src="images-create.js?v=20261015lotib" defer></script>
 <script src="images-list.js?v=20261011lotg" defer></script>
 <script src="/ui/smyle-balance.js" defer></script>
 <script src="/ui/modals/credits-buy.js" defer></script>
@@ -3065,7 +3066,7 @@
 <script src="/ui/messaging/messaging.js?v=20261011lotg" defer></script>
 <script src="/ui/core/trade-view.js?v=20261011lotg" defer></script>
 <script src="/ui/core/page-services.js" defer></script>
-<script src="/ui/pioneer-counter.js" defer></script>
+<script src="/ui/pioneer-counter.js?v=20261015lotib" defer></script>
 <script src="/ui/goal-bar.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
 <script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>

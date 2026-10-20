@@ -67,6 +67,21 @@ class User(Base):
     # IP de l'inscription (anti-abus H0.4 : plafond parrainage par IP +
     # détection multi-comptes). Nullable : comptes pré-migration 0067 = NULL.
     signup_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Lot I : slug public (calculé, jamais stocké) — même règle partout.
+    @property
+    def slug(self) -> str:
+        from app.core.slug import derive_artist_slug
+
+        return derive_artist_slug(self)
+
+    # Lot I (migration 0107) : email sans +alias ni points Gmail, pour refuser
+    # les comptes multiples d'une même boîte (app/core/emails_canoniques.py).
+    email_canonical: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
+    # Lot I : le créateur a confirmé détenir les droits commerciaux de ses
+    # contenus générés par IA (abonnement payant de l'outil). Preuve datée.
+    ia_rights_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # --- Profil artiste ---
     artist_name: Mapped[str | None] = mapped_column(String(100), nullable=True)

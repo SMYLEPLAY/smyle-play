@@ -295,7 +295,12 @@ async def follow_artist(
         actor_id=current_user.id,
         target_type="user",
         target_id=current_user.id,
-        metadata={"follower_name": current_user.artist_name or "Artiste"},
+        # Lot I : le slug permet le bouton « + Suivre en retour » de la cloche,
+        # seulement pour un abonné qui a un profil d'artiste public (un simple
+        # auditeur n'a pas de page à suivre).
+        metadata={"follower_name": current_user.artist_name or "Artiste",
+                  **({"follower_slug": _derive_artist_slug(current_user)}
+                     if current_user.artist_name and current_user.profile_public else {})},
     )
     await db.commit()
 

@@ -42,6 +42,7 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
 async def create_user(
     db: AsyncSession, user: UserCreate, signup_ip: str | None = None
 ) -> User:
+    from app.core.emails_canoniques import email_canonique
     from app.core.legal import CGU_VERSION
 
     db_user = User(
@@ -49,6 +50,8 @@ async def create_user(
         password_hash=hash_password(user.password),
         referral_code=await generate_referral_code(db),
         signup_ip=signup_ip,  # anti-abus H0.4 (None si indéterminé)
+        # Lot I : forme canonique (anti-comptes multiples d'une même boîte).
+        email_canonical=email_canonique(user.email),
         # Inscription encadrée (Phase 3) : register() a déjà exigé l'acceptation
         # CGU + âge avant d'appeler create_user → on trace l'instant (preuve).
         accepted_terms_at=datetime.now(timezone.utc),
