@@ -90,7 +90,7 @@
         '</div>' +
         '<div class="mo-actions">' +
           (it.oeuvreUrl && it.status === 'publiee' ? '<a class="mo-btn" href="' + _esc(it.oeuvreUrl) + '">Voir</a>' +
-            '<button type="button" class="mo-btn" data-copy="' + _esc(it.oeuvreUrl) + '">Copier le lien</button>' : '') +
+            '<button type="button" class="mo-btn" data-copy="' + _esc(it.lienPartage || it.oeuvreUrl) + '">Copier le lien</button>' : '') +
           '<button type="button" class="mo-btn" data-edit="' + _esc(it.trackId) + '">Modifier</button>' +
         '</div>' +
       '</article>';

@@ -247,6 +247,7 @@ async def unlock_prompt_atomic(
     prompt_id: UUID,
     _oeuvre: dict | None = None,
     prix_attendu: int | None = None,
+    via: str | None = None,
 ) -> _UnlockPromptResult:
     """
     Achète un prompt pour le compte de `buyer_id`.
@@ -342,6 +343,13 @@ async def unlock_prompt_atomic(
         # C6 : commission selon le PALIER de l'artiste vendeur (80/88/90).
         # Standard = 80% = comportement historique.
         artist_pct = await artist_pct_for_user(db, artist_id)
+        # Lot K — acheteur amené par le créateur (son lien ou son parrainage) :
+        # commission ramenée au plancher de 10 %.
+        from app.services.credits import pct_si_vient_du_createur, vient_du_createur
+        via_createur = await vient_du_createur(
+            db, seller_id=artist_id, buyer_id=buyer_id, via=via)
+        if via_createur:
+            artist_pct = pct_si_vient_du_createur(artist_pct)
         artist_revenue, platform_fee = compute_split(paid, artist_pct)
         # Sanity check (devrait être impossible vu compute_split garanti) :
         assert artist_revenue + platform_fee == paid
@@ -378,6 +386,7 @@ async def unlock_prompt_atomic(
                 "artist_id": str(artist_id),
                 "base_price": base_price,
                 "perk_applied": perk_applied,
+                **({"via_createur": True} if via_createur else {}),
                 **({"oeuvre_id": str(_oeuvre["oeuvre_id"]), "remise_oeuvre": remise_oeuvre}
                    if _oeuvre else {}),
             },

@@ -91,7 +91,10 @@
     if (!_gate()) return;
     if (!_data || !_data.bundle) return;
     var prix = _data.bundle.priceCredits;
-    if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles ?')) return;
+    // Lot K — équivalent en euros dès que l'achat de Smyles est ouvert.
+    var _eur = (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)
+      ? ' (≈ ' + (Math.round(prix * 0.07 * 100) / 100).toFixed(2).replace('.', ',') + ' €)' : '';
+    if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles' + _eur + ' ?')) return;
     btn.disabled = true;
     // Lot G — prix attendu envoyé : si le créateur l'a changé entre-temps,
     // smyleAcheter demande de confirmer le nouveau prix avant de rejouer.
@@ -246,7 +249,10 @@
         return;
       }
       if (ev.target.closest('#o-share')) {
-        var link = window.location.origin + '/o/' + (OID || '');
+        // Lot K — le créateur partage SON lien (avec son code) : les personnes
+        // qu'il amène lui sont attribuées et sa commission tombe à 10 %.
+        var _lp = _data && _data.bundle && _data.bundle.mode === 'createur' && _data.bundle.lienPartage;
+        var link = window.location.origin + (_lp || ('/o/' + (OID || '')));
         var done = function () { _toast('Lien copié — colle-le où tu veux.', 'success'); };
         try {
           if (navigator.share) {

@@ -71,6 +71,7 @@
     <button class="tab" role="tab" id="t-pio" aria-controls="p-pio" aria-selected="true">Pionniers</button>
     <button class="tab" role="tab" id="t-ret" aria-controls="p-ret" aria-selected="false">Contenus retirés</button>
     <button class="tab" role="tab" id="t-pay" aria-controls="p-pay" aria-selected="false">Achats par carte</button>
+    <button class="tab" role="tab" id="t-cro" aria-controls="p-cro" aria-selected="false">Croissance</button>
   </div>
 
   <section class="panel" id="p-pio" role="tabpanel" aria-labelledby="t-pio">
@@ -104,6 +105,14 @@
     <h2>Paiements à examiner</h2>
     <div id="pay-flagged"><p class="msg">Chargement…</p></div>
   </section>
+
+  <section class="panel" id="p-cro" role="tabpanel" aria-labelledby="t-cro" hidden>
+    <p class="sub">La seule mesure qui compte pendant les six premières semaines : combien de créateurs publient vraiment, et combien de personnes chacun amène. Objectifs : 30 créateurs qui publient au 15/11, et 5 inscrits amenés par créateur actif au 15/12.</p>
+    <div id="cro-resume"><p class="msg">Chargement…</p></div>
+    <h2>Par créateur</h2>
+    <p class="sub">« Inscrits » : comptes créés avec son lien. « Ventes via lui » : achats faits par des personnes qu'il a amenées (commission réduite à 10 %).</p>
+    <div id="cro-list"></div>
+  </section>
 </div>
 
 <div class="dlg-back" id="dlg" hidden>
@@ -121,7 +130,7 @@
 </div>
 <div class="flash" id="flash" role="status" aria-live="polite"></div>
 
-<script src="/ui/core/api.js?v=20261011lotg"></script>
+<script src="/ui/core/api.js?v=20261021lotk"></script>
 <script src="/ui/core/visitor-gate.js?v=20261011lotg"></script>
 <script src="/ui/core/onboarding.js?v=20261015lotib" defer></script>
 <script>
@@ -178,7 +187,27 @@
   });
 
   // ── Onglets ────────────────────────────────────────────────────────────
-  var tabs = [['t-pio', 'p-pio', chargerPionniers], ['t-ret', 'p-ret', chargerRetires], ['t-pay', 'p-pay', chargerPaiements]];
+  var tabs = [['t-pio', 'p-pio', chargerPionniers], ['t-ret', 'p-ret', chargerRetires], ['t-pay', 'p-pay', chargerPaiements], ['t-cro', 'p-cro', chargerCroissance]];
+
+  // ── Croissance (Lot K) ─────────────────────────────────────────────────
+  function chargerCroissance() {
+    var res = document.getElementById('cro-resume'), list = document.getElementById('cro-list');
+    apiFetch('/admin/croissance').then(function (d) {
+      res.innerHTML = '<div class="card"><div class="meta" style="font-size:15px;line-height:1.8">' +
+        '<strong>' + esc(d.createursPubliants) + '</strong> créateur(s) qui publient (objectif : 30 au 15/11)<br>' +
+        '<strong>' + esc(d.inscritsAmenes) + '</strong> inscrit(s) amené(s) par des créateurs — soit <strong>' +
+        esc(d.inscritsParCreateur) + '</strong> par créateur (objectif : 5 au 15/12)<br>' +
+        '<strong>' + esc(d.createursQuiAmenent) + '</strong> créateur(s) ont amené au moins une personne · <strong>' +
+        esc(d.ventesViaCreateur) + '</strong> vente(s) faites à des acheteurs amenés par le créateur</div></div>';
+      var c = d.createurs || [];
+      list.innerHTML = c.length ? c.map(function (x) {
+        return '<div class="card"><span class="who">' + esc(x.pseudo) + '</span>' +
+          '<div class="meta">' + esc(x.oeuvres) + ' œuvre(s) · ' + esc(x.inscrits) + ' inscrit(s) amené(s) (' +
+          esc(x.inscritsVerifies) + ' vérifié(s)) · ' + esc(x.ventes) + ' vente(s), dont ' + esc(x.ventesViaCreateur) +
+          ' via lui · première œuvre le ' + esc(date(x.premiereOeuvre)) + '</div></div>';
+      }).join('') : '<p class="msg">Aucun créateur n\'a encore publié.</p>';
+    }).catch(function (e) { erreur(res, e); });
+  }
   tabs.forEach(function (t) {
     document.getElementById(t[0]).addEventListener('click', function () {
       tabs.forEach(function (u) {

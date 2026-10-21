@@ -52,6 +52,16 @@
     'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
     'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
   };
+  // Lot K — équivalent en euros affiché à côté du prix en Smyles DÈS QUE
+  // l'achat de Smyles par carte est ouvert (avant, aucun euro n'est en jeu).
+  // Base : pack de 500 Smyles à 35 € (0,07 € le Smyle) ; le prix réel dépend
+  // du pack acheté (0,065 à 0,08 €), d'où le « ≈ ».
+  var EUR_PAR_SMYLE = 0.07;
+  function _eurosVisibles() { return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles); }
+  function _enEuros(n) {
+    var e = Math.round(Number(n) * EUR_PAR_SMYLE * 100) / 100;
+    return '≈ ' + e.toFixed(2).replace('.', ',') + ' €';
+  }
   var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', elevenlabs: 'ElevenLabs Music', midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', chatgpt: 'ChatGPT', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre' };
 
   function _esc(s) {
@@ -118,6 +128,7 @@
       '.pd-price-row{display:flex;align-items:baseline;gap:6px;margin:0 0 14px}' +
       '.pd-price{font-size:1.7rem;font-weight:800;color:#cbb3ff}' +
       '.pd-price-unit{font-size:.85rem;color:#8b7bd8;font-weight:600}' +
+      '.pd-price-eur{font-size:.8rem;color:#a09cb8;margin-left:6px}' +
       '.pd-actions{display:flex;gap:10px}' +
       '.pd-cancel{flex:0 0 auto;padding:11px 16px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:none;color:#cfc9e0;font-weight:600;cursor:pointer}' +
       '.pd-confirm{flex:1;padding:11px 16px;border-radius:11px;border:none;background:linear-gradient(135deg,#7c5cff,#9d4dff);color:#fff;font-weight:700;cursor:pointer;font-size:.95rem}' +
@@ -216,7 +227,8 @@
         '<ul class="pd-reperes">' + reperes + '</ul>' +
         '<div class="pd-market" id="pd-market"></div>' +
         _linkedBlockHtml(type, opts) +
-        '<div class="pd-price-row"><span class="pd-price">' + (price != null ? price : '—') + '</span><span class="pd-price-unit">Smyles</span></div>' +
+        '<div class="pd-price-row"><span class="pd-price">' + (price != null ? price : '—') + '</span><span class="pd-price-unit">Smyles</span>' +
+          (_eurosVisibles() && price != null ? '<span class="pd-price-eur">' + _esc(_enEuros(price)) + '</span>' : '') + '</div>' +
         '<div class="pd-actions">' +
           '<button class="pd-cancel" type="button">Annuler</button>' +
           '<button class="pd-confirm" type="button">Débloquer' + (price != null ? ' · ' + price : '') + ' ⚡</button>' +

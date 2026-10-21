@@ -232,6 +232,36 @@ async def artist_pct_for_user(db: AsyncSession, user_id: UUID) -> int:
     return artist_pct_for(row.tier, pionnier_actif)
 
 
+async def vient_du_createur(
+    db: AsyncSession, *, seller_id: UUID, buyer_id: UUID, via: str | None,
+) -> bool:
+    """Lot K — l'acheteur a-t-il été amené par le créateur vendeur ?
+
+    Vrai si (1) l'achat porte le code de parrainage du vendeur (`via`, lu
+    dans le lien partagé `/o/<id>?ref=<code>`), ou (2) l'acheteur s'est
+    inscrit par le parrainage de ce vendeur (lien permanent, côté serveur).
+    """
+    code = (via or "").strip().upper()[:16]
+    if code:
+        code_vendeur = (await db.execute(
+            text("SELECT referral_code FROM users WHERE id = :u"), {"u": seller_id},
+        )).scalar_one_or_none()
+        if code_vendeur and code_vendeur.upper() == code:
+            return True
+    return (await db.execute(
+        text("SELECT 1 FROM referrals WHERE referrer_id = :s AND referred_id = :b LIMIT 1"),
+        {"s": seller_id, "b": buyer_id},
+    )).first() is not None
+
+
+def pct_si_vient_du_createur(artist_pct: int) -> int:
+    """Part artiste quand l'acheteur vient du créateur : la commission tombe
+    à CREATOR_LINK_COMMISSION_PCT (jamais au-dessus d'un taux déjà meilleur)."""
+    from app.services.tiers import CREATOR_LINK_COMMISSION_PCT
+
+    return max(artist_pct, 100 - CREATOR_LINK_COMMISSION_PCT)
+
+
 # -----------------------------------------------------------------------------
 # A1 — sous-soldes par catégorie de Smyle (achetés / gagnés / promo).
 # Helpers centralisés : tout crédit/débit DOIT passer par eux (câblage en A1.3)

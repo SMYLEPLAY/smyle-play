@@ -1052,7 +1052,16 @@ function _maybeAutoOpenFromQuery() {
     const codePio = _codePionnierLire();
     // Lien de parrainage : ?ref=CODE → on ouvre directement le signup et on
     // pré-remplit le champ code (mécanique 1). Le ref prime sur ?auth=.
-    const ref = (params.get('ref') || '').trim();
+    // Lot K — arrivée depuis une Œuvre ou un profil partagé (/o/…?ref=CODE) :
+    // la barrière visiteur renvoie ici avec ?return=/o/…?ref=CODE ; on
+    // récupère le code dans ce chemin de retour pour que l'inscription soit
+    // bien attribuée au créateur qui a partagé le lien.
+    let ref = (params.get('ref') || '').trim();
+    if (!ref && params.get('return')) {
+      try { ref = (new URL(params.get('return'), location.origin).searchParams.get('ref') || '').trim(); }
+      catch (_) { ref = ''; }
+    }
+    if (ref && !/^[A-Za-z0-9-]{1,16}$/.test(ref)) ref = '';
     let tab = params.get('auth');
     if (ref || pio) tab = 'signup';
     if (tab !== 'login' && tab !== 'signup') return;

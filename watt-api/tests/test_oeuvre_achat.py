@@ -282,8 +282,11 @@ async def test_createur_voit_l_offre_sans_pouvoir_acheter():
     try:
         async with SessionLocal() as db:
             offre = await oeuvre_offer(db, oeuvre_id=oid, buyer_id=artiste)
+        lien = offre.pop("lienPartage")
         assert offre == {"priceCredits": None, "publicPriceCredits": 63,
                          "fullPriceCredits": 70, "discountPct": 10, "mode": "createur"}
+        # Lot K — le lien que le créateur partage porte son code de parrainage.
+        assert lien.startswith(f"/o/{oid}?ref=")
     finally:
         await _cleanup(artiste)
 

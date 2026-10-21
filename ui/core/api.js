@@ -413,11 +413,23 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 // créateur l'a modifié), le serveur répond 409 { code: 'prix_change', prix,
 // message } : on demande confirmation au nouveau prix, puis on rejoue.
 // Annulation → l'erreur est relancée avec `annule = true`.
-async function smyleAcheter(chemin, prixAttendu) {
-  const corps = (prixAttendu != null && isFinite(Number(prixAttendu)))
-    ? { prix_attendu: Number(prixAttendu) } : undefined;
+// Lot K — le lien partagé par un créateur porte son code (?ref=CODE). On le
+// transmet à l'achat : si c'est le code du vendeur, sa commission tombe à
+// 10 %. Rien n'est stocké dans le navigateur : seule l'adresse de la page compte.
+function _smyleViaLien() {
   try {
-    return await apiFetch(chemin, { method: 'POST', json: corps });
+    const v = new URLSearchParams(window.location.search).get('ref');
+    return v && /^[A-Za-z0-9-]{1,32}$/.test(v) ? v.toUpperCase() : null;
+  } catch (_) { return null; }
+}
+
+async function smyleAcheter(chemin, prixAttendu) {
+  const corps = {};
+  if (prixAttendu != null && isFinite(Number(prixAttendu))) corps.prix_attendu = Number(prixAttendu);
+  const _via = (typeof window !== 'undefined') ? _smyleViaLien() : null;
+  if (_via) corps.via = _via;
+  try {
+    return await apiFetch(chemin, { method: 'POST', json: Object.keys(corps).length ? corps : undefined });
   } catch (err) {
     const d = err && err.body && err.body.detail;
     if (err && err.status === 409 && d && d.code === 'prix_change') {
@@ -425,7 +437,7 @@ async function smyleAcheter(chemin, prixAttendu) {
         ? window.confirm(d.message + '.\nConfirmer l’achat à ce nouveau prix ?')
         : false;
       if (!ok) { err.annule = true; throw err; }
-      return apiFetch(chemin, { method: 'POST', json: { prix_attendu: d.prix } });
+      return apiFetch(chemin, { method: 'POST', json: Object.assign({}, corps, { prix_attendu: d.prix }) });
     }
     throw err;
   }

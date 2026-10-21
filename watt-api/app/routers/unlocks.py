@@ -72,6 +72,9 @@ class AchatIn(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
     prix_attendu: int | None = Field(default=None, ge=0, le=10_000_000)
+    # Lot K — code de parrainage lu dans le lien partagé (?ref=…) : si c'est
+    # celui du vendeur, la commission tombe à 10 %.
+    via: str | None = Field(default=None, max_length=32)
 
 
 def _raise_unlock_error(exc: ValueError) -> None:
@@ -134,6 +137,7 @@ async def unlock_prompt(
             buyer_id=current_user.id,
             prompt_id=prompt_id,
             prix_attendu=achat.prix_attendu if achat else None,
+            via=achat.via if achat else None,
         )
         await db.commit()
         await db.refresh(result.unlocked_prompt)

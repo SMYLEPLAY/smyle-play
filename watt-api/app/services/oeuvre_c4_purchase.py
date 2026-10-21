@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.prompt import Prompt
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.models.user import User
 from app.services.credits import _acquire_user_locks
 from app.services.treasury import begin_commission
 from app.services.unlocks import (
@@ -147,9 +148,14 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
         # Le créateur ne peut pas acheter sa propre Œuvre, mais il doit voir
         # l'offre telle que ses visiteurs la voient (prix public).
         prix, _, _ = oeuvre_bundle_price(recipe.price_credits, img.price_credits, pct)
+        # Lot K — le lien que le créateur partage porte son code : les
+        # acheteurs qu'il amène paient 10 % de commission au lieu de 20 %.
+        code = (await db.execute(
+            select(User.referral_code).where(User.id == img.artist_id))).scalar_one_or_none()
         return {"priceCredits": None, "publicPriceCredits": prix,
                 "fullPriceCredits": recipe.price_credits + img.price_credits,
-                "discountPct": pct, "mode": "createur"}
+                "discountPct": pct, "mode": "createur",
+                "lienPartage": f"/o/{img.id}" + (f"?ref={code}" if code else "")}
     owned = set((await db.execute(
         select(UnlockedPrompt.prompt_id).where(
             UnlockedPrompt.current_owner_id == buyer_id,
@@ -170,6 +176,7 @@ async def oeuvre_offer(db: AsyncSession, *, oeuvre_id: UUID, buyer_id: UUID | No
 
 async def buy_oeuvre_atomic(
     db: AsyncSession, *, buyer_id: UUID, oeuvre_id: UUID, prix_attendu: int | None = None,
+    via: str | None = None,
 ) -> dict:
     """Achète l'Œuvre (ou la moitié manquante). Le caller commit.
 
@@ -214,7 +221,7 @@ async def buy_oeuvre_atomic(
             p_manq, _, _ = await _effective_prompt_price(db, buyer_id=buyer_id, prompt_row=manquante)
             verifier_prix_attendu(prix_attendu, manquante.price_credits, p_manq)
             r = await unlock_prompt_atomic(
-                db, buyer_id=buyer_id, prompt_id=manquante.id,
+                db, buyer_id=buyer_id, prompt_id=manquante.id, via=via,
                 _oeuvre={"treasury_id": treasury_id, "discount": 0, "oeuvre_id": img.id},
             )
             achats = [r]
@@ -234,11 +241,11 @@ async def buy_oeuvre_atomic(
                 raise InsufficientCredits(required=prix, available=balance)
             achats = [
                 await unlock_prompt_atomic(
-                    db, buyer_id=buyer_id, prompt_id=recipe.id,
+                    db, buyer_id=buyer_id, prompt_id=recipe.id, via=via,
                     _oeuvre={"treasury_id": treasury_id, "discount": r_son, "oeuvre_id": img.id},
                 ),
                 await unlock_prompt_atomic(
-                    db, buyer_id=buyer_id, prompt_id=img.id,
+                    db, buyer_id=buyer_id, prompt_id=img.id, via=via,
                     _oeuvre={"treasury_id": treasury_id, "discount": r_img, "oeuvre_id": img.id},
                 ),
             ]
