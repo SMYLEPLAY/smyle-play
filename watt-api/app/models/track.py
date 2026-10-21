@@ -118,6 +118,7 @@ class Track(Base):
 
     # --- Plateforme/IA d'origine (migration 0048) ---
     # Outil IA ayant généré le son : suno / udio / riffusion / stable_audio /
+    # elevenlabs (lot J) /
     # autre. Sélectionné à la création (dashTrackPlatform), affiché sur la
     # carte ID avant achat. Même enum que prompts.prompt_platform.
     platform: Mapped[str | None] = mapped_column(String(20), nullable=True)

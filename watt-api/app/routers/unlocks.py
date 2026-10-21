@@ -213,13 +213,13 @@ async def unlock_prompt(
         await db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Concurrent unlock conflict, please retry",
+            detail="Un autre achat est en cours sur ce contenu : réessaie dans un instant.",
         )
     except Exception:
         await db.rollback()
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock prompt",
+            detail="Le déblocage a échoué. Réessaie.",
         )
 
 
@@ -309,13 +309,13 @@ async def unlock_adn(
         await db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Concurrent unlock conflict, please retry",
+            detail="Un autre achat est en cours sur ce contenu : réessaie dans un instant.",
         )
     except Exception:
         await db.rollback()
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock ADN",
+            detail="Le déblocage de l'ADN a échoué. Réessaie.",
         )
 
 
@@ -413,13 +413,13 @@ async def unlock_voice(
         await db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Concurrent unlock conflict, please retry",
+            detail="Un autre achat est en cours sur ce contenu : réessaie dans un instant.",
         )
     except Exception:
         await db.rollback()
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock voice",
+            detail="Le déblocage de la voix a échoué. Réessaie.",
         )
 
 

@@ -805,7 +805,7 @@
     const key = im.previewKey || '';
     const url = key ? '/watt/images/' + key.split('/').map(encodeURIComponent).join('/') : '';
     const thumb = url ? `<img src="${escAttr(url)}" alt="" />` : '🖼️';
-    const platLbl = { midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', autre: 'Autre' }[im.imagePlatform] || (im.imagePlatform || '');
+    const platLbl = { midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', chatgpt: 'ChatGPT', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre' }[im.imagePlatform] || (im.imagePlatform || '');
     const sub = [platLbl, im.ratio].filter(Boolean).join(' · ');
     return `
       <div class="ss-img-card" role="button" tabindex="0"

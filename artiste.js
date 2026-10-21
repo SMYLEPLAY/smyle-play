@@ -999,7 +999,7 @@ function openBoutiqueDrawer(type, dataStr) {
     if (data.linkedImage && data.linkedImage.id) {
       const li = data.linkedImage;
       const prevU = li.previewKey ? `/watt/images/${(li.previewKey + '').replace(/"/g,'&quot;')}` : '';
-      const _BD_IMG_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', autre: 'Autre' };
+      const _BD_IMG_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre' };
       const liProv = li.imagePlatform
         ? ' · ⚡ ' + (_BD_IMG_LABELS[String(li.imagePlatform).toLowerCase()] || li.imagePlatform)
         : '';
@@ -1652,6 +1652,7 @@ const _PROMPT_PLATFORM_LBL = {
   udio:         'Udio',
   riffusion:    'Riffusion',
   stable_audio: 'Stable Audio',
+  elevenlabs:   'ElevenLabs Music',
   autre:        'Autre',
 };
 function _voicePromptPlatformLbl(key) {

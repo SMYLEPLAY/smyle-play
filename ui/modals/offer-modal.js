@@ -75,7 +75,8 @@
     // Lot 1 (pré-lancement) : offres ADN cachées au lancement (SHOW_OFFRES_ADN).
     // Le backend répond 404 lancement ; on prévient au lieu d'ouvrir un
     // formulaire voué à l'échec. Drapeau absent → caché.
-    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.offresAdn)) {
+    // Lot J : il faut AUSSI que les ADN soient affichés (SHOW_ADN).
+    if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.offresAdn && window.WATT_LAUNCH.adn)) {
       var msg = 'Les offres sur les ADN ouvrent bientôt.';
       try {
         if (typeof window.showToast === 'function') { window.showToast(msg); return; }

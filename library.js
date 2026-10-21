@@ -272,7 +272,7 @@ function libImgPreviewUrl(key) {
 
 const IMG_PLATFORM_LBL_LIB = {
   midjourney: 'Midjourney', dalle: 'DALL·E', stable_diffusion: 'Stable Diffusion',
-  flux: 'Flux', autre: 'Autre',
+  flux: 'Flux', chatgpt: 'ChatGPT', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre',
 };
 
 function renderLibraryImageCell(p, i, artistName, artistLink) {
@@ -563,7 +563,7 @@ function renderPrompts(items) {
   // sur la card publique, révélés ici dans /library après unlock).
   const PROMPT_PLATFORM_LBL = {
     suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion',
-    stable_audio: 'Stable Audio', autre: 'Autre',
+    stable_audio: 'Stable Audio', elevenlabs: 'ElevenLabs Music', autre: 'Autre',
   };
   const PROMPT_VOCAL_LBL = {
     masculin: '🎙 Voix masculine',

@@ -300,7 +300,7 @@ async def test_b4_modifier_une_oeuvre(client):
         assert rec.description == "Une description"
         assert (rec.price_credits, img.price_credits) == (30, 45)
         for corps in ({"cover_url": f"/watt/images/images/track-cover/{b['id']}/c.png"},
-                      {"recipe_price": 151}, {"image_price": 9}, {"title": "abc"}):
+                      {"recipe_price": 151}, {"image_price": 9}, {"title": "a"}):
             r = await client.patch(f"/artist/me/oeuvres/{o['track']}", headers=h, json=corps)
             assert r.status_code == 422, (corps, r.text)
     finally:

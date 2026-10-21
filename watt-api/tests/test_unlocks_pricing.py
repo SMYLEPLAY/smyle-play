@@ -127,7 +127,7 @@ def test_unlock_adn_pricing_invariants(price):
         (200, False, 200, 160, 40),
         # Prompts avec perk -30%
         (5, True, 3, 2, 1),
-        (10, True, 7, 5, 2),
+        (10, True, 7, 6, 1),
         (50, True, 35, 28, 7),
         (100, True, 70, 56, 14),
         (200, True, 140, 112, 28),

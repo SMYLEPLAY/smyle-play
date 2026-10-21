@@ -38,7 +38,7 @@ class Prompt(Base):
             name="ck_prompts_price_credits_range",
         ),
         CheckConstraint(
-            "char_length(title) >= 5",
+            "char_length(title) >= 2",  # lot J (0109) : était 5
             name="ck_prompts_title_min_length",
         ),
         # Beats (0052) + Images (0057) : la borne 100..1000 de prompt_text n'est
@@ -71,7 +71,7 @@ class Prompt(Base):
         # prompts existants en DB qui n'ont pas ces champs.
         CheckConstraint(
             "prompt_platform IS NULL OR prompt_platform IN "
-            "('suno', 'udio', 'riffusion', 'stable_audio', 'autre')",
+            "('suno', 'udio', 'riffusion', 'stable_audio', 'elevenlabs', 'autre')",
             name="ck_prompts_platform_enum",
         ),
         CheckConstraint(

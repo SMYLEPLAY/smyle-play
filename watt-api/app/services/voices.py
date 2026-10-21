@@ -103,7 +103,7 @@ async def unlock_voice_atomic(
         select(Voice).where(Voice.id == voice_id)
     )).scalar_one_or_none()
     if voice_row is None or not voice_row.is_published or voice_row.is_deleted:
-        raise VoiceNotPurchasable("Voice not found or not published")
+        raise VoiceNotPurchasable("Cette voix est introuvable ou n'est plus en vente.")
 
     artist_id = voice_row.artist_id
     paid = voice_row.price_credits
@@ -111,7 +111,7 @@ async def unlock_voice_atomic(
 
     if buyer_id == artist_id:
         raise SelfPurchaseForbidden(
-            "An artist cannot unlock their own voice"
+            "Tu ne peux pas acheter ta propre voix."
         )
 
     async with db.begin_nested():
@@ -210,7 +210,7 @@ async def unlock_voice_atomic(
         try:
             await db.flush()
         except IntegrityError as e:
-            raise AlreadyOwned("You already own this voice") from e
+            raise AlreadyOwned("Tu possèdes déjà cette voix.") from e
 
         tx.status = TransactionStatus.COMPLETED
         tx.completed_at = func.now()

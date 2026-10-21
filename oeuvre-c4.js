@@ -25,6 +25,21 @@
     });
   }
 
+  // Lot J — provenance lisible : « Fait avec Suno · v6 ».
+  var _OUTILS = {
+    suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio',
+    elevenlabs: 'ElevenLabs Music', midjourney: 'Midjourney', dalle: 'DALL·E',
+    chatgpt: 'ChatGPT', flux: 'Flux', stable_diffusion: 'Stable Diffusion',
+    ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly',
+    google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream',
+    grok: 'Grok', autre: 'un autre outil',
+  };
+  function _provenance(platform, version) {
+    var outil = platform ? (_OUTILS[platform] || platform) : '';
+    if (!outil) return '';
+    return 'Fait avec ' + outil + (version ? ' · ' + version : '');
+  }
+
   function _toast(msg, type) {
     try { if (window.smyleToast) return window.smyleToast(msg, { type: type || 'info' }); } catch (_) {}
   }
@@ -67,6 +82,7 @@
       : { type: 'son', id: _data.sound.recipe.id, price: _data.sound.recipe.priceCredits, title: _data.sound.title };
     window.PurchaseDrawer.open({
       type: half.type, id: half.id, price: half.price, title: half.title,
+      platform: kind === 'image' ? (_data.image.platform || '') : (_data.sound.platform || ''),
       onSuccess: function () { _toast('Débloqué — retrouve-le dans ta bibliothèque.', 'success'); },
     });
   }
@@ -145,7 +161,10 @@
       '<div class="o-half-thumb">' + sonThumb + '</div>' +
       '<div class="o-half-body"><p class="o-half-kind o-half-kind--son">Le son</p>' +
       '<p class="o-half-title">' + _esc(snd.title || title) + '</p>' +
-      '<p class="o-half-note">' + (snd.recipe ? 'Recette + fichier' : 'En écoute libre') + '</p></div>' +
+      '<p class="o-half-note">' + (snd.recipe ? 'Recette + fichier' : 'En écoute libre') + '</p>' +
+      (_provenance(snd.platform, snd.modelVersion)
+        ? '<p class="o-half-note o-half-prov">' + _esc(_provenance(snd.platform, snd.modelVersion)) + '</p>' : '') +
+      '</div>' +
       sonAction;
 
     // Moitié IMAGE
@@ -153,7 +172,10 @@
       '<div class="o-half-thumb">' + (url ? '<img src="' + _esc(url) + '" alt="" />' : '<span aria-hidden="true">🖼</span>') + '</div>' +
       '<div class="o-half-body"><p class="o-half-kind o-half-kind--image">L\'image</p>' +
       '<p class="o-half-title">' + _esc(img.title || title) + '</p>' +
-      '<p class="o-half-note">Recette + image originale</p></div>' +
+      '<p class="o-half-note">Recette + image originale</p>' +
+      (_provenance(img.platform, img.modelVersion)
+        ? '<p class="o-half-note o-half-prov">' + _esc(_provenance(img.platform, img.modelVersion)) + '</p>' : '') +
+      '</div>' +
       (img.priceCredits != null
         ? '<button type="button" class="o-btn" data-o-buy="image">Débloquer · ' + _esc(img.priceCredits) + ' Smyles</button>'
         : '');

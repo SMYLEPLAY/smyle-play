@@ -52,7 +52,7 @@
     'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
     'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
   };
-  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', autre: 'Autre' };
+  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', elevenlabs: 'ElevenLabs Music', midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', chatgpt: 'ChatGPT', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre' };
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -179,6 +179,8 @@
     var price  = (opts.price != null && isFinite(opts.price)) ? opts.price : null;
     var title  = opts.title || 'Cet exemplaire';
     var platformKey = (opts.platform || '').trim().toLowerCase();
+    // Lot J — la règle de réutilisation (CGU art. 11) est dite AVANT l'achat.
+    var _LICENCE_LI = '<li>📜 <span>Réutilisable dans <strong>tes créations</strong>, même publiées ou vendues — revente telle quelle interdite (<a href="/legal#cgu" target="_blank" rel="noopener">CGU art. 11</a>).</span></li>';
     var platformLbl = PLATFORM_LABELS[platformKey] || (platformKey || null);
 
     var reperes;
@@ -189,14 +191,16 @@
         '<li>👁️ <span>L’aperçu reste <strong>public pour tout le monde</strong> — tu achètes la possession, pas la vue.</span></li>' +
         '<li>🔓 <span>Achat = <strong>recette + image originale</strong>, téléchargeable depuis ta bibliothèque.</span></li>' +
         '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
-        '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>';
+        '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>' +
+        _LICENCE_LI;
     } else {
       reperes =
         '<li>🎧 <span>L’écoute est <strong>libre avec un compte gratuit</strong> — tu achètes la possession, pas l’accès.</span></li>' +
         (type === 'voix'
           ? '<li>🔓 <span>Achat = <strong>le fichier voix complet</strong> (la preview 30 s devient intégrale).</span></li>'
           : '<li>🔓 <span>Achat = <strong>fichier + recette</strong> — l’exemplaire complet, téléchargeable depuis ta bibliothèque.</span></li>') +
-        '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>';
+        '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
+        (type === 'voix' ? '' : _LICENCE_LI);
     }
 
     var ov = document.createElement('div');
@@ -326,8 +330,8 @@
         } else if (status === 402) {
           var d = err.body && err.body.detail;
           _toast((d && typeof d === 'object')
-            ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.'
-            : 'Solde de Smyles insuffisant.', 'error');
+            ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '. Invite un ami : +20 Smyles pour toi et pour lui.'
+            : 'Solde de Smyles insuffisant. Invite un ami : +20 Smyles pour toi et pour lui.', 'error');
         } else if (status === 409 && err.body && err.body.detail && err.body.detail.code === 'prix_change') {
           _toast(err.body.detail.message + ' — réessaie.', 'error');
         } else if (status === 409) {

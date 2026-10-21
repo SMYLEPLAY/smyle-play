@@ -81,7 +81,8 @@ def test_perk_constants_consistent():
 
 
 # -----------------------------------------------------------------------------
-# compute_split — table de cas exhaustive (primary market 80/20)
+# compute_split — table de cas exhaustive (primary market 80/20).
+# Lot J : arrondi au CRÉATEUR, plateforme ≥ plancher de 10 % (arrondi sup.).
 # -----------------------------------------------------------------------------
 
 @pytest.mark.parametrize(
@@ -90,7 +91,7 @@ def test_perk_constants_consistent():
         # Primary market 80/20 (default)
         (3, 80, 2, 1),       # 3*80//100 = 2, reste 1
         (5, 80, 4, 1),       # 5*80//100 = 4, reste 1
-        (7, 80, 5, 2),       # 7*80//100 = 5, reste 2
+        (7, 80, 6, 1),       # lot J : 5,6 arrondi au créateur → 6 (plancher 10 % = 1)
         (10, 80, 8, 2),      # 10*80//100 = 8, reste 2
         (50, 80, 40, 10),
         (100, 80, 80, 20),
@@ -163,7 +164,7 @@ def test_primary_market_pct_is_80():
         (3, True, 2, 1, 1),    # 3 → 2 → split (1, 1)
         (5, True, 3, 2, 1),    # 5 → 3 → split (2, 1)
         (7, True, 4, 3, 1),    # 7 → 4 → split (3, 1)
-        (10, True, 7, 5, 2),   # 10 → 7 → split (5, 2)
+        (10, True, 7, 6, 1),      # lot J : 5,6 → 6, plancher 1   # 10 → 7 → split (5, 2)
         (50, True, 35, 28, 7), # 50 → 35 → split (28, 7)
     ],
 )

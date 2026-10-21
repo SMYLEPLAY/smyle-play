@@ -222,6 +222,10 @@ class Settings(BaseSettings):
     EDITEUR_ADRESSE: str = ""
     EDITEUR_TELEPHONE: str = ""
     SHOW_OFFRES_ADN: bool = True    # offres sur ADN (/adn-offers)
+    # Lot J (21/10/2026) — simplification : les ADN (musical, visuel, de
+    # playlist) ne sont plus proposés à la création ni mis en avant sur les
+    # cartes au lancement. Rien n'est supprimé : SHOW_ADN=true les rallume.
+    SHOW_ADN: bool = False
     SHOW_MESSAGERIE: bool = False   # messagerie privée (/messages)
     SHOW_SERIE: bool = False        # série quotidienne (/streak)
     SHOW_TROPHEES: bool = False     # trophées + leurs récompenses en Smyles
@@ -376,6 +380,7 @@ class Settings(BaseSettings):
             "achatSmyles": self._item_visible(self.SHOW_ACHAT_SMYLES),
             "euros": self._item_visible(self.SHOW_EUROS),
             "offresAdn": self._item_visible(self.SHOW_OFFRES_ADN),
+            "adn": self._item_visible(self.SHOW_ADN),
             "messagerie": self._item_visible(self.SHOW_MESSAGERIE),
             "serie": self._item_visible(self.SHOW_SERIE),
             "trophees": self._item_visible(self.SHOW_TROPHEES),

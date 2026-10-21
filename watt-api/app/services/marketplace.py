@@ -345,12 +345,9 @@ async def create_prompt(
     prompt_vocal_gender: str | None = None,
 ) -> Prompt:
     """
-    Crée un prompt. Pré-requis : l'artiste a un ADN (même non publié).
-
-    Pourquoi : un prompt est une "déclinaison" de l'ADN de l'artiste —
-    sans ADN il n'y a pas d'identité créative à laquelle rattacher
-    le prompt. Côté UX, c'est aussi un garde-fou contre les artistes qui
-    publieraient en vrac sans avoir construit leur signature d'abord.
+    Crée un prompt (recette). Aucun prérequis d'ADN depuis le lot J
+    (21/10/2026) : l'exigence d'un ADN, pensée comme « signature créative
+    d'abord », bloquait silencieusement tout nouveau créateur.
 
     Bug fix 2026-05-04 : les paramètres lyrics, is_published, et les 5
     champs P1-F4 étaient validés par Pydantic mais ignorés par le service.
@@ -358,11 +355,9 @@ async def create_prompt(
     DB malgré un payload front complet. Maintenant tous les champs sont
     persistés.
     """
-    adn = await get_adn_by_artist(db, artist_id)
-    if adn is None:
-        raise AdnNotFound(
-            "Artist must create an ADN before publishing prompts"
-        )
+    # Lot J (21/10/2026) — l'ADN n'est PLUS un prérequis : l'exiger bloquait
+    # tout nouveau créateur (son publié, recette refusée, sans que l'interface
+    # le dise). Une recette ne dépend d'aucun ADN en base.
 
     prompt = Prompt(
         artist_id=artist_id,

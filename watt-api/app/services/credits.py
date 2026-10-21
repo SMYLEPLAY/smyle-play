@@ -171,26 +171,31 @@ def compute_split(
     Calcule le split (artist_revenue, platform_fee) en arithmétique entière.
 
     Garantit: artist_revenue + platform_fee == amount (pas de crédit perdu).
-    L'artiste reçoit exactement `(amount * artist_pct) // 100`, la plateforme
-    récupère le reste (donc absorbe les pertes d'arrondi).
 
-    Pour Phase 10 (P2P resale), on appellera avec un artist_pct différent
-    (30% artiste, 20% plateforme), et on passera la part vendeur en
-    `amount - artist_revenue - platform_fee` côté caller.
+    Lot J (21/10/2026) — l'arrondi va désormais au CRÉATEUR : la commission
+    affichée est un MAXIMUM. Avant, l'arrondi allait à la plateforme et
+    effaçait les avantages aux petits prix (à 15 Smyles, « 10 % Pionnier »
+    et « 12 % Premium » coûtaient tous deux 13,3 %). Une seule borne :
+    la plateforme garde toujours au moins le PLANCHER (10 %, arrondi au
+    Smyle supérieur). C'est elle qui garantit qu'on ne rachète jamais un
+    Smyle gagné plus cher qu'on ne l'a vendu (0,9 × 5 c < 4,9 c net).
 
-    Exemples (artist_pct=80, primary market — prix conseillés 15 / 30 / 45) :
-        compute_split(10)  == (8, 2)    # 10*80//100=8, reste=2
-        compute_split(15)  == (12, 3)   # commission exacte de 20 %
-        compute_split(30)  == (24, 6)
-        compute_split(45)  == (36, 9)
-    L'arrondi va toujours à la plateforme : la commission effective n'est
-    jamais inférieure au taux affiché (donc jamais sous le plancher de 10 %).
+    Exemples (prix conseillés 20 / 45) :
+        compute_split(20)      == (16, 4)   # standard 20 %
+        compute_split(20, 88)  == (18, 2)   # premium : 17,6 → 18 (plancher 2)
+        compute_split(20, 90)  == (18, 2)   # Pionnier 10 % exact
+        compute_split(15, 88)  == (13, 2)   # 13,2 → 14, borné par le plancher
+        compute_split(45, 88)  == (40, 5)   # 39,6 → 40
     """
+    from app.services.tiers import COMMISSION_PLANCHER_PCT
+
     if amount <= 0:
         raise ValueError("amount must be positive")
     if not (0 <= artist_pct <= 100):
         raise ValueError("artist_pct must be in [0, 100]")
-    artist_revenue = (amount * artist_pct) // 100
+    part_haute = -((-amount * artist_pct) // 100)               # arrondi supérieur
+    plancher = -((-amount * COMMISSION_PLANCHER_PCT) // 100)    # idem
+    artist_revenue = max(0, min(part_haute, amount - plancher))
     platform_fee = amount - artist_revenue
     return artist_revenue, platform_fee
 

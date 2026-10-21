@@ -34,8 +34,8 @@ _MEDIA_URL_RELATIVE_RE = re.compile(r"^/watt/(stream|images)/[A-Za-z0-9._%/ -]+$
 # dans un attribut une fois les guillemets bannis).
 _FORBIDDEN_URL_CHARS = set('"\'<>`\\') | {chr(c) for c in range(0, 32)} | {chr(127)}
 
-TRACK_PLATFORMS = ("suno", "udio", "riffusion", "stable_audio", "autre")
-TrackPlatform = Literal["suno", "udio", "riffusion", "stable_audio", "autre"]
+TRACK_PLATFORMS = ("suno", "udio", "riffusion", "stable_audio", "elevenlabs", "autre")
+TrackPlatform = Literal["suno", "udio", "riffusion", "stable_audio", "elevenlabs", "autre"]
 
 
 def validate_media_url(v: str | None) -> str | None:

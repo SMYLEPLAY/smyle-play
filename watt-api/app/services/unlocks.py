@@ -92,7 +92,7 @@ class InsufficientCredits(UnlockError):
 
     def __init__(self, required: int, available: int):
         super().__init__(
-            f"Insufficient credits: need {required}, have {available}"
+            f"Solde insuffisant : il faut {required} Smyles, tu en as {available}."
         )
         self.required = required
         self.available = available
@@ -138,7 +138,7 @@ async def _relire_sous_verrou(db: AsyncSession, prompt_id) -> Prompt:
     )).scalar_one_or_none()
     if (row is None or not row.is_published or row.is_deleted
             or row.taken_down_at is not None):
-        raise PromptNotPurchasable("Prompt not found or not published")
+        raise PromptNotPurchasable("Cette recette est introuvable ou n'est plus en vente.")
     return row
 
 
@@ -276,7 +276,7 @@ async def unlock_prompt_atomic(
         select(Prompt).where(Prompt.id == prompt_id)
     )).scalar_one_or_none()
     if prompt_row is None or not prompt_row.is_published:
-        raise PromptNotPurchasable("Prompt not found or not published")
+        raise PromptNotPurchasable("Cette recette est introuvable ou n'est plus en vente.")
 
     # Lot 1 : un BEAT s'achète par cette même route (c'est une ligne `prompts`,
     # product_type='beat'). Beats cachés au lancement → refus, avec le même 404
@@ -299,7 +299,7 @@ async def unlock_prompt_atomic(
     # 2. Self-purchase = refus avant tout lock (économise du travail DB)
     if buyer_id == artist_id:
         raise SelfPurchaseForbidden(
-            "An artist cannot unlock their own prompt"
+            "Tu ne peux pas acheter ta propre recette."
         )
 
     from contextlib import nullcontext
@@ -352,7 +352,7 @@ async def unlock_prompt_atomic(
             {"uid": buyer_id},
         )).first()
         if buyer_row is None:
-            raise PromptNotPurchasable("Buyer not found")
+            raise PromptNotPurchasable("Acheteur introuvable")
         buyer_balance = int(buyer_row.credits_balance)
         if buyer_balance < paid:
             raise InsufficientCredits(required=paid, available=buyer_balance)
@@ -437,7 +437,7 @@ async def unlock_prompt_atomic(
             # remonte au caller qui rollback la transaction outer) et on
             # remonte un message clair.
             raise AlreadyUnlocked(
-                "You already own this prompt"
+                "Tu possèdes déjà cette recette."
             ) from e
 
         # 11. Finalise la transaction
@@ -515,7 +515,7 @@ async def unlock_adn_atomic(
         select(Adn).where(Adn.id == adn_id)
     )).scalar_one_or_none()
     if adn_row is None or not adn_row.is_published:
-        raise AdnNotPurchasable("ADN not found or not published")
+        raise AdnNotPurchasable("Cet ADN est introuvable ou n'est plus en vente.")
 
     # Stock-out : si max_supply défini, on vérifie le nombre d'OwnedAdn.
     if adn_row.max_supply is not None:
@@ -543,7 +543,7 @@ async def unlock_adn_atomic(
 
     if buyer_id == artist_id:
         raise SelfPurchaseForbidden(
-            "An artist cannot unlock their own ADN"
+            "Tu ne peux pas acheter ton propre ADN."
         )
 
     async with db.begin_nested():
@@ -575,7 +575,7 @@ async def unlock_adn_atomic(
             {"uid": buyer_id},
         )).first()
         if buyer_row is None:
-            raise AdnNotPurchasable("Buyer not found")
+            raise AdnNotPurchasable("Acheteur introuvable")
         buyer_balance = int(buyer_row.credits_balance)
         if buyer_balance < paid:
             raise InsufficientCredits(required=paid, available=buyer_balance)
@@ -628,7 +628,7 @@ async def unlock_adn_atomic(
         try:
             await db.flush()
         except IntegrityError as e:
-            raise AlreadyOwned("You already own this ADN") from e
+            raise AlreadyOwned("Tu possèdes déjà cet ADN.") from e
 
         tx.status = TransactionStatus.COMPLETED
         tx.completed_at = func.now()

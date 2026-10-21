@@ -282,7 +282,7 @@ def test_constants_are_consistent_with_db():
     assert PROMPT_PRICE_MIN == 10
     assert PROMPT_PRICE_MAX == 150
     # Prompt : ck_prompts_title_min_length >= 5
-    assert PROMPT_TITLE_MIN == 5
+    assert PROMPT_TITLE_MIN == 2
     # Prompt : ck_prompts_prompt_text_length BETWEEN 100 AND 1000
     # (resserré en 0019 — Suno n'accepte pas plus de 1000 chars en entrée)
     assert PROMPT_TEXT_MIN == 100

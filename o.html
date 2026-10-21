@@ -57,6 +57,9 @@
     .o-bundle-note { margin: 6px 0 0; font-size: 12px; color: var(--sp-text-muted, rgba(255,255,255,.72)); }
     .o-report { align-self: flex-start; background: none; border: none; padding: 4px 0; cursor: pointer;
       color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: 12px; text-decoration: underline; }
+    .o-licence { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: rgba(255,255,255,.62); }
+    .o-licence a { color: inherit; }
+    .o-half-prov { opacity: .8; }
     .o-share { align-self: flex-start; padding: 10px 14px; border-radius: 11px; cursor: pointer; font-weight: 600; font-size: 13px;
       background: none; color: var(--sp-text, #e8e8f0); border: 1px solid var(--sp-border-strong, rgba(255,255,255,.25)); }
   </style>
@@ -98,6 +101,7 @@
         <button type="button" class="o-share" id="o-share">Copier le lien de l'œuvre</button>
         <button type="button" class="o-report" id="o-report">Signaler l'image</button>
         <button type="button" class="o-report" id="o-report-son" hidden>Signaler le son</button>
+        <p class="o-licence">Contenu généré par IA. Ce que tu débloques est <strong>réutilisable dans tes créations</strong>, même publiées ou vendues ; la revente telle quelle est interdite (<a href="/legal#cgu">CGU, article 11</a>). Une recette donne des résultats proches, jamais identiques.</p>
       </div>
     </div>
   </article>
@@ -114,10 +118,10 @@
 <script src="/ui/core/events.js"></script>
 <script src="/ui/core/toast.js"></script>
 <script src="/ui/topbar/topbar.js?v=20261015lotib" defer></script>
-<script src="/ui/modals/purchase-drawer.js?v=20261011lotg"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20261021lotj"></script>
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
-<script src="/oeuvre-c4.js?v=20261014remise" defer></script>
-<script src="/ui/smyle-balance.js" defer></script>
+<script src="/oeuvre-c4.js?v=20261021lotj" defer></script>
+<script src="/ui/smyle-balance.js?v=20261021lotj" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <!-- Lot D : pied de page légal (Mentions, CGU, Confidentialité, Cookies, Contact) -->
 <script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>

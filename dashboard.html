@@ -20,7 +20,7 @@
   <!-- C0 design system (blueprint VF 2026-06-10) : tokens + pilules 3 repères -->
   <link rel="stylesheet" href="/ui/core/tokens.css" />
   <link rel="stylesheet" href="/ui/core/badges.css?v=20260616c4oc" />
-  <script src="/ui/core/badges.js?v=20260616c4oc" defer></script>
+  <script src="/ui/core/badges.js?v=20261021lotj" defer></script>
   <!-- C1 — WattBoard v3 (bandeau + 2 mondes + tuiles + création Audio) -->
   <link rel="stylesheet" href="wattboard-v3.css?v=20260610f" />
 
@@ -799,6 +799,7 @@
               <option value="udio">Udio</option>
               <option value="riffusion">Riffusion</option>
               <option value="stable_audio">Stable Audio</option>
+              <option value="elevenlabs">ElevenLabs Music</option>
               <option value="autre">Autre</option>
             </select>
             <div class="dash-help">L'IA ou l'outil avec lequel ce son a été généré. Affiché sur ta fiche de vente publique.</div>
@@ -877,16 +878,15 @@
             <div id="dashPromptPriceWrap">
             <label class="dash-label">Prix de déblocage (Smyles) <span class="dash-req">*</span></label>
             <input class="dash-input" id="dashPromptPrice" type="number"
-                   min="10" max="150" value="15"
+                   min="10" max="150" value="20"
                    oninput="updateCreditGrid()" />
           <div class="dash-help" id="dashPromptPriceEur" style="margin-top:4px;color:#a09cb8;font-style:italic;"></div>
             <div class="dash-help" id="dashPromptPriceAdvice">
               Prix libre, entre 10 et 150 Smyles. Prix conseillés :
-              <strong>15&nbsp;Smyles</strong> pour une recette ·
-              <strong>30</strong> pour une Œuvre son&nbsp;+&nbsp;image ·
+              <strong>20&nbsp;Smyles</strong> pour une recette ou une image ·
+              l'Œuvre complète (son&nbsp;+&nbsp;image) est proposée en lot, un peu moins cher ·
               <strong>45 et plus</strong> pour une édition rare ou limitée.
               Les prix montent avec la rareté et le travail de création.
-              Si l'acheteur possède ton ADN, il a −30&nbsp;% automatiquement.
             </div>
             </div>
 
@@ -919,23 +919,23 @@
               <div class="dash-help">Obligatoire : l'outil et sa version sont affichés sur ton Œuvre.</div>
 
               <label class="dash-label">
-                Weirdness <span class="dash-req">*</span>
-                · <span class="dash-slider-val" id="dashPromptWeirdnessVal">50</span>/100
+                Weirdness <em style="opacity:.7">(Suno, facultatif — touche le curseur pour l'indiquer)</em>
+                · <span class="dash-slider-val" id="dashPromptWeirdnessVal">—</span>
               </label>
               <input type="range" class="dash-slider" id="dashPromptWeirdness"
                      min="0" max="100" value="50" step="1"
-                     oninput="document.getElementById('dashPromptWeirdnessVal').textContent = this.value" />
+                     oninput="this.dataset.touched='1';document.getElementById('dashPromptWeirdnessVal').textContent = this.value + '/100'" />
               <div class="dash-mood-extremes">
                 <span>0 — classique</span><span>100 — expérimental</span>
               </div>
 
               <label class="dash-label" style="margin-top:12px">
-                Style influence <span class="dash-req">*</span>
-                · <span class="dash-slider-val" id="dashPromptStyleInfluenceVal">50</span>/100
+                Style influence <em style="opacity:.7">(Suno, facultatif)</em>
+                · <span class="dash-slider-val" id="dashPromptStyleInfluenceVal">—</span>
               </label>
               <input type="range" class="dash-slider" id="dashPromptStyleInfluence"
                      min="0" max="100" value="50" step="1"
-                     oninput="document.getElementById('dashPromptStyleInfluenceVal').textContent = this.value" />
+                     oninput="this.dataset.touched='1';document.getElementById('dashPromptStyleInfluenceVal').textContent = this.value + '/100'" />
               <div class="dash-mood-extremes">
                 <span>0 — très libre</span><span>100 — très fidèle</span>
               </div>
@@ -1046,6 +1046,14 @@
                     <option value="dalle">DALL-E</option>
                     <option value="stable_diffusion">Stable Diffusion</option>
                     <option value="flux">Flux</option>
+                    <option value="chatgpt">ChatGPT (GPT Image)</option>
+                    <option value="ideogram">Ideogram</option>
+                    <option value="leonardo">Leonardo</option>
+                    <option value="firefly">Adobe Firefly</option>
+                    <option value="google">Google (Imagen / Nano Banana)</option>
+                    <option value="recraft">Recraft</option>
+                    <option value="seedream">Seedream</option>
+                    <option value="grok">Grok</option>
                     <option value="autre">Autre</option>
                   </select>
                 </div>
@@ -1059,7 +1067,7 @@
                 </div>
                 <div>
                   <label class="dash-label" for="dashCoverImgPrice">Prix de l'image <span class="dash-req">*</span></label>
-                  <input class="dash-input" id="dashCoverImgPrice" type="number" min="10" max="150" value="15" />
+                  <input class="dash-input" id="dashCoverImgPrice" type="number" min="10" max="150" value="20" />
                   <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15). Son&nbsp;+&nbsp;image achetés ensemble bénéficient de la remise que tu choisis dans « Mes Œuvres » (10&nbsp;% par défaut). Les prix montent avec la rareté et le travail de création.</div>
                 </div>
                 <div>
@@ -2048,9 +2056,17 @@
       <select class="dash-input" id="imgcPlatform">
         <option value="">— Sélectionne la plateforme —</option>
         <option value="midjourney">Midjourney</option>
-        <option value="dalle">DALL·E / GPT Image (OpenAI)</option>
+        <option value="dalle">DALL·E (API OpenAI)</option>
+        <option value="chatgpt">ChatGPT (GPT Image)</option>
         <option value="flux">Flux</option>
         <option value="stable_diffusion">Stable Diffusion</option>
+        <option value="ideogram">Ideogram</option>
+        <option value="leonardo">Leonardo</option>
+        <option value="firefly">Adobe Firefly</option>
+        <option value="google">Google (Imagen / Nano Banana)</option>
+        <option value="recraft">Recraft</option>
+        <option value="seedream">Seedream</option>
+        <option value="grok">Grok</option>
         <option value="autre">Autre</option>
       </select>
       <div class="dash-help">Provenance obligatoire — c'est ce qui donne de la valeur à la recette. Elle pilote les réglages affichés ci-dessous.</div>
@@ -2310,7 +2326,7 @@
 
       <label class="dash-label">Prix <span class="dash-req">*</span></label>
       <div class="dash-voice-price-row">
-        <input type="number" class="dash-input" id="imgcPrice" min="10" max="150" value="15" />
+        <input type="number" class="dash-input" id="imgcPrice" min="10" max="150" value="20" />
         <span class="dash-voice-price-suffix">Smyles</span>
       </div>
       <div class="dash-help">Entre 10 et 150 Smyles (conseil : 15). Les prix montent avec la rareté et le travail de création.</div>
@@ -2318,11 +2334,11 @@
       <label class="dash-label">Visibilité</label>
       <div class="wb3-license-choice">
         <label class="wb3-license-opt">
-          <input type="radio" name="imgcVisibility" value="draft" checked />
+          <input type="radio" name="imgcVisibility" value="draft" />
           <span><strong>Brouillon</strong><em>Enregistrée mais pas en vente. Tu pourras la publier plus tard.</em></span>
         </label>
         <label class="wb3-license-opt">
-          <input type="radio" name="imgcVisibility" value="published" />
+          <input type="radio" name="imgcVisibility" value="published" checked />
           <span><strong>Publier maintenant</strong><em>Visible sur ton profil et achetable immédiatement.</em></span>
         </label>
       </div>
@@ -2616,24 +2632,24 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
-<script src="/ui/modals/purchase-drawer.js?v=20261011lotg"></script>
-<script src="/ui/modals/offer-modal.js?v=20261011lotg"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20261021lotj"></script>
+<script src="/ui/modals/offer-modal.js?v=20261021lotj"></script>
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
 <script src="/ui/modals/oeuvre-compose.js?v=20260707oc" defer></script>
-<script src="/ui/playlists.js?v=20261011lotg" defer></script>
+<script src="/ui/playlists.js?v=20261021lotj" defer></script>
 <script src="ui/core/droits-ia.js?v=20261020licence"></script>
-<script src="dashboard.js?v=20261015lotib"></script>
+<script src="dashboard.js?v=20261021lotj"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
-<script src="wattboard-v3.js?v=20260708parite" defer></script>
+<script src="wattboard-v3.js?v=20261021lotj" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
 <script src="/ui/modals/oeuvre-invite.js?v=20260923o" defer></script>
-<script src="images-create.js?v=20261015lotib" defer></script>
+<script src="images-create.js?v=20261021lotj" defer></script>
 <script src="images-list.js?v=20261011lotg" defer></script>
-<script src="/ui/smyle-balance.js" defer></script>
-<script src="/ui/modals/credits-buy.js" defer></script>
+<script src="/ui/smyle-balance.js?v=20261021lotj" defer></script>
+<script src="/ui/modals/credits-buy.js?v=20261021lotj" defer></script>
 <script src="/ui/modals/boutique.js?v=20261011lotg" defer></script>
 <script src="/ui/modals/engagement.js?v=20261011lotg" defer></script>
-<script src="/ui/modals/search.js?v=20260615a" defer></script>
+<script src="/ui/modals/search.js?v=20261021lotj" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 
 <!-- DASH_SECTIONS_COLLAPSIBLE -->

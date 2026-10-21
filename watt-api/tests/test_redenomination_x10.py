@@ -89,7 +89,7 @@ def test_le_formulaire_n_impose_plus_25_80_ni_3_500():
         assert "entre 3 et 500" not in src, nom
         assert "Min. 3 · Max. 500" not in src, nom
     html = (racine / "dashboard.html").read_text(encoding="utf-8")
-    assert 'min="10" max="150" value="15"' in html
+    assert 'min="10" max="150" value="20"' in html   # lot J : prix conseillé 20
     assert "Les prix montent avec la rareté et le travail de création." in html
 
 
@@ -103,12 +103,15 @@ def test_compute_split_prix_conseilles(prix, part_artiste):
 
     artiste, commission = compute_split(prix, part_artiste)
     assert artiste + commission == prix                      # rien ne se perd
-    assert artiste == prix * part_artiste // 100             # arrondi à la plateforme
-    # Commission jamais inférieure au taux affiché, ni au plancher de 10 %…
-    assert commission * 100 >= prix * (100 - part_artiste)
+    # Lot J : arrondi au CRÉATEUR — il touche au moins sa part exacte
+    # arrondie à l'inférieur…
+    assert artiste >= prix * part_artiste // 100
+    # … la commission ne descend jamais sous le plancher de 10 %…
     assert commission * 100 >= prix * COMMISSION_PLANCHER_PCT
-    # … et jamais plus d'un Smyle au-dessus.
-    assert commission * 100 - prix * (100 - part_artiste) < 100
+    # … et ne dépasse le plus haut des deux taux (affiché, plancher) que de
+    # moins d'un Smyle.
+    plafond = max(prix * (100 - part_artiste), prix * COMMISSION_PLANCHER_PCT)
+    assert commission * 100 - plafond < 100
 
 
 def test_compute_split_standard_exact_sur_les_prix_conseilles():

@@ -22,7 +22,7 @@
  *     `SHOW_ACHAT_SMYLES=true` et qu'on rebranchera le handler du clic pack.
  *
  * Disclaimer affiché à l'utilisateur pour rester honnête (règle Tom) :
- *   « Beta : les Smyles sont offerts — tu en gagnes en explorant et en jouant. »
+ *   (Lot J) message honnête : bonus d'inscription, parrainage et ventes.
  *
  * Dépendances globales attendues :
  *   - apiFetch  (ui/core/api.js) — fetch authentifié
@@ -528,7 +528,7 @@
     // promettrait un achat impossible tant que Stripe n'est pas branché.
     // Défensif : drapeau absent → masqué.
     if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)) {
-      _toast('Tes Smyles se gagnent en explorant, en publiant et en jouant.', 'info');
+      _toast("Tes Smyles : 30 offerts à l'inscription, +20 pour toi et pour ton ami à chaque parrainage, et ceux que tu gagnes quand on débloque tes créations.", 'info');
       return;
     }
     injectStyle();

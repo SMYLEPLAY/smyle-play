@@ -89,7 +89,8 @@
           '</div>' +
         '</div>' +
         '<div class="mo-actions">' +
-          (it.oeuvreUrl && it.status === 'publiee' ? '<a class="mo-btn" href="' + _esc(it.oeuvreUrl) + '">Voir</a>' : '') +
+          (it.oeuvreUrl && it.status === 'publiee' ? '<a class="mo-btn" href="' + _esc(it.oeuvreUrl) + '">Voir</a>' +
+            '<button type="button" class="mo-btn" data-copy="' + _esc(it.oeuvreUrl) + '">Copier le lien</button>' : '') +
           '<button type="button" class="mo-btn" data-edit="' + _esc(it.trackId) + '">Modifier</button>' +
         '</div>' +
       '</article>';
@@ -308,7 +309,7 @@
   function _saveEdit(it, box) {
     var body = {};
     var title = (box.querySelector('#mo-e-title').value || '').trim();
-    if (title.length < 5) { _showErr(box, 'Le titre doit faire au moins 5 caractères.'); return; }
+    if (title.length < 2) { _showErr(box, 'Le titre doit faire au moins 2 caractères.'); return; }
     if (title !== it.title) body.title = title;
     var desc = box.querySelector('#mo-e-desc');
     if (desc && desc.value.trim() !== ((it.recipe && it.recipe.description) || '')) body.description = desc.value.trim();
@@ -366,7 +367,17 @@
       var p = ev.target.closest('[data-play]');
       if (p) { _play(p.getAttribute('data-play')); return; }
       var e = ev.target.closest('[data-edit]');
-      if (e) { _openEdit(e.getAttribute('data-edit')); }
+      if (e) { _openEdit(e.getAttribute('data-edit')); return; }
+      // Lot J — le créateur partage son Œuvre en un clic (bio, story, DM).
+      var c = ev.target.closest('[data-copy]');
+      if (c) {
+        var lien = window.location.origin + c.getAttribute('data-copy');
+        try {
+          navigator.clipboard.writeText(lien).then(
+            function () { _toast('Lien copié — colle-le dans ta bio ou tes messages.'); },
+            function () { window.prompt('Copie ce lien :', lien); });
+        } catch (_) { window.prompt('Copie ce lien :', lien); }
+      }
     });
     $('mo-all').addEventListener('change', function (ev) {
       _sel = ev.target.checked ? new Set(_items.map(function (i) { return i.trackId; })) : new Set();

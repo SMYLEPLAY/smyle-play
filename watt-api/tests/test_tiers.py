@@ -355,8 +355,8 @@ async def test_commission_suit_le_palier_du_vendeur(service):
     """Vendeur Premium : 88 % pour l'artiste, 12 % pour la plateforme.
 
     On lit la transaction UNLOCK émise par le service : `artist_revenue` doit
-    valoir `credits_amount * 88 // 100` (compute_split laisse l'arrondi à la
-    plateforme) et la somme doit être conservée.
+    valoir `compute_split(credits_amount, 88)` (lot J : arrondi au créateur,
+    plancher de 10 % garanti) et la somme doit être conservée.
     """
     seller = await _make_seller_premium()
     buyer = await _make_buyer()
@@ -374,7 +374,7 @@ async def test_commission_suit_le_palier_du_vendeur(service):
         assert rows, f"{service} : aucune transaction de vente émise"
         for tx in rows:
             amount = int(tx.credits_amount)
-            assert int(tx.artist_revenue) == amount * PREMIUM_PCT // 100, (
+            assert int(tx.artist_revenue) == compute_split(amount, PREMIUM_PCT)[0], (
                 f"{service} : palier vendeur ignoré "
                 f"({tx.artist_revenue} sur {amount})"
             )
