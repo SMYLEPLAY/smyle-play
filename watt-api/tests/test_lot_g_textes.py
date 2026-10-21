@@ -28,8 +28,8 @@ def test_remises_acheteur_annoncees_et_justes():
     # L'exemple chiffré correspond au code.
     paye = compute_effective_price(30, True)
     part, commission = compute_split(paye)
-    assert (paye, part, commission) == (21, 16, 5)
-    assert "lui coûte 21 Smyles ; tu reçois 16 Smyles (au lieu de 24) et WATT 5" in TEXTE
+    assert (paye, part, commission) == (21, 17, 4)   # lot J : arrondi au créateur
+    assert "lui coûte 21 Smyles ; tu reçois 17 Smyles (au lieu de 24) et WATT 4" in TEXTE
 
 
 def test_resume_pionnier_quand_le_programme_est_ouvert():

@@ -122,7 +122,7 @@ async def get_prompt(
     detail = await get_public_prompt(db, prompt_id)
     if detail is None:
         raise HTTPException(
-            status.HTTP_404_NOT_FOUND, detail="Prompt not found or not published"
+            status.HTTP_404_NOT_FOUND, detail="Cette recette est introuvable ou n'est plus en vente."
         )
     return detail
 
@@ -154,7 +154,7 @@ async def get_adn(
     detail = await get_public_adn(db, adn_id)
     if detail is None:
         raise HTTPException(
-            status.HTTP_404_NOT_FOUND, detail="ADN not found or not published"
+            status.HTTP_404_NOT_FOUND, detail="Cet ADN est introuvable ou n'est plus en vente."
         )
     return detail
 
@@ -247,7 +247,7 @@ async def get_effective_price_for_prompt(
     detail = await get_public_prompt(db, prompt_id)
     if detail is None:
         raise HTTPException(
-            status.HTTP_404_NOT_FOUND, detail="Prompt not found or not published"
+            status.HTTP_404_NOT_FOUND, detail="Cette recette est introuvable ou n'est plus en vente."
         )
 
     # Self-purchase : pas d'erreur ici (c'est juste un preview), mais le perk

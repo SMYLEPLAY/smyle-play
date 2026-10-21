@@ -39,7 +39,7 @@ ADN_MAX_SUPPLY_MAX = 2147483647  # INT32 max PostgreSQL — pas de plafond resse
 
 PROMPT_PRICE_MIN = 10
 PROMPT_PRICE_MAX = 150          # Décision Tom 9/10/2026 : prix libre 10–150 Smyles
-PROMPT_TITLE_MIN = 5
+PROMPT_TITLE_MIN = 2  # lot J : « Nuit » doit passer (le son accepte 1)
 PROMPT_TITLE_MAX = 200          # Cohérent avec String(200) en DB
 # Bornes prompt_text resserrées : Suno n'accepte pas plus de 1000 chars en
 # entrée, vendre un prompt > 1000 chars reviendrait à vendre un prompt
@@ -169,7 +169,7 @@ class AdnRead(BaseModel):
 
 # Enums P1-F4 (2026-05-04) — alignés avec ck_prompts_*_enum côté DB.
 PromptPlatform = Literal[
-    "suno", "udio", "riffusion", "stable_audio", "autre"
+    "suno", "udio", "riffusion", "stable_audio", "elevenlabs", "autre"
 ]
 PromptVocalGender = Literal["masculin", "feminin", "instrumental", "neutre", "mixte"]
 
@@ -220,8 +220,10 @@ class PromptCreate(BaseModel):
     # que chaque Œuvre affiche l'outil d'IA ET sa version.
     prompt_platform: PromptPlatform
     prompt_model_version: str = Field(min_length=1, max_length=50)
-    prompt_weirdness: str = Field(min_length=1, max_length=50)
-    prompt_style_influence: str = Field(min_length=1, max_length=500)
+    # Lot J — réglages propres à Suno : FACULTATIFS. Les curseurs préréglés à
+    # 50 envoyaient sinon des valeurs que le créateur n'avait jamais choisies.
+    prompt_weirdness: str | None = Field(default=None, min_length=1, max_length=50)
+    prompt_style_influence: str | None = Field(default=None, min_length=1, max_length=500)
     prompt_vocal_gender: PromptVocalGender
 
 

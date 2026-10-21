@@ -1182,24 +1182,33 @@ function dte2OpenCreatePrompt() {
             <option value="udio">Udio</option>
             <option value="riffusion">Riffusion</option>
             <option value="stable_audio">Stable Audio</option>
+            <option value="elevenlabs">ElevenLabs Music</option>
             <option value="autre">Autre</option>
           </select>
         </div>
         <div class="dte2-cp-field">
           <label class="dte2-cp-label">Prix (Smyles) <span style="color:#cc44ff">*</span></label>
-          <input id="cp_price" class="dte2-input" type="number" min="10" max="150" value="15"
+          <input id="cp_price" class="dte2-input" type="number" min="10" max="150" value="20"
                  style="width:100%;box-sizing:border-box">
         </div>
+      </div>
+
+      <!-- Lot J — version du modèle (obligatoire côté serveur : sans elle,
+           la recette était toujours refusée depuis cette fenêtre). -->
+      <div class="dte2-cp-field">
+        <label class="dte2-cp-label">Modèle / version <span style="color:#cc44ff">*</span></label>
+        <input id="cp_version" class="dte2-input" type="text" maxlength="50"
+               placeholder="ex. Suno v6, Udio 1.5…" style="width:100%;box-sizing:border-box">
       </div>
 
       <!-- Weirdness + Style influence (sliders 0-100) -->
       <div class="dte2-cp-field">
         <label class="dte2-cp-label">
-          Weirdness — variété sonore
+          Weirdness — variété sonore (Suno, facultatif)
           <span id="cp_weirdVal" style="color:#cc44ff;font-weight:700;margin-left:8px">50</span>/100
         </label>
         <input id="cp_weird" type="range" min="0" max="100" value="50"
-               oninput="document.getElementById('cp_weirdVal').textContent=this.value"
+               oninput="this.dataset.touched='1';document.getElementById('cp_weirdVal').textContent=this.value"
                style="width:100%;accent-color:#8800ff;margin-top:6px">
         <span style="display:flex;justify-content:space-between;font-size:.7rem;color:#6b6780;margin-top:2px">
           <span>0 — classique</span><span>100 — expérimental</span>
@@ -1208,11 +1217,11 @@ function dte2OpenCreatePrompt() {
 
       <div class="dte2-cp-field">
         <label class="dte2-cp-label">
-          Style influence — fidélité à la référence
+          Style influence — fidélité à la référence (Suno, facultatif)
           <span id="cp_styleVal" style="color:#cc44ff;font-weight:700;margin-left:8px">50</span>/100
         </label>
         <input id="cp_style" type="range" min="0" max="100" value="50"
-               oninput="document.getElementById('cp_styleVal').textContent=this.value"
+               oninput="this.dataset.touched='1';document.getElementById('cp_styleVal').textContent=this.value"
                style="width:100%;accent-color:#8800ff;margin-top:6px">
         <span style="display:flex;justify-content:space-between;font-size:.7rem;color:#6b6780;margin-top:2px">
           <span>0 — très libre</span><span>100 — très fidèle</span>
@@ -1268,7 +1277,8 @@ async function dte2SubmitCreatePrompt() {
   const title    = (titleEl?.value || '').trim();
   const text     = (textEl?.value || '').trim();
   const platform = platEl?.value || '';
-  const price    = parseInt(priceEl?.value || '30', 10);
+  const version  = (document.getElementById('cp_version')?.value || '').trim();
+  const price    = parseInt(priceEl?.value || '20', 10);
   const weird    = parseInt(weirdEl?.value || '50', 10);
   const vocal    = vocalEl?.value || '';
   const style    = parseInt(styleEl?.value || '50', 10);
@@ -1278,10 +1288,11 @@ async function dte2SubmitCreatePrompt() {
   };
 
   // Validations
-  if (title.length < 5)   { showErr('Le titre doit faire au moins 5 caractères.'); return; }
+  if (title.length < 2)   { showErr('Le titre doit faire au moins 2 caractères.'); return; }
   if (text.length < 100)  { showErr(`Le texte du prompt doit faire au moins 100 caractères (${text.length}/100).`); return; }
   if (text.length > 1000) { showErr('Le texte du prompt ne doit pas dépasser 1000 caractères.'); return; }
   if (!platform)           { showErr('Choisis une plateforme.'); return; }
+  if (!version)            { showErr('Indique le modèle et sa version (ex. Suno v6).'); return; }
   if (price < 10 || price > 150 || isNaN(price)) { showErr('Le prix doit être entre 10 et 150 Smyles.'); return; }
   if (!vocal)              { showErr('Choisis un genre vocal.'); return; }
 
@@ -1297,8 +1308,10 @@ async function dte2SubmitCreatePrompt() {
         prompt_text:          text,
         price_credits:        price,
         prompt_platform:      platform,
-        prompt_weirdness:     String(weird),
-        prompt_style_influence: String(style),
+        prompt_model_version: version,
+        // Lot J — réglages Suno facultatifs : envoyés seulement si touchés.
+        prompt_weirdness:     (weirdEl && weirdEl.dataset.touched === '1') ? String(weird) : null,
+        prompt_style_influence: (styleEl && styleEl.dataset.touched === '1') ? String(style) : null,
         prompt_vocal_gender:  vocal,
         is_published:         true,
       },
@@ -1817,7 +1830,13 @@ function cancelUpload() {
     if (el) el.value = '';
   });
   const priceEl = document.getElementById('dashPromptPrice');
-  if (priceEl) priceEl.value = 15;   // prix conseillé d'une recette (≈ 1 €)
+  if (priceEl) priceEl.value = 20;   // lot J : prix conseillé d'une recette (taux de commission exacts)
+  // Lot J — curseurs Suno facultatifs : retour à « non indiqué ».
+  [['dashPromptWeirdness', 'dashPromptWeirdnessVal'], ['dashPromptStyleInfluence', 'dashPromptStyleInfluenceVal']]
+    .forEach(([id, lbl]) => {
+      const r = document.getElementById(id); if (r) { r.value = 50; delete r.dataset.touched; }
+      const l = document.getElementById(lbl); if (l) l.textContent = '—';
+    });
   // Retour au mode par défaut "avec recette prompt" (architecture primaire)
   setUploadMode('with_prompt');
   updatePromptCharCount();
@@ -1831,7 +1850,7 @@ function cancelUpload() {
   ['dashCoverImgPlatform', 'dashCoverImgVersion', 'dashCoverImgPrompt', 'dashCoverImgSupply']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const _scPrice = document.getElementById('dashCoverImgPrice');
-  if (_scPrice) _scPrice.value = '50';
+  if (_scPrice) _scPrice.value = '20';
   // Étape 2 — remet le picker couleur en mode "hériter du profil" pour
   // que le prochain upload reparte propre (évite la fuite d'état d'un son
   // à l'autre si l'artiste en poste plusieurs d'affilée).
@@ -2080,6 +2099,9 @@ async function uploadTrack() {
 
   const name = document.getElementById('dashTrackName').value.trim();
   if (!name) { dashToast('⚠ Le titre est obligatoire.'); return; }
+  // Lot J — même règle que la recette (2 caractères mini) : sinon le son
+  // part en ligne et sa recette est refusée juste après.
+  if (name.length < 2) { dashToast('⚠ Le titre doit faire au moins 2 caractères.'); return; }
   if (!_pendingFile) { dashToast('⚠ Aucun fichier sélectionné.'); return; }
 
   // C2 — plus de modes : validation précoce du seul flag beat (plus bas).
@@ -2170,8 +2192,6 @@ async function uploadTrack() {
     if (!(document.getElementById('dashPromptModelVersion')?.value || '').trim()) _errs.push('la version de l\'outil (ex. Suno v4.5)');
     if (_pt.length > 1000) _errs.push('une recette de 1000 caractères au plus');
     if (!Number.isInteger(_pr) || _pr < 10 || _pr > 150) _errs.push('un prix entre 10 et 150 Smyles');
-    if (!(document.getElementById('dashPromptWeirdness')?.value || '').trim())      _errs.push('le réglage « weirdness »');
-    if (!(document.getElementById('dashPromptStyleInfluence')?.value || '').trim()) _errs.push('le réglage « style influence »');
     if (!(document.getElementById('dashPromptVocalGender')?.value || '').trim())    _errs.push('la voix (homme, femme ou instrumental)');
     if (_errs.length) {
       dashToast('⚠ Avant de publier, il manque : ' + _errs.join(', ') + '.');
@@ -2426,7 +2446,7 @@ async function uploadTrack() {
     const promptText = (document.getElementById('dashPromptText')?.value || '').trim();
     const lyrics     = (document.getElementById('dashPromptLyrics')?.value || '').trim();
     const priceRaw   = parseInt(document.getElementById('dashPromptPrice')?.value, 10);
-    const price      = Number.isFinite(priceRaw) ? priceRaw : 15;
+    const price      = Number.isFinite(priceRaw) ? priceRaw : 20;
 
     // P1-F4 (2026-05-04) — réglages de génération.
     // 4 obligatoires (platform, weirdness, style_influence, vocal_gender)
@@ -2438,8 +2458,11 @@ async function uploadTrack() {
     // dans dashTrackPlatform en haut du formulaire).
     const platformVal       = (document.getElementById('dashTrackPlatform')?.value || '').trim();
     const modelVersionVal   = (document.getElementById('dashPromptModelVersion')?.value || '').trim();
-    const weirdnessVal      = (document.getElementById('dashPromptWeirdness')?.value || '').trim();
-    const styleInfluenceVal = (document.getElementById('dashPromptStyleInfluence')?.value || '').trim();
+    // Lot J — curseurs Suno facultatifs : envoyés seulement s'ils ont été touchés.
+    const _wEl = document.getElementById('dashPromptWeirdness');
+    const _sEl = document.getElementById('dashPromptStyleInfluence');
+    const weirdnessVal      = (_wEl && _wEl.dataset.touched === '1') ? String(_wEl.value || '').trim() : '';
+    const styleInfluenceVal = (_sEl && _sEl.dataset.touched === '1') ? String(_sEl.value || '').trim() : '';
     const vocalGenderVal    = (document.getElementById('dashPromptVocalGender')?.value || '').trim();
 
     // Rareté/supply (comme les ADN) : nb d'exemplaires. Vide = illimité.
@@ -2455,8 +2478,6 @@ async function uploadTrack() {
     if (promptText.length > 1000)              promptErrs.push('prompt trop long (max 1000)');
     if (price < 10 || price > 150)             promptErrs.push('prix entre 10 et 150 Smyles');
     if (!platformVal)                          promptErrs.push('plateforme d\'origine');
-    if (!weirdnessVal)                         promptErrs.push('weirdness');
-    if (!styleInfluenceVal)                    promptErrs.push('style influence');
     if (!vocalGenderVal)                       promptErrs.push('voix (M/F/Instrumental)');
 
     if (promptErrs.length) {
@@ -2475,8 +2496,8 @@ async function uploadTrack() {
             // P1-F4 — réglages génération (4 obligatoires + 1 optionnel)
             prompt_platform:        platformVal,
             prompt_model_version:   modelVersionVal || null,
-            prompt_weirdness:       weirdnessVal,
-            prompt_style_influence: styleInfluenceVal,
+            prompt_weirdness:       weirdnessVal || null,
+            prompt_style_influence: styleInfluenceVal || null,
             prompt_vocal_gender:    vocalGenderVal,
             // Édition limitée (null = illimité) — rareté dérivée côté backend.
             ...(promptMaxSupply !== null ? { max_supply: promptMaxSupply } : {}),

@@ -94,9 +94,10 @@
   <!-- ═══════════ MENTIONS LÉGALES ═══════════ -->
   <section id="mentions">
     <h2>Mentions légales</h2>
-    <p><strong>Éditeur du service</strong> : Tom Lecomte, entrepreneur individuel. Numéro SIREN communiqué dès l'immatriculation (en cours).</p>
+    <!--SI_PRO--><p><strong>Éditeur du service</strong> : Tom Lecomte, entrepreneur individuel. Numéro SIREN communiqué dès l'immatriculation (en cours).</p>
     <p><strong>Adresse</strong> : {{EDITEUR_ADRESSE}}.</p>
-    <p><strong>Téléphone</strong> : {{EDITEUR_TELEPHONE}}.</p>
+    <p><strong>Téléphone</strong> : {{EDITEUR_TELEPHONE}}.</p><!--FIN_PRO-->
+    <!--SI_PARTICULIER--><p><strong>Éditeur du service</strong> : Tom Lecomte, particulier, qui édite WATT à titre non professionnel pendant sa phase de lancement gratuite (aucun paiement en euros n'est possible sur le site). Conformément à l'article 6, III, 2 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique, ses éléments d'identification personnelle ont été communiqués à l'hébergeur (Railway Corporation, ci-dessous) et ne sont pas publiés ici. Pour le joindre, utilise l'adresse email ci-dessous.</p><!--FIN_PARTICULIER-->
     <p><strong>Email</strong> : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. C'est l'adresse de contact pour toute question, réclamation ou demande sur tes données.</p>
     <p><strong>Directeur de la publication</strong> : Tom Lecomte.</p>
     <p><strong>Hébergement</strong> :</p>
@@ -185,7 +186,7 @@
       <li><strong>Premium</strong> : <strong>12 %</strong> ;</li>
       <li><strong>Mythique</strong> : <strong>10 %</strong>.</li>
     </ul>
-    <p>Aujourd'hui, tous les créateurs sont au palier Standard. Les conditions des paliers Premium et Mythique seront publiées avant leur ouverture. Les Pionniers paient 10 % (article 9). Si tu cumules plusieurs avantages, le taux le plus bas s'applique, sans jamais descendre sous 10 %. Les calculs se font en Smyles entiers : l'arrondi va à la plateforme, de moins d'un Smyle. Exemples au taux de 20 % : une vente à 15 Smyles donne 12 au créateur et 3 à WATT ; à 30 Smyles, 24 et 6.</p>
+    <p>Aujourd'hui, tous les créateurs sont au palier Standard. Les conditions des paliers Premium et Mythique seront publiées avant leur ouverture. Les Pionniers paient 10 % (article 9). <strong>Quand l'acheteur vient de toi</strong> (il arrive par le lien que tu partages, qui contient ton code, ou il s'est inscrit par ton parrainage), la commission sur cette vente est aussi de 10 %. Si tu cumules plusieurs avantages, le taux le plus bas s'applique, sans jamais descendre sous 10 %. Les calculs se font en Smyles entiers et <strong>l'arrondi se fait en faveur du créateur</strong> : le taux affiché est un maximum, mais WATT garde toujours au moins 10 % de la vente, arrondi au Smyle supérieur. Exemples au taux de 20 % : une vente à 20 Smyles donne 16 au créateur et 4 à WATT ; à 30 Smyles, 24 et 6. Au taux de 10 %, une vente à 20 Smyles donne 18 au créateur et 2 à WATT.</p>
     <p id="remises"><strong>Remises pour l'acheteur.</strong> Certains acheteurs paient moins cher, automatiquement :</p>
     <ul>
       <li><strong>−30 %</strong> s'il possède ton ADN (ton ADN musical pour un son ou une recette, ton ADN visuel pour une image) ;</li>
@@ -193,7 +194,7 @@
       <li>ces deux remises se cumulent, l'une après l'autre (−30 % puis −20 %, soit −44 %) ;</li>
       <li><strong>la remise que tu choisis</strong> pour chaque Œuvre (0, 10 ou 20 % ; 10 % par défaut) s'il achète l'Œuvre entière (le son et l'image ensemble) au lieu de chaque moitié séparément. Tu la changes à tout moment dans « Mes Œuvres » ; elle ne touche pas les achats déjà faits.</li>
     </ul>
-    <p>Les remises s'appliquent au prix que tu as fixé, arrondi au Smyle inférieur en faveur de l'acheteur. <strong>Ta part et la commission sont calculées sur le prix réellement payé</strong> : une remise réduit donc ta part dans la même proportion. Exemple au taux de 20 % : une recette à 30 Smyles achetée par une personne qui possède ton ADN lui coûte 21 Smyles ; tu reçois 16 Smyles (au lieu de 24) et WATT 5.</p>
+    <p>Les remises s'appliquent au prix que tu as fixé, arrondi au Smyle inférieur en faveur de l'acheteur. <strong>Ta part et la commission sont calculées sur le prix réellement payé</strong> : une remise réduit donc ta part dans la même proportion. Exemple au taux de 20 % : une recette à 30 Smyles achetée par une personne qui possède ton ADN lui coûte 21 Smyles ; tu reçois 17 Smyles (au lieu de 24) et WATT 4.</p>
 
     <h3 id="pionnier">9. Programme Pionnier</h3>
     <p><strong>L'avantage.</strong> Les 100 premiers créateurs Pionniers paient une commission réduite à <strong>10 % à vie</strong> sur la vente de leurs propres contenus, <strong>sauf fraude</strong>. Ce taux ne s'applique qu'à ces ventes directes.</p>
@@ -212,12 +213,20 @@
     <p>Ton accès reste acquis même si le créateur modifie, masque ou supprime son Œuvre, ou supprime son compte. <strong>Seule exception</strong> : un contenu retiré par la modération (parce qu'il est illicite ou viole les droits de quelqu'un) n'est plus accessible à personne, acheteurs compris : ni écoute, ni téléchargement, ni recette. Il reste listé dans ta bibliothèque comme « retiré ». S'il est rétabli après un recours, ton accès revient.</p>
 
     <h3>11. Ce que tu peux faire de ce que tu débloques (licence de l'acheteur)</h3>
-    <p>Sauf mention contraire sur la fiche du contenu, le créateur te donne, dans la mesure des droits qu'il détient, une autorisation <strong>personnelle et non exclusive</strong> :</p>
+    <p><strong>Règle de WATT : ce qui est mis en vente est réutilisable.</strong> En débloquant un contenu, tu reçois du créateur, dans la mesure des droits qu'il détient (voir l'article 13), une autorisation <strong>non exclusive, valable dans le monde entier et sans limite de durée</strong> :</p>
     <ul>
-      <li><strong>La recette</strong> : tu peux l'utiliser pour créer tes propres sons et images avec les outils d'IA de ton choix, et faire ce que tu veux de ces nouvelles créations, dans le respect des conditions de ces outils. Tu ne peux pas revendre ni publier la recette elle-même, telle quelle ou à peine modifiée.</li>
-      <li><strong>Le son et l'image</strong> : tu peux les écouter, les regarder, les télécharger et les garder, et t'en servir comme base pour tes propres créations, à titre <strong>personnel et non commercial</strong>.</li>
+      <li><strong>La recette</strong> : tu peux l'utiliser pour créer tes propres sons et images avec les outils d'IA de ton choix, et faire ce que tu veux de ces nouvelles créations, y compris les publier et les vendre, dans le respect des conditions de ces outils.</li>
+      <li><strong>Le son et l'image</strong> : tu peux les écouter, les regarder, les télécharger et les garder, et les <strong>réutiliser dans tes propres créations, y compris pour les publier ou les vendre</strong>. Par exemple : intégrer un son ou un instrument dans ton morceau publié sur une plateforme de streaming, ou une image dans une pochette, une vidéo ou une publicité.</li>
     </ul>
-    <p>Tu ne peux pas : revendre, louer ou distribuer les fichiers bruts ; les publier tels quels comme ta propre création ; les exploiter commercialement (par exemple les mettre sur une plateforme de streaming ou dans une publicité) sans l'accord écrit du créateur.</p>
+    <p><strong>Non exclusive</strong> veut dire que le créateur peut vendre le même contenu à d'autres personnes, dans la limite du nombre d'exemplaires affiché s'il y en a un.</p>
+    <p>Tu ne peux pas :</p>
+    <ul>
+      <li>revendre, louer, partager ou distribuer le fichier ou la recette <strong>tels quels ou à peine modifiés</strong>, seuls ou dans un pack, y compris sur WATT ;</li>
+      <li>présenter le contenu brut comme ta propre création ;</li>
+      <li>revendiquer un droit sur le contenu brut lui-même, par exemple le déposer comme marque ou l'enregistrer dans un système d'identification de contenus (comme Content ID) ;</li>
+      <li>t'en servir d'une manière illicite ou contraire aux conditions des outils d'IA utilisés.</li>
+    </ul>
+    <p>Ces droits te sont donnés par le créateur, pas par WATT. Les contenus créés avec l'IA peuvent ne pas être protégés par le droit d'auteur : d'autres personnes peuvent créer des contenus proches.</p>
 
     <h3>12. Ce que tu autorises à WATT (ta licence vers WATT)</h3>
     <p>Tu restes titulaire des droits que tu détiens sur tes contenus. En publiant sur WATT, tu donnes à l'éditeur une autorisation <strong>non exclusive, gratuite et valable dans le monde entier</strong> pour :</p>
@@ -232,6 +241,7 @@
     <p>En publiant sur WATT, tu garantis :</p>
     <ul>
       <li>que tu as le droit de publier et de vendre ce contenu, <strong>y compris au regard des conditions des outils d'IA utilisés</strong>. Par exemple, certains outils de création musicale (comme Suno) réservent l'usage commercial aux abonnements payants : tu dois avoir eu le bon abonnement <strong>au moment de la création</strong>. Avant ta première publication, WATT te demande de le confirmer et garde la date de cette confirmation ;</li>
+      <li>que tu peux autoriser les acheteurs à réutiliser ce contenu comme prévu à l'article 11 : <strong>ne mets en vente que ce que tu acceptes de voir réutilisé</strong> ;</li>
       <li>que l'outil et la version que tu déclares sont exacts (ils sont affichés publiquement) ;</li>
       <li>que ton contenu ne reprend pas sans autorisation une œuvre, une voix, l'image ou l'identité d'une autre personne ;</li>
       <li>que tu dédommageras WATT si un tiers lui réclame quelque chose à cause de ton contenu.</li>
@@ -277,7 +287,8 @@
     <h2>Conditions générales de vente — achat de Smyles</h2>
 
     <h3>1. Vendeur</h3>
-    <p>Les Smyles sont vendus par Tom Lecomte, entrepreneur individuel (numéro SIREN communiqué dès l'immatriculation), {{EDITEUR_ADRESSE}}. Email : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Téléphone : {{EDITEUR_TELEPHONE}}.</p>
+    <!--SI_PRO--><p>Les Smyles sont vendus par Tom Lecomte, entrepreneur individuel (numéro SIREN communiqué dès l'immatriculation), {{EDITEUR_ADRESSE}}. Email : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Téléphone : {{EDITEUR_TELEPHONE}}.</p><!--FIN_PRO-->
+    <!--SI_PARTICULIER--><p>Aucun Smyle n'est vendu pour le moment. Les ventes seront assurées par l'entreprise de Tom Lecomte une fois immatriculée : son identité complète (numéro SIREN, adresse, téléphone) figurera ici <strong>avant</strong> l'ouverture de tout paiement. Email : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>.</p><!--FIN_PARTICULIER-->
 
     <h3>2. Objet</h3>
     <p>Ces conditions régissent l'achat en ligne de Smyles. <strong>L'achat de Smyles sera ouvert prochainement</strong> : tant qu'il ne l'est pas, aucun paiement n'est possible. Les Smyles achetés servent à débloquer des contenus sur WATT (voir l'<a href="#smyles">article 5 des CGU</a>). Ils ne sont <strong>ni retirables en euros, ni convertibles en argent, ni cessibles hors de la plateforme</strong>, et ne sont <strong>pas remboursables une fois utilisés</strong>.</p>
@@ -315,7 +326,8 @@
     <h2>Politique de confidentialité (RGPD)</h2>
 
     <h3>Responsable du traitement</h3>
-    <p>Tom Lecomte, entrepreneur individuel, {{EDITEUR_ADRESSE}} — <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>.</p>
+    <!--SI_PRO--><p>Tom Lecomte, entrepreneur individuel, {{EDITEUR_ADRESSE}} — <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>.</p><!--FIN_PRO-->
+    <!--SI_PARTICULIER--><p>Tom Lecomte — <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. C'est à cette adresse que tu exerces tes droits sur tes données.</p><!--FIN_PARTICULIER-->
 
     <h3>Données collectées</h3>
     <ul>

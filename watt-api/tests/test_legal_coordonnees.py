@@ -28,10 +28,23 @@ async def test_legal_affiche_les_coordonnees_configurees(client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_legal_repli_sans_configuration(client, monkeypatch):
+async def test_legal_editeur_particulier_sans_configuration(client, monkeypatch):
+    """Sans adresse configurée : mentions d'éditeur non professionnel (LCEN
+    art. 6-III-2), identité confiée à l'hébergeur, aucun bloc « pro »."""
     monkeypatch.setattr(settings, "EDITEUR_ADRESSE", "")
     monkeypatch.setattr(settings, "EDITEUR_TELEPHONE", "")
     r = await client.get("/legal")
     assert r.status_code == 200
     assert "{{EDITEUR_" not in r.text
-    assert "communiqué sur simple demande" in r.text
+    assert "à titre non professionnel" in r.text
+    assert "entrepreneur individuel" not in r.text
+    assert "SI_PRO" not in r.text and "SI_PARTICULIER" not in r.text
+
+
+@pytest.mark.asyncio
+async def test_legal_editeur_pro_masque_le_bloc_particulier(client, monkeypatch):
+    monkeypatch.setattr(settings, "EDITEUR_ADRESSE", "10 rue de la Paix, 75002 Paris")
+    monkeypatch.setattr(settings, "EDITEUR_TELEPHONE", "01 23 45 67 89")
+    r = await client.get("/legal")
+    assert "à titre non professionnel" not in r.text
+    assert "entrepreneur individuel" in r.text

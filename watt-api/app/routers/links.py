@@ -248,6 +248,7 @@ async def buy_oeuvre(
         out = await buy_oeuvre_atomic(
             db, buyer_id=current_user.id, oeuvre_id=oeuvre_id,
             prix_attendu=achat.prix_attendu if achat else None,
+            via=achat.via if achat else None,
         )
         await db.commit()
     except OeuvreNotBundlable as e:

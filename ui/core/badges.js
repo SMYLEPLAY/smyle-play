@@ -54,8 +54,9 @@
 
   var PLATFORMS = {
     suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio',
+    elevenlabs: 'ElevenLabs Music',
     midjourney: 'Midjourney', dalle: 'DALL-E', 'dall-e': 'DALL-E', flux: 'Flux',
-    stable_diffusion: 'Stable Diffusion', autre: 'Autre',
+    stable_diffusion: 'Stable Diffusion', chatgpt: 'ChatGPT', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre',
   };
 
   window.SpBadges = {

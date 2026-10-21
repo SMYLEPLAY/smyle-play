@@ -25,6 +25,21 @@
     });
   }
 
+  // Lot J — provenance lisible : « Fait avec Suno · v6 ».
+  var _OUTILS = {
+    suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio',
+    elevenlabs: 'ElevenLabs Music', midjourney: 'Midjourney', dalle: 'DALL·E',
+    chatgpt: 'ChatGPT', flux: 'Flux', stable_diffusion: 'Stable Diffusion',
+    ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly',
+    google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream',
+    grok: 'Grok', autre: 'un autre outil',
+  };
+  function _provenance(platform, version) {
+    var outil = platform ? (_OUTILS[platform] || platform) : '';
+    if (!outil) return '';
+    return 'Fait avec ' + outil + (version ? ' · ' + version : '');
+  }
+
   function _toast(msg, type) {
     try { if (window.smyleToast) return window.smyleToast(msg, { type: type || 'info' }); } catch (_) {}
   }
@@ -67,6 +82,7 @@
       : { type: 'son', id: _data.sound.recipe.id, price: _data.sound.recipe.priceCredits, title: _data.sound.title };
     window.PurchaseDrawer.open({
       type: half.type, id: half.id, price: half.price, title: half.title,
+      platform: kind === 'image' ? (_data.image.platform || '') : (_data.sound.platform || ''),
       onSuccess: function () { _toast('Débloqué — retrouve-le dans ta bibliothèque.', 'success'); },
     });
   }
@@ -75,7 +91,10 @@
     if (!_gate()) return;
     if (!_data || !_data.bundle) return;
     var prix = _data.bundle.priceCredits;
-    if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles ?')) return;
+    // Lot K — équivalent en euros dès que l'achat de Smyles est ouvert.
+    var _eur = (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)
+      ? ' (≈ ' + (Math.round(prix * 0.07 * 100) / 100).toFixed(2).replace('.', ',') + ' €)' : '';
+    if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles' + _eur + ' ?')) return;
     btn.disabled = true;
     // Lot G — prix attendu envoyé : si le créateur l'a changé entre-temps,
     // smyleAcheter demande de confirmer le nouveau prix avant de rejouer.
@@ -145,7 +164,10 @@
       '<div class="o-half-thumb">' + sonThumb + '</div>' +
       '<div class="o-half-body"><p class="o-half-kind o-half-kind--son">Le son</p>' +
       '<p class="o-half-title">' + _esc(snd.title || title) + '</p>' +
-      '<p class="o-half-note">' + (snd.recipe ? 'Recette + fichier' : 'En écoute libre') + '</p></div>' +
+      '<p class="o-half-note">' + (snd.recipe ? 'Recette + fichier' : 'En écoute libre') + '</p>' +
+      (_provenance(snd.platform, snd.modelVersion)
+        ? '<p class="o-half-note o-half-prov">' + _esc(_provenance(snd.platform, snd.modelVersion)) + '</p>' : '') +
+      '</div>' +
       sonAction;
 
     // Moitié IMAGE
@@ -153,7 +175,10 @@
       '<div class="o-half-thumb">' + (url ? '<img src="' + _esc(url) + '" alt="" />' : '<span aria-hidden="true">🖼</span>') + '</div>' +
       '<div class="o-half-body"><p class="o-half-kind o-half-kind--image">L\'image</p>' +
       '<p class="o-half-title">' + _esc(img.title || title) + '</p>' +
-      '<p class="o-half-note">Recette + image originale</p></div>' +
+      '<p class="o-half-note">Recette + image originale</p>' +
+      (_provenance(img.platform, img.modelVersion)
+        ? '<p class="o-half-note o-half-prov">' + _esc(_provenance(img.platform, img.modelVersion)) + '</p>' : '') +
+      '</div>' +
       (img.priceCredits != null
         ? '<button type="button" class="o-btn" data-o-buy="image">Débloquer · ' + _esc(img.priceCredits) + ' Smyles</button>'
         : '');
@@ -224,7 +249,10 @@
         return;
       }
       if (ev.target.closest('#o-share')) {
-        var link = window.location.origin + '/o/' + (OID || '');
+        // Lot K — le créateur partage SON lien (avec son code) : les personnes
+        // qu'il amène lui sont attribuées et sa commission tombe à 10 %.
+        var _lp = _data && _data.bundle && _data.bundle.mode === 'createur' && _data.bundle.lienPartage;
+        var link = window.location.origin + (_lp || ('/o/' + (OID || '')));
         var done = function () { _toast('Lien copié — colle-le où tu veux.', 'success'); };
         try {
           if (navigator.share) {

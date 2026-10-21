@@ -99,6 +99,13 @@ def artist_pct_for_tier(tier: object) -> int:
 # Commission plafond du statut PIONNIER (Brique 1, décision Tom 20/09).
 PIONEER_COMMISSION_PCT = 10
 
+# Lot K (21/10/2026) — commission quand l'ACHETEUR VIENT DU CRÉATEUR : il est
+# arrivé par le lien du créateur (?ref=<son code>) ou s'est inscrit par son
+# parrainage. Inspiré de PromptBase (0 % via le lien du vendeur) mais ramené
+# au PLANCHER : sous 10 %, un Smyle gagné se rachèterait plus cher qu'il ne
+# s'est vendu (règle d'or de l'économie).
+CREATOR_LINK_COMMISSION_PCT = 10
+
 
 def commission_pct_for(tier: object, is_pioneer: bool) -> int:
     """Commission effective (%) — règle du **taux le plus favorable**.

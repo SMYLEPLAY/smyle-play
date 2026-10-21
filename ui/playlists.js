@@ -1951,7 +1951,7 @@
       : '';
 
     // Carte ID enrichie (alignée sur le marketplace) : badge plateforme + chips mood.
-    const _PL_PLAT = { suno:'Suno', udio:'Udio', riffusion:'Riffusion', stable_audio:'Stable Audio', autre:'Autre' };
+    const _PL_PLAT = { suno:'Suno', udio:'Udio', riffusion:'Riffusion', stable_audio:'Stable Audio', elevenlabs:'ElevenLabs Music', autre:'Autre' };
     const _plKey   = (t.platform || '').trim().toLowerCase();
     const _plLabel = _PL_PLAT[_plKey] || (_plKey || '');
     const _plBadge = _plLabel

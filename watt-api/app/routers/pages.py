@@ -38,6 +38,7 @@ import hashlib
 import html as _html
 import json
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -647,17 +648,29 @@ async def library_page():
     return _page("library.html")
 
 
-_REPLI_COORDONNEES = "communiqué sur simple demande à smyletheplan@gmail.com"
+_BLOC_PRO = re.compile(r"<!--SI_PRO-->.*?<!--FIN_PRO-->", re.S)
+_BLOC_PARTICULIER = re.compile(r"<!--SI_PARTICULIER-->.*?<!--FIN_PARTICULIER-->", re.S)
 
 
 def _coordonnees_editeur(texte: str) -> str:
-    """Remplace les marqueurs de legal.html par les coordonnées de l'éditeur,
-    lues dans la configuration (variables Railway) : elles ne figurent jamais
-    dans le dépôt public."""
-    adresse = (settings.EDITEUR_ADRESSE or "").strip() or _REPLI_COORDONNEES
-    telephone = (settings.EDITEUR_TELEPHONE or "").strip() or _REPLI_COORDONNEES
-    return (texte.replace("{{EDITEUR_ADRESSE}}", _html.escape(adresse))
-                 .replace("{{EDITEUR_TELEPHONE}}", _html.escape(telephone)))
+    """Mentions de l'éditeur selon son statut (variables Railway, jamais le
+    dépôt public) :
+      - EDITEUR_ADRESSE renseignée → éditeur professionnel : blocs SI_PRO
+        avec adresse et téléphone ;
+      - sinon → éditeur particulier non professionnel (LCEN art. 6-III-2) :
+        blocs SI_PARTICULIER, identité confiée à l'hébergeur, rien de publié.
+    Tant qu'aucun paiement en euros n'est ouvert seulement : l'entreprise et
+    ses coordonnées doivent exister AVANT d'activer Stripe."""
+    adresse = (settings.EDITEUR_ADRESSE or "").strip()
+    telephone = (settings.EDITEUR_TELEPHONE or "").strip()
+    if adresse:
+        texte = _BLOC_PARTICULIER.sub("", texte)
+        texte = texte.replace("<!--SI_PRO-->", "").replace("<!--FIN_PRO-->", "")
+        return (texte.replace("{{EDITEUR_ADRESSE}}", _html.escape(adresse))
+                     .replace("{{EDITEUR_TELEPHONE}}",
+                              _html.escape(telephone or "communiqué sur demande par email")))
+    texte = _BLOC_PRO.sub("", texte)
+    return texte.replace("<!--SI_PARTICULIER-->", "").replace("<!--FIN_PARTICULIER-->", "")
 
 
 @router.get("/legal", include_in_schema=False)

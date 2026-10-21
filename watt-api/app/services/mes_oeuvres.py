@@ -176,6 +176,10 @@ async def lister(db: AsyncSession, user: User) -> list[dict]:
             "status": "retiree" if retiree else ("masquee" if masquee else "publiee"),
             "sales": int(sum(ventes.get(p.id, 0) for p in (r, img) if p is not None)),
             "oeuvreUrl": f"/o/{img.id}" if img is not None else None,
+            # Lot K — lien à partager : porte le code du créateur (commission
+            # 10 % sur les acheteurs qu'il amène, inscrits attribués).
+            "lienPartage": (f"/o/{img.id}" + (f"?ref={user.referral_code}" if user.referral_code else ""))
+                           if img is not None else None,
             "createdAt": t.created_at.isoformat() if t.created_at else None,
         })
     return out

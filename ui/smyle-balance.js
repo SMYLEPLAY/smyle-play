@@ -332,9 +332,9 @@
             window.SmyleTrack.event('topup_click', { source: 'balance-widget' });
           }
         } catch (_) {}
-        window.smyleToast('Tes Smyles se gagnent en explorant, en publiant et en jouant.', { type: 'info', duration: 2800 });
+        window.smyleToast("Tes Smyles : 30 offerts à l'inscription, +20 pour toi et pour ton ami à chaque parrainage, et ceux que tu gagnes quand on débloque tes créations.", { type: 'info', duration: 4200 });
       } else {
-        alert('Tes Smyles se gagnent en explorant, en publiant et en jouant.');
+        alert("Tes Smyles : 30 offerts à l'inscription, +20 pour toi et pour ton ami à chaque parrainage, et ceux que tu gagnes quand on débloque tes créations.");
       }
     };
 

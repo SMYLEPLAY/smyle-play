@@ -299,7 +299,8 @@
       // (génome de style d'un album) garde sa propre tuile « ADN Album » →
       // écran #sec-adn-visuel. Le bouton « + Créer » expose les deux.
       return tileHtml('images',     '🖼️', 'Images IA',  'images', { createKind: 'image', viewKey: 'images-list', countLabel: 'publiées' })
-           + tileHtml('adn-visuel', '🎨', 'ADN Visuel', null, { viewKey: 'visual-adn', viewOnly: true, countLabel: 'ta signature visuelle vendable', countText: 'Gérer' })
+           // Lot J : ADN masqués au lancement (SHOW_ADN).
+           + (_adnOn() ? tileHtml('adn-visuel', '🎨', 'ADN Visuel', null, { viewKey: 'visual-adn', viewOnly: true, countLabel: 'ta signature visuelle vendable', countText: 'Gérer' }) : '')
            // Lot 1 : ADN Album caché tant que les albums sont éteints.
            + ((window.WATT_LAUNCH && window.WATT_LAUNCH.albums)
                 ? tileHtml('adn-album',  '🎨', 'ADN Album',  null, { viewKey: 'adn-album', viewOnly: true, countLabel: 'génome de style d\'un album', countText: 'Gérer' })
@@ -315,12 +316,15 @@
     // dans la création Sons IA (4 types) ; la tuile Beats disparaît.
     // Côté acheteurs, /beats (C2) listera les sons vendus en tant que beats.
     return tileHtml('sons',  '🤖', 'Sons IA',     'sons',  { createKind: 'son',  viewKey: 'sons',  countLabel: 'publiés' })
-         + tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',   countLabel: 'signature' })
+         + (_adnOn() ? tileHtml('adn',   '🧬', 'ADN musical', 'adn',   { createKind: 'adn',  viewKey: 'adn',   countLabel: 'signature' }) : '')
          + ((window.WATT_LAUNCH && window.WATT_LAUNCH.voix)
               ? tileHtml('voix',  '🎙️', 'Voix',        'voix',  { createKind: 'voix', viewKey: 'voix',  countLabel: 'au catalogue' })
               : '')
-         + tileHtml('adn-playlist', '🧬', 'ADN Playlist', null, { viewKey: 'adn-playlist', viewOnly: true, countLabel: 'le génome d\'une playlist vendable', countText: 'Gérer' });
+         + (_adnOn() ? tileHtml('adn-playlist', '🧬', 'ADN Playlist', null, { viewKey: 'adn-playlist', viewOnly: true, countLabel: 'le génome d\'une playlist vendable', countText: 'Gérer' }) : '');
   }
+
+  /* Lot J — ADN masqués au lancement (SHOW_ADN côté serveur). */
+  function _adnOn() { return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.adn); }
 
   /* ── Menu "+ Créer" ─────────────────────────────────────────────────── */
 
@@ -333,7 +337,7 @@
       return '' +
         '<button type="button" class="wb3-create-item" data-wb3-create="image">🖼️ <span>Image<em>Visuel IA — l\'achat débloque la recette + le fichier original</em></span></button>' +
         '<button type="button" class="wb3-create-item" data-wb3-create="avatar">🧑‍🎤 <span>Avatar<em>Même écran que « Image » avec le tag « avatar » déjà coché</em></span></button>' +
-        '<button type="button" class="wb3-create-item" data-wb3-create="adn-visuel">🎨 <span>ADN visuel<em>Ta signature visuelle vendable — l\'achat débloque le génome de style</em></span></button>' +
+        (_adnOn() ? '<button type="button" class="wb3-create-item" data-wb3-create="adn-visuel">🎨 <span>ADN visuel<em>Ta signature visuelle vendable — l\'achat débloque le génome de style</em></span></button>' : '') +
         ((window.WATT_LAUNCH && window.WATT_LAUNCH.albums)
           ? '<button type="button" class="wb3-create-item" data-wb3-create="adn-album">🎨 <span>ADN Album<em>Le génome de style d\'un album — l\'achat débloque la recette de style</em></span></button>'
           : '');
@@ -344,11 +348,11 @@
       ((window.WATT_LAUNCH && window.WATT_LAUNCH.beats)
         ? '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>'
         : '') +
-      '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature sonore vendable</em></span></button>' +
+      (_adnOn() ? '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature sonore vendable</em></span></button>' : '') +
       ((window.WATT_LAUNCH && window.WATT_LAUNCH.voix)
         ? '<button type="button" class="wb3-create-item" data-wb3-create="voix">🎙️ <span>Voix<em>Sample 30 s public, fichier complet gaté</em></span></button>'
         : '') +
-      '<button type="button" class="wb3-create-item" data-wb3-create="adn-playlist">🧬 <span>ADN Playlist<em>Le génome d\'une playlist — l\'achat débloque la recette + le seed prompt</em></span></button>';
+      (_adnOn() ? '<button type="button" class="wb3-create-item" data-wb3-create="adn-playlist">🧬 <span>ADN Playlist<em>Le génome d\'une playlist — l\'achat débloque la recette + le seed prompt</em></span></button>' : '');
   }
 
   function closeCreateMenu() {

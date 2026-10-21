@@ -21,7 +21,7 @@
 
   /* Valeurs enum backend (app/schemas/image.py → ImagePlatform). Toute autre
      valeur = 422. On garde cette liste pour valider AVANT l'envoi. */
-  var PLATFORMS = ['midjourney', 'dalle', 'stable_diffusion', 'flux', 'autre'];
+  var PLATFORMS = ['midjourney', 'dalle', 'chatgpt', 'stable_diffusion', 'flux', 'ideogram', 'leonardo', 'firefly', 'google', 'recraft', 'seedream', 'grok', 'autre'];
 
   var IMAGE_MAX_BYTES = 20 * 1024 * 1024;     /* 20 Mo (= IMAGE_MAX_BYTES API) */
   var ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -204,10 +204,12 @@
         c.setAttribute('aria-pressed', 'false');
       });
     }
-    var price = $('imgcPrice'); if (price) price.value = '15';
+    var price = $('imgcPrice'); if (price) price.value = '20';
     var raw = $('imgcMjStyleRaw'); if (raw) raw.checked = false;
-    var draft = document.querySelector('input[name="imgcVisibility"][value="draft"]');
-    if (draft) draft.checked = true;
+    // Lot J — publiée par défaut (le brouillon cachait l'image d'Œuvre alors
+    // que la fenêtre annonçait « Ton œuvre est en ligne »).
+    var pub = document.querySelector('input[name="imgcVisibility"][value="published"]');
+    if (pub) pub.checked = true;
     var fileEl = $('imgcFile'); if (fileEl) fileEl.value = '';
     /* C4 — remet le bloc liaison son à l'état initial. */
     var linkChk = $('imgcLinkSound'); if (linkChk) linkChk.checked = false;

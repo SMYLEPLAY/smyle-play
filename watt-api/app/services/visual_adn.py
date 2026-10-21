@@ -258,7 +258,7 @@ async def unlock_visual_adn_atomic(
         select(VisualAdn).where(VisualAdn.id == visual_adn_id)
     )).scalar_one_or_none()
     if visual_adn_row is None or not visual_adn_row.is_published:
-        raise AdnNotPurchasable("Visual ADN not found or not published")
+        raise AdnNotPurchasable("Cet ADN visuel est introuvable ou n'est plus en vente.")
 
     # Stock-out : édition limitée épuisée.
     if visual_adn_row.max_supply is not None:
@@ -278,7 +278,7 @@ async def unlock_visual_adn_atomic(
 
     if buyer_id == artist_id:
         raise SelfPurchaseForbidden(
-            "An artist cannot unlock their own visual ADN"
+            "Tu ne peux pas acheter ton propre ADN visuel."
         )
 
     async with db.begin_nested():
@@ -356,7 +356,7 @@ async def unlock_visual_adn_atomic(
         try:
             await db.flush()
         except IntegrityError as e:
-            raise AlreadyOwned("You already own this visual ADN") from e
+            raise AlreadyOwned("Tu possèdes déjà cet ADN visuel.") from e
 
         tx.status = TransactionStatus.COMPLETED
         tx.completed_at = func.now()

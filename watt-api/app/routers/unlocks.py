@@ -72,6 +72,9 @@ class AchatIn(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
     prix_attendu: int | None = Field(default=None, ge=0, le=10_000_000)
+    # Lot K — code de parrainage lu dans le lien partagé (?ref=…) : si c'est
+    # celui du vendeur, la commission tombe à 10 %.
+    via: str | None = Field(default=None, max_length=32)
 
 
 def _raise_unlock_error(exc: ValueError) -> None:
@@ -134,6 +137,7 @@ async def unlock_prompt(
             buyer_id=current_user.id,
             prompt_id=prompt_id,
             prix_attendu=achat.prix_attendu if achat else None,
+            via=achat.via if achat else None,
         )
         await db.commit()
         await db.refresh(result.unlocked_prompt)
@@ -213,13 +217,13 @@ async def unlock_prompt(
         await db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Concurrent unlock conflict, please retry",
+            detail="Un autre achat est en cours sur ce contenu : réessaie dans un instant.",
         )
     except Exception:
         await db.rollback()
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock prompt",
+            detail="Le déblocage a échoué. Réessaie.",
         )
 
 
@@ -309,13 +313,13 @@ async def unlock_adn(
         await db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Concurrent unlock conflict, please retry",
+            detail="Un autre achat est en cours sur ce contenu : réessaie dans un instant.",
         )
     except Exception:
         await db.rollback()
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock ADN",
+            detail="Le déblocage de l'ADN a échoué. Réessaie.",
         )
 
 
@@ -413,13 +417,13 @@ async def unlock_voice(
         await db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail="Concurrent unlock conflict, please retry",
+            detail="Un autre achat est en cours sur ce contenu : réessaie dans un instant.",
         )
     except Exception:
         await db.rollback()
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to unlock voice",
+            detail="Le déblocage de la voix a échoué. Réessaie.",
         )
 
 

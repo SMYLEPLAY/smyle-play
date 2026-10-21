@@ -22,7 +22,7 @@
   <!-- C0 design system (blueprint VF 2026-06-10) : tokens + pilules 3 repères -->
   <link rel="stylesheet" href="/ui/core/tokens.css" />
   <link rel="stylesheet" href="/ui/core/badges.css?v=20260616c4oc" />
-  <script src="/ui/core/badges.js?v=20260616c4oc" defer></script>
+  <script src="/ui/core/badges.js?v=20261021lotj" defer></script>
 </head>
 <body>
 
@@ -204,7 +204,7 @@
 <section class="mp-hero">
   <h1 class="mp-hero-title">WATT</h1>
   <p class="mp-hero-acronym">World Artist Ties Talent</p>
-  <p class="mp-hero-sub">Échange ton ADN</p>
+  <p class="mp-hero-sub">Écoute d'abord. Débloque la recette.</p>
 
   <!-- Barres DNA + CONNECT migrées dans la loupe topbar (search.js) -->
   <p class="mp-hero-search-hint">
@@ -319,7 +319,7 @@
   <div class="mp-section-head">
     <span class="mp-section-kicker">Classement</span>
     <h2 class="mp-section-title">Top Sons</h2>
-    <span class="mp-section-sub">Les plus écoutés cette semaine</span>
+    <span class="mp-section-sub">Les plus écoutés depuis leur sortie</span>
   </div>
   <ol class="mp-ranking" id="mp-top-sons">
     <li class="mp-ranking-empty">Chargement…</li>
@@ -344,10 +344,11 @@
      prix (à venir). Pour l'instant, on expose juste nom + artiste + plays. -->
 <section class="mp-section mp-section-sons">
   <div class="mp-section-head">
-    <span class="mp-section-kicker">Catalogue</span>
-    <!-- 2026-06-11 — titre cliquable : accès clair à la page dédiée /sons. -->
-    <h2 class="mp-section-title"><a href="/sons" style="color:inherit;text-decoration:none;">Tous les sons <span style="opacity:.45;font-size:.8em;">→</span></a></h2>
-    <span class="mp-section-sub">Le catalogue complet de la marketplace</span>
+    <span class="mp-section-kicker">Nouveautés</span>
+    <!-- Lot J — la home montre les DERNIERS sons publiés (vitrine garantie pour
+         les nouveaux créateurs) ; le Top Sons au-dessus garde les plus écoutés. -->
+    <h2 class="mp-section-title"><a href="/sons" style="color:inherit;text-decoration:none;">Derniers sons publiés <span style="opacity:.45;font-size:.8em;">→</span></a></h2>
+    <span class="mp-section-sub">Les créations les plus récentes — tout le catalogue sur la page Sons</span>
   </div>
   <div class="mp-grid mp-grid-sons" id="mp-grid-sons">
     <div class="mp-grid-empty">Chargement du catalogue…</div>
@@ -687,7 +688,7 @@
 </footer>
 
 <!-- ui modules — load order matters: state must load before any consumer -->
-<script src="ui/core/api.js?v=20261011lotg"></script>
+<script src="ui/core/api.js?v=20261021lotk"></script>
 <script src="ui/core/consent.js?v=20261011lotg"></script>
 <script src="ui/core/telemetry.js?v=20261011lotg"></script>
 <script src="ui/core/events.js"></script>
@@ -699,15 +700,14 @@
 <script src="ui/player/audio.js"></script>
 <script src="ui/panels/playlist.js?v=20260613a"></script>
 <script src="ui/panels/mix.js"></script>
-<script src="ui/modals/auth.js?v=20261015lotib"></script>
+<script src="ui/modals/auth.js?v=20261021lotk"></script>
 <!-- C2 — drawer d'achat unifié (un seul composant d'achat pour tout le site) -->
-<script src="ui/modals/purchase-drawer.js?v=20261011lotg"></script>
-<script src="/ui/modals/offer-modal.js?v=20261011lotg"></script>
+<script src="ui/modals/purchase-drawer.js?v=20261021lotk"></script>
+<script src="/ui/modals/offer-modal.js?v=20261021lotj"></script>
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
 <script src="ui/modals/boutique.js?v=20261011lotg"></script>
 <script src="ui/modals/engagement.js?v=20261011lotg"></script>
 <script src="ui/modals/contact.js"></script>
-<script src="ui/modals/premium.js"></script>
 <script src="ui/modals/save-mix.js?v=20261011lotg"></script>
 <script src="ui/hub/community.js?v=20260613a"></script>
 <!-- watt-panel.js expose window.WattDNA et window.WattConnect (analyseur
@@ -718,14 +718,14 @@
 <!-- Phase 2 refonte marketplace : fetch + render de la vitrine Smyle, des
      classements (top sons / top artistes) et des grilles (tous sons / tous
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
-<script src="/ui/playlists.js?v=20261011lotg" defer></script>
+<script src="/ui/playlists.js?v=20261021lotj" defer></script>
 <script src="/ui/albums.js?v=20261011lotg" defer></script>
-<script src="ui/hub/marketplace.js?v=20261015loti"></script>
+<script src="ui/hub/marketplace.js?v=20261021lotj"></script>
 <script src="ui/app.js?v=20261011lotg"></script>
 <script src="ui/player/mini-bar.js?v=20260707player" defer></script>
-<script src="/ui/smyle-balance.js" defer></script>
-<script src="/ui/modals/credits-buy.js" defer></script>
-<script src="/ui/modals/search.js?v=20260615a" defer></script>
+<script src="/ui/smyle-balance.js?v=20261021lotj" defer></script>
+<script src="/ui/modals/credits-buy.js?v=20261021lotj" defer></script>
+<script src="/ui/modals/search.js?v=20261021lotj" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <!-- Messagerie 1:1 + services (Phase C) -->
 <link rel="stylesheet" href="/ui/messaging/messaging.css" />

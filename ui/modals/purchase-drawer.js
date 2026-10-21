@@ -52,7 +52,17 @@
     'voix':       'Voix débloquée 🎙 — retrouve-la dans ta bibliothèque',
     'playlist':   'ADN Playlist débloqué 🎚 — retrouve-le dans ta bibliothèque',
   };
-  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', autre: 'Autre' };
+  // Lot K — équivalent en euros affiché à côté du prix en Smyles DÈS QUE
+  // l'achat de Smyles par carte est ouvert (avant, aucun euro n'est en jeu).
+  // Base : pack de 500 Smyles à 35 € (0,07 € le Smyle) ; le prix réel dépend
+  // du pack acheté (0,065 à 0,08 €), d'où le « ≈ ».
+  var EUR_PAR_SMYLE = 0.07;
+  function _eurosVisibles() { return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles); }
+  function _enEuros(n) {
+    var e = Math.round(Number(n) * EUR_PAR_SMYLE * 100) / 100;
+    return '≈ ' + e.toFixed(2).replace('.', ',') + ' €';
+  }
+  var PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', elevenlabs: 'ElevenLabs Music', midjourney: 'Midjourney', dalle: 'DALL·E', flux: 'Flux', stable_diffusion: 'Stable Diffusion', chatgpt: 'ChatGPT', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre' };
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -118,6 +128,7 @@
       '.pd-price-row{display:flex;align-items:baseline;gap:6px;margin:0 0 14px}' +
       '.pd-price{font-size:1.7rem;font-weight:800;color:#cbb3ff}' +
       '.pd-price-unit{font-size:.85rem;color:#8b7bd8;font-weight:600}' +
+      '.pd-price-eur{font-size:.8rem;color:#a09cb8;margin-left:6px}' +
       '.pd-actions{display:flex;gap:10px}' +
       '.pd-cancel{flex:0 0 auto;padding:11px 16px;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:none;color:#cfc9e0;font-weight:600;cursor:pointer}' +
       '.pd-confirm{flex:1;padding:11px 16px;border-radius:11px;border:none;background:linear-gradient(135deg,#7c5cff,#9d4dff);color:#fff;font-weight:700;cursor:pointer;font-size:.95rem}' +
@@ -179,6 +190,8 @@
     var price  = (opts.price != null && isFinite(opts.price)) ? opts.price : null;
     var title  = opts.title || 'Cet exemplaire';
     var platformKey = (opts.platform || '').trim().toLowerCase();
+    // Lot J — la règle de réutilisation (CGU art. 11) est dite AVANT l'achat.
+    var _LICENCE_LI = '<li>📜 <span>Réutilisable dans <strong>tes créations</strong>, même publiées ou vendues — revente telle quelle interdite (<a href="/legal#cgu" target="_blank" rel="noopener">CGU art. 11</a>).</span></li>';
     var platformLbl = PLATFORM_LABELS[platformKey] || (platformKey || null);
 
     var reperes;
@@ -189,14 +202,16 @@
         '<li>👁️ <span>L’aperçu reste <strong>public pour tout le monde</strong> — tu achètes la possession, pas la vue.</span></li>' +
         '<li>🔓 <span>Achat = <strong>recette + image originale</strong>, téléchargeable depuis ta bibliothèque.</span></li>' +
         '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
-        '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>';
+        '<li>♻️ <span>Honnêteté : une recette donne des <strong>résultats similaires, jamais identiques</strong>.</span></li>' +
+        _LICENCE_LI;
     } else {
       reperes =
         '<li>🎧 <span>L’écoute est <strong>libre avec un compte gratuit</strong> — tu achètes la possession, pas l’accès.</span></li>' +
         (type === 'voix'
           ? '<li>🔓 <span>Achat = <strong>le fichier voix complet</strong> (la preview 30 s devient intégrale).</span></li>'
           : '<li>🔓 <span>Achat = <strong>fichier + recette</strong> — l’exemplaire complet, téléchargeable depuis ta bibliothèque.</span></li>') +
-        '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>';
+        '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
+        (type === 'voix' ? '' : _LICENCE_LI);
     }
 
     var ov = document.createElement('div');
@@ -212,7 +227,8 @@
         '<ul class="pd-reperes">' + reperes + '</ul>' +
         '<div class="pd-market" id="pd-market"></div>' +
         _linkedBlockHtml(type, opts) +
-        '<div class="pd-price-row"><span class="pd-price">' + (price != null ? price : '—') + '</span><span class="pd-price-unit">Smyles</span></div>' +
+        '<div class="pd-price-row"><span class="pd-price">' + (price != null ? price : '—') + '</span><span class="pd-price-unit">Smyles</span>' +
+          (_eurosVisibles() && price != null ? '<span class="pd-price-eur">' + _esc(_enEuros(price)) + '</span>' : '') + '</div>' +
         '<div class="pd-actions">' +
           '<button class="pd-cancel" type="button">Annuler</button>' +
           '<button class="pd-confirm" type="button">Débloquer' + (price != null ? ' · ' + price : '') + ' ⚡</button>' +
@@ -326,8 +342,8 @@
         } else if (status === 402) {
           var d = err.body && err.body.detail;
           _toast((d && typeof d === 'object')
-            ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.'
-            : 'Solde de Smyles insuffisant.', 'error');
+            ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '. Invite un ami : +20 Smyles pour toi et pour lui.'
+            : 'Solde de Smyles insuffisant. Invite un ami : +20 Smyles pour toi et pour lui.', 'error');
         } else if (status === 409 && err.body && err.body.detail && err.body.detail.code === 'prix_change') {
           _toast(err.body.detail.message + ' — réessaie.', 'error');
         } else if (status === 409) {

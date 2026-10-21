@@ -75,7 +75,9 @@ _MAX_IMAGE_RESULTS = 60
 # Plateformes reconnues pour le filtre provenance (miroir de ImagePlatform).
 # Garder SYNCHRONISÉ avec app.schemas.image.ImagePlatform.
 _VALID_PLATFORMS = {
-    "midjourney", "dalle", "chatgpt", "stable_diffusion", "flux", "autre"
+    "midjourney", "dalle", "chatgpt", "stable_diffusion", "flux",
+    "ideogram", "leonardo", "firefly", "google", "recraft", "seedream", "grok",
+    "autre",
 }
 
 # ──────────────────────────────────────────────────────────────────────────

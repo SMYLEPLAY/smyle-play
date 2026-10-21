@@ -54,6 +54,9 @@
     return 'home';
   })();
   const HOME_CAP = 3;
+  const HOME_NEW_CAP = 6;  // Lot J — rangée « Nouveautés » de la home
+  // Lot J — mentions ADN masquées sur les cartes tant que SHOW_ADN est éteint.
+  function _adnAffiche() { return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.adn); }
 
   // ── Mode Musique ⇄ Image (C4 étape 2) ─────────────────────────────────────
   // Deux « mondes » à parité sur la home. Le mode choisi est persisté dans
@@ -587,9 +590,12 @@
     // Le catalogue complet vit sur la page dédiée /sons. En vue /sons → tout.
     let _capNote = '';
     // Cap home à 3 UNIQUEMENT hors recherche/filtre actif (mode résultats).
-    if (_VIEW === 'home' && !needle && !_pageMoodSet.size && items.length > HOME_CAP) {
+    if (_VIEW === 'home' && !needle && !_pageMoodSet.size && items.length > HOME_NEW_CAP) {
       const totalSons = items.length;
-      items = items.slice().sort((a, b) => (b.plays || 0) - (a.plays || 0)).slice(0, HOME_CAP);
+      // Lot J — NOUVEAUTÉS : ordre de publication (tracks-recent est déjà trié
+      // du plus récent au plus ancien), 6 cartes. Avant, ce bloc re-triait par
+      // écoutes et montrait les 3 mêmes sons que le Top juste au-dessus.
+      items = items.slice(0, HOME_NEW_CAP);
       // C4 — Beats/Voix déplacés dans la barre de catégories du haut (.mp-cat-nav,
       // mode-aware). On ne garde ici que « Voir tous les sons (N) » pour éviter
       // le doublon d'étagères en bas de grille.
@@ -628,7 +634,7 @@
         : '';
       // Carte ID enrichie (avant achat) : chips mood + beat. La plateforme
       // audio migre dans le SOCLE BINAIRE ci-dessous.
-      const _PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
+      const _PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', elevenlabs: 'ElevenLabs Music', autre: 'Autre' };
       const platformKey   = (t.platform || '').trim().toLowerCase();
       const platformLabel = _PLATFORM_LABELS[platformKey] || (platformKey ? platformKey : '');
       const moods = (t.tags || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 4);
@@ -650,7 +656,7 @@
       // reliées par une couture. Face visuelle absente → invitation
       // pointillée CONTRASTÉE (fini le fantôme invisible du chantier B).
       // Image liée (œuvre, flux B) → PONT pleine largeur « Œuvre complète ».
-      const _IMG_PLATFORM_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', autre: 'Autre' };
+      const _IMG_PLATFORM_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre' };
       const adnM = t.adnMusique || null;
       const adnV = t.adnVisuel || null;
       const li   = t.linkedImage || null;
@@ -691,7 +697,7 @@
       const musicLines =
         `<div class="mp-socle-face">🎧 Musique</div>` +
         (platformLabel ? `<div class="mp-socle-line" title="Son généré avec ${_esc(platformLabel)}">⚡ ${_esc(platformLabel)}</div>` : '') +
-        ((adnM && adnM.has) ? `<div class="mp-socle-line" title="ADN musical de l'artiste — vente sur proposition">🧬 ADN musical</div>` : '') +
+        ((_adnAffiche() && adnM && adnM.has) ? `<div class="mp-socle-line" title="ADN musical de l'artiste — vente sur proposition">🧬 ADN musical</div>` : '') +
         ((promptId && promptPrice != null)
           ? `<button type="button" class="mp-recipe-badge mp-socle-price" data-prompt-id="${_esc(String(promptId))}" data-prompt-price="${promptPrice}" data-track-name="${_esc(title)}" title="Débloquer la recette · ${promptPrice} Smyles">Recette · ${promptPrice} S</button>`
           : '');
@@ -702,7 +708,7 @@
         visualLines =
           `<div class="mp-socle-face">🎨 Visuel</div>` +
           (imgPlatformLabel ? `<div class="mp-socle-line" title="Image générée avec ${_esc(imgPlatformLabel)}">⚡ ${_esc(imgPlatformLabel)}</div>` : '') +
-          ((adnV && adnV.has) ? `<div class="mp-socle-line" title="ADN visuel de l'artiste — vente sur proposition">🎨 ADN visuel</div>` : '') +
+          ((_adnAffiche() && adnV && adnV.has) ? `<div class="mp-socle-line" title="ADN visuel de l'artiste — vente sur proposition">🎨 ADN visuel</div>` : '') +
           (li
             ? `<button type="button" class="mp-recipe-badge mp-socle-price mp-socle-img" data-image-id="${_esc(li.id)}" title="Débloquer la recette visuelle${li.priceCredits != null ? ' · ' + li.priceCredits + ' Smyles' : ''}">Recette${li.priceCredits != null ? ' · ' + li.priceCredits + ' S' : ''}</button>`
             : '');
@@ -710,8 +716,7 @@
         visualInvitation = true;
         visualLines =
           `<div class="mp-socle-face">🎨 Visuel</div>` +
-          `<div class="mp-socle-invit-txt">Pas encore de face visuelle</div>` +
-          `<div class="mp-socle-invit-cta">✨ Inviter à créer</div>`;
+          `<div class="mp-socle-invit-txt">Pas encore d'image</div>`;
       }
 
       const pontTotal = (li && li.priceCredits != null && promptPrice != null)
@@ -1241,8 +1246,8 @@
     // ── CARTE ID BINAIRE (demande Tom 07/07) — grand socle MUSIQUE | VISUEL
     // avec toutes les infos : provenance des deux faces, moods, ADN (sur
     // proposition), recette + prix, image liée (aperçu + fiche), pont œuvre.
-    const _TD_PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', autre: 'Autre' };
-    const _TD_IMG_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', autre: 'Autre' };
+    const _TD_PLATFORM_LABELS = { suno: 'Suno', udio: 'Udio', riffusion: 'Riffusion', stable_audio: 'Stable Audio', elevenlabs: 'ElevenLabs Music', autre: 'Autre' };
+    const _TD_IMG_LABELS = { midjourney: 'Midjourney', dalle: 'DALL·E', chatgpt: 'ChatGPT', stable_diffusion: 'Stable Diffusion', flux: 'Flux', ideogram: 'Ideogram', leonardo: 'Leonardo', firefly: 'Adobe Firefly', google: 'Google (Imagen / Nano Banana)', recraft: 'Recraft', seedream: 'Seedream', grok: 'Grok', autre: 'Autre' };
     const tdPlatformKey   = (t.platform || '').trim().toLowerCase();
     const tdPlatformLabel = _TD_PLATFORM_LABELS[tdPlatformKey] || (tdPlatformKey ? tdPlatformKey : '');
     const tdMoods = (t.tags || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -1261,7 +1266,7 @@
         `<div class="mp-socle-face">🎧 Musique</div>` +
         (tdPlatformLabel ? `<div class="mp-socle-line">⚡ ${_esc(tdPlatformLabel)}${t.bpm ? ' · ' + _esc(t.bpm) + ' BPM' : ''}</div>` : '') +
         (tdMoodChips ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px;">${tdMoodChips}</div>` : '') +
-        ((tdAdnM && tdAdnM.has) ? `<div class="mp-socle-line" title="ADN musical de l'artiste — vente sur proposition">🧬 ADN musical · sur proposition</div>` : '') +
+        ((_adnAffiche() && tdAdnM && tdAdnM.has) ? `<div class="mp-socle-line" title="ADN musical de l'artiste — vente sur proposition">🧬 ADN musical · sur proposition</div>` : '') +
         ((promptId && promptPrice != null)
           ? `<div class="mp-td-recipe-teaser" id="mp-td-recipe-teaser" style="font-size:.7rem;color:#a79fc0;margin:4px 0;line-height:1.5;"></div>` +
             `<button type="button" class="mp-td-recipe-btn mp-socle-price" id="mp-td-recipe-btn"
@@ -1279,7 +1284,7 @@
           `<div class="mp-socle-face">🎨 Visuel</div>` +
           (thumbUrl ? `<img src="${_esc(thumbUrl)}" alt="" class="mp-td-socle-thumb" id="mp-td-linked-thumb" loading="lazy" oncontextmenu="return false" draggable="false" />` : '') +
           (tdImgLabel ? `<div class="mp-socle-line">⚡ ${_esc(tdImgLabel)}</div>` : '') +
-          ((tdAdnV && tdAdnV.has) ? `<div class="mp-socle-line" title="ADN visuel de l'artiste — vente sur proposition">🎨 ADN visuel · sur proposition</div>` : '') +
+          ((_adnAffiche() && tdAdnV && tdAdnV.has) ? `<div class="mp-socle-line" title="ADN visuel de l'artiste — vente sur proposition">🎨 ADN visuel · sur proposition</div>` : '') +
           (tdLi
             ? `<button type="button" class="mp-socle-price" id="mp-td-linked-btn" data-image-id="${_esc(tdLi.id)}">🖼️ Image${tdLi.priceCredits != null ? ' · ' + tdLi.priceCredits + ' Smyles' : ''}</button>`
             : '') +
@@ -1288,8 +1293,7 @@
       tdVisualHalf =
         `<div class="mp-socle-half mp-socle-half--visual mp-socle-half--td is-invitation">` +
           `<div class="mp-socle-face">🎨 Visuel</div>` +
-          `<div class="mp-socle-invit-txt">Pas encore de face visuelle</div>` +
-          `<div class="mp-socle-invit-cta">✨ Inviter à créer</div>` +
+          `<div class="mp-socle-invit-txt">Pas encore d'image</div>` +
         `</div>`;
     }
 
@@ -1526,6 +1530,14 @@
     { val: 'dalle',            label: 'DALL·E'           },
     { val: 'flux',             label: 'Flux'             },
     { val: 'stable_diffusion', label: 'Stable Diffusion' },
+    { val: 'chatgpt',          label: 'ChatGPT'          },
+    { val: 'ideogram',         label: 'Ideogram'         },
+    { val: 'leonardo',         label: 'Leonardo'         },
+    { val: 'firefly',          label: 'Adobe Firefly'    },
+    { val: 'google',           label: 'Google'           },
+    { val: 'recraft',          label: 'Recraft'          },
+    { val: 'seedream',         label: 'Seedream'         },
+    { val: 'grok',             label: 'Grok'             },
     { val: 'autre',            label: 'Autre'            },
   ];
   var _IMG_RARITIES = [

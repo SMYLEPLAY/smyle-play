@@ -36,7 +36,10 @@ from app.schemas.marketplace import (
 # la PRÉSENCE (NOT NULL) via ck_prompts_image_provenance — pas la liste de
 # valeurs — donc AUCUNE migration n'est nécessaire pour ajouter une plateforme.
 ImagePlatform = Literal[
-    "midjourney", "dalle", "chatgpt", "stable_diffusion", "flux", "autre"
+    "midjourney", "dalle", "chatgpt", "stable_diffusion", "flux",
+    # Lot J (21/10/2026) — WATT accepte tous les grands outils d'image.
+    "ideogram", "leonardo", "firefly", "google", "recraft", "seedream", "grok",
+    "autre",
 ]
 
 # Borne lâche sur le prompt d'image : NOT NULL mais sans plafond strict

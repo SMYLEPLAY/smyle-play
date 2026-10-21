@@ -1,3 +1,5 @@
+import datetime as _dt
+
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -172,12 +174,20 @@ class DroitsIAIn(BaseModel):
     confirme: bool
 
 
+# Date du texte de confirmation actuel : le créateur certifie ses droits
+# commerciaux ET autorise la réutilisation par les acheteurs (CGU art. 11).
+DROITS_IA_TEXTE_DU = _dt.datetime(2026, 10, 20, tzinfo=_dt.timezone.utc)
+
+
 @router.get("/me/droits-ia")
 async def lire_droits_ia(current_user: User = Depends(get_current_user)):
     """Lot I — le créateur a-t-il confirmé détenir les droits commerciaux de
-    ses contenus générés par IA ?"""
+    ses contenus générés par IA ? Une confirmation donnée AVANT la règle
+    « ce qui est en vente est réutilisable » (DROITS_IA_TEXTE_DU) ne compte
+    plus : la question est reposée avec le nouveau texte."""
     d = current_user.ia_rights_confirmed_at
-    return {"confirme": d is not None, "le": d.isoformat() if d else None}
+    valide = d is not None and d >= DROITS_IA_TEXTE_DU
+    return {"confirme": valide, "le": d.isoformat() if valide else None}
 
 
 @router.post("/me/droits-ia")
@@ -188,13 +198,15 @@ async def confirmer_droits_ia(
 ):
     """Lot I — preuve datée : « je détiens les droits commerciaux de ce que je
     publie (abonnement payant de l'outil d'IA utilisé) ». Demandée une fois,
-    avant la première publication. La première date est conservée."""
+    avant la première publication. La première date est conservée, sauf si
+    elle précède le texte actuel (DROITS_IA_TEXTE_DU)."""
     from datetime import datetime, timezone
 
     if not payload.confirme:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             detail="La confirmation est nécessaire pour publier.")
-    if current_user.ia_rights_confirmed_at is None:
+    d = current_user.ia_rights_confirmed_at
+    if d is None or d < DROITS_IA_TEXTE_DU:
         current_user.ia_rights_confirmed_at = datetime.now(timezone.utc)
         await db.commit()
         await db.refresh(current_user)

@@ -24,15 +24,15 @@
       h.textContent = 'Avant ta première publication';
       h.style.cssText = 'margin:0 0 10px;font-size:18px';
       const p = document.createElement('p');
-      p.textContent = "Pour vendre un son, une image ou une recette créés avec une IA, tu dois en détenir les droits commerciaux. " +
-        "Avec Suno, c'est le cas si tu avais un abonnement payant (Pro ou Premier) au moment de la création.";
+      p.textContent = "Sur WATT, ce qui est mis en vente est réutilisable : l'acheteur peut s'en servir dans ses propres créations, même publiées ou vendues (mais pas le revendre tel quel). " +
+        "Tu dois donc en détenir les droits commerciaux. Avec Suno, c'est le cas si tu avais un abonnement payant (Pro ou Premier) au moment de la création.";
       const lbl = document.createElement('label');
       lbl.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin:14px 0;cursor:pointer';
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.style.cssText = 'margin-top:3px;flex:none';
       const t = document.createElement('span');
-      t.textContent = "Je confirme détenir les droits commerciaux de ce que je publie sur WATT (abonnement payant de l'outil d'IA utilisé), conformément aux CGU.";
+      t.textContent = "Je confirme détenir les droits commerciaux de ce que je publie sur WATT (abonnement payant de l'outil d'IA utilisé) et j'autorise les acheteurs à le réutiliser, conformément aux CGU.";
       lbl.append(cb, t);
       const lien = document.createElement('a');
       lien.href = '/legal#cgu'; lien.target = '_blank'; lien.rel = 'noopener';

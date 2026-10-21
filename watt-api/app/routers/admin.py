@@ -506,6 +506,20 @@ async def pioneer_codes_liste(
     }
 
 
+# ── Croissance (Lot K) — créateurs qui publient, personnes qu'ils amènent ───
+
+@router.get("/croissance")
+async def croissance(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """LA mesure des six premières semaines : combien de créateurs publient,
+    et combien de personnes chacun amène (parrainage, ventes via son lien)."""
+    from app.services.croissance import tableau
+
+    return await tableau(db)
+
+
 # ── « Prêt à sortir » (Lot 2) — base du futur agent analytique ──────────────
 
 @router.get("/pret-a-sortir")
