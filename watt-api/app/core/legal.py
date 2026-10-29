@@ -14,7 +14,7 @@ modération (DSA art. 17 et 20) et dans le pied de page. Elle figure déjà en
 clair dans le front (ui/modals/contact.js).
 """
 
-CGU_VERSION = "2026-11-01"
+CGU_VERSION = "2026-10-29"  # lot L : textes de vente, commission en euros, art. 8 bis
 
 CONTACT_EMAIL = "smyletheplan@gmail.com"
 

@@ -341,9 +341,15 @@
           }
         } else if (status === 402) {
           var d = err.body && err.body.detail;
+          // Lot L : si l'achat de Smyles est ouvert, on propose directement
+          // les packs ; sinon, le parrainage.
+          var _achatOuvert = !!(window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)
+            && typeof window.openCreditsBuyModal === 'function';
           _toast((d && typeof d === 'object')
-            ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '. Invite un ami : +20 Smyles pour toi et pour lui.'
-            : 'Solde de Smyles insuffisant. Invite un ami : +20 Smyles pour toi et pour lui.', 'error');
+            ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.' +
+              (_achatOuvert ? '' : ' Invite un ami : +20 Smyles pour toi et pour lui.')
+            : 'Solde de Smyles insuffisant.' + (_achatOuvert ? '' : ' Invite un ami : +20 Smyles pour toi et pour lui.'), 'error');
+          if (_achatOuvert) { try { close(); window.openCreditsBuyModal(); } catch (_) {} }
         } else if (status === 409 && err.body && err.body.detail && err.body.detail.code === 'prix_change') {
           _toast(err.body.detail.message + ' — réessaie.', 'error');
         } else if (status === 409) {

@@ -224,6 +224,11 @@ def stripe_test(monkeypatch):
     monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", True)
     monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", CLE_DE_TEST)
     monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", SECRET_WH)
+    # Lot L : identité légale complète, email vérifié non exigé ici.
+    monkeypatch.setattr(settings, "EDITEUR_ADRESSE", "1 rue de l'Exemple, 75000 Paris")
+    monkeypatch.setattr(settings, "EDITEUR_SIREN", "000 000 000")
+    monkeypatch.setattr(settings, "EDITEUR_MEDIATEUR", "Médiateur de test")
+    monkeypatch.setattr(settings, "ACHAT_EXIGE_EMAIL_VERIFIE", False)
 
     async def _faux(path, data):
         sid = "cs_test_" + uuid.uuid4().hex
@@ -251,7 +256,7 @@ async def _preseed(uid, achetes=0):
         await db.commit()
 
 
-BODY = {"pack_id": "pack_100", "renonce_retractation": True}
+BODY = {"pack_id": "pack_100", "renonce_retractation": True, "majeur": True}
 
 
 async def test_cle_de_test_achat_reserve_aux_admins(client, test_user, auth_headers, stripe_test):
@@ -298,6 +303,11 @@ async def test_manque_bloque_l_achat_carte_puis_deblocage_admin(client, test_use
     monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", True)
     monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", "sk_live_" + "e" * 24)   # factice
     monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", SECRET_WH)
+    # Lot L : identité légale complète, email vérifié non exigé ici.
+    monkeypatch.setattr(settings, "EDITEUR_ADRESSE", "1 rue de l'Exemple, 75000 Paris")
+    monkeypatch.setattr(settings, "EDITEUR_SIREN", "000 000 000")
+    monkeypatch.setattr(settings, "EDITEUR_MEDIATEUR", "Médiateur de test")
+    monkeypatch.setattr(settings, "ACHAT_EXIGE_EMAIL_VERIFIE", False)
 
     async def _faux(path, data):
         sid = "cs_live_" + uuid.uuid4().hex

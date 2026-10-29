@@ -650,6 +650,22 @@ async def library_page():
 
 _BLOC_PRO = re.compile(r"<!--SI_PRO-->.*?<!--FIN_PRO-->", re.S)
 _BLOC_PARTICULIER = re.compile(r"<!--SI_PARTICULIER-->.*?<!--FIN_PARTICULIER-->", re.S)
+_BLOC_VENTE = re.compile(r"<!--SI_VENTE-->.*?<!--FIN_VENTE-->", re.S)
+_BLOC_SANS_VENTE = re.compile(r"<!--SI_SANS_VENTE-->.*?<!--FIN_SANS_VENTE-->", re.S)
+
+
+def _etat_vente(texte: str) -> str:
+    """Lot L — textes qui dépendent de l'ouverture réelle de la vente de
+    Smyles (clé live + identité légale complète + drapeau) : la page légale
+    ne dit jamais « aucun paiement n'est possible » quand Stripe encaisse,
+    ni l'inverse."""
+    from app.services.stripe_payments import vente_ouverte_au_public
+
+    if vente_ouverte_au_public():
+        texte = _BLOC_SANS_VENTE.sub("", texte)
+        return texte.replace("<!--SI_VENTE-->", "").replace("<!--FIN_VENTE-->", "")
+    texte = _BLOC_VENTE.sub("", texte)
+    return texte.replace("<!--SI_SANS_VENTE-->", "").replace("<!--FIN_SANS_VENTE-->", "")
 
 
 def _coordonnees_editeur(texte: str) -> str:
@@ -666,9 +682,13 @@ def _coordonnees_editeur(texte: str) -> str:
     if adresse:
         texte = _BLOC_PARTICULIER.sub("", texte)
         texte = texte.replace("<!--SI_PRO-->", "").replace("<!--FIN_PRO-->", "")
+        siren = (settings.EDITEUR_SIREN or "").strip()
+        mediateur = (settings.EDITEUR_MEDIATEUR or "").strip()
         return (texte.replace("{{EDITEUR_ADRESSE}}", _html.escape(adresse))
                      .replace("{{EDITEUR_TELEPHONE}}",
-                              _html.escape(telephone or "communiqué sur demande par email")))
+                              _html.escape(telephone or "communiqué sur demande par email"))
+                     .replace("{{EDITEUR_SIREN}}", _html.escape(siren or "en cours d'attribution"))
+                     .replace("{{EDITEUR_MEDIATEUR}}", _html.escape(mediateur or "en cours de désignation")))
     texte = _BLOC_PRO.sub("", texte)
     return texte.replace("<!--SI_PARTICULIER-->", "").replace("<!--FIN_PARTICULIER-->", "")
 
@@ -683,7 +703,7 @@ async def legal_page():
         raise HTTPException(status_code=404)
     texte = _page_injectee(str(path), mtime_ns, pwa_active(), _commit())
     return _PageHTML(
-        content=_coordonnees_editeur(texte),
+        content=_etat_vente(_coordonnees_editeur(texte)),
         headers={"Cache-Control": "no-cache"},
     )
 

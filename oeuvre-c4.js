@@ -111,7 +111,13 @@
         btn.disabled = false;
         var s = err && err.status;
         if (err && err.annule) { _toast('Achat annulé : le prix a changé.', 'info'); load(); return; }
-        if (s === 402) _toast('Pas assez de Smyles pour cette œuvre.', 'error');
+        if (s === 402) {
+          _toast('Pas assez de Smyles pour cette œuvre.', 'error');
+          // Lot L : achat de Smyles proposé directement quand il est ouvert.
+          if (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles && typeof window.openCreditsBuyModal === 'function') {
+            try { window.openCreditsBuyModal(); } catch (_) {}
+          }
+        }
         else if (s === 409) _toast((err.body && typeof err.body.detail === 'string') ? err.body.detail : 'Tu possèdes déjà cette œuvre.', 'info');
         else _toast('Achat impossible pour le moment. Réessaie.', 'error');
       });

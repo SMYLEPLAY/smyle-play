@@ -288,8 +288,10 @@
           Tes Smyles
         </h2>
         <p class="credits-modal__sub">
-          Les Smyles te permettent de débloquer des recettes, des ADN et des voix
-          d'artistes. Tu en gagnes en explorant, en publiant et en revenant.
+          Les Smyles te permettent de débloquer des sons, des images et leurs
+          recettes. Tu en reçois 30 à l'inscription et 20 par ami parrainé.
+          Les Smyles achetés servent uniquement sur WATT : ils ne sont ni
+          remboursables ni convertibles en euros.
         </p>
 
         <!-- Lot 3 — Brique 5 : achat par carte (Stripe Checkout). Le crédit
@@ -300,6 +302,10 @@
           <label class="credits-buy__consent">
             <input type="checkbox" id="creditsConsent" />
             <span>Je demande la fourniture immédiate du contenu numérique et je renonce à mon droit de rétractation.</span>
+          </label>
+          <label class="credits-buy__consent">
+            <input type="checkbox" id="creditsMajeur" />
+            <span>J'ai 18 ans ou plus.</span>
           </label>
           <p class="credits-buy__legal">En payant, tu acceptes les
             <a href="/legal#cgv-smyles" target="_blank" rel="noopener">conditions de vente des Smyles</a>.
@@ -328,6 +334,8 @@
 
     const _consent = modal.querySelector('#creditsConsent');
     if (_consent) _consent.addEventListener('change', _refreshPayBtn);
+    const _majeur = modal.querySelector('#creditsMajeur');
+    if (_majeur) _majeur.addEventListener('change', _refreshPayBtn);
     const _pay = modal.querySelector('#creditsPayBtn');
     if (_pay) _pay.addEventListener('click', _payByCard);
 
@@ -417,9 +425,9 @@
           // Format prix : 8.00 € → 8 € si entier, sinon garder les centimes
           const priceDisplay = p.price_eur_display || `${(p.price_eur_cents / 100).toFixed(2)} €`;
           const unitCents = p.unit_price_cents || 0;
-          const unitDisplay = unitCents
-            ? `${(unitCents / 100).toFixed(2)} € / Smyle`
-            : '';
+          // Lot L : prix unitaire exact au format français (« 0,065 € / Smyle »).
+          const unitDisplay = p.unit_price_display
+            || (unitCents ? `${(unitCents / 100).toFixed(2).replace('.', ',')} € / Smyle` : '');
           return `
             <button type="button" class="credits-pack" data-pack-id="${String(p.id).replace(/[^a-z0-9_]/gi, '')}"
               data-pack-credits="${p.credits}" data-pack-price="${String(priceDisplay).replace(/[<>"'`&]/g, '')}"
@@ -449,8 +457,9 @@
   function _refreshPayBtn() {
     const btn = document.getElementById('creditsPayBtn');
     const consent = document.getElementById('creditsConsent');
+    const majeur = document.getElementById('creditsMajeur');
     if (!btn) return;
-    const ok = !!_selectedPack && !!(consent && consent.checked);
+    const ok = !!_selectedPack && !!(consent && consent.checked) && !!(majeur && majeur.checked);
     btn.disabled = !ok;
     btn.textContent = _selectedPack
       ? `Payer ${_selectedPack.price} par carte`
@@ -460,13 +469,14 @@
   async function _payByCard() {
     const btn = document.getElementById('creditsPayBtn');
     const consent = document.getElementById('creditsConsent');
-    if (!_selectedPack || !consent || !consent.checked || !btn) return;
+    const majeur = document.getElementById('creditsMajeur');
+    if (!_selectedPack || !consent || !consent.checked || !majeur || !majeur.checked || !btn) return;
     btn.disabled = true;
     btn.textContent = 'Ouverture du paiement…';
     try {
       const out = await apiFetch('/credits/checkout', {
         method: 'POST',
-        json: { pack_id: _selectedPack.id, renonce_retractation: true },
+        json: { pack_id: _selectedPack.id, renonce_retractation: true, majeur: true },
       });
       if (out && out.url && /^https:\/\/checkout\.stripe\.com\//.test(out.url)) {
         window.location.href = out.url;
@@ -475,8 +485,11 @@
       throw new Error('url');
     } catch (err) {
       const s = err && err.status;
+      // Lot L : le serveur explique pourquoi (email à confirmer, majorité…).
+      const d = err && err.body && err.body.detail;
       _toast(s === 503
         ? 'Le paiement par carte n\'est pas encore disponible.'
+        : (s === 422 && typeof d === 'string') ? d
         : 'Impossible d\'ouvrir le paiement. Réessaie dans un instant.', 'error');
       _refreshPayBtn();
     }

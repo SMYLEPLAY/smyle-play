@@ -191,8 +191,9 @@ async def test_creator_stats_portefeuille(client, test_user, auth_headers):
 def test_dashboard_affiche_retirables_et_bonus():
     js = (REPO_ROOT / "dashboard.js").read_text(encoding="utf-8")
     assert "Smyles retirables" in js and "Smyles bonus" in js
-    assert ("100 Smyles gagnés en vendant = 5 € quand les retraits s\\'ouvriront "
-            "' +\n    '(à 1000 actifs, et au plus tard le 1er mai 2027). ") in js
+    # Lot L : plus de date de retrait dans le tableau de bord (renvoi aux CGU).
+    assert "100 Smyles gagnés en vendant valent 5 € au retrait" in js
+    assert "1er mai 2027" not in js
     assert "Les Smyles bonus se dépensent sur WATT mais ne se retirent pas." in js
 
 

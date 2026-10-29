@@ -72,9 +72,9 @@ def test_les_6_drapeaux_existent_et_sont_caches_par_defaut():
     flags = settings.launch_flags_dict()
     for cle in NOUVEAUX:
         assert cle in flags
-        # Lot 3 (décision Tom 23/09) : les offres ADN sont VISIBLES au
-        # lancement (seul moyen d'acheter un ADN) ; l'interrupteur reste.
-        attendu = cle == "offresAdn"
+        # Lot L (29/10) : les offres ADN sont de nouveau CACHÉES, comme les
+        # ADN eux-mêmes (SHOW_ADN, lot J). L'interrupteur reste.
+        attendu = False
         assert flags[cle] is attendu, f"{cle} : défaut attendu {attendu}"
 
 
@@ -82,7 +82,7 @@ async def test_drapeaux_exposes_au_front(client):
     r = await client.get("/ui/core/launch-flags.js")
     assert r.status_code == 200
     for cle in NOUVEAUX:
-        attendu = "true" if cle == "offresAdn" else "false"
+        attendu = "false"
         assert f'"{cle}": {attendu}' in r.text
 
 

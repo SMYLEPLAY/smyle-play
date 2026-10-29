@@ -35,8 +35,12 @@ async def list_packs(request: Request, db: AsyncSession = Depends(get_db)):
             id=p["id"],
             credits=p["credits"],
             price_eur_cents=p["price_eur_cents"],
-            price_eur_display=f"{p['price_eur_cents'] / 100:.2f} €",
+            # Lot L : format français (« 8,00 € »), prix unitaire exact.
+            price_eur_display=f"{p['price_eur_cents'] / 100:.2f} €".replace(".", ","),
             unit_price_cents=p["price_eur_cents"] // p["credits"],
+            unit_price_display=(
+                f"{p['price_eur_cents'] / 100 / p['credits']:.3f}".rstrip("0").replace(".", ",")
+                + " € / Smyle"),
         )
         for p in CREDIT_PACKS
     ]

@@ -58,13 +58,13 @@
   <a href="/">← ⚡ WATT</a>
 </div>
 
-<!-- Textes légaux de WATT (watt.place). Version des CGU : 2026-11-01
+<!-- Textes légaux de WATT (watt.place). Version des CGU : 2026-10-29
      (constante CGU_VERSION côté serveur). Toute modification de fond des CGU
      doit changer cette date ET la constante, pour que chaque utilisateur les
      accepte à nouveau. -->
 <div class="lg-wrap">
   <h1>Informations légales</h1>
-  <div class="lg-updated">Version du 1er novembre 2026 · Conditions générales d'utilisation et de vente, confidentialité, modération</div>
+  <div class="lg-updated">Version du 29 octobre 2026 · Conditions générales d'utilisation et de vente, confidentialité, modération</div>
 
   <!-- ═══════════ RÉSUMÉ EN CLAIR ═══════════ -->
   <div class="lg-note" id="resume">
@@ -72,9 +72,9 @@
     <ul>
       <li><strong>Ce que tu peux faire</strong> : écouter des Œuvres (un son et une image créés avec l'IA), débloquer leur recette avec des Smyles, publier et vendre tes propres Œuvres. Sans compte, tu n'écoutes qu'un extrait de 30 secondes.</li>
       <li><strong>Tes Smyles offerts</strong> (30 à l'inscription, parrainage, quêtes) se dépensent sur WATT. Ils ne se retirent <strong>jamais</strong> en euros.</li>
-      <li><strong>Les Smyles achetés</strong> (achat bientôt ouvert) se dépensent sur WATT. Ils ne se retirent pas en euros et ne sont pas remboursés une fois utilisés.</li>
+      <li><strong>Les Smyles achetés</strong><!--SI_VENTE--><!--FIN_VENTE--><!--SI_SANS_VENTE--> (achat bientôt ouvert)<!--FIN_SANS_VENTE--> se dépensent sur WATT. Ils ne se retirent pas en euros et ne sont pas remboursés une fois utilisés.</li>
       <li><strong>Les Smyles gagnés en vendant</strong> pourront se retirer à 0,05 € le Smyle, à partir de 50 €, avec 1 € de frais par retrait, identité vérifiée, 30 jours après la vente. Les retraits ouvrent à 1 000 utilisateurs actifs, et au plus tard le 1er mai 2027.</li>
-      <li><strong>Sur chaque vente</strong>, WATT garde une commission de 20 % (10 % à vie pour les 100 Pionniers, quand le programme est ouvert). Tu fixes ton prix entre 10 et 150 Smyles.</li>
+      <li><strong>Sur chaque vente</strong>, WATT garde une commission de 20 % en Smyles (10 % à vie pour les 100 Pionniers quand le programme est ouvert, et 10 % quand l'acheteur vient de toi). Tu fixes ton prix entre 10 et 150 Smyles. En euros, un Smyle acheté coûte de 0,065 à 0,08 € et un Smyle gagné se retire 0,05 € : l'écart couvre les frais et le fonctionnement de WATT (détail à l'article 8).</li>
       <li><strong>Remises pour l'acheteur</strong> : −30 % s'il possède ton ADN, −20 % s'il possède l'ADN d'une playlist qui contient le son, et la remise que tu choisis (0, 10 ou 20 %, 10 % par défaut) s'il achète l'Œuvre entière. Ta part est calculée sur le prix réellement payé : une remise la réduit d'autant.</li>
       <li><strong>Ce que tu achètes reste à toi</strong> : si le créateur modifie, masque ou supprime son Œuvre, tu gardes l'écoute, le téléchargement et la recette. Seule exception : un contenu retiré par la modération n'est plus accessible à personne.</li>
       <li><strong>Tes données</strong> servent à faire marcher WATT. Elles ne sont jamais vendues ni utilisées pour de la publicité. La mesure d'audience n'a lieu que si tu l'acceptes. Tu peux exporter tes données ou supprimer ton compte depuis ton WATT BOARD.</li>
@@ -94,7 +94,7 @@
   <!-- ═══════════ MENTIONS LÉGALES ═══════════ -->
   <section id="mentions">
     <h2>Mentions légales</h2>
-    <!--SI_PRO--><p><strong>Éditeur du service</strong> : Tom Lecomte, entrepreneur individuel. Numéro SIREN communiqué dès l'immatriculation (en cours).</p>
+    <!--SI_PRO--><p><strong>Éditeur du service</strong> : Tom Lecomte, entrepreneur individuel. SIREN : {{EDITEUR_SIREN}}.</p>
     <p><strong>Adresse</strong> : {{EDITEUR_ADRESSE}}.</p>
     <p><strong>Téléphone</strong> : {{EDITEUR_TELEPHONE}}.</p><!--FIN_PRO-->
     <!--SI_PARTICULIER--><p><strong>Éditeur du service</strong> : Tom Lecomte, particulier, qui édite WATT à titre non professionnel pendant sa phase de lancement gratuite (aucun paiement en euros n'est possible sur le site). Conformément à l'article 6, III, 2 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique, ses éléments d'identification personnelle ont été communiqués à l'hébergeur (Railway Corporation, ci-dessous) et ne sont pas publiés ici. Pour le joindre, utilise l'adresse email ci-dessous.</p><!--FIN_PARTICULIER-->
@@ -129,18 +129,18 @@
     <p>Sans compte, tu peux parcourir WATT et écouter <strong>un extrait de 30 secondes</strong> de chaque son. Pour écouter en entier, débloquer une recette ou publier, il faut un compte gratuit. Tu peux signaler un contenu même sans compte (<a href="#contenu">Contenu &amp; modération</a>).</p>
 
     <h3>4. Compte</h3>
-    <p>L'inscription demande une adresse email valide. Une personne ne peut avoir qu'un seul compte. Tu es responsable de tes identifiants et de ce qui se passe sur ton compte. Il faut avoir au moins 15 ans pour utiliser WATT. L'achat de Smyles en euros (quand il sera ouvert) est réservé aux majeurs, ou aux mineurs autorisés par leur représentant légal.</p>
+    <p>L'inscription demande une adresse email valide. Une personne ne peut avoir qu'un seul compte. Tu es responsable de tes identifiants et de ce qui se passe sur ton compte. Il faut avoir au moins 15 ans pour utiliser WATT. L'achat de Smyles en euros est réservé aux personnes <strong>majeures</strong> (18 ans ou plus).</p>
 
     <h3 id="smyles">5. Les Smyles</h3>
     <p><strong>5.1 Ce qu'est un Smyle.</strong> Les Smyles servent uniquement à débloquer des contenus sur WATT. Ils n'ont <strong>aucune valeur en dehors de la plateforme</strong>. Ce n'est <strong>ni de la monnaie électronique, ni un moyen de paiement, ni un placement</strong> : ils ne rapportent rien et leur valeur ne monte pas. Tu ne peux pas les donner, les vendre ou les transférer à un autre compte, sauf en débloquant un contenu sur WATT.</p>
     <p><strong>5.2 Trois sortes de Smyles.</strong> Ton solde se divise en trois parts, visibles dans ton compte :</p>
     <ul>
       <li><strong>Smyles offerts</strong> : reçus gratuitement (bienvenue, parrainage, quêtes). Ils se dépensent sur WATT et ne sont <strong>jamais retirables en euros</strong>.</li>
-      <li><strong>Smyles achetés</strong> : achetés en euros (achat pas encore ouvert). Ils se dépensent sur WATT, ne sont <strong>pas retirables en euros</strong> et ne sont <strong>pas remboursables une fois utilisés</strong>.</li>
+      <li><strong>Smyles achetés</strong> : achetés en euros<!--SI_VENTE--><!--FIN_VENTE--><!--SI_SANS_VENTE--> (achat pas encore ouvert)<!--FIN_SANS_VENTE-->. Ils se dépensent sur WATT, ne sont <strong>pas retirables en euros</strong> et ne sont <strong>pas remboursables une fois utilisés</strong>.</li>
       <li><strong>Smyles gagnés</strong> : reçus quand quelqu'un débloque un de tes contenus. Ils se dépensent sur WATT et sont <strong>les seuls convertibles en euros</strong>, aux conditions de l'article 5.5.</li>
     </ul>
     <p><strong>5.3 Ordre de dépense.</strong> Quand tu débloques un contenu, WATT utilise d'abord tes Smyles offerts, puis tes Smyles achetés, puis tes Smyles gagnés. Ainsi, tu gardes le plus longtemps possible ceux que tu pourras retirer.</p>
-    <p><strong>5.4 Smyles offerts.</strong> Tu reçois <strong>30 Smyles</strong> à l'inscription. Tu peux en recevoir d'autres grâce au parrainage et aux quêtes (<a href="#parrainage">article 6</a>). L'achat de Smyles sera ouvert prochainement, aux conditions de vente ci-dessous (<a href="#cgv-smyles">CGV — achat de Smyles</a>).</p>
+    <p><strong>5.4 Smyles offerts.</strong> Tu reçois <strong>30 Smyles</strong> à l'inscription. Tu peux en recevoir d'autres grâce au parrainage et aux quêtes (<a href="#parrainage">article 6</a>). <!--SI_VENTE-->Tu peux aussi acheter des Smyles par carte, aux conditions de vente ci-dessous<!--FIN_VENTE--><!--SI_SANS_VENTE-->L'achat de Smyles sera ouvert prochainement, aux conditions de vente ci-dessous<!--FIN_SANS_VENTE--> (<a href="#cgv-smyles">CGV — achat de Smyles</a>).</p>
     <p><strong>5.5 Retirer ses Smyles gagnés en euros.</strong></p>
     <ul>
       <li><strong>Valeur</strong> : <strong>0,05 € par Smyle gagné</strong>.</li>
@@ -187,6 +187,7 @@
       <li><strong>Mythique</strong> : <strong>10 %</strong>.</li>
     </ul>
     <p>Aujourd'hui, tous les créateurs sont au palier Standard. Les conditions des paliers Premium et Mythique seront publiées avant leur ouverture. Les Pionniers paient 10 % (article 9). <strong>Quand l'acheteur vient de toi</strong> (il arrive par le lien que tu partages, qui contient ton code, ou il s'est inscrit par ton parrainage), la commission sur cette vente est aussi de 10 %. Si tu cumules plusieurs avantages, le taux le plus bas s'applique, sans jamais descendre sous 10 %. Les calculs se font en Smyles entiers et <strong>l'arrondi se fait en faveur du créateur</strong> : le taux affiché est un maximum, mais WATT garde toujours au moins 10 % de la vente, arrondi au Smyle supérieur. Exemples au taux de 20 % : une vente à 20 Smyles donne 16 au créateur et 4 à WATT ; à 30 Smyles, 24 et 6. Au taux de 10 %, une vente à 20 Smyles donne 18 au créateur et 2 à WATT.</p>
+    <p id="commission-euros"><strong>Ce que représente la commission en euros.</strong> La commission est exprimée en Smyles. En euros, l'écart est plus grand, et il faut le savoir : un Smyle acheté coûte entre <strong>0,065 € et 0,08 €</strong> selon le pack, alors qu'un Smyle gagné se retire <strong>0,05 €</strong> (article 5.5). Cet écart couvre l'éventuelle TVA, les frais de paiement et de virement, la réserve de sécurité et le fonctionnement de WATT. Exemple : une vente à 20 Smyles, payée avec des Smyles d'un pack de 500, représente environ <strong>1,40 €</strong> payés par l'acheteur ; au taux de 20 %, le créateur reçoit 16 Smyles gagnés, soit <strong>0,80 €</strong> une fois retirés. Une partie des Smyles dépensés sur WATT sont des Smyles offerts, qui ne représentent aucun euro.</p>
     <p id="remises"><strong>Remises pour l'acheteur.</strong> Certains acheteurs paient moins cher, automatiquement :</p>
     <ul>
       <li><strong>−30 %</strong> s'il possède ton ADN (ton ADN musical pour un son ou une recette, ton ADN visuel pour une image) ;</li>
@@ -195,6 +196,10 @@
       <li><strong>la remise que tu choisis</strong> pour chaque Œuvre (0, 10 ou 20 % ; 10 % par défaut) s'il achète l'Œuvre entière (le son et l'image ensemble) au lieu de chaque moitié séparément. Tu la changes à tout moment dans « Mes Œuvres » ; elle ne touche pas les achats déjà faits.</li>
     </ul>
     <p>Les remises s'appliquent au prix que tu as fixé, arrondi au Smyle inférieur en faveur de l'acheteur. <strong>Ta part et la commission sont calculées sur le prix réellement payé</strong> : une remise réduit donc ta part dans la même proportion. Exemple au taux de 20 % : une recette à 30 Smyles achetée par une personne qui possède ton ADN lui coûte 21 Smyles ; tu reçois 17 Smyles (au lieu de 24) et WATT 4.</p>
+
+    <h3 id="fonctionnement">8 bis. Fonctionnement de la plateforme (classement et statut des vendeurs)</h3>
+    <p><strong>Classement.</strong> Aucun créateur ne paie pour être mieux placé. Les listes de WATT sont classées ainsi : « Derniers sons publiés » par date de publication ; « Top Sons » par nombre d'écoutes cumulées ; la liste des artistes par nombre d'écoutes cumulées, <strong>le compte officiel « Smyle » de WATT étant toujours affiché en premier</strong> ; la recherche par pertinence avec les mots saisis. WATT peut aussi mettre en avant des Œuvres de façon éditoriale (par exemple « Pionnier du jour ») ; ces mises en avant sont signalées comme telles.</p>
+    <p><strong>Qui vend.</strong> Les Œuvres sont proposées par leurs créateurs, qui sont le plus souvent des <strong>particuliers</strong>. Quand tu achètes à un particulier, les règles protectrices du droit de la consommation (garantie, rétractation) <strong>ne s'appliquent pas</strong> à ce contrat entre particuliers ; elles s'appliquent en revanche à l'achat de Smyles auprès de WATT. Un créateur qui agit à titre professionnel doit l'indiquer sur son profil. Le compte officiel « Smyle » et les Œuvres du « Studio WATT » appartiennent à l'éditeur de la plateforme.</p>
 
     <h3 id="pionnier">9. Programme Pionnier</h3>
     <p><strong>L'avantage.</strong> Les 100 premiers créateurs Pionniers paient une commission réduite à <strong>10 % à vie</strong> sur la vente de leurs propres contenus, <strong>sauf fraude</strong>. Ce taux ne s'applique qu'à ces ventes directes.</p>
@@ -276,7 +281,7 @@
          médiateur est choisi (nom, adresse postale, site internet). Il est
          repris par lien depuis les CGV (article 8). À faire AVANT l'ouverture
          de tout achat en euros. -->
-    <p id="mediateur"><strong>Médiateur de la consommation</strong> : le paiement par carte n'est pas encore ouvert sur WATT. Le médiateur de la consommation et ses coordonnées seront indiqués ici avant l'ouverture de tout achat. Tu pourras alors le saisir gratuitement si ta réclamation écrite n'a pas abouti.</p>
+    <p id="mediateur"><strong>Médiateur de la consommation</strong> : <!--SI_VENTE-->{{EDITEUR_MEDIATEUR}}. Si tu es consommateur et que ta réclamation écrite auprès de WATT n'a pas abouti, tu peux le saisir gratuitement, dans un délai d'un an à compter de cette réclamation (articles L611-1 et suivants du Code de la consommation).<!--FIN_VENTE--><!--SI_SANS_VENTE-->le paiement par carte n'est pas encore ouvert sur WATT. Le médiateur de la consommation et ses coordonnées seront indiqués ici avant l'ouverture de tout achat. Tu pourras alors le saisir gratuitement si ta réclamation écrite n'a pas abouti.<!--FIN_SANS_VENTE--></p>
     <p>À défaut d'accord, le litige relève des tribunaux français compétents. Si tu es consommateur, tu peux saisir le tribunal du lieu où tu habitais au moment de l'achat ou de l'événement à l'origine du litige.</p>
   </section>
 
@@ -287,11 +292,11 @@
     <h2>Conditions générales de vente — achat de Smyles</h2>
 
     <h3>1. Vendeur</h3>
-    <!--SI_PRO--><p>Les Smyles sont vendus par Tom Lecomte, entrepreneur individuel (numéro SIREN communiqué dès l'immatriculation), {{EDITEUR_ADRESSE}}. Email : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Téléphone : {{EDITEUR_TELEPHONE}}.</p><!--FIN_PRO-->
+    <!--SI_PRO--><p>Les Smyles sont vendus par Tom Lecomte, entrepreneur individuel (SIREN : {{EDITEUR_SIREN}}), {{EDITEUR_ADRESSE}}. Email : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>. Téléphone : {{EDITEUR_TELEPHONE}}.</p><!--FIN_PRO-->
     <!--SI_PARTICULIER--><p>Aucun Smyle n'est vendu pour le moment. Les ventes seront assurées par l'entreprise de Tom Lecomte une fois immatriculée : son identité complète (numéro SIREN, adresse, téléphone) figurera ici <strong>avant</strong> l'ouverture de tout paiement. Email : <a href="mailto:smyletheplan@gmail.com">smyletheplan@gmail.com</a>.</p><!--FIN_PARTICULIER-->
 
     <h3>2. Objet</h3>
-    <p>Ces conditions régissent l'achat en ligne de Smyles. <strong>L'achat de Smyles sera ouvert prochainement</strong> : tant qu'il ne l'est pas, aucun paiement n'est possible. Les Smyles achetés servent à débloquer des contenus sur WATT (voir l'<a href="#smyles">article 5 des CGU</a>). Ils ne sont <strong>ni retirables en euros, ni convertibles en argent, ni cessibles hors de la plateforme</strong>, et ne sont <strong>pas remboursables une fois utilisés</strong>.</p>
+    <p>Ces conditions régissent l'achat en ligne de Smyles.<!--SI_VENTE--><!--FIN_VENTE--><!--SI_SANS_VENTE--> <strong>L'achat de Smyles sera ouvert prochainement</strong> : tant qu'il ne l'est pas, aucun paiement n'est possible.<!--FIN_SANS_VENTE--> L'achat est réservé aux personnes majeures et demande une adresse email vérifiée. Les Smyles achetés servent à débloquer des contenus sur WATT (voir l'<a href="#smyles">article 5 des CGU</a>). Ils ne sont <strong>ni retirables en euros, ni convertibles en argent, ni cessibles hors de la plateforme</strong>, et ne sont <strong>pas remboursables une fois utilisés</strong>.</p>
 
     <h3>3. Offres et prix</h3>
     <p>Les Smyles sont vendus par packs :</p>
@@ -336,7 +341,7 @@
       <li><strong>Activité</strong> : déblocages, ventes, mouvements de Smyles, bibliothèque, playlists, abonnements, « j'aime », écoutes et téléchargements, parrainages, notifications.</li>
       <li><strong>Sécurité</strong> : adresse IP au moment de l'inscription (contre les faux comptes et la fraude au parrainage), jetons de vérification d'email et de mot de passe oublié, compteurs de tentatives par adresse IP (contre les attaques sur les mots de passe et les envois en masse).</li>
       <li><strong>Signalements</strong> : contenu signalé, motif, explication, et ton email si tu le donnes.</li>
-      <li><strong>Paiements</strong> (quand ils seront ouverts) : pack acheté, montant, date, accord de fourniture immédiate. Les données de carte sont traitées par Stripe, jamais par WATT. Pour les retraits : les informations demandées pour vérifier ton identité et te payer.</li>
+      <li><strong>Paiements</strong><!--SI_VENTE--><!--FIN_VENTE--><!--SI_SANS_VENTE--> (quand ils seront ouverts)<!--FIN_SANS_VENTE--> : pack acheté, montant, date, accord de fourniture immédiate (avec la version des conditions de vente acceptée) et déclaration de majorité. Les données de carte sont traitées par Stripe, jamais par WATT. Pour les retraits : les informations demandées pour vérifier ton identité et te payer.</li>
       <li><strong>Mesure d'audience</strong> (seulement si tu l'acceptes) : pages vues et étapes du parcours, rattachées à un identifiant aléatoire, sans ton nom ni ton email.</li>
       <li><strong>Journaux techniques</strong> : à chaque visite, l'hébergeur et l'application enregistrent l'adresse IP, la date et l'heure, la page ou l'action demandée et le résultat, ainsi que les erreurs. Ils servent à la sécurité (détecter les abus) et à corriger les pannes.</li>
     </ul>
@@ -357,7 +362,7 @@
       <li><strong>Cloudflare, Inc.</strong> (stockage des fichiers sons et images, service R2), 101 Townsend Street, San Francisco, CA 94107, États-Unis — <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">politique de confidentialité</a>.</li>
       <li><strong>Resend</strong> (Plus Five Five, Inc., envoi des emails), 2261 Market Street #5039, San Francisco, CA 94114, États-Unis — <a href="https://resend.com/legal/privacy-policy" rel="noopener">politique de confidentialité</a>.</li>
       <li><strong>Sentry</strong> (Functional Software, Inc., suivi des erreurs techniques, sans données personnelles envoyées par défaut), 45 Fremont Street, 8th Floor, San Francisco, CA 94105, États-Unis — <a href="https://sentry.io/privacy/" rel="noopener">politique de confidentialité</a>.</li>
-      <li><strong>Stripe</strong> (paiement par carte, quand il sera ouvert ; entité pour l'Europe : Stripe Payments Europe, Limited, Irlande) — <a href="https://stripe.com/fr/privacy" rel="noopener">politique de confidentialité</a>.</li>
+      <li><strong>Stripe</strong> (paiement par carte<!--SI_VENTE--><!--FIN_VENTE--><!--SI_SANS_VENTE-->, quand il sera ouvert<!--FIN_SANS_VENTE--> ; entité pour l'Europe : Stripe Payments Europe, Limited, Irlande) — <a href="https://stripe.com/fr/privacy" rel="noopener">politique de confidentialité</a>.</li>
     </ul>
     <p><strong>Transferts hors de l'Union européenne.</strong> Ces prestataires peuvent traiter des données aux États-Unis. Ces transferts sont encadrés :</p>
     <ul>
