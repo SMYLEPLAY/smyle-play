@@ -4791,8 +4791,8 @@ function _portefeuilleHtml(p, tile) {
     tile('🎁', 'Smyles bonus', Number(p.bonus) || 0) +
     '</div>' +
     '<p style="margin:0 0 16px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.5">' +
-    '100 Smyles gagnés en vendant = 5 € quand les retraits s\'ouvriront ' +
-    '(à 1000 actifs, et au plus tard le 1er mai 2027). ' +
+    '100 Smyles gagnés en vendant valent 5 € au retrait, quand les retraits ' +
+    'seront ouverts (conditions dans les CGU, article 5.5). ' +
     'Les Smyles bonus se dépensent sur WATT mais ne se retirent pas.</p>';
 }
 

@@ -221,7 +221,20 @@ class Settings(BaseSettings):
     # de repli « communiqué sur demande » (à éviter en production).
     EDITEUR_ADRESSE: str = ""
     EDITEUR_TELEPHONE: str = ""
-    SHOW_OFFRES_ADN: bool = True    # offres sur ADN (/adn-offers)
+    # Lot L — identité légale exigée avant toute vente réelle (garde-fou :
+    # l'achat par carte reste fermé tant que ADRESSE + SIREN + MÉDIATEUR ne
+    # sont pas renseignés). MEDIATEUR = texte affiché tel quel dans les CGV,
+    # ex. « CM2C, 49 rue de Ponthieu, 75008 Paris — www.cm2c.net ».
+    EDITEUR_SIREN: str = ""
+    EDITEUR_MEDIATEUR: str = ""
+    # Adresse publique du site (liens de paiement, emails). Évite de dépendre
+    # de l'en-tête Host derrière le proxy.
+    PUBLIC_BASE_URL: str = ""
+    # Lot L — conditions d'achat par carte (relâchables par variable).
+    ACHAT_MAJEUR_REQUIS: bool = True
+    ACHAT_EXIGE_EMAIL_VERIFIE: bool = True
+    # Lot L : OFF — les ADN sont masqués (SHOW_ADN), leurs offres aussi.
+    SHOW_OFFRES_ADN: bool = False    # offres sur ADN (/adn-offers)
     # Lot J (21/10/2026) — simplification : les ADN (musical, visuel, de
     # playlist) ne sont plus proposés à la création ni mis en avant sur les
     # cartes au lancement. Rien n'est supprimé : SHOW_ADN=true les rallume.

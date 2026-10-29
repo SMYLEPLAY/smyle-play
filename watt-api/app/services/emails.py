@@ -192,6 +192,54 @@ async def send_receipt_email(
     await _send(to, f"Reçu — « {item_title} »", _layout("Merci pour ton achat ⚡", body))
 
 
+async def send_confirmation_achat_smyles(
+    to: str,
+    *,
+    smyles: int,
+    euros_cents: int,
+    consentement_le,
+    cgu_version: str | None,
+    paiement_id: str,
+    mention_tva: str | None,
+) -> bool:
+    """Lot L — confirmation d'achat d'un pack de Smyles sur support durable
+    (art. L221-13 du Code de la consommation) : pack, prix, mention TVA,
+    rappel de la renonciation au droit de rétractation (horodatée) et lien
+    vers les CGV en vigueur. Best-effort : ne lève jamais."""
+    try:
+        quand = consentement_le.strftime("%d/%m/%Y à %H:%M (UTC)") if consentement_le else "—"
+        prix = f"{euros_cents / 100:.2f}".replace(".", ",")
+        tva = f"<br>{esc(mention_tva)}" if mention_tva else ""
+        body = f"""\
+    <p style="color:{_MUTED};font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Ton paiement est confirmé et tes Smyles sont sur ton compte.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 16px;">
+      <tr>
+        <td style="color:{_TEXT};font-size:14px;padding:8px 0;
+                   border-bottom:1px solid rgba(255,255,255,.08);">Pack de {smyles} Smyles</td>
+        <td style="color:{_GOLD};font-size:14px;font-weight:700;text-align:right;
+                   border-bottom:1px solid rgba(255,255,255,.08);">{prix} € TTC{tva}</td>
+      </tr>
+    </table>
+    <p style="color:{_MUTED};font-size:13px;line-height:1.6;margin:0 0 12px;">
+      Le {esc(quand)}, tu as demandé la fourniture immédiate de ce contenu
+      numérique et renoncé à ton droit de rétractation (article L221-28 13° du
+      Code de la consommation). Les Smyles achetés servent uniquement sur WATT ;
+      ils ne sont ni remboursables ni convertibles en euros.
+    </p>
+    <p style="color:{_MUTED};font-size:13px;line-height:1.6;margin:0;">
+      Conditions générales de vente applicables (version {esc(cgu_version or "en vigueur")}) :
+      https://watt.place/legal#cgv-smyles<br>
+      Référence du paiement : {esc(paiement_id)}
+    </p>"""
+        return await _send(to, f"Confirmation d'achat — {smyles} Smyles",
+                           _layout("Merci pour ton achat ⚡", body))
+    except Exception:  # noqa: BLE001
+        logger.warning("email.confirmation_achat_echec", exc_info=True)
+        return False
+
+
 async def send_purchase_emails(
     db,
     *,

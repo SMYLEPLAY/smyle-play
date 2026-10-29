@@ -100,6 +100,9 @@
 
   <section class="panel" id="p-pay" role="tabpanel" aria-labelledby="t-pay" hidden>
     <p class="sub">Quand un paiement par carte est remboursé ou contesté alors que les Smyles ont déjà été dépensés, le compte ne peut plus acheter par carte. Tu peux le débloquer après avoir vérifié. Aucun solde n'est modifié par ces boutons.</p>
+    <h2>Tous les paiements</h2>
+    <p class="sub">Chaque achat de Smyles par carte. « En attente » depuis plus d'une heure : le client a abandonné, ou le crédit a échoué. Dans le doute, compare avec le tableau de bord Stripe.</p>
+    <div id="pay-all"><p class="msg">Chargement…</p></div>
     <h2>Comptes bloqués</h2>
     <div id="pay-blocked"><p class="msg">Chargement…</p></div>
     <h2>Paiements à examiner</h2>
@@ -331,7 +334,25 @@
 
   // ── Achats par carte ───────────────────────────────────────────────────
   function chargerPaiements() {
-    var bl = document.getElementById('pay-blocked'), fl = document.getElementById('pay-flagged');
+    var bl = document.getElementById('pay-blocked'), fl = document.getElementById('pay-flagged'),
+        all = document.getElementById('pay-all');
+    // Lot L — tous les paiements, avec les totaux en euros.
+    var STATUTS = { created: 'En attente', paye: 'Payé', rembourse: 'Remboursé', litige: 'Litige',
+                    montant_incoherent: 'Montant incohérent' };
+    apiFetch('/admin/paiements').then(function (d) {
+      var t = d.totaux || {}, p = d.paiements || [];
+      all.innerHTML = '<div class="card"><div class="meta" style="font-size:15px;line-height:1.8">' +
+        '<strong>' + esc(t.paiementsReussis || 0) + '</strong> paiement(s) réussi(s) · <strong>' +
+        esc(String(t.eurosEncaisses || 0).replace('.', ',')) + ' €</strong> encaissés<br>' +
+        esc(t.rembourses || 0) + ' remboursé(s) · ' + esc(t.litiges || 0) + ' litige(s) · ' +
+        esc(t.enAttenteDepuisPlusDUneHeure || 0) + ' en attente depuis plus d\'une heure</div></div>' +
+        (p.length ? p.map(function (x) {
+          return '<div class="card"><span class="who">' + esc(x.pseudo || 'Compte supprimé') + '</span> — ' +
+            esc(x.smyles) + ' Smyles pour ' + esc(String(x.euros).replace('.', ',')) + ' €' +
+            (x.test ? ' <span class="meta">(test)</span>' : '') +
+            '<div class="meta">' + esc(STATUTS[x.statut] || x.statut) + ' · le ' + esc(date(x.le)) + '</div></div>';
+        }).join('') : '<p class="msg">Aucun paiement pour l\'instant.</p>');
+    }).catch(function (e) { erreur(all, e); });
     apiFetch('/admin/achats-carte/bloques').then(function (d) {
       var c = d.comptes || [];
       bl.innerHTML = c.length ? c.map(function (x) {

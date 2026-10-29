@@ -42,6 +42,12 @@ def _stripe_simule(monkeypatch):
     monkeypatch.setattr(settings, "SHOW_ACHAT_SMYLES", True)
     monkeypatch.setattr(settings, "STRIPE_SECRET_KEY", CLE_TEST)
     monkeypatch.setattr(settings, "STRIPE_WEBHOOK_SECRET", SECRET_TEST)
+    # Lot L : identité légale complète exigée pour vendre avec une clé réelle ;
+    # la vérification d'email est testée à part (test_lot_l_paiement_sur.py).
+    monkeypatch.setattr(settings, "EDITEUR_ADRESSE", "1 rue de l'Exemple, 75000 Paris")
+    monkeypatch.setattr(settings, "EDITEUR_SIREN", "000 000 000")
+    monkeypatch.setattr(settings, "EDITEUR_MEDIATEUR", "Médiateur de test")
+    monkeypatch.setattr(settings, "ACHAT_EXIGE_EMAIL_VERIFIE", False)
     appels = []
 
     async def _faux_stripe(path, data):
@@ -89,7 +95,7 @@ async def _preseed(uid, achetes=0):
 
 async def _checkout(client, auth_headers, pack="pack_500"):
     r = await client.post("/credits/checkout", headers=auth_headers,
-                          json={"pack_id": pack, "renonce_retractation": True})
+                          json={"pack_id": pack, "renonce_retractation": True, "majeur": True})
     assert r.status_code == 200, r.text
     return r.json()["session_id"]
 
@@ -109,13 +115,13 @@ async def _paiement(sid):
 
 async def test_checkout_exige_la_renonciation(client, auth_headers):
     r = await client.post("/credits/checkout", headers=auth_headers,
-                          json={"pack_id": "pack_100", "renonce_retractation": False})
+                          json={"pack_id": "pack_100", "renonce_retractation": False, "majeur": True})
     assert r.status_code == 422 and "rétractation" in r.json()["detail"]
 
 
 async def test_checkout_pack_inconnu(client, auth_headers):
     r = await client.post("/credits/checkout", headers=auth_headers,
-                          json={"pack_id": "pack_999", "renonce_retractation": True})
+                          json={"pack_id": "pack_999", "renonce_retractation": True, "majeur": True})
     assert r.status_code == 422
 
 

@@ -11,6 +11,8 @@ class CreditPack(BaseModel):
     price_eur_cents: int
     price_eur_display: str
     unit_price_cents: int
+    # Lot L — prix unitaire exact, au format français (« 0,065 € »).
+    unit_price_display: str = ""
 
 
 class CreditPacksResponse(BaseModel):
