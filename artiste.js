@@ -693,15 +693,31 @@ function renderRoles(roles, isSelf) {
     return;
   }
 
-  list.forEach(code => {
+  // Lot M — au public, 2 casquettes visibles ; les autres derrière « +N ».
+  const connus = list.filter(code => ROLE_BY_CODE[code]);
+  const MAX_PUBLIC = 2;
+  connus.forEach((code, i) => {
     const meta = ROLE_BY_CODE[code];
-    if (!meta) return; // code inconnu (ancien rôle retiré du catalog) : skip
     const chip = document.createElement('span');
     chip.className = 'ap-role-chip';
     chip.textContent = meta.label;
     chip.title = meta.desc;
+    if (!isSelf && i >= MAX_PUBLIC) chip.hidden = true;
     wrap.appendChild(chip);
   });
+  const caches = connus.length - MAX_PUBLIC;
+  if (!isSelf && caches > 0) {
+    const plus = document.createElement('button');
+    plus.type = 'button';
+    plus.className = 'ap-role-chip ap-role-chip-more';
+    plus.textContent = '+' + caches;
+    plus.title = 'Voir toutes les casquettes';
+    plus.addEventListener('click', () => {
+      wrap.querySelectorAll('.ap-role-chip[hidden]').forEach(c => { c.hidden = false; });
+      plus.remove();
+    });
+    wrap.appendChild(plus);
+  }
 }
 
 // Ouvre le popover "Mes casquettes" (mode owner uniquement).
@@ -1014,6 +1030,11 @@ function openBoutiqueDrawer(type, dataStr) {
         </div>
         <span style="font-size:.74rem;color:#9dc0ff;font-weight:600">Voir l'image →</span>
       </div>`;
+      // Fix 29/10 — fiche du son depuis un profil : achat de l'Œuvre entière.
+      if (data.hasPrompt) {
+        html += `<a class="bd-oeuvre-link" href="/o/${encodeURIComponent(String(li.id))}#offre"
+                    style="display:block;margin-top:8px;padding:10px 12px;border-radius:12px;text-align:center;font-weight:700;font-size:.85rem;text-decoration:none;color:#1a1206;background:linear-gradient(120deg,#ffd700,#ff9f1a)">💠 Acheter l'œuvre complète · moins cher →</a>`;
+      }
     }
 
   } else if (type === 'voix') {
@@ -2190,19 +2211,15 @@ function renderTracks(artist) {
       unlockBlock = '<span class="ap-prompt-owner-note">Recette en vente</span>';
     }
 
-    // C4 Œuvre complète — bouton PACK (son + image, prix = somme − 10 %),
-    // cohérent avec le board. Visible seulement si les DEUX faces existent.
+    // C4 Œuvre complète — lien vers l'offre de l'Œuvre entière (page /o/),
+    // visible seulement si les DEUX faces sont en vente.
     let oeuvrePackBtn = '';
-    // DESACTIVE (2026-08-04) — ce bouton affichait un prix remise -10% calcule
-    // ici, puis postait vers une route d'unlock œuvre qui n'existe pas cote
-    // API. L'achat groupe REEL est POST /watt/oeuvre/{slug}/buy-complete, avec
-    // son propre prix calcule serveur. Rallumer quand la route existe.
-    // K-04 (2026-09-04) : son gestionnaire de clic a ete supprime — le bouton
-    // ne peut plus etre rendu, la branche est conservee comme documentation.
-    if (false && linkedPrompt && linkedImage && !artist.isSelf &&
-        linkedPrompt.priceCredits != null && linkedImage.priceCredits != null) {
-      const _packP = Math.max(2, Math.floor((linkedPrompt.priceCredits + linkedImage.priceCredits) * 0.9));
-      oeuvrePackBtn = `<button type="button" class="ap-track-oeuvre-btn" data-oeuvre-prompt-id="${linkedPrompt.id}" data-oeuvre-price="${_packP}" data-track-name="${(t.name || '').replace(/"/g, '&quot;')}" title="Acheter l'œuvre complète (son + image) · ${_packP} Smyles — remise 10%">💠 ${_packP}</button>`;
+    // Fix 29/10 — le profil n'offrait pas l'achat de l'Œuvre entière. Quand
+    // le son (recette) ET l'image sont en vente, un lien mène à l'offre de la
+    // page Œuvre (/o/<id>#offre), dont le prix est calculé par le serveur
+    // (remise choisie par le créateur).
+    if (linkedPrompt && linkedImage && !artist.isSelf) {
+      oeuvrePackBtn = `<a class="ap-track-oeuvre-btn" href="/o/${encodeURIComponent(String(linkedImage.id))}#offre" title="Acheter l'œuvre complète (son + image) en une fois, moins cher">💠 Acheter l'œuvre complète · moins cher →</a>`;
     }
 
     // Bouton supprimer — owner uniquement (le backend re-vérifie : 403 sinon).
@@ -2344,6 +2361,7 @@ function renderTracks(artist) {
       });
     }
   }
+  apSectionNav();
 
   // Délégation click — un seul listener pour la liste (re-rendue souvent).
   // Play/pause passe par le moteur audio partagé (_apPlayTrack, pattern
@@ -2379,6 +2397,8 @@ function renderTracks(artist) {
     // gestionnaire sont retirés : ils postaient vers une route d'unlock œuvre
     // inexistante. L'achat groupé RÉEL est
     // POST /watt/oeuvre/{slug}/buy-complete depuis la fiche œuvre.
+    // Fix 29/10 : lien « Œuvre complète » → navigation normale (pas la fiche).
+    if (ev.target.closest('.ap-track-oeuvre-btn')) { ev.stopPropagation(); return; }
     // Cas 2bis : chip « visuel lié » (œuvre complète) → drawer image (achat séparé)
     const linkedImgBtn = ev.target.closest('.ap-track-linked-img');
     if (linkedImgBtn) {
@@ -2643,6 +2663,7 @@ async function loadArtistImages(slug) {
   }
   await _ensureOwnedImageIds();
   renderArtistImages(images);
+  apSectionNav();
 }
 
 // C4 ④ — IDs d'images POSSÉDÉES par l'user courant (miroir de ownedAdnIds).
@@ -2678,6 +2699,54 @@ function _apImgPreviewUrl(key) {
   if (!key) return '';
   return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
 }
+
+// Lot M — rangée d'onglets Sons / Images / Collections sous l'en-tête du
+// profil : un clic amène à la section. N'apparaît que s'il y a au moins
+// deux sections à montrer.
+let _apNavTimer = null;
+function apSectionNav() {
+  clearTimeout(_apNavTimer);
+  _apNavTimer = setTimeout(_apSectionNavNow, 150);
+}
+function _apSectionNavNow() {
+  const vis = (el) => !!(el && el.style.display !== 'none' && el.offsetParent !== null);
+  const tracks = document.getElementById('ap-tracks-section');
+  const images = document.getElementById('ap-images-section');
+  const colls = document.querySelector('.ap-pl-worlds');
+  const items = [];
+  if (vis(tracks)) items.push(['ap-tracks-section', 'Sons', (state.artist && state.artist.tracks || []).length]);
+  if (vis(images) && images.querySelector('[data-image-id], .ap-img-card, img')) items.push(['ap-images-section', 'Images', images.querySelectorAll('[data-image-id]').length]);
+  if (colls && vis(colls)) {
+    if (!colls.id) colls.id = 'ap-collections';
+    items.push([colls.id, 'Collections', colls.querySelectorAll('.ap-pl-world').length]);
+  }
+  let nav = document.getElementById('ap-secnav');
+  if (items.length < 2) { if (nav) nav.remove(); return; }
+  if (!nav) {
+    nav = document.createElement('nav');
+    nav.id = 'ap-secnav';
+    nav.className = 'ap-secnav';
+    nav.setAttribute('aria-label', 'Contenu du profil');
+    const hero = document.getElementById('ap-hero');
+    if (hero && hero.parentNode) hero.parentNode.insertBefore(nav, hero.nextSibling);
+    else return;
+    nav.addEventListener('click', (ev) => {
+      const a = ev.target.closest('a[data-cible]');
+      if (!a) return;
+      ev.preventDefault();
+      const cible = document.getElementById(a.getAttribute('data-cible'));
+      if (!cible) return;
+      const body = cible.querySelector('.ap-tracks-body');
+      if (body && !body.classList.contains('is-open')) cible.querySelector('.ap-tracks-hdr')?.click();
+      cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      nav.querySelectorAll('a').forEach(x => x.classList.toggle('is-active', x === a));
+    });
+  }
+  nav.innerHTML = items.map(([id, label, n], i) =>
+    `<a href="#${id}" data-cible="${id}" class="${i === 0 ? 'is-active' : ''}">${label}${n ? ` <span>${n}</span>` : ''}</a>`
+  ).join('');
+}
+window.addEventListener('load', () => { apSectionNav(); setTimeout(apSectionNav, 2000); });
 
 function renderArtistImages(images) {
   const isSelf = !!(state.artist && state.artist.isSelf);

@@ -700,8 +700,8 @@ async def test_welcome_bonus_is_ledgered():
         uid = user.id
 
     try:
-        assert await _balance(uid) == WELCOME_BONUS_CREDITS == 30, (
-            "Solde net du bonus doit rester 30"
+        assert await _balance(uid) == WELCOME_BONUS_CREDITS == 50, (
+            "Solde net du bonus doit rester 50 (29/10)"
         )
 
         async with SessionLocal() as db:
@@ -713,7 +713,7 @@ async def test_welcome_bonus_is_ledgered():
                 {"u": uid},
             )).all()
         assert len(rows) == 1, f"Attendu 1 transaction BONUS, reçu {len(rows)}"
-        assert rows[0].credits_amount == 30, "Le bonus tracé doit valoir 30"
+        assert rows[0].credits_amount == 50, "Le bonus tracé doit valoir 50"
         assert rows[0].status == "completed", "La transaction BONUS doit être COMPLETED"
     finally:
         await _cleanup(uid)

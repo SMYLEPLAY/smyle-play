@@ -26,7 +26,7 @@
     @media (max-width: 720px) { .o-stage { grid-template-columns: 1fr; } }
     .o-visual { position: relative; border-radius: 18px; overflow: hidden; background: #0e0b16;
       border: 1px solid var(--sp-border, rgba(255,255,255,.10)); aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; }
-    .o-visual img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .o-visual img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .o-visual-ph { font-size: 64px; opacity: .4; }
     .o-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
     .o-player { background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid var(--sp-border, rgba(255,255,255,.10));
@@ -62,6 +62,50 @@
     .o-half-prov { opacity: .8; }
     .o-share { align-self: flex-start; padding: 10px 14px; border-radius: 11px; cursor: pointer; font-weight: 600; font-size: 13px;
       background: none; color: var(--sp-text, #e8e8f0); border: 1px solid var(--sp-border-strong, rgba(255,255,255,.25)); }
+
+    /* ── Lot M — lissage ─────────────────────────────────────────────── */
+    .o-left { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .o-by-stat { color: var(--sp-text-faint, rgba(255,255,255,.55)); }
+    .o-wplayer { display: flex; align-items: center; gap: 14px; }
+    .o-wplay { width: 50px; height: 50px; flex: 0 0 50px; border-radius: 50%; border: 0; cursor: pointer;
+      background: var(--sp-gold, #ffd700); display: flex; align-items: center; justify-content: center; }
+    .o-wplay:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .o-wplay svg { display: block; }
+    .o-wbar { flex: 1; height: 6px; border-radius: 999px; background: rgba(255,255,255,.12); cursor: pointer; position: relative; }
+    .o-wbar span { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: var(--sp-gold, #ffd700); }
+    .o-wtime { font-size: 12px; color: var(--sp-text-faint, rgba(255,255,255,.55)); font-variant-numeric: tabular-nums; min-width: 74px; text-align: right; }
+    .o-recois { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid rgba(255,215,0,.2);
+      display: grid; gap: 6px; font-size: 12.5px; color: rgba(255,255,255,.82); }
+    .o-recois li { display: flex; gap: 8px; align-items: flex-start; }
+    .o-recois li::before { content: ""; flex: 0 0 10px; height: 5px; margin-top: 4px; border-left: 2px solid var(--sp-gold, #ffd700);
+      border-bottom: 2px solid var(--sp-gold, #ffd700); transform: rotate(-45deg); }
+    .o-recette { background: var(--sp-surface, rgba(255,255,255,.04)); border: 1px solid var(--sp-border, rgba(255,255,255,.10));
+      border-radius: 16px; padding: 16px; }
+    .o-recette[hidden] { display: none; }
+    .o-recette-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 0 0 10px; flex-wrap: wrap; }
+    .o-recette-kicker { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .14em; color: var(--sp-mauve, #cc88ff); }
+    .o-recette-sub { margin: 0; font-size: 12px; color: var(--sp-text-faint, rgba(255,255,255,.55)); }
+    .o-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .o-chip { padding: 5px 10px; border-radius: 8px; background: rgba(255,255,255,.06); font-size: 12.5px; }
+    .o-chip--son { box-shadow: inset 3px 0 0 #3d7bff; }
+    .o-chip--image { box-shadow: inset 3px 0 0 var(--sp-mauve, #cc88ff); }
+    .o-lock { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.35);
+      font-size: 13px; color: rgba(255,255,255,.82); margin: 0; }
+    .o-lock svg { flex: 0 0 auto; }
+    .o-trust { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; font-size: 12px; color: var(--sp-text-faint, rgba(255,255,255,.55)); }
+    .o-trust span::before { content: "✓ "; color: var(--sp-gold, #ffd700); }
+    .o-reports { display: flex; gap: 14px; }
+    .o-stickybar { display: none; }
+    @media (max-width: 720px) {
+      .o-stickybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: block;
+        padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(20,16,31,.97);
+        border-top: 1px solid rgba(255,215,0,.35); transform: translateY(110%); transition: transform .2s ease; }
+      .o-stickybar.is-on { transform: none; }
+      .o-stickybar[hidden] { display: none; }
+      .o-stickybar-alt { display: flex; justify-content: center; gap: 18px; margin: 6px 0 0; }
+      .o-stickybar-alt button { background: none; border: 0; color: rgba(255,255,255,.75); text-decoration: underline; cursor: pointer; font-size: 12.5px; padding: 4px; }
+      body.o-has-sticky .o-main { padding-bottom: 150px; }
+    }
   </style>
 </head>
 <body class="o-page">
@@ -85,7 +129,11 @@
     <p class="o-by" id="o-by"></p>
 
     <div class="o-stage">
-      <div class="o-visual" id="o-visual"></div>
+      <div class="o-left">
+        <div class="o-visual" id="o-visual"></div>
+        <!-- Lot M — aperçu de la recette (outils, longueur) ; le texte reste sous cadenas. -->
+        <div class="o-recette" id="o-recette" hidden></div>
+      </div>
 
       <div class="o-side">
         <div class="o-player" id="o-player"></div>
@@ -98,31 +146,37 @@
         <div class="o-half" id="o-half-son"></div>
         <div class="o-half" id="o-half-image"></div>
 
+        <p class="o-trust" id="o-trust"><span>Paiement sécurisé</span><span>Réutilisable dans tes créations</span><span>L'artiste est rémunéré</span></p>
         <button type="button" class="o-share" id="o-share">Copier le lien de l'œuvre</button>
-        <button type="button" class="o-report" id="o-report">Signaler l'image</button>
-        <button type="button" class="o-report" id="o-report-son" hidden>Signaler le son</button>
+        <div class="o-reports">
+          <button type="button" class="o-report" id="o-report">Signaler l'image</button>
+          <button type="button" class="o-report" id="o-report-son" hidden>Signaler le son</button>
+        </div>
         <p class="o-licence">Contenu généré par IA. Ce que tu débloques est <strong>réutilisable dans tes créations</strong>, même publiées ou vendues ; la revente telle quelle est interdite (<a href="/legal#cgu">CGU, article 11</a>). Une recette donne des résultats proches, jamais identiques.</p>
       </div>
     </div>
   </article>
 </main>
+<!-- Lot M — téléphone : l'offre reste à portée de pouce en bas d'écran. -->
+<div class="o-stickybar" id="o-stickybar" hidden></div>
 
 <div class="lib-toast" id="o-toast"></div>
 
 <script src="/ui/core/launch-flags.js"></script>
-<script src="/ui/core/api.js?v=20261021lotk"></script>
-<script src="/ui/core/visitor-gate.js?v=20261011lotg"></script>
-<script src="/ui/core/onboarding.js?v=20261015lotib" defer></script>
+<script src="/ui/core/api.js?v=20261029m0"></script>
+<script src="/ui/core/visitor-gate.js?v=20261029m2"></script>
+<script src="/ui/core/onboarding.js?v=20261029bonus" defer></script>
 <script src="/ui/core/consent.js?v=20261011lotg"></script>
 <script src="/ui/core/telemetry.js?v=20261011lotg"></script>
 <script src="/ui/core/events.js"></script>
 <script src="/ui/core/toast.js"></script>
-<script src="/ui/topbar/topbar.js?v=20261015lotib" defer></script>
+<script src="/ui/topbar/topbar.js?v=20261029m1" defer></script>
+<script src="/ui/modals/boutique.js?v=20261011lotg" defer></script>
 <script src="/ui/modals/purchase-drawer.js?v=20261029lotl"></script>
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
-<script src="/oeuvre-c4.js?v=20261029lotl" defer></script>
-<script src="/ui/smyle-balance.js?v=20261021lotj" defer></script>
-<script src="/ui/modals/credits-buy.js?v=20261029lotl" defer></script>
+<script src="/oeuvre-c4.js?v=20261029m1" defer></script>
+<script src="/ui/smyle-balance.js?v=20261029bonus" defer></script>
+<script src="/ui/modals/credits-buy.js?v=20261029bonus" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <!-- Lot D : pied de page légal (Mentions, CGU, Confidentialité, Cookies, Contact) -->
 <script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>

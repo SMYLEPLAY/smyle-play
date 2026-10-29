@@ -37,7 +37,10 @@
   function _provenance(platform, version) {
     var outil = platform ? (_OUTILS[platform] || platform) : '';
     if (!outil) return '';
-    return 'Fait avec ' + outil + (version ? ' · ' + version : '');
+    // Lot M — pas de « Suno · Suno » quand la version répète le nom.
+    var v = String(version || '').trim();
+    if (v && v.toLowerCase().replace(/[^a-z0-9]/g, '') === outil.toLowerCase().replace(/[^a-z0-9]/g, '')) v = '';
+    return 'Fait avec ' + outil + (v ? ' · ' + v : '');
   }
 
   function _toast(msg, type) {
@@ -87,6 +90,26 @@
     });
   }
 
+  // Fix 29/10 — confirmation DANS la page (plus de window.confirm, que le
+  // navigateur peut bloquer en silence : le clic ne faisait alors rien).
+  // 1er clic : le bouton devient « Confirmer l'achat · N Smyles » (6 s) ;
+  // 2e clic : achat. Les erreurs sont affichées SOUS le bouton.
+  var _confirmTimer = null;
+
+  function _noteBundle(msg, type) {
+    var box = document.getElementById('o-bundle');
+    if (!box) return;
+    var n = box.querySelector('.o-bundle-msg');
+    if (!n) {
+      n = document.createElement('p');
+      n.className = 'o-bundle-note o-bundle-msg';
+      n.setAttribute('role', 'status');
+      box.appendChild(n);
+    }
+    n.textContent = msg || '';
+    n.style.color = type === 'error' ? '#ff8a9a' : '';
+  }
+
   function _buyBundle(btn) {
     if (!_gate()) return;
     if (!_data || !_data.bundle) return;
@@ -94,8 +117,24 @@
     // Lot K — équivalent en euros dès que l'achat de Smyles est ouvert.
     var _eur = (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)
       ? ' (≈ ' + (Math.round(prix * 0.07 * 100) / 100).toFixed(2).replace('.', ',') + ' €)' : '';
-    if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles' + _eur + ' ?')) return;
+    if (btn.getAttribute('data-confirm') !== '1') {
+      btn.setAttribute('data-confirm', '1');
+      btn.setAttribute('data-label', btn.textContent);
+      btn.textContent = 'Confirmer l\'achat · ' + prix + ' Smyles' + _eur;
+      _noteBundle('Clique encore une fois pour confirmer.', 'info');
+      clearTimeout(_confirmTimer);
+      _confirmTimer = setTimeout(function () {
+        btn.removeAttribute('data-confirm');
+        btn.textContent = btn.getAttribute('data-label') || btn.textContent;
+        _noteBundle('');
+      }, 6000);
+      return;
+    }
+    clearTimeout(_confirmTimer);
+    btn.removeAttribute('data-confirm');
     btn.disabled = true;
+    btn.textContent = 'Achat en cours…';
+    _noteBundle('');
     // Lot G — prix attendu envoyé : si le créateur l'a changé entre-temps,
     // smyleAcheter demande de confirmer le nouveau prix avant de rejouer.
     var _chemin = '/watt/oeuvres/' + encodeURIComponent(OID) + '/acheter';
@@ -109,17 +148,28 @@
       })
       .catch(function (err) {
         btn.disabled = false;
+        btn.textContent = btn.getAttribute('data-label') || ('Acheter l\'œuvre · ' + prix + ' Smyles');
         var s = err && err.status;
-        if (err && err.annule) { _toast('Achat annulé : le prix a changé.', 'info'); load(); return; }
-        if (s === 402) {
-          _toast('Pas assez de Smyles pour cette œuvre.', 'error');
+        var d = err && err.body && err.body.detail;
+        var msg;
+        if (err && err.annule) { msg = 'Achat annulé : le prix a changé.'; load(); }
+        else if (s === 402) {
+          msg = (d && typeof d === 'object' && d.required != null)
+            ? 'Solde insuffisant : il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.'
+            : 'Pas assez de Smyles pour cette œuvre.';
           // Lot L : achat de Smyles proposé directement quand il est ouvert.
           if (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles && typeof window.openCreditsBuyModal === 'function') {
             try { window.openCreditsBuyModal(); } catch (_) {}
+          } else {
+            msg += ' Invite un ami : +20 Smyles pour toi et pour lui.';
           }
         }
-        else if (s === 409) _toast((err.body && typeof err.body.detail === 'string') ? err.body.detail : 'Tu possèdes déjà cette œuvre.', 'info');
-        else _toast('Achat impossible pour le moment. Réessaie.', 'error');
+        else if (s === 401) msg = 'Reconnecte-toi pour acheter cette œuvre.';
+        else if (s === 409) msg = (typeof d === 'string') ? d : 'Tu possèdes déjà cette œuvre.';
+        else if (typeof d === 'string') msg = d;
+        else msg = 'Achat impossible pour le moment. Réessaie.';
+        _noteBundle(msg, 'error');
+        _toast(msg, 'error');
       });
   }
 
@@ -128,6 +178,106 @@
     if (!pct) return 'Le son et l\'image en un seul achat : ' + _esc(prix) + ' Smyles.';
     return 'Le son et l\'image ensemble : <s>' + _esc(plein) + '</s> ' + _esc(prix) +
       ' Smyles (−' + _esc(pct) + ' %).';
+  }
+
+  var _ICON_PLAY = '<svg width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="#050508"/></svg>';
+  var _ICON_PAUSE = '<svg width="16" height="16" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="1.5" width="3.2" height="11" rx="1" fill="#050508"/><rect x="8.3" y="1.5" width="3.2" height="11" rx="1" fill="#050508"/></svg>';
+
+  function _mmss(t) {
+    t = Math.max(0, Math.floor(t || 0));
+    return Math.floor(t / 60) + ':' + ('0' + (t % 60)).slice(-2);
+  }
+
+  function _wirePlayer() {
+    var a = document.getElementById('o-audio');
+    var btn = document.getElementById('o-wplay');
+    var bar = document.getElementById('o-wbar');
+    var fill = document.getElementById('o-wfill');
+    var time = document.getElementById('o-wtime');
+    if (!a || !btn) return;
+    function maj() {
+      var dur = a.duration || 0;
+      var pct = dur ? (a.currentTime / dur) * 100 : 0;
+      fill.style.width = pct + '%';
+      bar.setAttribute('aria-valuenow', String(Math.round(pct)));
+      time.textContent = dur ? _mmss(a.currentTime) + ' / ' + _mmss(dur) : (a.paused ? 'Écouter' : '…');
+    }
+    btn.addEventListener('click', function () {
+      if (a.paused) {
+        var p = a.play();
+        if (p && p.catch) p.catch(function () { _toast('Lecture impossible pour le moment.', 'error'); });
+      } else { a.pause(); }
+    });
+    a.addEventListener('play', function () { btn.innerHTML = _ICON_PAUSE; btn.setAttribute('aria-label', 'Mettre en pause'); maj(); });
+    a.addEventListener('pause', function () { btn.innerHTML = _ICON_PLAY; btn.setAttribute('aria-label', 'Écouter le son'); maj(); });
+    a.addEventListener('timeupdate', maj);
+    a.addEventListener('loadedmetadata', maj);
+    a.addEventListener('ended', function () { a.currentTime = 0; maj(); });
+    function chercher(pct) { if (a.duration) { a.currentTime = Math.min(1, Math.max(0, pct)) * a.duration; maj(); } }
+    bar.addEventListener('click', function (ev) {
+      var r = bar.getBoundingClientRect();
+      chercher((ev.clientX - r.left) / r.width);
+    });
+    bar.addEventListener('keydown', function (ev) {
+      if (!a.duration) return;
+      if (ev.key === 'ArrowRight') { a.currentTime = Math.min(a.duration, a.currentTime + 5); ev.preventDefault(); }
+      if (ev.key === 'ArrowLeft') { a.currentTime = Math.max(0, a.currentTime - 5); ev.preventDefault(); }
+    });
+  }
+
+  // Lot M — aperçu de la recette : outils et longueur, jamais le texte.
+  function _renderRecette(d) {
+    var box = document.getElementById('o-recette');
+    if (!box) return;
+    var snd = d.sound || {}, img = d.image || {};
+    var chips = [];
+    var outilSon = snd.platform ? (_OUTILS[snd.platform] || snd.platform) : '';
+    var outilImg = img.platform ? (_OUTILS[img.platform] || img.platform) : '';
+    if (outilSon) chips.push('<span class="o-chip o-chip--son">Son · ' + _esc(_provenance(snd.platform, snd.modelVersion).replace(/^Fait avec /, '')) + '</span>');
+    if (outilImg) chips.push('<span class="o-chip o-chip--image">Image · ' + _esc(_provenance(img.platform, img.modelVersion).replace(/^Fait avec /, '')) + '</span>');
+    var longueurs = [];
+    var ls = snd.recipe && snd.recipe.promptLength;
+    if (ls) longueurs.push('prompt du son : ' + ls + ' caractères');
+    if (img.promptLength) longueurs.push('prompt de l\'image : ' + img.promptLength + ' caractères');
+    if (!chips.length && !longueurs.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML =
+      '<div class="o-recette-head"><p class="o-recette-kicker">APERÇU DE LA RECETTE</p>' +
+      '<p class="o-recette-sub">En entier après déblocage</p></div>' +
+      (chips.length ? '<div class="o-chips">' + chips.join('') + '</div>' : '') +
+      '<p class="o-lock"><svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true"><rect x="1.5" y="7" width="11" height="8" rx="2" fill="none" stroke="#ffd700" stroke-width="1.6"/><path d="M4 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#ffd700" stroke-width="1.6"/></svg>' +
+      _esc(longueurs.length ? longueurs.join(' · ') : 'Prompt complet et réglages') + '</p>';
+  }
+
+  // Lot M — téléphone : barre d'achat collée en bas tant que l'offre
+  // principale n'est pas à l'écran.
+  var _stickyObs = null;
+  function _renderSticky(d) {
+    var bar = document.getElementById('o-stickybar');
+    var box = document.getElementById('o-bundle');
+    if (!bar || !box) return;
+    if (_stickyObs) { _stickyObs.disconnect(); _stickyObs = null; }
+    var b = d.bundle;
+    var vendable = !d.masquee && b && b.priceCredits != null && (b.mode === 'oeuvre' || b.mode === 'moitie_manquante');
+    if (!vendable) { bar.hidden = true; bar.innerHTML = ''; document.body.classList.remove('o-has-sticky'); return; }
+    var alt = [];
+    if (b.mode === 'oeuvre') {
+      if (d.sound && d.sound.recipe) alt.push('<button type="button" data-o-buy="son">Le son seul · ' + _esc(d.sound.recipe.priceCredits) + '</button>');
+      if (d.image && d.image.priceCredits != null) alt.push('<button type="button" data-o-buy="image">L\'image seule · ' + _esc(d.image.priceCredits) + '</button>');
+    }
+    bar.innerHTML = '<button type="button" class="o-btn o-btn--bundle" data-o-buy="bundle">' +
+      (b.mode === 'moitie_manquante' ? 'Compléter l\'œuvre · ' : 'Acheter l\'œuvre · ') + _esc(b.priceCredits) + ' Smyles</button>' +
+      (alt.length ? '<div class="o-stickybar-alt">' + alt.join('') + '</div>' : '');
+    bar.hidden = false;
+    document.body.classList.add('o-has-sticky');
+    if ('IntersectionObserver' in window) {
+      _stickyObs = new IntersectionObserver(function (e) {
+        bar.classList.toggle('is-on', !e[0].isIntersecting);
+      });
+      _stickyObs.observe(box);
+    } else {
+      bar.classList.add('is-on');
+    }
   }
 
   function _render(d) {
@@ -144,6 +294,12 @@
     } else {
       by.textContent = creator.name ? ('par ' + creator.name) : '';
     }
+    // Lot M — preuve sociale discrète : le nombre d'écoutes.
+    var _plays = (d.sound && d.sound.plays) || 0;
+    if (_plays > 0) {
+      by.insertAdjacentHTML('beforeend', '<span class="o-by-stat"> · ' + _esc(_plays) +
+        (_plays > 1 ? ' écoutes' : ' écoute') + '</span>');
+    }
 
     var img = d.image || {};
     var url = _previewUrl(img.previewKey);
@@ -153,10 +309,18 @@
 
     var snd = d.sound || {};
     var player = document.getElementById('o-player');
+    // Lot M — lecteur aux couleurs WATT (le lecteur gris du navigateur
+    // reste dans la page, caché, et fait le travail).
     player.innerHTML = snd.streamUrl
-      ? '<p class="o-player-label">Écouter le son</p>' +
-        '<audio controls preload="none" src="' + _esc(snd.streamUrl) + '"></audio>'
+      ? '<div class="o-wplayer">' +
+          '<button type="button" class="o-wplay" id="o-wplay" aria-label="Écouter le son">' + _ICON_PLAY + '</button>' +
+          '<div class="o-wbar" id="o-wbar" role="slider" aria-label="Position dans le son" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><span id="o-wfill"></span></div>' +
+          '<span class="o-wtime" id="o-wtime">Écouter</span>' +
+        '</div>' +
+        '<audio id="o-audio" preload="none" src="' + _esc(snd.streamUrl) + '" hidden></audio>'
       : '<p class="o-player-empty">L\'écoute de ce son n\'est pas disponible pour le moment.</p>';
+    _wirePlayer();
+    _renderRecette(d);
 
     // Moitié SON
     var sonThumb = snd.coverUrl
@@ -221,13 +385,22 @@
         ? '<p class="o-bundle-note">' + _detailOffre(b.fullPriceCredits, b.priceCredits, b.discountPct) + '</p>'
         : '<p class="o-bundle-note">Tu as déjà une moitié : l\'autre est au prix normal.</p>';
       bundle.hidden = false;
+      // Lot M — « Ce que tu reçois », en trois lignes, sous l'offre.
+      var recois = b.mode === 'oeuvre'
+        ? '<ul class="o-recois" aria-label="Ce que tu reçois">' +
+            '<li>Le son en entier, à télécharger</li>' +
+            '<li>L\'image originale en haute qualité</li>' +
+            '<li>Les deux recettes, pour toujours dans ta bibliothèque</li>' +
+          '</ul>'
+        : '';
       bundle.innerHTML = (b.mode === 'oeuvre' && b.discountPct > 0 ? '<p class="o-bundle-tag">★ Meilleure offre</p>' : '') +
-        '<button type="button" class="o-btn o-btn--bundle" data-o-buy="bundle">' + label + '</button>' + detail;
+        '<button type="button" class="o-btn o-btn--bundle" data-o-buy="bundle">' + label + '</button>' + detail + recois;
     } else {
       bundle.hidden = true;
       bundle.innerHTML = '';
     }
     _show('o-content');
+    _renderSticky(d);
     // Arrivée depuis « Acheter l'œuvre » d'une fiche : on amène l'offre à l'écran.
     if (window.location.hash === '#offre' && !bundle.hidden) {
       try { bundle.scrollIntoView({ block: 'center' }); } catch (_) {}

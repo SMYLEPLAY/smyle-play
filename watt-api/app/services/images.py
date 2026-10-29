@@ -87,7 +87,12 @@ def _generate_preview(data: bytes) -> bytes:
     from app.core.fichiers import appliquer_plafond_pillow
 
     appliquer_plafond_pillow()
+    from PIL import ImageOps
+
     with Image.open(io.BytesIO(data)) as img:
+        # Photo de téléphone : le sens est noté dans l'EXIF, pas dans les
+        # pixels. On l'applique, sinon l'aperçu (sans EXIF) sort couché.
+        img = ImageOps.exif_transpose(img) or img
         img = img.convert("RGBA") if img.mode in ("P", "LA") else img
         if img.mode in ("RGBA", "LA"):
             background = Image.new("RGB", img.size, (255, 255, 255))
@@ -216,3 +221,70 @@ async def create_image(
     db.add(image)
     await db.flush()
     return image
+
+
+# ── Lot M (B1) : redresser les aperçus déjà créés ─────────────────────────────
+# Avant le correctif EXIF, une photo prise au téléphone donnait un aperçu
+# couché. On relit l'original ; s'il porte une orientation EXIF, on refait
+# l'aperçu sous une NOUVELLE clé (le CDN garde l'ancienne en cache) et on met
+# la ligne à jour. L'ancien aperçu n'est pas supprimé.
+
+def _orientation_exif(data: bytes) -> int:
+    from PIL import Image
+
+    from app.core.fichiers import appliquer_plafond_pillow
+
+    appliquer_plafond_pillow()
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            return int(img.getexif().get(0x0112, 1) or 1)
+    except Exception:  # noqa: BLE001
+        return 1
+
+
+async def redresser_apercus(db: AsyncSession, *, limite: int = 300) -> dict[str, Any]:
+    """Refait les aperçus des images dont l'original est tourné par l'EXIF."""
+    from sqlalchemy import select
+
+    from app.models.prompt_gallery_image import PromptGalleryImage
+    from app.services.r2 import R2Absent, R2Indisponible, appel_r2
+
+    if not is_configured():
+        raise R2NotConfigured("R2 storage not configured")
+    client = get_r2_client()
+    if client is None:
+        raise R2NotConfigured("R2 client unavailable")
+    bucket = settings.R2_BUCKET
+
+    lignes: list[Any] = []
+    for modele in (Prompt, PromptGalleryImage):
+        res = await db.execute(
+            select(modele).where(
+                modele.image_r2_key.is_not(None),
+                modele.preview_r2_key.is_not(None),
+            ).limit(limite)
+        )
+        lignes.extend(res.scalars().all())
+
+    bilan = {"examinees": 0, "redressees": 0, "erreurs": 0}
+    for ligne in lignes[:limite]:
+        bilan["examinees"] += 1
+        try:
+            obj = await appel_r2(client.get_object, Bucket=bucket,
+                                 Key=ligne.image_r2_key, operation="get_object",
+                                 key=ligne.image_r2_key)
+            data = await asyncio.to_thread(obj["Body"].read)
+            if await asyncio.to_thread(_orientation_exif, data) in (1, 0):
+                continue
+            apercu = await asyncio.to_thread(_generate_preview, data)
+            cle = f"images/previews/{_uuid.uuid4().hex}.jpg"
+            await appel_r2(client.put_object, Bucket=bucket, Key=cle,
+                           Body=apercu, ContentType="image/jpeg",
+                           operation="put_object", key=cle)
+            ligne.preview_r2_key = cle
+            bilan["redressees"] += 1
+        except (R2Absent, R2Indisponible, Exception):  # noqa: BLE001
+            bilan["erreurs"] += 1
+    if bilan["redressees"]:
+        await db.commit()
+    return bilan

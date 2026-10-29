@@ -72,6 +72,7 @@
     <button class="tab" role="tab" id="t-ret" aria-controls="p-ret" aria-selected="false">Contenus retirés</button>
     <button class="tab" role="tab" id="t-pay" aria-controls="p-pay" aria-selected="false">Achats par carte</button>
     <button class="tab" role="tab" id="t-cro" aria-controls="p-cro" aria-selected="false">Croissance</button>
+    <button class="tab" role="tab" id="t-pro" aria-controls="p-pro" aria-selected="false">Profils</button>
   </div>
 
   <section class="panel" id="p-pio" role="tabpanel" aria-labelledby="t-pio">
@@ -96,6 +97,10 @@
   <section class="panel" id="p-ret" role="tabpanel" aria-labelledby="t-ret" hidden>
     <p class="sub">Les contenus retirés par la modération. Si un retrait était une erreur, « Remettre en ligne » les rétablit comme avant, et l'auteur est prévenu.</p>
     <div id="ret-list"><p class="msg">Chargement…</p></div>
+    <h2>Images couchées</h2>
+    <p class="sub">Les photos prises au téléphone pouvaient s'afficher tournées. Ce bouton refait leurs aperçus, à l'endroit. Les fichiers achetés ne changent pas. Sans risque, à lancer une fois.</p>
+    <button class="act ok" type="button" id="img-redresser">Redresser les images</button>
+    <div id="img-bilan"></div>
   </section>
 
   <section class="panel" id="p-pay" role="tabpanel" aria-labelledby="t-pay" hidden>
@@ -107,6 +112,11 @@
     <div id="pay-blocked"><p class="msg">Chargement…</p></div>
     <h2>Paiements à examiner</h2>
     <div id="pay-flagged"><p class="msg">Chargement…</p></div>
+  </section>
+
+  <section class="panel" id="p-pro" role="tabpanel" aria-labelledby="t-pro" hidden>
+    <p class="sub">Un profil retiré de la vitrine disparaît de l'accueil, des listes, de la recherche et de sa page publique, avec ses sons et ses images. Rien n'est supprimé : les acheteurs gardent ce qu'ils ont débloqué, et tu peux le remettre d'un clic. Attention : si ce compte publie un nouveau son, il revient en vitrine.</p>
+    <div id="pro-list"><p class="msg">Chargement…</p></div>
   </section>
 
   <section class="panel" id="p-cro" role="tabpanel" aria-labelledby="t-cro" hidden>
@@ -133,9 +143,9 @@
 </div>
 <div class="flash" id="flash" role="status" aria-live="polite"></div>
 
-<script src="/ui/core/api.js?v=20261021lotk"></script>
-<script src="/ui/core/visitor-gate.js?v=20261011lotg"></script>
-<script src="/ui/core/onboarding.js?v=20261015lotib" defer></script>
+<script src="/ui/core/api.js?v=20261029m0"></script>
+<script src="/ui/core/visitor-gate.js?v=20261029m2"></script>
+<script src="/ui/core/onboarding.js?v=20261029bonus" defer></script>
 <script>
 (function () {
   'use strict';
@@ -190,7 +200,33 @@
   });
 
   // ── Onglets ────────────────────────────────────────────────────────────
-  var tabs = [['t-pio', 'p-pio', chargerPionniers], ['t-ret', 'p-ret', chargerRetires], ['t-pay', 'p-pay', chargerPaiements], ['t-cro', 'p-cro', chargerCroissance]];
+  var tabs = [['t-pio', 'p-pio', chargerPionniers], ['t-ret', 'p-ret', chargerRetires], ['t-pay', 'p-pay', chargerPaiements], ['t-cro', 'p-cro', chargerCroissance], ['t-pro', 'p-pro', chargerProfils]];
+
+  // ── Lot M — Profils en vitrine ─────────────────────────────────────────
+  function chargerProfils() {
+    var list = document.getElementById('pro-list');
+    apiFetch('/admin/profils').then(function (d) {
+      var p = d.profils || [];
+      list.innerHTML = p.length ? p.map(function (x) {
+        return '<div class="card"><div class="row"><div>' +
+          '<span class="who">' + esc(x.nom) + '</span>' +
+          '<div class="meta">' + (x.enVitrine ? 'En vitrine' : 'Retiré de la vitrine') + ' · ' + esc(x.nbSons) +
+          ' son(s) · /u/' + esc(x.slug) + (x.banni ? ' · banni' : '') + '</div></div>' +
+          '<button class="act' + (x.enVitrine ? '' : ' ok') + '" type="button" data-vitrine="' + esc(x.id) +
+          '" data-visible="' + (x.enVitrine ? '0' : '1') + '">' +
+          (x.enVitrine ? 'Retirer de la vitrine' : 'Remettre en vitrine') + '</button></div></div>';
+      }).join('') : '<p class="msg">Aucun profil créateur.</p>';
+    }).catch(function (e) { erreur(list, e); });
+  }
+  document.getElementById('pro-list').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-vitrine]');
+    if (!b) return;
+    b.disabled = true;
+    apiFetch('/admin/profils/' + encodeURIComponent(b.getAttribute('data-vitrine')) + '/vitrine',
+      { method: 'POST', json: { visible: b.getAttribute('data-visible') === '1' } })
+      .then(function () { flash('Profil mis à jour.', true); chargerProfils(); },
+            function (e) { b.disabled = false; flash((e && e.message) || 'Échec.', false); });
+  });
 
   // ── Croissance (Lot K) ─────────────────────────────────────────────────
   function chargerCroissance() {
@@ -268,6 +304,15 @@
       }).join('') : '<p class="msg">Aucun code pour l\'instant.</p>';
     }).catch(function (e) { erreur(list, e); });
   }
+  document.getElementById('img-redresser').addEventListener('click', function () {
+    var b = this, out = document.getElementById('img-bilan');
+    b.disabled = true; out.innerHTML = '<p class="msg">En cours, ça peut prendre une minute…</p>';
+    apiFetch('/admin/images/redresser-apercus', { method: 'POST' }).then(function (d) {
+      out.innerHTML = '<p class="msg">' + esc(d.examinees) + ' image(s) vérifiée(s), ' + esc(d.redressees) +
+        ' redressée(s)' + (d.erreurs ? ', ' + esc(d.erreurs) + ' illisible(s)' : '') + '.</p>';
+    }).catch(function (e) { erreur(out, e); }).then(function () { b.disabled = false; });
+  });
+
   document.getElementById('code-gen').addEventListener('click', function () {
     var b = this, n = parseInt(document.getElementById('code-n').value, 10) || 1;
     b.disabled = true;

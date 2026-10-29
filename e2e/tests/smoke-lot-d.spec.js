@@ -78,7 +78,7 @@ test('suppression de compte : renonciation et mot de passe exigés, puis compte 
   const ov = page.locator('#dash-del-overlay');
   await expect(ov).toBeVisible();
   await expect(ov).toContainText('gagnés en vendant');
-  await expect(ov).toContainText('tous tes Smyles (30)');
+  await expect(ov).toContainText('tous tes Smyles (50)');
   const go = page.locator('#dash-del-go');
   await expect(go).toBeDisabled();
   await page.locator('#dash-del-type').fill('SUPPRIMER');
