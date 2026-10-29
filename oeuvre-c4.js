@@ -37,7 +37,10 @@
   function _provenance(platform, version) {
     var outil = platform ? (_OUTILS[platform] || platform) : '';
     if (!outil) return '';
-    return 'Fait avec ' + outil + (version ? ' · ' + version : '');
+    // Lot M — pas de « Suno · Suno » quand la version répète le nom.
+    var v = String(version || '').trim();
+    if (v && v.toLowerCase().replace(/[^a-z0-9]/g, '') === outil.toLowerCase().replace(/[^a-z0-9]/g, '')) v = '';
+    return 'Fait avec ' + outil + (v ? ' · ' + v : '');
   }
 
   function _toast(msg, type) {

@@ -12,7 +12,8 @@
         • iPhone / iPad (Safari) : fenêtre d'explication en français
           (« Appuie sur Partager puis "Sur l'écran d'accueil" »).
       Jamais affiché si l'app est déjà installée (mode plein écran), ni
-      pendant 14 jours après un refus.
+      pendant 14 jours après un refus, ni avant un premier achat ou une
+      première publication (lot M), ni par-dessus une fenêtre ouverte.
    Aucun script inline (compatible CSP), aucune dépendance.
    ───────────────────────────────────────────────────────────────────────── */
 (function () {
@@ -154,20 +155,45 @@
 
   // Affiche le bandeau après un court délai, et pas tant que le bandeau de
   // consentement (mesure d'audience) occupe le bas de l'écran.
+  // Lot M (B2) — jamais à la première visite : seulement après un premier
+  // achat ou une première publication (marque posée par ui/core/api.js).
+  function momentCle() {
+    try { return !!window.localStorage.getItem('watt_moment_cle'); } catch (e) { return false; }
+  }
+
+  // Une fenêtre, un panneau d'achat ou un formulaire ouvert : on attend.
+  function ecranOccupe() {
+    var ouverts = document.querySelectorAll(
+      '[role="dialog"], [aria-modal="true"], .open[class*="drawer"], .is-open'
+    );
+    for (var i = 0; i < ouverts.length; i += 1) {
+      if (ouverts[i].offsetParent !== null && !ouverts[i].hidden) return true;
+    }
+    var actif = document.activeElement;
+    return !!(actif && /^(INPUT|TEXTAREA|SELECT)$/.test(actif.tagName));
+  }
+
+  var planifie = false;
   function planifierBandeau() {
-    if (dejaInstallee() || refusRecent()) return;
+    if (planifie || dejaInstallee() || refusRecent() || !momentCle()) return;
+    if (!promptDiffere && !estIOS()) return;
+    planifie = true;
     var essais = 0;
     function tenter() {
       essais += 1;
       var consentement = document.getElementById('smyle-consent');
-      if (consentement && consentement.offsetParent !== null && essais < 30) {
-        window.setTimeout(tenter, 3000);
+      var gene = (consentement && consentement.offsetParent !== null) || ecranOccupe();
+      if (gene) {
+        if (essais < 60) window.setTimeout(tenter, 3000);
+        else planifie = false;
         return;
       }
       afficherBandeau();
     }
     window.setTimeout(tenter, DELAI_AFFICHAGE_MS);
   }
+
+  window.addEventListener('smyle:moment-cle', planifierBandeau);
 
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault(); // pas de mini-bannière automatique : notre bandeau

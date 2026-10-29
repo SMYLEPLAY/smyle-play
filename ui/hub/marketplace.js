@@ -398,7 +398,7 @@
     }
 
     el.innerHTML = top.map((t, i) => {
-      const artistName = t.artist || '—';
+      const artistName = t.artist || t.artistName || '—';
       const artistSlug = t.artistSlug || '';
       const plays      = _fmt(t.plays || 0);
       const title      = t.name || 'Sans titre';
@@ -545,7 +545,7 @@
 
     let items = _baseTracks.filter(t => {
       if (!needle) return true;
-      const hay = ((t.name || '') + ' ' + (t.artist || '') + ' ' + (t.genre || '') + ' ' + (t.tags || '')).toLowerCase();
+      const hay = ((t.name || '') + ' ' + (t.artist || t.artistName || '') + ' ' + (t.genre || '') + ' ' + (t.tags || '')).toLowerCase();
       // Match texte classique OU match DNA (genre taggé sur l'univers gagnant)
       if (hay.includes(needle)) return true;
       if (dnaHit) {
@@ -612,7 +612,7 @@
     el.innerHTML = items.map(t => {
       const color = t.color || '#7C3AED';
       const title = t.name || 'Sans titre';
-      const name  = t.artist || '—';
+      const name  = t.artist || t.artistName || '—';
       const plays = _fmt(t.plays || 0);
       // Pivot écoute (2026-05-05) — chaque card embarque l'URL stream et
       // le slug artiste pour click → profil. Audio toujours rendu (lecteur
@@ -1223,7 +1223,7 @@
 
     const color      = t.color || '#7C3AED';
     const title      = t.name || 'Sans titre';
-    const artistName = t.artist || '—';
+    const artistName = t.artist || t.artistName || '—';
     const artistSlug = t.artistSlug || '';
     const plays      = _fmt(t.plays || 0);
     const streamUrl  = t.streamUrl || '';
@@ -2727,7 +2727,7 @@
         '<span class="mp-hsb-wrap">' +
           '<svg class="mp-hsb-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>' +
           '<input type="search" class="mp-hsb-input" autocomplete="off" ' +
-            'placeholder="' + (isArtists ? 'Filtrer les artistes…' : (isHome ? (_isImg ? 'Rechercher une image ou un artiste…' : 'Rechercher un son ou un artiste…') : 'Filtrer les sons par titre, artiste, mood…')) + '">' +
+            'placeholder="' + (isArtists ? 'Filtrer les artistes…' : (isHome ? (_isImg ? 'Rechercher une image ou un artiste…' : 'Rechercher un son ou un artiste…') : (_VIEW === 'images' ? 'Filtrer les images par titre, artiste, style…' : 'Filtrer les sons par titre, artiste, mood…'))) + '">' +
         '</span>' +
         filterBtnHtml +
       '</span>' +

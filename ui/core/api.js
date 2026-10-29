@@ -369,6 +369,17 @@ async function apiFetch(path, options = {}) {
     throw err;
   }
 
+  // Lot M (B2) — premier achat ou première publication réussis : c'est le
+  // seul moment où l'on proposera d'installer l'app (ui/pwa/pwa.js).
+  try {
+    const _m = String(rest.method || 'GET').toUpperCase();
+    const _p = String(path || '').split('?')[0];
+    if (_m === 'POST' && /^\/(unlocks\/|resale\/[^/]+\/buy|tracks$|images$)/.test(_p)) {
+      window.localStorage.setItem('watt_moment_cle', String(Date.now()));
+      window.dispatchEvent(new CustomEvent('smyle:moment-cle'));
+    }
+  } catch (_) { /* navigation privée : sans gravité */ }
+
   return parsed;
 }
 
