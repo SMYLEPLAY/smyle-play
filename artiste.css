@@ -4421,8 +4421,8 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
 .trade-submit-btn:disabled { opacity: 0.45; cursor: default; }
 
 /* ── Topbar overrides — spécifiques à la page artiste ───────────────────── */
-/* MY MIX n'a pas de sens sur un profil artiste (mix-panel absent de la page) */
-.stb-mymix { display: none !important; }
+/* Lot M — MY MIX reste dans le menu (même menu partout) : sur un profil,
+   il ramène à l'accueil où se trouve le panneau. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    REFONTE VISUELLE PROFIL — 2026-06-11 (demande Tom : plus pro, plus actuel,

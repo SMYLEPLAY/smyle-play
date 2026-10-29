@@ -417,6 +417,8 @@
 
     // Nav : on construit les 3 liens principaux, et on masque celui qui
     // correspond au contexte actuel (on n'invite pas à aller où on est).
+    // Lot M — menu identique sur toutes les pages, dans le même ordre :
+    // la page en cours est mise en avant au lieu d'être retirée.
     const navItems = [
       { key: 'marketplace', href: '/',                 label: 'Marketplace' },
       { key: 'dashboard',   href: '/dashboard',        label: 'WATT BOARD' },
@@ -424,14 +426,15 @@
     ];
 
     const navHtml = navItems
-      .filter(it => it.key !== context)
-      .map(it => `<a class="stb-nav-link" href="${it.href}">${_esc(it.label)}</a>`)
+      .map(it => it.key === context
+        ? `<a class="stb-nav-link is-active" href="${it.href}" aria-current="page">${_esc(it.label)}</a>`
+        : `<a class="stb-nav-link" href="${it.href}">${_esc(it.label)}</a>`)
       .join('');
 
     // MY MIX : on affiche le compteur. Le clic ouvre la mix-panel si la
     // page l'expose (window.toggleMixPanel), sinon on renvoie sur /.
     const mixHtml = `
-      <button class="stb-mymix" type="button"
+      <button class="stb-nav-link stb-mymix" type="button"
               onclick="window.SmyleTopbar.clickMix(event)"
               title="My Mix">
         <span class="stb-mymix-label">MY MIX</span>
@@ -482,15 +485,12 @@
 
       <nav class="stb-nav" aria-label="Navigation principale">
         ${navHtml}
+        <button class="stb-nav-link" type="button" onclick="if(window.openBoutique)window.openBoutique()">Boutique</button>
+        ${mixHtml}
       </nav>
 
       <div class="stb-right">
         <div id="smyle-balance" class="stb-balance-slot"></div>
-        <button class="stb-mymix" type="button" onclick="if(window.openBoutique)window.openBoutique()" title="Boutique" style="gap:6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 13h6"/></svg>
-          <span class="stb-mymix-label">Boutique</span>
-        </button>
-        ${mixHtml}
         ${msgHtml}
         ${bellHtml}
         ${authHtml}
