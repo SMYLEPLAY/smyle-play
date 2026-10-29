@@ -87,6 +87,26 @@
     });
   }
 
+  // Fix 29/10 — confirmation DANS la page (plus de window.confirm, que le
+  // navigateur peut bloquer en silence : le clic ne faisait alors rien).
+  // 1er clic : le bouton devient « Confirmer l'achat · N Smyles » (6 s) ;
+  // 2e clic : achat. Les erreurs sont affichées SOUS le bouton.
+  var _confirmTimer = null;
+
+  function _noteBundle(msg, type) {
+    var box = document.getElementById('o-bundle');
+    if (!box) return;
+    var n = box.querySelector('.o-bundle-msg');
+    if (!n) {
+      n = document.createElement('p');
+      n.className = 'o-bundle-note o-bundle-msg';
+      n.setAttribute('role', 'status');
+      box.appendChild(n);
+    }
+    n.textContent = msg || '';
+    n.style.color = type === 'error' ? '#ff8a9a' : '';
+  }
+
   function _buyBundle(btn) {
     if (!_gate()) return;
     if (!_data || !_data.bundle) return;
@@ -94,8 +114,24 @@
     // Lot K — équivalent en euros dès que l'achat de Smyles est ouvert.
     var _eur = (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)
       ? ' (≈ ' + (Math.round(prix * 0.07 * 100) / 100).toFixed(2).replace('.', ',') + ' €)' : '';
-    if (!window.confirm('Acheter cette œuvre pour ' + prix + ' Smyles' + _eur + ' ?')) return;
+    if (btn.getAttribute('data-confirm') !== '1') {
+      btn.setAttribute('data-confirm', '1');
+      btn.setAttribute('data-label', btn.textContent);
+      btn.textContent = 'Confirmer l\'achat · ' + prix + ' Smyles' + _eur;
+      _noteBundle('Clique encore une fois pour confirmer.', 'info');
+      clearTimeout(_confirmTimer);
+      _confirmTimer = setTimeout(function () {
+        btn.removeAttribute('data-confirm');
+        btn.textContent = btn.getAttribute('data-label') || btn.textContent;
+        _noteBundle('');
+      }, 6000);
+      return;
+    }
+    clearTimeout(_confirmTimer);
+    btn.removeAttribute('data-confirm');
     btn.disabled = true;
+    btn.textContent = 'Achat en cours…';
+    _noteBundle('');
     // Lot G — prix attendu envoyé : si le créateur l'a changé entre-temps,
     // smyleAcheter demande de confirmer le nouveau prix avant de rejouer.
     var _chemin = '/watt/oeuvres/' + encodeURIComponent(OID) + '/acheter';
@@ -109,17 +145,28 @@
       })
       .catch(function (err) {
         btn.disabled = false;
+        btn.textContent = btn.getAttribute('data-label') || ('Acheter l\'œuvre · ' + prix + ' Smyles');
         var s = err && err.status;
-        if (err && err.annule) { _toast('Achat annulé : le prix a changé.', 'info'); load(); return; }
-        if (s === 402) {
-          _toast('Pas assez de Smyles pour cette œuvre.', 'error');
+        var d = err && err.body && err.body.detail;
+        var msg;
+        if (err && err.annule) { msg = 'Achat annulé : le prix a changé.'; load(); }
+        else if (s === 402) {
+          msg = (d && typeof d === 'object' && d.required != null)
+            ? 'Solde insuffisant : il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.'
+            : 'Pas assez de Smyles pour cette œuvre.';
           // Lot L : achat de Smyles proposé directement quand il est ouvert.
           if (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles && typeof window.openCreditsBuyModal === 'function') {
             try { window.openCreditsBuyModal(); } catch (_) {}
+          } else {
+            msg += ' Invite un ami : +20 Smyles pour toi et pour lui.';
           }
         }
-        else if (s === 409) _toast((err.body && typeof err.body.detail === 'string') ? err.body.detail : 'Tu possèdes déjà cette œuvre.', 'info');
-        else _toast('Achat impossible pour le moment. Réessaie.', 'error');
+        else if (s === 401) msg = 'Reconnecte-toi pour acheter cette œuvre.';
+        else if (s === 409) msg = (typeof d === 'string') ? d : 'Tu possèdes déjà cette œuvre.';
+        else if (typeof d === 'string') msg = d;
+        else msg = 'Achat impossible pour le moment. Réessaie.';
+        _noteBundle(msg, 'error');
+        _toast(msg, 'error');
       });
   }
 

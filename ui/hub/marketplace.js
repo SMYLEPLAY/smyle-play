@@ -1147,7 +1147,8 @@
         // Lot 2 : le pont mène à la page de l'Œuvre (/o/<id>), à partager.
         const oid = track && (track.oeuvreId || (track.linkedImage && track.linkedImage.id));
         if (oid && /^[0-9a-fA-F-]{36}$/.test(String(oid))) {
-          window.location.href = '/o/' + encodeURIComponent(oid);
+          // Fix 29/10 : on arrive directement sur l'offre « Œuvre entière ».
+          window.location.href = '/o/' + encodeURIComponent(oid) + '#offre';
           return;
         }
         if (track) _openTrackDetailDrawer(track);
@@ -1297,17 +1298,15 @@
         `</div>`;
     }
 
-    const tdPontTotal = (tdLi && tdLi.priceCredits != null && promptPrice != null)
-      ? (promptPrice + tdLi.priceCredits) : null;
-    // Prix pack œuvre = somme des 2 faces − 10 % (miroir backend / board).
-    const tdPontPack = tdPontTotal != null ? Math.max(2, Math.floor(tdPontTotal * 0.9)) : null;
-    // DESACTIVE (2026-08-04) — meme raison que le socle : prix invente et
-    // route d'unlock œuvre inexistante. Rallumer quand le backend existe.
-    const tdPontHtml = false && (tdLi && tdPontPack != null && promptId)
-      // Les deux faces sont vendables → VRAI bouton d'achat œuvre (−10 %).
-      ? `<button type="button" class="mp-socle-pont mp-socle-pont-buy" id="mp-td-oeuvre-buy" data-oeuvre-prompt-id="${_esc(String(promptId))}" data-oeuvre-price="${tdPontPack}" data-track-name="${_esc(title)}" title="Acheter l'œuvre complète (son + image) · ${tdPontPack} Smyles — remise 10%">` +
+    // Fix 29/10 — « carte ID » : le pont « Œuvre » ouvrait seulement l'image.
+    // Quand le son ET l'image sont en vente, il mène maintenant à l'achat de
+    // l'Œuvre entière (page /o/<id>#offre, prix calculé par le serveur avec
+    // la remise choisie par le créateur).
+    const _tdOid = tdLi ? (t.oeuvreId || tdLi.id) : null;
+    const tdPontHtml = (tdLi && promptId && _tdOid)
+      ? `<button type="button" class="mp-socle-pont mp-socle-pont-buy" id="mp-td-oeuvre" data-oeuvre-id="${_esc(String(_tdOid))}" title="Acheter l'œuvre complète (son + image) en une fois, moins cher">` +
           `<span class="mp-socle-pont-rail mp-socle-pont-rail--m"></span>` +
-          `<span class="mp-socle-pont-lbl">💠 Œuvre · ${tdPontPack} S <span style="opacity:.75;font-weight:600">−10%</span></span>` +
+          `<span class="mp-socle-pont-lbl">💠 Acheter l'œuvre complète · moins cher →</span>` +
           `<span class="mp-socle-pont-rail mp-socle-pont-rail--v"></span>` +
         `</button>`
       // Sinon (recette pas en vente) : simple lien vers l'image liée.
@@ -1416,6 +1415,15 @@
       const el = overlay.querySelector(sel);
       if (el) el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _tdOpenImage(); });
     });
+
+    const oeuvreBtn = overlay.querySelector('#mp-td-oeuvre');
+    if (oeuvreBtn) {
+      oeuvreBtn.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const oid = oeuvreBtn.getAttribute('data-oeuvre-id');
+        if (oid && /^[0-9a-fA-F-]{36}$/.test(oid)) window.location.href = '/o/' + encodeURIComponent(oid) + '#offre';
+      });
+    }
 
     const recipeBtn = overlay.querySelector('#mp-td-recipe-btn');
     if (recipeBtn) {

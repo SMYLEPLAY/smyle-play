@@ -3388,6 +3388,11 @@ details.ap-pl-adn-item[open] .ap-pl-adn-chevron { transform: rotate(180deg); }
   overflow: hidden;
 }
 .ap-oeuvre-socle + .ap-track-oeuvre-btn { border-radius: 0 0 9px 9px; margin-top: -1px; }
+/* Fix 29/10 — lien « Acheter l'œuvre complète » (même doré que la page Œuvre). */
+.ap-track-oeuvre-btn { display: block; padding: 9px 12px; text-align: center; font-weight: 700;
+  font-size: .82rem; text-decoration: none; color: #1a1206;
+  background: linear-gradient(120deg, #ffd700, #ff9f1a); }
+.ap-track-oeuvre-btn:hover { filter: brightness(1.05); }
 .ap-socle-seam { background: rgba(255,255,255,.14); }
 .ap-socle-half { padding: 7px 9px; min-width: 0; }
 .ap-socle-half--music  { background: rgba(0,85,255,.10); }

@@ -21,7 +21,7 @@ const { bootSessionAuthentifiee, qualifierPourVendre } = require('./_helpers');
 //   2. PATCH /users/me → nom d'artiste (requis pour publier le profil) ;
 //   3. POST /artist/me/adn → un ADN est le pré-requis de tout prompt ;
 //   4. POST /artist/me/prompts → le produit, publié, à 15 Smyles (prix conseillé).
-// L'acheteur reçoit 30 Smyles de bienvenue à l'inscription
+// L'acheteur reçoit 50 Smyles de bienvenue à l'inscription
 // (WELCOME_BONUS_CREDITS) : c'est la seule source de Smyles disponible, car
 // POST /credits/grant est réservé aux comptes officiels.
 //
@@ -35,7 +35,7 @@ const { bootSessionAuthentifiee, qualifierPourVendre } = require('./_helpers');
 
 // Redénomination ×10 du 9/10/2026 : bienvenue 30, prix libre 10–150, ADN ≥ 300.
 const PRICE = 15;
-const WELCOME = 30;
+const WELCOME = 50;  // 29/10 : bonus de bienvenue porté à 50
 
 function _uniq(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -198,7 +198,7 @@ test('achat réel : solde insuffisant → refus sans débit', async ({ request }
   const vendeur = await _register(request, 'e2e-seller3');
   const acheteur = await _register(request, 'e2e-buyer3');
 
-  // Produit hors de portée du bonus de bienvenue (30 Smyles).
+  // Produit hors de portée du bonus de bienvenue (50 Smyles).
   await request.patch('/users/me', {
     headers: _auth(vendeur.token),
     data: { artist_name: _uniq('E2E Vendeur cher') },
