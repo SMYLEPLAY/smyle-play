@@ -400,6 +400,60 @@
     });
   }
 
+  // ── Lot M — profil en ligne / hors ligne ─────────────────────────────────
+  var _vitrineConfirm = null;
+  function _renderVitrine(enLigne, slug) {
+    var box = $('mo-vitrine');
+    if (!box) return;
+    box.hidden = false;
+    box.className = 'mo-vitrine' + (enLigne ? '' : ' is-off');
+    box.innerHTML =
+      '<div class="mo-vitrine-txt"><p class="mo-vitrine-etat">' +
+        (enLigne ? 'Ton profil est <strong>en ligne</strong>' : 'Ton profil est <strong>hors ligne</strong>') + '</p>' +
+        '<p class="mo-vitrine-sub">' + (enLigne
+          ? 'Tout le monde voit ton profil et tes Œuvres. Mets-le hors ligne pour le retravailler tranquillement.'
+          : 'Personne ne le voit, sauf toi. Tu peux modifier ton profil et publier des Œuvres : rien n\'apparaît avant que tu le remettes en ligne. Les acheteurs gardent ce qu\'ils ont débloqué.') + '</p></div>' +
+      '<div class="mo-vitrine-act">' +
+        (slug ? '<a class="mo-btn mo-btn--ghost" href="/u/' + _esc(slug) + '">Voir mon profil</a>' : '') +
+        '<button type="button" class="mo-btn' + (enLigne ? ' mo-btn--ghost' : '') + '" id="mo-vitrine-btn" data-en-ligne="' + (enLigne ? '1' : '0') + '">' +
+          (enLigne ? 'Mettre hors ligne' : 'Remettre en ligne') + '</button>' +
+      '</div>';
+  }
+  function _loadVitrine() {
+    window.apiFetch('/users/me').then(function (u) {
+      if (!u || !(u.artist_name || '').trim()) return;   // pas encore créateur
+      _renderVitrine(!!u.profile_public, u.slug);
+    }).catch(function () {});
+  }
+  function _toggleVitrine(btn) {
+    var enLigne = btn.getAttribute('data-en-ligne') === '1';
+    if (enLigne && btn.getAttribute('data-confirm') !== '1') {
+      // Confirmation dans la page (deux clics), pas de fenêtre du navigateur.
+      btn.setAttribute('data-confirm', '1');
+      btn.textContent = 'Confirmer : mettre hors ligne';
+      clearTimeout(_vitrineConfirm);
+      _vitrineConfirm = setTimeout(function () {
+        btn.removeAttribute('data-confirm'); btn.textContent = 'Mettre hors ligne';
+      }, 6000);
+      return;
+    }
+    clearTimeout(_vitrineConfirm);
+    btn.disabled = true;
+    var route = enLigne ? '/watt/me/profile/unpublish' : '/watt/me/profile/publish';
+    window.apiFetch(route, { method: 'POST' }).then(function (r) {
+      var on = !!(r && r.profilePublic);
+      _renderVitrine(on, r && r.artistSlug);
+      _toast(on ? 'Ton profil est de nouveau en ligne.' : 'Ton profil est hors ligne. Prends ton temps.');
+    }).catch(function (e) {
+      btn.disabled = false;
+      _toast(_errMsg(e, 'Impossible pour le moment. Réessaie.'));
+    });
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('#mo-vitrine-btn');
+    if (b) _toggleVitrine(b);
+  });
+
   document.addEventListener('DOMContentLoaded', function () {
     // Page réservée aux comptes : un visiteur passe par l'inscription et
     // revient ici ensuite.
@@ -410,5 +464,6 @@
     }
     _wire();
     load();
+    _loadVitrine();
   });
 })();

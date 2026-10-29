@@ -92,3 +92,13 @@ textarea.mo-input { min-height: 80px; resize: vertical; }
   z-index: 1100; max-width: calc(100% - 32px); background: #1d1730; border: 1px solid #6c4cf0; color: #fff; padding: 11px 16px;
   border-radius: 12px; font-size: 14px; transition: all .2s; }
 .mo-toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Lot M — profil en ligne / hors ligne */
+.mo-vitrine { display: flex; align-items: center; justify-content: space-between; gap: 14px 20px; flex-wrap: wrap;
+  margin: 0 0 16px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255,215,0,.35); background: rgba(255,215,0,.05); }
+.mo-vitrine.is-off { border-color: rgba(204,136,255,.45); background: rgba(136,0,255,.10); }
+.mo-vitrine[hidden] { display: none; }
+.mo-vitrine-txt { flex: 1 1 320px; min-width: 0; }
+.mo-vitrine-etat { margin: 0; font-size: 15px; }
+.mo-vitrine-sub { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--sp-text-muted, rgba(255,255,255,.72)); }
+.mo-vitrine-act { display: flex; gap: 10px; flex-wrap: wrap; }

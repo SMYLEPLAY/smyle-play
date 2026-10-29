@@ -539,6 +539,10 @@ async def publish_my_profile(
 
     Réponse 422 avec détail des champs manquants si le nom est vide.
     """
+    # Lot M — un compte banni ne peut pas se remettre en vitrine lui-même.
+    if bool(getattr(current_user, "is_banned", False)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Compte suspendu.")
+
     missing: list[str] = []
 
     if not (current_user.artist_name or "").strip():

@@ -151,7 +151,7 @@
     const p = (location.pathname || '/').toLowerCase();
     if (p === '/' || p === '/index.html')         return 'marketplace';
     if (p.startsWith('/u/') || p.startsWith('/@') || p.startsWith('/artiste/')) return 'profile';
-    if (p.startsWith('/dashboard'))               return 'dashboard';
+    if (p.startsWith('/dashboard') || p.startsWith('/mes-oeuvres')) return 'dashboard';
     if (p.startsWith('/library'))                 return 'library';
     return 'marketplace';
   }

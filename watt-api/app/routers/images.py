@@ -233,12 +233,15 @@ async def create_my_image(
     # (users.profile_public). Même payload 409 + redirect /u/me que tracks.py
     # pour que le front réutilise la même CTA. 409 = intention-utilisateur non
     # remplie (ni 400 validation, ni 403 permissions).
-    if not bool(getattr(current_user, "profile_public", False)):
+    # Lot M — un profil mis hors ligne peut continuer à préparer ses Œuvres
+    # (elles restent invisibles tant que le profil est hors ligne). Seul
+    # prérequis : un nom d'artiste, comme pour les sons.
+    if not bool(getattr(current_user, "profile_public", False)) and not (current_user.artist_name or "").strip():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "error":    "profile_not_published",
-                "message":  "Publie d'abord ton profil pour pouvoir publier une image.",
+                "message":  "Choisis d'abord ton nom d'artiste pour publier une image.",
                 "redirect": "/u/me",
             },
         )

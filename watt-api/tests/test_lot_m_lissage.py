@@ -107,3 +107,48 @@ async def test_admin_retire_et_remet_un_profil(client, admin_headers_m, auth_hea
 async def test_vitrine_reservee_aux_admins(client, auth_headers):
     r = await client.post(f"/admin/profils/{_uuid_mod.uuid4()}/vitrine", json={"visible": False}, headers=auth_headers)
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_profil_hors_ligne_reste_hors_ligne(client, test_user, auth_headers):
+    """Lot M — mis hors ligne, un profil le reste même s'il publie encore ;
+    le créateur le remet en ligne lui-même."""
+    from app.models.track import Track
+
+    uid = test_user["id"]
+    async with SessionLocal() as db:
+        await db.execute(_text("UPDATE users SET artist_name = :n, profile_public = true WHERE id = :u"),
+                         {"n": f"HorsLigne {str(uid)[:6]}", "u": uid})
+        db.add(Track(title="Déjà là", artist_id=uid))
+        await db.commit()
+    try:
+        r = await client.post("/watt/me/profile/unpublish", headers=auth_headers)
+        assert r.status_code == 200 and r.json()["profilePublic"] is False
+        # Publier un nouveau son ne remet plus le profil en vitrine.
+        await client.post("/tracks/", headers=auth_headers, json={
+            "title": "Nouveau", "cover_url": "https://example.invalid/c.png", "platform": "suno"})
+        async with SessionLocal() as db:
+            pub = (await db.execute(_text("SELECT profile_public FROM users WHERE id = :u"), {"u": uid})).scalar()
+        assert pub is False
+        r = await client.post("/watt/me/profile/publish", headers=auth_headers)
+        assert r.json()["profilePublic"] is True
+    finally:
+        async with SessionLocal() as db:
+            await db.execute(_text("DELETE FROM tracks WHERE artist_id = :u"), {"u": uid})
+            await db.execute(_text("UPDATE users SET profile_public = false, artist_name = NULL WHERE id = :u"), {"u": uid})
+            await db.commit()
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_compte_banni_ne_se_remet_pas_en_vitrine(client, test_user, auth_headers):
+    uid = test_user["id"]
+    async with SessionLocal() as db:
+        await db.execute(_text("UPDATE users SET artist_name = 'Banni Test', is_banned = true WHERE id = :u"), {"u": uid})
+        await db.commit()
+    try:
+        r = await client.post("/watt/me/profile/publish", headers=auth_headers)
+        assert r.status_code in (401, 403)
+    finally:
+        async with SessionLocal() as db:
+            await db.execute(_text("UPDATE users SET artist_name = NULL, is_banned = false, profile_public = false WHERE id = :u"), {"u": uid})
+            await db.commit()
