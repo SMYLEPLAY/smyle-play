@@ -1783,6 +1783,8 @@ async def list_prompts(
         # C4 « Oeuvre complete » — pas de carte individuelle pour un son
         # « ne ensemble » (bundle_exclusive) : il n'apparait que via l'oeuvre.
         .where(Prompt.bundle_exclusive.is_(False))
+        # Lot M — un profil retiré de la vitrine n'a plus de recette listée.
+        .where(User.profile_public.is_(True))
     )
 
     if universe:
