@@ -96,6 +96,10 @@
   <section class="panel" id="p-ret" role="tabpanel" aria-labelledby="t-ret" hidden>
     <p class="sub">Les contenus retirés par la modération. Si un retrait était une erreur, « Remettre en ligne » les rétablit comme avant, et l'auteur est prévenu.</p>
     <div id="ret-list"><p class="msg">Chargement…</p></div>
+    <h2>Images couchées</h2>
+    <p class="sub">Les photos prises au téléphone pouvaient s'afficher tournées. Ce bouton refait leurs aperçus, à l'endroit. Les fichiers achetés ne changent pas. Sans risque, à lancer une fois.</p>
+    <button class="act ok" type="button" id="img-redresser">Redresser les images</button>
+    <div id="img-bilan"></div>
   </section>
 
   <section class="panel" id="p-pay" role="tabpanel" aria-labelledby="t-pay" hidden>
@@ -133,7 +137,7 @@
 </div>
 <div class="flash" id="flash" role="status" aria-live="polite"></div>
 
-<script src="/ui/core/api.js?v=20261021lotk"></script>
+<script src="/ui/core/api.js?v=20261029m0"></script>
 <script src="/ui/core/visitor-gate.js?v=20261029bonus"></script>
 <script src="/ui/core/onboarding.js?v=20261029bonus" defer></script>
 <script>
@@ -268,6 +272,15 @@
       }).join('') : '<p class="msg">Aucun code pour l\'instant.</p>';
     }).catch(function (e) { erreur(list, e); });
   }
+  document.getElementById('img-redresser').addEventListener('click', function () {
+    var b = this, out = document.getElementById('img-bilan');
+    b.disabled = true; out.innerHTML = '<p class="msg">En cours, ça peut prendre une minute…</p>';
+    apiFetch('/admin/images/redresser-apercus', { method: 'POST' }).then(function (d) {
+      out.innerHTML = '<p class="msg">' + esc(d.examinees) + ' image(s) vérifiée(s), ' + esc(d.redressees) +
+        ' redressée(s)' + (d.erreurs ? ', ' + esc(d.erreurs) + ' illisible(s)' : '') + '.</p>';
+    }).catch(function (e) { erreur(out, e); }).then(function () { b.disabled = false; });
+  });
+
   document.getElementById('code-gen').addEventListener('click', function () {
     var b = this, n = parseInt(document.getElementById('code-n').value, 10) || 1;
     b.disabled = true;
