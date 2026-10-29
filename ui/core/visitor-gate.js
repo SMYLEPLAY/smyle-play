@@ -113,7 +113,7 @@
       'background:#ffd700;color:#050508;white-space:nowrap}',
       '.svb-cta:hover{filter:brightness(1.06)}',
       '.svb-cta:focus-visible{outline:2px solid #fff;outline-offset:2px}',
-      '@media (max-width:560px){.svb-in{padding:12px 12px 12px 16px}.svb-sub{display:none}.svb-title{font-size:15px}.svb-txt{flex:1 1 0}}',
+      '@media (max-width:560px){.svb-in{padding:10px 10px 10px 14px;gap:10px}.svb-sub{display:none}.svb-title{font-size:14px}.svb-txt{flex:1 1 0}.svb-cta{padding:9px 12px;font-size:13px}}',
     ].join('');
     document.head.appendChild(st);
   }
