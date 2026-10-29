@@ -693,15 +693,31 @@ function renderRoles(roles, isSelf) {
     return;
   }
 
-  list.forEach(code => {
+  // Lot M — au public, 2 casquettes visibles ; les autres derrière « +N ».
+  const connus = list.filter(code => ROLE_BY_CODE[code]);
+  const MAX_PUBLIC = 2;
+  connus.forEach((code, i) => {
     const meta = ROLE_BY_CODE[code];
-    if (!meta) return; // code inconnu (ancien rôle retiré du catalog) : skip
     const chip = document.createElement('span');
     chip.className = 'ap-role-chip';
     chip.textContent = meta.label;
     chip.title = meta.desc;
+    if (!isSelf && i >= MAX_PUBLIC) chip.hidden = true;
     wrap.appendChild(chip);
   });
+  const caches = connus.length - MAX_PUBLIC;
+  if (!isSelf && caches > 0) {
+    const plus = document.createElement('button');
+    plus.type = 'button';
+    plus.className = 'ap-role-chip ap-role-chip-more';
+    plus.textContent = '+' + caches;
+    plus.title = 'Voir toutes les casquettes';
+    plus.addEventListener('click', () => {
+      wrap.querySelectorAll('.ap-role-chip[hidden]').forEach(c => { c.hidden = false; });
+      plus.remove();
+    });
+    wrap.appendChild(plus);
+  }
 }
 
 // Ouvre le popover "Mes casquettes" (mode owner uniquement).
@@ -2345,6 +2361,7 @@ function renderTracks(artist) {
       });
     }
   }
+  apSectionNav();
 
   // Délégation click — un seul listener pour la liste (re-rendue souvent).
   // Play/pause passe par le moteur audio partagé (_apPlayTrack, pattern
@@ -2646,6 +2663,7 @@ async function loadArtistImages(slug) {
   }
   await _ensureOwnedImageIds();
   renderArtistImages(images);
+  apSectionNav();
 }
 
 // C4 ④ — IDs d'images POSSÉDÉES par l'user courant (miroir de ownedAdnIds).
@@ -2681,6 +2699,54 @@ function _apImgPreviewUrl(key) {
   if (!key) return '';
   return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
 }
+
+// Lot M — rangée d'onglets Sons / Images / Collections sous l'en-tête du
+// profil : un clic amène à la section. N'apparaît que s'il y a au moins
+// deux sections à montrer.
+let _apNavTimer = null;
+function apSectionNav() {
+  clearTimeout(_apNavTimer);
+  _apNavTimer = setTimeout(_apSectionNavNow, 150);
+}
+function _apSectionNavNow() {
+  const vis = (el) => !!(el && el.style.display !== 'none' && el.offsetParent !== null);
+  const tracks = document.getElementById('ap-tracks-section');
+  const images = document.getElementById('ap-images-section');
+  const colls = document.querySelector('.ap-pl-worlds');
+  const items = [];
+  if (vis(tracks)) items.push(['ap-tracks-section', 'Sons', (state.artist && state.artist.tracks || []).length]);
+  if (vis(images) && images.querySelector('[data-image-id], .ap-img-card, img')) items.push(['ap-images-section', 'Images', images.querySelectorAll('[data-image-id]').length]);
+  if (colls && vis(colls)) {
+    if (!colls.id) colls.id = 'ap-collections';
+    items.push([colls.id, 'Collections', colls.querySelectorAll('.ap-pl-world').length]);
+  }
+  let nav = document.getElementById('ap-secnav');
+  if (items.length < 2) { if (nav) nav.remove(); return; }
+  if (!nav) {
+    nav = document.createElement('nav');
+    nav.id = 'ap-secnav';
+    nav.className = 'ap-secnav';
+    nav.setAttribute('aria-label', 'Contenu du profil');
+    const hero = document.getElementById('ap-hero');
+    if (hero && hero.parentNode) hero.parentNode.insertBefore(nav, hero.nextSibling);
+    else return;
+    nav.addEventListener('click', (ev) => {
+      const a = ev.target.closest('a[data-cible]');
+      if (!a) return;
+      ev.preventDefault();
+      const cible = document.getElementById(a.getAttribute('data-cible'));
+      if (!cible) return;
+      const body = cible.querySelector('.ap-tracks-body');
+      if (body && !body.classList.contains('is-open')) cible.querySelector('.ap-tracks-hdr')?.click();
+      cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      nav.querySelectorAll('a').forEach(x => x.classList.toggle('is-active', x === a));
+    });
+  }
+  nav.innerHTML = items.map(([id, label, n], i) =>
+    `<a href="#${id}" data-cible="${id}" class="${i === 0 ? 'is-active' : ''}">${label}${n ? ` <span>${n}</span>` : ''}</a>`
+  ).join('');
+}
+window.addEventListener('load', () => { apSectionNav(); setTimeout(apSectionNav, 2000); });
 
 function renderArtistImages(images) {
   const isSelf = !!(state.artist && state.artist.isSelf);

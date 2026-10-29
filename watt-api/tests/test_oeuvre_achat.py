@@ -362,3 +362,22 @@ async def test_mes_oeuvres_change_la_remise():
             assert offre["discountPct"] == 0 and offre["priceCredits"] == 70
     finally:
         await _cleanup(artiste)
+
+
+async def test_lot_m_apercu_recette_sans_le_texte(client):
+    """Lot M — la page Œuvre montre la LONGUEUR des recettes et les écoutes,
+    jamais le texte du prompt (réservé à l'acheteur)."""
+    artiste = await _user(public=True)
+    oid, rec = await _oeuvre(artiste)
+    try:
+        d = (await client.get(f"/watt/oeuvres/{oid}")).json()
+        assert d["sound"]["recipe"]["promptLength"] > 0
+        assert d["image"]["promptLength"] > 0
+        assert isinstance(d["sound"]["plays"], int)
+        async with SessionLocal() as db:
+            textes = [p.prompt_text for p in (await db.execute(
+                select(Prompt).where(Prompt.artist_id == artiste))).scalars().all() if p.prompt_text]
+        brut = str(d)
+        assert textes and all(t not in brut for t in textes)
+    finally:
+        await _cleanup(artiste)

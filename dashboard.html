@@ -82,25 +82,17 @@
          le nom d'une PILL de ce tableau (section 03 : visibilité marketplace),
          plus celui du tableau entier. Évite la double-désignation. -->
     <span class="dash-topbar-brand">WATT BOARD</span>
+    <!-- Lot M — même menu que sur les autres pages, dans le même ordre. -->
+    <nav class="hdr-nav" aria-label="Navigation principale">
+      <a class="hdr-nav-link" href="/">MARKETPLACE</a>
+      <a class="hdr-nav-link is-active" href="/dashboard" aria-current="page">WATT BOARD</a>
+      <a class="hdr-nav-link" href="/library">BIBLIOTHÈQUE</a>
+      <button class="hdr-nav-link" type="button" onclick="if(window.openBoutique)window.openBoutique()">BOUTIQUE</button>
+      <a class="hdr-nav-link" href="/">MY MIX</a>
+    </nav>
   </div>
 
   <div class="dash-topbar-right">
-
-    <!-- Lien BIBLIOTHÈQUE (fix 2026-06-11 — la bibliothèque n'était pas
-         accessible depuis le WATT BOARD, retour QA Tom). -->
-    <a href="/library" title="Ma bibliothèque"
-       style="display:inline-flex;align-items:center;gap:6px;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:7px 12px;text-decoration:none;font-size:12px;font-weight:700;margin-right:10px;">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      BIBLIOTHÈQUE
-    </a>
-
-    <!-- Bouton BOUTIQUE — hub unique (dépenser ET gagner des Smyles).
-         Logique autonome dans ui/modals/boutique.js + engagement.js. -->
-    <button type="button" onclick="if(window.openBoutique)window.openBoutique()" title="Boutique"
-            style="display:inline-flex;align-items:center;gap:6px;background:#1d1730;border:1px solid #2c2440;color:#cfc6e6;border-radius:10px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700;margin-right:10px;">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 13h6"/></svg>
-      BOUTIQUE
-    </button>
 
     <!-- ── Icônes messagerie + notifs ─────────────────────────────────────── -->
     <div class="page-icon-services" id="page-icon-services" style="display:none">
@@ -2625,7 +2617,7 @@
 </div>
 
 <script src="ui/core/api.js?v=20261029m0"></script>
-<script src="/ui/core/visitor-gate.js?v=20261029bonus"></script>
+<script src="/ui/core/visitor-gate.js?v=20261029m1"></script>
 <script src="/ui/core/onboarding.js?v=20261029bonus" defer></script>
 <script src="ui/core/consent.js?v=20261011lotg"></script>
 <script src="ui/core/telemetry.js?v=20261011lotg"></script>

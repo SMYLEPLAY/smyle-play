@@ -98,6 +98,10 @@
     <span class="logo-text">WATT</span>
   </a>
 
+  <!-- Lot M — menu identique sur toutes les pages (même ordre que la
+       barre partagée ui/topbar/topbar.js). -->
+  <nav class="hdr-nav" aria-label="Navigation principale">
+  <a class="hdr-nav-link is-active" href="/" aria-current="page">MARKETPLACE</a>
   <!-- Bouton WATT BOARD — ouvre directement l'espace artiste. -->
   <button class="watt-toggle-btn" onclick="toggleWattPanel()" title="Espace artiste · WATT BOARD">
     <svg viewBox="0 0 24 24" width="11" height="11" fill="#FFD700"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -131,6 +135,7 @@
     MY MIX
     <span class="mix-count" id="mix-count">0</span>
   </button>
+  </nav>
 
   <!-- ── Groupe utilitaires : loupe · messagerie · notifs ─────────────────
        Ordre : 🔍 recherche · ✉ messages · 🔔 notifs — juste avant le profil. -->
@@ -232,6 +237,13 @@
     🖼️ Image
   </button>
 </div>
+<!-- Lot M — ligne de confiance, sous le choix Musique / Image. -->
+<p class="watt-trust" aria-label="Nos engagements">
+  <span>Extraits gratuits, sans compte</span>
+  <span>Paiement sécurisé</span>
+  <span>Réutilisable dans tes créations</span>
+  <span>Artistes rémunérés à chaque vente</span>
+</p>
 
 <!-- ═══════════════════════════════════════════════════════════ BARRE CATÉGORIES -->
 <!-- C4 — étagères (raccourcis catégories) remontées EN HAUT de la marketplace,
@@ -693,7 +705,7 @@
 <script src="ui/core/telemetry.js?v=20261011lotg"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
-<script src="/ui/core/visitor-gate.js?v=20261029bonus"></script>
+<script src="/ui/core/visitor-gate.js?v=20261029m1"></script>
 <script src="ui/core/state.js"></script>
 <script src="ui/core/dom.js"></script>
 <script src="ui/core/storage.js"></script>
@@ -720,7 +732,7 @@
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
 <script src="/ui/playlists.js?v=20261021lotj" defer></script>
 <script src="/ui/albums.js?v=20261011lotg" defer></script>
-<script src="ui/hub/marketplace.js?v=20261029m0"></script>
+<script src="ui/hub/marketplace.js?v=20261029m1"></script>
 <script src="ui/app.js?v=20261011lotg"></script>
 <script src="ui/player/mini-bar.js?v=20260707player" defer></script>
 <script src="/ui/smyle-balance.js?v=20261029bonus" defer></script>

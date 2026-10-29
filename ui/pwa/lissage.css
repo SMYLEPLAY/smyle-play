@@ -1,0 +1,277 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   WATT — ui/pwa/lissage.css · lissage visuel commun (lot M).
+
+   Injecté par le serveur sur TOUTES les pages, après leurs propres styles
+   (app/routers/pages.py). Ne change aucune fonction : il harmonise.
+     1. Le logo WATT : le même partout, néon violet lisible.
+     2. Le menu : mêmes liens, même ordre, même style sur toutes les pages
+        (accueil, barre partagée, WATT BOARD). La page en cours est en or.
+     3. Les couleurs ont un rôle fixe : son = bleu électrique,
+        image = mauve, Œuvre = or.
+     4. Profil : sections à la même largeur, rangée d'onglets.
+     5. Téléphone : le menu tient sur une ligne qui défile, plus de
+        débordement horizontal.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --watt-son: #3d7bff;
+  --watt-image: #cc88ff;
+  --watt-oeuvre: #ffd700;
+  /* L'image était rose-rouge sur certaines étiquettes : elle passe au mauve. */
+  --sp-nature-image: #cc88ff;
+}
+
+/* ── 1. Logo ─────────────────────────────────────────────────────────── */
+.logo-text,
+.stb-logo-text,
+.dash-topbar-logo span {
+  color: #f1e6ff;
+  font-weight: 900;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(170, 0, 255, .9), 0 0 18px rgba(136, 0, 255, .55);
+  animation: none;
+}
+
+/* ── 2. Menu ─────────────────────────────────────────────────────────── */
+.hdr-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+body > header > .header-logo { flex: 0 0 auto; margin-right: auto; }
+body > header > .hdr-nav { margin: 0 auto; }
+
+.hdr-nav-link,
+.hdr-nav .watt-toggle-btn,
+.hdr-nav .library-toggle-btn,
+.hdr-nav .mix-toggle-btn,
+.stb-nav .stb-nav-link,
+.stb-nav .stb-mymix {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: rgba(255, 255, 255, .72);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.hdr-nav-link:hover,
+.hdr-nav .watt-toggle-btn:hover,
+.hdr-nav .library-toggle-btn:hover,
+.hdr-nav .mix-toggle-btn:hover,
+.stb-nav .stb-nav-link:hover,
+.stb-nav .stb-mymix:hover {
+  background: rgba(255, 255, 255, .06);
+  border: 0;
+  color: #fff;
+}
+.hdr-nav-link.is-active,
+.stb-nav .stb-nav-link.is-active { color: var(--watt-oeuvre); }
+.hdr-nav svg { display: none; }
+.hdr-nav .mix-count,
+.stb-nav .stb-mymix-count {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: rgba(255, 215, 0, .85);
+  color: #1a0030;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.hdr-nav .mix-count:not(.visible) { display: none; }
+.hdr-nav-link:focus-visible,
+.stb-nav .stb-nav-link:focus-visible,
+.stb-nav .stb-mymix:focus-visible {
+  outline: 2px solid var(--watt-oeuvre);
+  outline-offset: 2px;
+}
+
+/* WATT BOARD : le menu remplace le titre (« WATT BOARD » est en or dans le menu). */
+.dash-topbar-center .dash-topbar-brand { display: none; }
+.dash-topbar-center .hdr-nav { justify-content: center; }
+
+/* WATT BOARD : l'éclair devant le titre disparaît avec le titre. */
+.dash-topbar-center > svg { display: none; }
+
+/* Accueil : « Créer un compte » / « Connexion » à la même taille que sur
+   les autres pages. */
+body > header #authArea .auth-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+body > header #authArea .auth-btn.auth-btn-link {
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #e8e8f0;
+}
+
+/* Bouton principal du menu (visiteur) : or plein, partout pareil. */
+.stb-auth-cta.stb-auth-cta-signup,
+#authArea .auth-btn-signup,
+#authArea .auth-btn.primary {
+  background: var(--watt-oeuvre);
+  color: #050508;
+  border-color: var(--watt-oeuvre);
+}
+
+/* ── 3. Couleurs à rôle fixe ─────────────────────────────────────────── */
+/* Le pont « Œuvre complète » des cartes : couleur de l'Œuvre (or). */
+.mp-socle-pont-lbl { color: var(--watt-oeuvre); }
+.mp-socle-pont:hover { background: rgba(255, 215, 0, .08); }
+
+/* Page Œuvre : la barre du haut n'est plus fixe (elle suit la page) ;
+   l'espace réservé au-dessus du titre était devenu un trou. */
+.o-page .o-main { padding-top: 28px; }
+
+/* Ligne de confiance (accueil). */
+.watt-trust {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 22px;
+  max-width: 900px;
+  margin: 14px auto 6px;
+  padding: 0 16px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, .6);
+}
+.watt-trust span::before { content: "✓ "; color: var(--watt-oeuvre); font-weight: 800; }
+body.mp-only-sons .watt-trust,
+body.mp-only-images .watt-trust,
+body.mp-only-artists .watt-trust { display: none; }
+
+/* ── 4. Profil ───────────────────────────────────────────────────────── */
+#ap-images-section { max-width: 920px !important; box-sizing: border-box; }
+.ap-secnav {
+  display: flex;
+  gap: 4px;
+  max-width: 920px;
+  margin: 8px auto 4px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(255, 255, 255, .10);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ap-secnav::-webkit-scrollbar { display: none; }
+.ap-secnav a {
+  padding: 12px 14px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, .65);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ap-secnav a span { color: rgba(255, 255, 255, .45); font-weight: 600; }
+.ap-secnav a:hover { color: #fff; }
+.ap-secnav a.is-active { color: #fff; border-bottom-color: var(--ap-accent, var(--watt-oeuvre)); }
+.ap-role-chip-more {
+  cursor: pointer;
+  font: inherit;
+  background: none;
+}
+
+/* ── 5. Téléphone ────────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  /* Barre partagée : logo + compte sur la 1re ligne, menu sur la 2e,
+     qui défile au doigt au lieu de sortir de l'écran. */
+  .stb-root { grid-template-columns: auto 1fr; row-gap: 4px; }
+  .stb-root .stb-nav {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -12px;
+    padding: 0 8px;
+  }
+  .stb-root .stb-nav::-webkit-scrollbar { display: none; }
+  .stb-nav .stb-nav-link,
+  .stb-nav .stb-mymix { height: 34px; padding: 0 10px; font-size: 11px; letter-spacing: .1em; }
+  .stb-root > .stb-logo { grid-column: 1; grid-row: 1; }
+  .stb-root > .stb-right { grid-column: 2; grid-row: 1; min-width: 0; gap: 8px; }
+
+  /* WATT BOARD : même principe — logo + compte en haut, menu dessous.
+     La hauteur de la barre (fixe) suit, le contenu n'est pas recouvert. */
+  :root { --d-topbar-h: 98px; }
+  .dash-topbar { flex-wrap: wrap; align-content: center; row-gap: 4px; padding: 6px 12px; }
+  .dash-topbar-right { flex: 1 1 auto !important; justify-content: flex-end; }
+  .dash-topbar-center { order: 5; flex: 1 1 100%; min-width: 0; }
+  .dash-topbar-center .hdr-nav {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .dash-topbar-center .hdr-nav::-webkit-scrollbar { display: none; }
+}
+@media (max-width: 640px) {
+  /* Accueil : logo, recherche et compte sur la 1re ligne ; le menu passe
+     dessous, sur une seule ligne qui défile. */
+  body > header > #mp-search-anchor { order: -1; }
+  body > header #authArea .auth-btn { height: 36px; padding: 0 12px; font-size: 11px; letter-spacing: .08em; }
+  body > header #authArea .auth-btn.auth-btn-link { padding: 0 6px; font-size: 12px; letter-spacing: 0; }
+  body > header > .hdr-nav {
+    order: 5;
+    flex: 1 1 100%;
+    margin: 0 -14px;
+    padding: 0 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  body > header > .hdr-nav::-webkit-scrollbar { display: none; }
+  .hdr-nav-link,
+  .hdr-nav .watt-toggle-btn,
+  .hdr-nav .library-toggle-btn,
+  .hdr-nav .mix-toggle-btn { height: 34px; padding: 0 10px; font-size: 11px; letter-spacing: .1em; }
+}
+
+/* ── WATT BOARD : l'action principale est en or, comme partout ─────────── */
+.wb3-create-btn,
+.wb3-tile-btn.wb3-tile-btn--primary {
+  background: var(--watt-oeuvre) !important;
+  border-color: var(--watt-oeuvre) !important;
+  color: #050508 !important;
+  font-weight: 800;
+}
+.wb3-create-btn:hover,
+.wb3-tile-btn.wb3-tile-btn--primary:hover { filter: brightness(1.06); }
+/* La pastille « ← Retour au WATT BOARD » ne chevauche plus le titre de
+   la section ouverte. */
+body.wb3-active.wb3-screen-open #wb3-backbar { margin-bottom: 22px; position: relative; z-index: 2; }
