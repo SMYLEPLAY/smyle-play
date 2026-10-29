@@ -167,7 +167,7 @@ test('guide d’accueil : une seule fois, puis depuis le menu « Guide »', asyn
   const guide = page.locator('#obWelcome');
   await expect(guide).toBeVisible({ timeout: 15000 });
   await expect(guide).toContainText('Étape 1 sur');
-  await expect(guide).toContainText('30');
+  await expect(guide).toContainText('50');
   const n = Number((await guide.locator('.ob-count').textContent()).match(/sur (\d+)/)[1]);
   expect(n).toBeGreaterThanOrEqual(4);
   expect(n).toBeLessThanOrEqual(6);
