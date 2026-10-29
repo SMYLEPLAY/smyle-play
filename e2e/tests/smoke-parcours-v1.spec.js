@@ -4,7 +4,7 @@ const { bootSessionAuthentifiee } = require('./_helpers');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SMOKE — Parcours V1 (décisions du 9/10/2026).
-//   - visiteur : bandeau « Crée ton compte gratuit — 30 Smyles offerts »,
+//   - visiteur : bandeau « Crée ton compte gratuit — 50 Smyles offerts »,
 //     inscription proposée par défaut, toute action ouvre l'inscription,
 //     extrait de 30 s, retour exact après inscription (return= interne
 //     seulement), signalement sans compte qui invite à s'inscrire ;
@@ -75,7 +75,7 @@ test('visiteur : bandeau d’inscription et inscription proposée par défaut', 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const banner = page.locator('#smyle-visitor-banner');
   await expect(banner).toContainText('Crée ton compte gratuit');
-  await expect(banner).toContainText('30 Smyles offerts');
+  await expect(banner).toContainText('50 Smyles offerts');
   await banner.getByRole('button', { name: 'Créer mon compte' }).click();
   await expect(page.locator('#authModal')).toHaveClass(/open/);
   await expect(page.locator('#form-signup')).toBeVisible();

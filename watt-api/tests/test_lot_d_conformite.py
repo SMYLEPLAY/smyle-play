@@ -425,7 +425,7 @@ async def test_suppression_complete(client, monkeypatch):
 
         h = await _h(client, vendeur)
         apercu = (await client.get("/users/me/suppression", headers=h)).json()
-        assert apercu["smyles"]["total"] == 30
+        assert apercu["smyles"]["total"] == 50  # bonus de bienvenue (29/10)
         assert apercu["oeuvres"]["conservees_pour_acheteurs"] == 2  # recette vendue + son lié
 
         from app.services import fichiers_a_traiter
@@ -468,7 +468,7 @@ async def test_suppression_complete(client, monkeypatch):
         tx = await _sql("SELECT type, credits_amount FROM transactions WHERE buyer_id = :u OR seller_id = :u",
                         u=uid)
         assert len(tx) == tx_avant + 1
-        assert any(t.type == "burn" and t.credits_amount == 30 for t in tx)
+        assert any(t.type == "burn" and t.credits_amount == 50 for t in tx)
         # Fichiers à purger : avatar + son invendu, jamais le son vendu.
         assert f"images/avatar/{uid}/moi.jpg" in purges
         assert any(k.startswith(f"tracks/{uid}/") for k in purges)

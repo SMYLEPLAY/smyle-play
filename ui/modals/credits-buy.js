@@ -289,7 +289,7 @@
         </h2>
         <p class="credits-modal__sub">
           Les Smyles te permettent de débloquer des sons, des images et leurs
-          recettes. Tu en reçois 30 à l'inscription et 20 par ami parrainé.
+          recettes. Tu en reçois 50 à l'inscription et 20 par ami parrainé.
           Les Smyles achetés servent uniquement sur WATT : ils ne sont ni
           remboursables ni convertibles en euros.
         </p>
@@ -541,7 +541,7 @@
     // promettrait un achat impossible tant que Stripe n'est pas branché.
     // Défensif : drapeau absent → masqué.
     if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)) {
-      _toast("Tes Smyles : 30 offerts à l'inscription, +20 pour toi et pour ton ami à chaque parrainage, et ceux que tu gagnes quand on débloque tes créations.", 'info');
+      _toast("Tes Smyles : 50 offerts à l'inscription, +20 pour toi et pour ton ami à chaque parrainage, et ceux que tu gagnes quand on débloque tes créations.", 'info');
       return;
     }
     injectStyle();
