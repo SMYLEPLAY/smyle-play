@@ -292,7 +292,15 @@ function renderProfile() {
   renderPlayAllBtn(artist);   // U8 — bouton écouter tout
   renderPrompts(artist);
   renderVoices(artist);
-  renderTracks(artist);
+  // Lot M (idée de Tom) — un son déjà lié à son image forme une Œuvre : il
+  // vit dans la section « Œuvres » (image, écoute, achat groupé) ; seuls les
+  // sons sans image restent dans la liste des sons.
+  const _oeuvresTracks = (artist.tracks || []).filter(t => t && t.linkedImage);
+  renderTracks(Object.assign({}, artist, {
+    tracks: (artist.tracks || []).filter(t => !(t && t.linkedImage)),
+    _aDesOeuvres: _oeuvresTracks.length > 0,
+  }));
+  renderOeuvres(artist, _oeuvresTracks);
   _updateSaleDisclaimerVisibility(artist);
   _openSonFromHash();         // recherche → #son-{id} ouvre la carte détail
 
@@ -528,7 +536,7 @@ async function _setupFollowButton(artist) {
   if (!wrap || !btn) return;
   if (countEl) {
     const n = Number(artist.followersCount || 0);
-    countEl.textContent = n + ' follower' + (n !== 1 ? 's' : '');
+    countEl.textContent = n + ' abonné' + (n > 1 ? 's' : '');
   }
   if (artist.isSelf) { wrap.style.display = 'none'; return; }
   const isAuth = typeof getAuthToken === 'function' && !!getAuthToken();
@@ -618,7 +626,7 @@ async function _setupFollowButton(artist) {
           const newN = (rep && typeof rep.followersCount === 'number') ? rep.followersCount
             : (wasFollowing ? Math.max(0, cur - 1) : cur + 1);
           artist.followersCount = newN;
-          countEl.textContent = newN + ' follower' + (newN !== 1 ? 's' : '');
+          countEl.textContent = newN + ' abonné' + (newN > 1 ? 's' : '');
         }
       } else {
         if (typeof showToast === 'function') showToast('Action impossible.');
@@ -2104,6 +2112,12 @@ function renderTracks(artist) {
   if (!section || !list) return;
 
   const tracks = Array.isArray(artist && artist.tracks) ? artist.tracks : [];
+  if (tracks.length === 0 && artist && artist._aDesOeuvres) {
+    // Tous les sons sont dans des Œuvres : la liste des sons seuls disparaît.
+    section.style.display = 'none';
+    _apQueue = [];
+    return;
+  }
   if (tracks.length === 0) {
     if (artist && artist.isSelf) {
       // L'artiste voit sa propre page vide : on lui propose d'aller poster
@@ -2131,6 +2145,10 @@ function renderTracks(artist) {
   section.style.display = '';
   setText('ap-tracks-count',
     `${tracks.length} son${tracks.length > 1 ? 's' : ''}`);
+  {
+    const ttl = section.querySelector('.ap-tracks-title');
+    if (ttl) ttl.textContent = (artist && artist._aDesOeuvres) ? 'Sons seuls' : 'Sons publiés';
+  }
 
   // C3 ② — rows légères sur le player global. Le track reste le produit
   // visible : prompt lié (recette) = bouton prix, écoute = audio PARTAGÉ
@@ -2662,7 +2680,16 @@ async function loadArtistImages(slug) {
     images = [];
   }
   await _ensureOwnedImageIds();
-  renderArtistImages(images);
+  // Lot M — une image déjà liée à un son est dans la section « Œuvres ».
+  const _liees = new Set(((state.artist && state.artist.tracks) || [])
+    .filter(t => t && t.linkedImage).map(t => String(t.linkedImage.id)));
+  const seules = images.filter(im => !_liees.has(String(im.id)));
+  if (!seules.length && (images.length || _liees.size)) {
+    const sec = document.getElementById('ap-images-section');
+    if (sec) sec.style.display = 'none';
+  } else {
+    renderArtistImages(seules);
+  }
   apSectionNav();
 }
 
@@ -2700,6 +2727,170 @@ function _apImgPreviewUrl(key) {
   return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
 }
 
+// ── Lot M — section « Œuvres » (idée de Tom, 30/10) ────────────────────────
+// Une carte par Œuvre (son + image) : l'image, l'écoute (moteur audio partagé
+// de la page), les prix du son et de l'image, et l'achat groupé en deux clics
+// (le prix exact, remise du créateur comprise, est demandé au serveur au
+// premier clic). Clic sur l'image ou le titre : page de l'Œuvre.
+function renderOeuvres(artist, oeuvres) {
+  let section = document.getElementById('ap-oeuvres-section');
+  if (!oeuvres || !oeuvres.length) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'ap-oeuvres-section';
+    section.className = 'ap-oeuvres';
+    section.setAttribute('aria-label', 'Œuvres');
+    const ancre = document.getElementById('ap-tracks-section');
+    if (ancre && ancre.parentNode) ancre.parentNode.insertBefore(section, ancre);
+    else (document.getElementById('ap-profile') || document.body).appendChild(section);
+  }
+  const prompts = {};
+  (artist.prompts || []).forEach(p => { if (p && p.id) prompts[String(p.id)] = p; });
+  const isSelf = !!artist.isSelf;
+  const esc = _apImgEsc;
+
+  section.style.display = '';
+  section.innerHTML =
+    '<div class="ap-oe-hdr"><h2 class="ap-oe-title">Œuvres</h2>' +
+    '<span class="ap-oe-count">' + oeuvres.length + ' Œuvre' + (oeuvres.length > 1 ? 's' : '') + '</span></div>' +
+    '<p class="ap-oe-sub">Un son, son image et leurs recettes. Écoute, puis débloque l\'Œuvre entière, ou seulement le son ou l\'image depuis sa page.</p>' +
+    '<div class="ap-oe-grid">' + oeuvres.map(t => {
+      const li = t.linkedImage || {};
+      const oid = String(t.oeuvreId || li.id || '');
+      const rec = t.promptId ? prompts[String(t.promptId)] : null;
+      const pSon = rec && rec.priceCredits != null ? rec.priceCredits : null;
+      const pImg = li.priceCredits != null ? li.priceCredits : null;
+      const prix = [
+        pSon != null ? '<span class="ap-oe-p ap-oe-p--son">Son ' + esc(pSon) + '</span>' : '',
+        pImg != null ? '<span class="ap-oe-p ap-oe-p--img">Image ' + esc(pImg) + '</span>' : '',
+      ].filter(Boolean).join(' · ');
+      const href = '/o/' + encodeURIComponent(oid);
+      return '<article class="ap-oe-card" data-oeuvre-id="' + esc(oid) + '">' +
+        '<div class="ap-oe-visual">' +
+          '<a href="' + href + '" aria-label="Voir l\'Œuvre ' + esc(t.name || '') + '">' +
+            '<img src="' + esc(_apImgPreviewUrl(li.previewKey)) + '" alt="' + esc(t.name || 'Œuvre') + '" loading="lazy" />' +
+          '</a>' +
+          (t.streamUrl ? '<button type="button" class="ap-oe-play" data-oe-play="' + esc(t.id) + '" aria-label="Écouter ' + esc(t.name || '') + '">' + _AP_PLAY_SVG + '</button>' : '') +
+        '</div>' +
+        '<div class="ap-oe-body">' +
+          '<div class="ap-oe-line"><a class="ap-oe-name" href="' + href + '">' + esc(t.name || 'Sans titre') + '</a>' +
+          '<span class="ap-oe-plays">' + esc(formatCount(t.plays)) + ' écoute' + ((t.plays || 0) > 1 ? 's' : '') + '</span></div>' +
+          (prix ? '<p class="ap-oe-prix">' + prix + '</p>' : '') +
+          '<div class="ap-oe-actions">' +
+            (isSelf
+              ? '<a class="ap-oe-buy ap-oe-buy--ghost" href="/mes-oeuvres">Gérer dans Mes Œuvres</a>'
+              : '<button type="button" class="ap-oe-buy" data-oe-buy="' + esc(oid) + '">Acheter l\'Œuvre</button>') +
+            (isSelf ? '' :
+            '<button class="like-btn ap-oe-ico" type="button" data-like-btn="' + esc(t.trackUuid || t.id || '') + '" title="J\'aime" aria-label="J\'aime"></button>' +
+            '<button class="add-to-pl-btn ap-oe-ico" type="button" data-add-to-playlist="' + esc(t.trackUuid || t.id || '') + '" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>') +
+          '</div>' +
+          '<p class="ap-oe-msg" role="status"></p>' +
+        '</div>' +
+      '</article>';
+    }).join('') + '</div>';
+
+  // Écoute : mêmes règles que la liste des sons (un seul lecteur, mini-bar).
+  const enFile = oeuvres.filter(t => t.streamUrl).map(t => ({
+    id: t.id, trackUuid: t.trackUuid || t.id, name: t.name || '',
+    streamUrl: t.streamUrl || '', coverUrl: _apImgPreviewUrl((t.linkedImage || {}).previewKey) || t.coverUrl || '',
+    color: t.color || '',
+  }));
+  _apQueue = enFile.concat(_apQueue.filter(q => !enFile.some(e => String(e.id) === String(q.id))));
+
+  if (!section.dataset.wired) {
+    section.dataset.wired = '1';
+    section.addEventListener('click', (ev) => {
+      if (ev.target.closest('[data-like-btn]') || ev.target.closest('[data-add-to-playlist]')) return;
+      const play = ev.target.closest('[data-oe-play]');
+      if (play) { ev.preventDefault(); _apPlayTrack(play.getAttribute('data-oe-play')); return; }
+      const buy = ev.target.closest('[data-oe-buy]');
+      if (buy) { ev.preventDefault(); _apAcheterOeuvre(buy); }
+    });
+  }
+  apSectionNav();
+}
+
+let _apOeTimer = null;
+function _apOeMsg(btn, txt, erreur) {
+  const card = btn.closest('.ap-oe-card');
+  const m = card && card.querySelector('.ap-oe-msg');
+  if (m) { m.textContent = txt || ''; m.classList.toggle('is-err', !!erreur); }
+}
+async function _apAcheterOeuvre(btn) {
+  if (window.SmyleGate && !window.SmyleGate.requireAccount()) return;
+  const oid = btn.getAttribute('data-oe-buy');
+  if (btn.disabled) return;
+  // 2e clic : achat au prix annoncé.
+  if (btn.getAttribute('data-confirm') === '1') {
+    clearTimeout(_apOeTimer);
+    const prix = Number(btn.getAttribute('data-prix'));
+    btn.removeAttribute('data-confirm');
+    btn.disabled = true;
+    btn.textContent = 'Achat en cours…';
+    _apOeMsg(btn, '');
+    const chemin = '/watt/oeuvres/' + encodeURIComponent(oid) + '/acheter';
+    try {
+      await (window.smyleAcheter ? window.smyleAcheter(chemin, prix) : apiFetch(chemin, { method: 'POST' }));
+      btn.textContent = 'Débloquée ✓';
+      btn.classList.add('is-done');
+      _apOeMsg(btn, 'Le son et l\'image sont dans ta bibliothèque.');
+      try { if (window.SmyleBalance && window.SmyleBalance.refresh) window.SmyleBalance.refresh(); } catch (_) {}
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Acheter l\'Œuvre';
+      const st = err && err.status, d = err && err.body && err.body.detail;
+      let msg = 'Achat impossible pour le moment. Réessaie.';
+      if (err && err.annule) msg = 'Achat annulé : le prix a changé.';
+      else if (st === 402) {
+        msg = (d && typeof d === 'object' && d.required != null)
+          ? 'Solde insuffisant : il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.'
+          : 'Pas assez de Smyles pour cette Œuvre.';
+        if (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles && typeof window.openCreditsBuyModal === 'function') {
+          try { window.openCreditsBuyModal(); } catch (_) {}
+        }
+      } else if (st === 409) msg = (typeof d === 'string') ? d : 'Tu possèdes déjà cette Œuvre.';
+      else if (typeof d === 'string') msg = d;
+      _apOeMsg(btn, msg, true);
+    }
+    return;
+  }
+  // 1er clic : prix exact pour cet acheteur (remise du créateur, moitié déjà
+  // possédée…), puis demande de confirmation dans la carte.
+  btn.disabled = true;
+  try {
+    const d = await apiFetch('/watt/oeuvres/' + encodeURIComponent(oid));
+    const b = d && d.bundle;
+    btn.disabled = false;
+    if (b && b.mode === 'possedee') {
+      btn.textContent = 'Déjà à toi ✓'; btn.disabled = true; btn.classList.add('is-done');
+      _apOeMsg(btn, 'Retrouve-la dans ta bibliothèque.');
+      return;
+    }
+    if (!b || b.priceCredits == null) {
+      window.location.href = '/o/' + encodeURIComponent(oid);
+      return;
+    }
+    btn.setAttribute('data-confirm', '1');
+    btn.setAttribute('data-prix', String(b.priceCredits));
+    btn.textContent = 'Confirmer · ' + b.priceCredits + ' Smyles';
+    _apOeMsg(btn, b.mode === 'moitie_manquante'
+      ? 'Tu as déjà une moitié : il te manque l\'autre. Clique encore pour confirmer.'
+      : (b.discountPct ? 'Son + image, −' + b.discountPct + ' %. ' : '') + 'Clique encore pour confirmer.');
+    clearTimeout(_apOeTimer);
+    _apOeTimer = setTimeout(() => {
+      btn.removeAttribute('data-confirm');
+      btn.textContent = 'Acheter l\'Œuvre';
+      _apOeMsg(btn, '');
+    }, 7000);
+  } catch (_) {
+    btn.disabled = false;
+    window.location.href = '/o/' + encodeURIComponent(oid);
+  }
+}
+
 // Lot M — rangée d'onglets Sons / Images / Collections sous l'en-tête du
 // profil : un clic amène à la section. N'apparaît que s'il y a au moins
 // deux sections à montrer.
@@ -2714,8 +2905,10 @@ function _apSectionNavNow() {
   const images = document.getElementById('ap-images-section');
   const colls = document.querySelector('.ap-pl-worlds');
   const items = [];
-  if (vis(tracks)) items.push(['ap-tracks-section', 'Sons', (state.artist && state.artist.tracks || []).length]);
-  if (vis(images) && images.querySelector('[data-image-id], .ap-img-card, img')) items.push(['ap-images-section', 'Images', images.querySelectorAll('[data-image-id]').length]);
+  const oeuvres = document.getElementById('ap-oeuvres-section');
+  if (vis(oeuvres)) items.push(['ap-oeuvres-section', 'Œuvres', oeuvres.querySelectorAll('.ap-oe-card').length]);
+  if (vis(tracks)) items.push(['ap-tracks-section', 'Sons', tracks.querySelectorAll('.ap-track-row').length]);
+  if (vis(images) && images.querySelector('[data-image-id], .ap-img-card, img')) items.push(['ap-images-section', 'Images', images.querySelectorAll('.ap-img-card').length]);
   if (colls && vis(colls)) {
     if (!colls.id) colls.id = 'ap-collections';
     items.push([colls.id, 'Collections', colls.querySelectorAll('.ap-pl-world').length]);
