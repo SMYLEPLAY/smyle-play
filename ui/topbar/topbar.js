@@ -487,6 +487,7 @@
         ${navHtml}
         <button class="stb-nav-link" type="button" onclick="if(window.openBoutique)window.openBoutique()">Boutique</button>
         ${mixHtml}
+        <button class="stb-nav-link wpl-nav-btn" type="button" title="Mes playlists" aria-label="Mes playlists" onclick="if(window.WattPlaylists){window.WattPlaylists.openMine()}else{location.assign('/?mes-playlists=1')}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg> <span class="wpl-nav-label">Playlists</span></button>
       </nav>
 
       <div class="stb-right">

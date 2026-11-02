@@ -936,6 +936,17 @@
           window.location.href = '/collection/' + encodeURIComponent(tile.dataset.oeuvreSlug);
         }, true);
       });
+      // Liens directs (02/11) — tuile playlist → fiche playlist (sons, lecture,
+      // partage). Les tuiles Œuvre gardent leur page (capture ci-dessus).
+      root.querySelectorAll('.ap-pl-world[data-pl-id]:not(.ap-col-oeuvre)').forEach(function(tile) {
+        tile.style.cursor = 'pointer';
+        tile.addEventListener('click', function(e) {
+          if (e.target.closest('.ap-pl-qp, .ap-pl-card-actions, .ap-pl-adn-badge')) return;
+          if (!window.WattPlaylists) return;
+          e.preventDefault();
+          window.WattPlaylists.open(tile.dataset.plId, { slug: slug });
+        });
+      });
       root.querySelectorAll('.ap-col-albumtile[data-album-id]').forEach(function(tile) {
         tile.addEventListener('click', function(e) {
           e.preventDefault();
