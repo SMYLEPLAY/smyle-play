@@ -300,6 +300,12 @@ function renderProfile() {
     tracks: (artist.tracks || []).filter(t => !(t && t.linkedImage)),
     _aDesOeuvres: _oeuvresTracks.length > 0,
   }));
+  // 02/11/2026 (Tom) — UNE SEULE section « Œuvres » : Œuvres complètes, puis
+  // sons seuls et images seules, avec des filtres. Les anciennes sections
+  // « Sons seuls » / « Images IA » restent calculées (moteur audio, fiches)
+  // mais sont masquées dès que la section unique a du contenu.
+  state._oeTracks = _oeuvresTracks;
+  state._oeSons = (artist.tracks || []).filter(t => t && !t.linkedImage);
   renderOeuvres(artist, _oeuvresTracks);
   _updateSaleDisclaimerVisibility(artist);
   _openSonFromHash();         // recherche → #son-{id} ouvre la carte détail
@@ -2701,7 +2707,14 @@ async function loadArtistImages(slug) {
   const _liees = new Set(((state.artist && state.artist.tracks) || [])
     .filter(t => t && t.linkedImage).map(t => String(t.linkedImage.id)));
   const seules = images.filter(im => !_liees.has(String(im.id)));
-  if (!seules.length && (images.length || _liees.size)) {
+  state._oeImages = seules;
+  const total = (state._oeTracks || []).length + (state._oeSons || []).length + seules.length;
+  if (total > 0 && state.artist) {
+    // Section unique : les images seules y entrent comme cartes « Image ».
+    const sec = document.getElementById('ap-images-section');
+    if (sec) sec.style.display = 'none';
+    renderOeuvres(state.artist, state._oeTracks || []);
+  } else if (!seules.length && (images.length || _liees.size)) {
     const sec = document.getElementById('ap-images-section');
     if (sec) sec.style.display = 'none';
   } else {
@@ -2751,10 +2764,18 @@ function _apImgPreviewUrl(key) {
 // premier clic). Clic sur l'image ou le titre : page de l'Œuvre.
 function renderOeuvres(artist, oeuvres) {
   let section = document.getElementById('ap-oeuvres-section');
-  if (!oeuvres || !oeuvres.length) {
+  oeuvres = oeuvres || [];
+  const sons = state._oeSons || [];
+  const images = state._oeImages || [];
+  const total = oeuvres.length + sons.length + images.length;
+  if (!total) {
     if (section) section.style.display = 'none';
     return;
   }
+  // Section unique : les anciennes listes séparées sont masquées.
+  ['ap-tracks-section', 'ap-images-section'].forEach((id) => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
   if (!section) {
     section = document.createElement('section');
     section.id = 'ap-oeuvres-section';
@@ -2768,13 +2789,10 @@ function renderOeuvres(artist, oeuvres) {
   (artist.prompts || []).forEach(p => { if (p && p.id) prompts[String(p.id)] = p; });
   const isSelf = !!artist.isSelf;
   const esc = _apImgEsc;
+  const ownedImg = new Set((state.ownedImageIds || []).map(String));
+  const filtre = section.dataset.filtre || 'tout';
 
-  section.style.display = '';
-  section.innerHTML =
-    '<div class="ap-oe-hdr"><h2 class="ap-oe-title">Œuvres</h2>' +
-    '<span class="ap-oe-count">' + oeuvres.length + ' Œuvre' + (oeuvres.length > 1 ? 's' : '') + '</span></div>' +
-    '<p class="ap-oe-sub">Un son, son image et leurs recettes. Écoute, puis débloque l\'Œuvre entière, ou seulement le son ou l\'image depuis sa page.</p>' +
-    '<div class="ap-oe-grid">' + oeuvres.map(t => {
+  const carteOeuvre = (t) => {
       const li = t.linkedImage || {};
       const oid = String(t.oeuvreId || li.id || '');
       const rec = t.promptId ? prompts[String(t.promptId)] : null;
@@ -2785,11 +2803,12 @@ function renderOeuvres(artist, oeuvres) {
         pImg != null ? '<span class="ap-oe-p ap-oe-p--img">Image ' + esc(pImg) + '</span>' : '',
       ].filter(Boolean).join(' · ');
       const href = '/o/' + encodeURIComponent(oid);
-      return '<article class="ap-oe-card" data-oeuvre-id="' + esc(oid) + '">' +
+      return '<article class="ap-oe-card" data-kind="oeuvre" data-oeuvre-id="' + esc(oid) + '">' +
         '<div class="ap-oe-visual">' +
           '<a href="' + href + '" aria-label="Voir l\'Œuvre ' + esc(t.name || '') + '">' +
             '<img src="' + esc(_apImgPreviewUrl(li.previewKey)) + '" alt="' + esc(t.name || 'Œuvre') + '" loading="lazy" />' +
           '</a>' +
+          '<span class="ap-oe-tag ap-oe-tag--oeuvre">Œuvre · son + image</span>' +
           (t.streamUrl ? '<button type="button" class="ap-oe-play" data-oe-play="' + esc(t.id) + '" aria-label="Écouter ' + esc(t.name || '') + '">' + _AP_PLAY_SVG + '</button>' : '') +
         '</div>' +
         '<div class="ap-oe-body">' +
@@ -2807,10 +2826,95 @@ function renderOeuvres(artist, oeuvres) {
           '<p class="ap-oe-msg" role="status"></p>' +
         '</div>' +
       '</article>';
-    }).join('') + '</div>';
+  };
+
+  const carteSon = (t) => {
+    const rec = t.promptId ? prompts[String(t.promptId)] : null;
+    const cover = t.coverUrl || t.cover_url || '';
+    const visuel = cover
+      ? '<img src="' + esc(cover) + '" alt="' + esc(t.name || 'Son') + '" loading="lazy" />'
+      : '<div class="ap-oe-fallback"' + (t.color ? ' style="--c:' + esc(String(t.color).replace(/[^#a-zA-Z0-9(),.% ]/g, '')) + '"' : '') + '><span aria-hidden="true">♪</span></div>';
+    let action;
+    if (isSelf) action = '<a class="ap-oe-buy ap-oe-buy--ghost" href="/mes-oeuvres">Gérer dans Mes Œuvres</a>';
+    else if (rec && rec.priceCredits != null) action = '<button type="button" class="ap-oe-buy" data-oe-recette="' + esc(rec.id) + '" title="Débloquer le son et sa recette">🔓 ' + esc(formatCount(rec.priceCredits)) + ' Smyles</button>';
+    else action = '<button type="button" class="ap-oe-buy ap-oe-buy--ghost" data-oe-fiche="' + esc(t.id) + '">Voir le son</button>';
+    return '<article class="ap-oe-card" data-kind="son" data-track-id="' + esc(t.id) + '">' +
+      '<div class="ap-oe-visual">' +
+        '<a href="#" data-oe-fiche="' + esc(t.id) + '" aria-label="Voir le son ' + esc(t.name || '') + '">' + visuel + '</a>' +
+        '<span class="ap-oe-tag ap-oe-tag--son">Son</span>' +
+        (t.streamUrl ? '<button type="button" class="ap-oe-play" data-oe-play="' + esc(t.id) + '" aria-label="Écouter ' + esc(t.name || '') + '">' + _AP_PLAY_SVG + '</button>' : '') +
+      '</div>' +
+      '<div class="ap-oe-body">' +
+        '<div class="ap-oe-line"><a class="ap-oe-name" href="#" data-oe-fiche="' + esc(t.id) + '">' + esc(t.name || 'Sans titre') + '</a>' +
+        '<span class="ap-oe-plays">' + esc(formatCount(t.plays)) + ' écoute' + ((t.plays || 0) > 1 ? 's' : '') + '</span></div>' +
+        '<p class="ap-oe-prix">' + (rec ? '<span class="ap-oe-p ap-oe-p--son">Son + recette</span>' : '<span class="ap-oe-p">Écoute libre</span>') + '</p>' +
+        '<div class="ap-oe-actions">' + action +
+          (isSelf ? '' :
+          '<button class="like-btn ap-oe-ico" type="button" data-like-btn="' + esc(t.trackUuid || t.id || '') + '" title="J\'aime" aria-label="J\'aime"></button>' +
+          '<button class="add-to-pl-btn ap-oe-ico" type="button" data-add-to-playlist="' + esc(t.trackUuid || t.id || '') + '" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">+</button>') +
+        '</div>' +
+        '<p class="ap-oe-msg" role="status"></p>' +
+      '</div>' +
+    '</article>';
+  };
+
+  const carteImage = (im) => {
+    const owned = ownedImg.has(String(im.id));
+    let action;
+    if (isSelf) action = '<a class="ap-oe-buy ap-oe-buy--ghost" href="/mes-oeuvres">Gérer dans Mes Œuvres</a>';
+    else if (owned) action = '<button type="button" class="ap-oe-buy is-done" data-oe-voir-img="1">✓ À toi · voir</button>';
+    else if (im.priceCredits != null) action = '<button type="button" class="ap-oe-buy" data-oe-img-buy="1" title="Débloquer l\'image et sa recette">🔓 ' + esc(formatCount(im.priceCredits)) + ' Smyles</button>';
+    else action = '<button type="button" class="ap-oe-buy ap-oe-buy--ghost" data-oe-voir-img="1">Voir l\'image</button>';
+    return '<article class="ap-oe-card" data-kind="image" data-image-id="' + esc(im.id) + '" ' +
+        'data-price="' + esc(im.priceCredits != null ? im.priceCredits : '') + '" ' +
+        'data-title="' + esc(im.title || '') + '" ' +
+        'data-platform="' + esc(im.imagePlatform || '') + '" ' +
+        'data-linked-sound="' + (im.linkedSound ? esc(JSON.stringify(im.linkedSound)) : '') + '" ' +
+        'data-owned="' + (owned || isSelf ? '1' : '0') + '">' +
+      '<div class="ap-oe-visual">' +
+        '<a href="#" data-oe-voir-img="1" aria-label="Voir l\'image ' + esc(im.title || '') + '">' +
+          '<img src="' + esc(_apImgPreviewUrl(im.previewKey)) + '" alt="' + esc(im.title || 'Image') + '" loading="lazy" />' +
+        '</a>' +
+        '<span class="ap-oe-tag ap-oe-tag--img">Image</span>' +
+      '</div>' +
+      '<div class="ap-oe-body">' +
+        '<div class="ap-oe-line"><a class="ap-oe-name" href="#" data-oe-voir-img="1">' + esc(im.title || 'Sans titre') + '</a></div>' +
+        '<p class="ap-oe-prix"><span class="ap-oe-p ap-oe-p--img">Image + recette</span></p>' +
+        '<div class="ap-oe-actions">' + action +
+          (isSelf ? '' : '<button type="button" class="like-btn ap-oe-ico" data-img-like-btn="' + esc(im.id) + '" title="Wishlist" aria-label="Ajouter à ma Wishlist"></button>') +
+        '</div>' +
+      '</div>' +
+    '</article>';
+  };
+
+  const sortes = [['oeuvre', 'Œuvres complètes', oeuvres.length], ['son', 'Sons', sons.length], ['image', 'Images', images.length]]
+    .filter(x => x[2] > 0);
+  const filtres = sortes.length > 1
+    ? '<div class="ap-oe-filtres" role="tablist" aria-label="Filtrer les créations">' +
+        [['tout', 'Tout', total]].concat(sortes).map(([k, lbl, n]) =>
+          '<button type="button" role="tab" class="ap-oe-filtre' + (k === filtre ? ' is-on' : '') + '" data-oe-filtre="' + k + '" aria-selected="' + (k === filtre) + '">' + lbl + ' <span>' + n + '</span></button>'
+        ).join('') +
+      '</div>'
+    : '';
+  const compte = sortes.map(([k, lbl, n]) => n + ' ' + (k === 'oeuvre' ? 'Œuvre' + (n > 1 ? 's' : '') : k === 'son' ? 'son' + (n > 1 ? 's' : '') : 'image' + (n > 1 ? 's' : ''))).join(' · ');
+
+  section.style.display = '';
+  section.dataset.filtre = filtre;
+  section.innerHTML =
+    '<div class="ap-oe-hdr"><h2 class="ap-oe-title">Œuvres</h2>' +
+    '<span class="ap-oe-count">' + esc(compte) + '</span></div>' +
+    '<p class="ap-oe-sub">Écoute, regarde, puis débloque l\'Œuvre entière (son + image), ou un son ou une image avec sa recette.</p>' +
+    filtres +
+    '<div class="ap-oe-grid" data-filtre="' + esc(filtre) + '">' +
+      oeuvres.map(carteOeuvre).join('') + sons.map(carteSon).join('') + images.map(carteImage).join('') +
+    '</div>';
+  if (window.SmylePlaylists) {
+    try { if (typeof window.SmylePlaylists.hydrateImgLikes === 'function') window.SmylePlaylists.hydrateImgLikes(); } catch (_) {}
+    try { if (typeof window.SmylePlaylists.refreshLiked === 'function') window.SmylePlaylists.refreshLiked(); } catch (_) {}
+  }
 
   // Écoute : mêmes règles que la liste des sons (un seul lecteur, mini-bar).
-  const enFile = oeuvres.filter(t => t.streamUrl).map(t => ({
+  const enFile = oeuvres.concat(sons).filter(t => t.streamUrl).map(t => ({
     id: t.id, trackUuid: t.trackUuid || t.id, name: t.name || '',
     streamUrl: t.streamUrl || '', coverUrl: _apImgPreviewUrl((t.linkedImage || {}).previewKey) || t.coverUrl || '',
     color: t.color || '',
@@ -2820,11 +2924,38 @@ function renderOeuvres(artist, oeuvres) {
   if (!section.dataset.wired) {
     section.dataset.wired = '1';
     section.addEventListener('click', (ev) => {
-      if (ev.target.closest('[data-like-btn]') || ev.target.closest('[data-add-to-playlist]')) return;
+      if (ev.target.closest('[data-like-btn]') || ev.target.closest('[data-add-to-playlist]') || ev.target.closest('[data-img-like-btn]')) return;
+      const f = ev.target.closest('[data-oe-filtre]');
+      if (f) {
+        const k = f.getAttribute('data-oe-filtre');
+        section.dataset.filtre = k;
+        const grid = section.querySelector('.ap-oe-grid'); if (grid) grid.setAttribute('data-filtre', k);
+        section.querySelectorAll('[data-oe-filtre]').forEach(b => {
+          const on = b === f; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on));
+        });
+        return;
+      }
       const play = ev.target.closest('[data-oe-play]');
       if (play) { ev.preventDefault(); _apPlayTrack(play.getAttribute('data-oe-play')); return; }
       const buy = ev.target.closest('[data-oe-buy]');
-      if (buy) { ev.preventDefault(); _apAcheterOeuvre(buy); }
+      if (buy) { ev.preventDefault(); _apAcheterOeuvre(buy); return; }
+      const rec = ev.target.closest('[data-oe-recette]');
+      if (rec) { ev.preventDefault(); unlockPromptFromProfile(rec.getAttribute('data-oe-recette'), rec); return; }
+      const fiche = ev.target.closest('[data-oe-fiche]');
+      if (fiche) { ev.preventDefault(); openTrackDetailById(fiche.getAttribute('data-oe-fiche')); return; }
+      const card = ev.target.closest('.ap-oe-card[data-kind="image"]');
+      if (card && ev.target.closest('[data-oe-img-buy]')) {
+        ev.preventDefault();
+        const price = parseInt(card.dataset.price, 10);
+        let linkedSound = null;
+        try { if (card.dataset.linkedSound) linkedSound = JSON.parse(card.dataset.linkedSound); } catch (_) {}
+        if (window.PurchaseDrawer) window.PurchaseDrawer.open({
+          type: 'image', id: card.dataset.imageId, price: isNaN(price) ? null : price,
+          title: card.dataset.title || 'Image', platform: card.dataset.platform || '', linkedSound: linkedSound,
+        });
+        return;
+      }
+      if (card && ev.target.closest('[data-oe-voir-img]')) { ev.preventDefault(); _apOpenImageLightbox(card); }
     });
   }
   apSectionNav();
