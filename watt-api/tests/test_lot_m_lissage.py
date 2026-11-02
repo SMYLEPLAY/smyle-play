@@ -152,3 +152,12 @@ async def test_compte_banni_ne_se_remet_pas_en_vitrine(client, test_user, auth_h
         async with SessionLocal() as db:
             await db.execute(_text("UPDATE users SET artist_name = NULL, is_banned = false, profile_public = false WHERE id = :u"), {"u": uid})
             await db.commit()
+
+
+def test_barre_de_lecture_injectee_sur_les_pages_qui_ne_l_ont_pas():
+    from app.routers.pages import injecter_pwa
+
+    sans = injecter_pwa("<html><head></head><body></body></html>", actif=False)
+    assert "/ui/player/mini-bar.js?v=" in sans
+    avec = injecter_pwa('<html><head></head><body><script src="/ui/player/mini-bar.js?v=x" defer></script></body></html>', actif=False)
+    assert avec.count("mini-bar.js") == 1

@@ -29,7 +29,7 @@
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.10);
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, .86);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
@@ -129,7 +129,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, .86);
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
@@ -478,7 +478,7 @@
 
 .stb-msg-preview {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, .86);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -494,7 +494,7 @@
 
 .stb-msg-time {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, .82);
 }
 
 .stb-msg-dot {
@@ -508,7 +508,7 @@
   padding: 28px 14px;
   text-align: center;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, .82);
 }
 
 @media (max-width: 480px) {
@@ -672,7 +672,7 @@
 
 .stb-notif-time {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.60);
+  color: rgba(255, 255, 255, .82);
   letter-spacing: 0.02em;
 }
 
@@ -706,7 +706,7 @@
   padding: 28px 14px;
   text-align: center;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.60);
+  color: rgba(255, 255, 255, .82);
 }
 
 @media (max-width: 480px) {

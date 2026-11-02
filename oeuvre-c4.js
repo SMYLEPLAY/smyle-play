@@ -321,6 +321,22 @@
       : '<p class="o-player-empty">L\'écoute de ce son n\'est pas disponible pour le moment.</p>';
     _wirePlayer();
     _renderRecette(d);
+    // Lot M — Wishlist (le son), J'aime (l'image), + Playlist.
+    var soc = document.getElementById('o-social');
+    if (soc) {
+      var b = [];
+      if (snd.trackId) {
+        b.push('<button type="button" class="like-btn watt-soc" data-like-btn="' + _esc(snd.trackId) + '"><span class="watt-soc-lbl">Wishlist</span></button>');
+      }
+      if (img.id) {
+        b.push('<button type="button" class="like-btn watt-soc" data-img-like-btn="' + _esc(img.id) + '"><span class="watt-soc-lbl">J\'aime l\'image</span></button>');
+      }
+      if (snd.trackId) {
+        b.push('<button type="button" class="add-to-pl-btn watt-soc" data-add-to-playlist="' + _esc(snd.trackId) + '"><span class="watt-soc-lbl">Playlist</span></button>');
+      }
+      soc.innerHTML = b.join('');
+      try { if (window.SmylePlaylists && window.SmylePlaylists.refreshLiked) window.SmylePlaylists.refreshLiked(); } catch (_) {}
+    }
 
     // Moitié SON
     var sonThumb = snd.coverUrl

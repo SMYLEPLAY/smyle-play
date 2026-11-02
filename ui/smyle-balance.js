@@ -157,7 +157,7 @@
       width: 14px;
       height: 14px;
       margin-left: 2px;
-      color: rgba(214,211,224,0.75);
+      color: rgba(214,211,224,.86);
     }
     .smyle-balance__lock svg { width: 100%; height: 100%; display: block; }
     @media (max-width: 600px) {

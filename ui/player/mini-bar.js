@@ -52,6 +52,72 @@
     try { localStorage.removeItem(_PERSIST_KEY); } catch (_) {}
   }
 
+  // ── Lot M — la playlist continue de page en page ──────────────────────────
+  // Quand on lance une playlist (ou My Mix), la file d'attente est gardée :
+  // sur une autre page, la barre enchaîne le titre suivant à la fin du
+  // morceau, et ⏮ / ⏭ marchent partout, pas seulement sur l'accueil.
+  const _QUEUE_KEY = 'smyle_player_queue';
+  let _ownAudio = null;   // audio créé par la barre (reprise / file d'attente)
+
+  function _setQueue(items, idx) {
+    try {
+      const list = (items || []).filter(function (it) { return it && it.src; }).slice(0, 300);
+      if (!list.length) { localStorage.removeItem(_QUEUE_KEY); return; }
+      localStorage.setItem(_QUEUE_KEY, JSON.stringify({ items: list, idx: Math.max(0, Math.min(idx || 0, list.length - 1)), ts: Date.now() }));
+    } catch (_) {}
+  }
+  function _readQueue() {
+    try {
+      const q = JSON.parse(localStorage.getItem(_QUEUE_KEY) || 'null');
+      if (!q || !Array.isArray(q.items) || !q.items.length) return null;
+      if (Date.now() - (q.ts || 0) > 6 * 60 * 60 * 1000) return null;
+      return q;
+    } catch (_) { return null; }
+  }
+  function _clearQueue() { try { localStorage.removeItem(_QUEUE_KEY); } catch (_) {} }
+
+  function _bindOwn(a) {
+    _unbind();
+    _audio = a;
+    _ownAudio = a;
+    _dismissed = false;
+    a.addEventListener('pause', _onPause);
+    a.addEventListener('ended', _onEnded);
+    a.addEventListener('timeupdate', _persistThrottled);
+  }
+
+  function _playQueueItem(q, idx) {
+    const it = q.items[idx];
+    if (!it) return false;
+    q.idx = idx; q.ts = Date.now();
+    try { localStorage.setItem(_QUEUE_KEY, JSON.stringify(q)); } catch (_) {}
+    if (_audio) { try { _audio.pause(); } catch (_) {} }
+    const a = new Audio(it.src);
+    a.preload = 'auto';
+    a._smbQueue = true;
+    _bindOwn(a);
+    _applyMeta({ id: it.id || null, name: it.name || '—', artist: it.artist || 'WATT', cover: it.cover || null, color: it.color || null });
+    _show();
+    a.play().then(function () { _updatePlayBtn(true); _startProgress(); _persist(true); })
+      .catch(function () { _updatePlayBtn(false); });
+    if (it.id) { try { fetch('/watt/plays/' + encodeURIComponent(it.id), { method: 'POST' }).catch(function () {}); } catch (_) {} }
+    return true;
+  }
+
+  // La page gère-t-elle elle-même la lecture (player de l'accueil) ?
+  function _pageGereLaLecture() {
+    return !!(window.smyleAudio && _audio === window.smyleAudio);
+  }
+
+  function _queueStep(delta) {
+    const q = _readQueue();
+    if (!q) return false;
+    let i = (q.idx || 0) + delta;
+    if (i >= q.items.length) i = 0;          // boucle sur la playlist
+    if (i < 0) i = q.items.length - 1;
+    return _playQueueItem(q, i);
+  }
+
   function _restore() {
     let st = null;
     try { st = JSON.parse(localStorage.getItem(_PERSIST_KEY) || 'null'); } catch (_) {}
@@ -62,12 +128,7 @@
 
     const a = new Audio(st.src);
     a.preload = 'auto';
-    _unbind();
-    _audio = a;
-    _dismissed = false;
-    a.addEventListener('pause', _onPause);
-    a.addEventListener('ended', _onEnded);
-    a.addEventListener('timeupdate', _persistThrottled);
+    _bindOwn(a);
     a.addEventListener('loadedmetadata', function () {
       try { a.currentTime = st.pos || 0; } catch (_) {}
     });
@@ -99,7 +160,7 @@
       const lk = document.createElement('link');
       lk.id   = 'smb-styles';
       lk.rel  = 'stylesheet';
-      lk.href = '/ui/player/mini-bar.css?v=20260611';
+      lk.href = '/ui/player/mini-bar.css?v=20261102lis';
       document.head.appendChild(lk);
     }
     if (document.getElementById('smyle-mini-bar')) {
@@ -139,6 +200,7 @@
 
       /* ── COL DROITE : loop | like | add | close ── */
       '<div class="smb-right">',
+        '<button class="smb-btn smb-mix"   id="smb-mix"   title="Ajouter à My Mix" style="display:none">♫</button>',
         '<button class="smb-btn smb-loop"  id="smb-loop"  title="Répéter">↺</button>',
         '<button class="smb-btn smb-like"  id="smb-like"  title="Like">♡</button>',
         '<button class="smb-btn smb-add"   id="smb-add"   title="Ajouter à une playlist">+</button>',
@@ -167,10 +229,12 @@
 
     // Prev / Next
     _barEl.querySelector('#smb-prev').addEventListener('click', function() {
+      if (!_pageGereLaLecture() && _queueStep(-1)) return;
       if (typeof prevTrack === 'function') prevTrack();
       else if (typeof prevMixTrack === 'function') prevMixTrack();
     });
     _barEl.querySelector('#smb-next').addEventListener('click', function() {
+      if (!_pageGereLaLecture() && _queueStep(1)) return;
       if (typeof nextTrack === 'function') nextTrack();
       else if (typeof nextMixTrack === 'function') nextMixTrack();
     });
@@ -197,6 +261,20 @@
     });
 
     // Add to playlist — câblé direct
+    // Lot M — « Ajouter à My Mix » (accueil), repris de l'ancienne barre.
+    _barEl.querySelector('#smb-mix').addEventListener('click', function () {
+      if (typeof window.addCurrentToMix === 'function') window.addCurrentToMix();
+    });
+
+    const _gauche = _barEl.querySelector('.smb-left');
+    if (_gauche) {
+      _gauche.setAttribute('role', 'button');
+      _gauche.setAttribute('tabindex', '0');
+      _gauche.setAttribute('title', 'Voir la carte du son');
+      _gauche.addEventListener('click', _ouvrirCarte);
+      _gauche.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _ouvrirCarte(); } });
+    }
+
     _barEl.querySelector('#smb-add').addEventListener('click', function() {
       if (!_trackId) return;
       if (window.SmylePlaylists && typeof window.SmylePlaylists.openAddToPlaylistModal === 'function') {
@@ -210,6 +288,7 @@
       _hide();
       if (_audio && !_audio.paused) _audio.pause();
       _clearPersist();  // player continu : × = la musique ne suit plus
+      _clearQueue();
     });
   }
 
@@ -288,7 +367,7 @@
         const artistEl = el.querySelector('.mp-son-card-artist-name, .ap-artist-name');
         if (artistEl) info.artist = artistEl.textContent.trim();
         // Cover
-        const img = el.querySelector('img.mp-son-card-cover-img, img.ap-track-cover, img.ap-cover');
+        const img = el.querySelector('img.mp-son-card-cover-img, img.mp-card-linked-thumb, img.ap-track-cover, img.ap-cover, .ap-oe-visual img');
         if (img && img.src) info.cover = img.src;
         // Couleur
         const color = el.style && el.style.getPropertyValue('--son-color');
@@ -334,6 +413,9 @@
       likeBtn.classList.remove('smb-liked');
     }
     if (addBtn) addBtn.style.opacity = _trackId ? '' : '0.3';
+    const mixBtn = document.getElementById('smb-mix');
+    if (mixBtn) mixBtn.style.display = (typeof window.addCurrentToMix === 'function' && window.smyleAudio && _audio === window.smyleAudio) ? '' : 'none';
+    if (_barEl) _barEl.querySelector('.smb-left').classList.toggle('is-link', !!_trackId);
   }
 
   // ── Capture ANY audio play sur la page ────────────────────────────────────
@@ -342,6 +424,9 @@
     const target = e.target;
     if (!(target instanceof HTMLAudioElement)) return;
     if (_dismissed && _audio === target) return;
+
+    // Lot M — un son lancé seul (carte, profil…) remplace la playlist en cours.
+    if (target !== window.smyleAudio && !target._smbQueue) _clearQueue();
 
     // Changer de source audio si nécessaire
     if (_audio !== target) {
@@ -369,7 +454,11 @@
   }
 
   function _onPause() { _updatePlayBtn(false); _stopProgress(); _persist(true); }
-  function _onEnded() { _updatePlayBtn(false); _stopProgress(); }
+  function _onEnded() {
+    _updatePlayBtn(false); _stopProgress();
+    // Lot M — playlist reprise sur une autre page : on enchaîne.
+    if (_audio && _audio === _ownAudio && !_audio.loop && _readQueue()) _queueStep(1);
+  }
 
   function _unbind() {
     if (!_audio) return;
@@ -425,6 +514,9 @@
   // ── setTrack : push direct depuis loadTrack() / loadMixTrack() ───────────
   function _setTrack(info) {
     _dismissed = false;
+    // Lot M — une lecture lancée depuis l'accueil remplace celle reprise
+    // d'une autre page (jamais deux sons en même temps).
+    if (_ownAudio && _ownAudio !== window.smyleAudio) { try { _ownAudio.pause(); } catch (_) {} }
     _applyMeta(info);
     // Sync l'audio singleton si pas encore lié
     if (window.smyleAudio && _audio !== window.smyleAudio) {
@@ -434,9 +526,29 @@
       window.smyleAudio.addEventListener('ended', _onEnded);
       window.smyleAudio.addEventListener('timeupdate', _persistThrottled);
     }
+    // Le lecteur de l'accueil n'est pas dans la page : ses « play » ne
+    // remontent pas jusqu'au document. On écoute donc l'audio lui-même.
+    if (window.smyleAudio && !window.smyleAudio._smbPlayWired) {
+      window.smyleAudio._smbPlayWired = true;
+      window.smyleAudio.addEventListener('play', function () {
+        if (_audio !== window.smyleAudio) return;
+        _updatePlayBtn(true); _show(); _startProgress();
+      });
+    }
+    _show();
+    _updatePlayBtn(!!(window.smyleAudio && !window.smyleAudio.paused));
+    _startProgress();
+  }
+
+  // ── Lot M — clic sur la pochette ou le titre : la carte ID du son ─────────
+  function _ouvrirCarte() {
+    if (!_trackId) return;
+    if (window.SmyleTrackCard && typeof window.SmyleTrackCard.open === 'function'
+        && window.SmyleTrackCard.open(_trackId)) return;
+    window.location.href = '/?son=' + encodeURIComponent(_trackId);
   }
 
   // ── API publique ──────────────────────────────────────────────────────────
-  window.SmyleMiniBar = { show: _show, hide: _hide, setTrack: _setTrack };
+  window.SmyleMiniBar = { show: _show, hide: _hide, setTrack: _setTrack, setQueue: _setQueue, clearQueue: _clearQueue };
 
 })();

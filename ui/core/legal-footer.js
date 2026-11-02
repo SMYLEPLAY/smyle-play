@@ -35,9 +35,9 @@
       'margin:48px 0 0;padding:18px 16px 26px;text-align:center;' +
       'border-top:1px solid rgba(255,255,255,.08);' +
       'font-family:inherit;font-size:11px;line-height:2;' +
-      'color:rgba(255,255,255,.45);position:relative;z-index:5;' +
+      'color:rgba(255,255,255,.76);position:relative;z-index:5;' +
       'display:block;width:100%;box-sizing:border-box;clear:both;';
-    var l = 'color:rgba(255,255,255,.6);text-decoration:none;margin:0 8px;display:inline-block;' +
+    var l = 'color:rgba(255,255,255,.82);text-decoration:none;margin:0 8px;display:inline-block;' +
             'background:none;border:none;padding:0;font:inherit;cursor:pointer;';
     f.innerHTML =
       '<span style="letter-spacing:.1em;">⚡ WATT</span><br>' +

@@ -149,7 +149,7 @@
       '.mp-mode-image .mp-section-top-images,.mp-mode-image .mp-section-top-artists-image,.mp-mode-image .mp-section-images-home,.mp-mode-image .mp-section-albums-adn{display:block!important}' +
       // Commutateur : pilule à deux onglets, centrée au-dessus de la vitrine.
       '.mp-mode-switch{display:flex;gap:6px;justify-content:center;margin:0 auto 18px;padding:5px;width:max-content;border-radius:999px;border:1px solid rgba(124,58,237,.35);background:rgba(255,255,255,.03)}' +
-      '.mp-mode-btn{cursor:pointer;border:0;background:transparent;color:rgba(255,255,255,.6);font-family:inherit;font-size:.92rem;font-weight:700;padding:9px 22px;border-radius:999px;transition:all .15s}' +
+      '.mp-mode-btn{cursor:pointer;border:0;background:transparent;color:rgba(255,255,255,.82);font-family:inherit;font-size:.92rem;font-weight:700;padding:9px 22px;border-radius:999px;transition:all .15s}' +
       '.mp-mode-btn:hover{color:#fff}' +
       '.mp-mode-btn.is-active{background:var(--mp-accent,#7C3AED);color:var(--mp-accent-on,#fff);box-shadow:0 4px 16px var(--mp-accent-soft,rgba(124,58,237,.35))}' +
       // Le commutateur n'a de sens que sur la home : on le masque ailleurs.
@@ -1217,6 +1217,19 @@
 
 
   // ── Drawer détail track (clic sur titre ou cover d'une card son) ─────────
+  // Lot M — ouvre la carte ID d'un son (id ou UUID) s'il est au catalogue
+  // chargé. Utilisé par la barre de lecture (clic sur la pochette/le titre).
+  function _ouvrirCarteSon(id) {
+    const k = String(id || '');
+    const t = (_state.tracks || []).find(x => String(x.trackUuid || '') === k || String(x.id) === k);
+    if (!t) return false;
+    const deja = document.getElementById('mp-track-detail-drawer');
+    if (deja) deja.remove();
+    _openTrackDetailDrawer(t);
+    return true;
+  }
+  window.SmyleTrackCard = { open: _ouvrirCarteSon };
+
   function _openTrackDetailDrawer(t) {
     const existing = document.getElementById('mp-track-detail-drawer');
     if (existing) existing.parentNode.removeChild(existing);
@@ -1330,16 +1343,17 @@
     overlay.className = 'mp-td-overlay';
     const tuuid = _esc(t.trackUuid || t.id || '');
     const socialHTML = tuuid ? `
-      <div class="mp-td-social-row">
-        <button class="like-btn mp-td-like-btn" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist"></button>
-        <button class="add-to-pl-btn mp-td-addpl-btn" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist">+</button>
+      <div class="mp-td-social-row watt-soc-row">
+        <button class="like-btn mp-td-like-btn watt-soc" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist"><span class="watt-soc-lbl">Wishlist</span></button>
+        <button class="add-to-pl-btn mp-td-addpl-btn watt-soc" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist"><span class="watt-soc-lbl">Playlist</span></button>
+        ${tdLi && tdLi.id ? `<button class="like-btn watt-soc" type="button" data-img-like-btn="${_esc(tdLi.id)}" title="J'aime l'image"><span class="watt-soc-lbl">J'aime l'image</span></button>` : ''}
         <button class="mp-report-btn" type="button" data-report-type="track" data-report-id="${_esc(t.trackUuid || t.id || '')}"
                 data-report-title="${_esc(title)}"
                 title="Signaler ce contenu" aria-label="Signaler ce contenu"
                 style="margin-left:auto;background:none;border:none;color:#8b86a3;font-size:12px;cursor:pointer">⚑ Signaler</button>
       </div>` : '';
     overlay.innerHTML = `
-      <aside class="mp-td-drawer" style="--td-color:${_esc(color)}"
+      <aside class="mp-td-drawer" data-td-track-uuid="${tuuid}" style="--td-color:${_esc(color)}"
              role="dialog" aria-modal="true" aria-label="Détail du son">
         <button class="mp-td-close" aria-label="Fermer">✕</button>
         <div class="mp-td-cover">${coverHTML}</div>
@@ -1376,6 +1390,7 @@
     }
 
     document.body.appendChild(overlay);
+    try { if (window.SmylePlaylists && window.SmylePlaylists.refreshLiked) window.SmylePlaylists.refreshLiked(); } catch (_) {}
     requestAnimationFrame(() => {
       overlay.classList.add('is-open');
       overlay.querySelector('.mp-td-drawer').classList.add('is-open');
@@ -1713,7 +1728,7 @@
     st.textContent =
       '.mp-img-facets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:6px auto 16px;width:min(760px,96%)}' +
       '.mp-img-facets input,.mp-img-facets select{font-family:inherit;font-size:.82rem;color:#fff;background:rgba(255,255,255,.04);border:1px solid rgba(124,58,237,.4);border-radius:999px;padding:8px 14px;outline:none}' +
-      '.mp-img-facets input::placeholder{color:rgba(255,255,255,.4)}' +
+      '.mp-img-facets input::placeholder{color:rgba(255,255,255,.70)}' +
       '.mp-img-facets input:focus,.mp-img-facets select:focus{border-color:rgba(124,58,237,.9)}' +
       '.mp-img-facets .mp-img-price{width:88px}' +
       '.mp-img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}' +
@@ -2478,7 +2493,12 @@
     // C2 — drawer d'achat unifié : remplace la modale locale (qui reste
     // ci-dessous en fallback si le composant n'est pas chargé).
     if (window.PurchaseDrawer) {
-      window.PurchaseDrawer.open({ type: 'son', id: promptId, price: price || null, title: trackName });
+      // Lot M — l'identifiant du morceau (carte ou carte ID) permet la
+      // Wishlist et l'ajout en playlist depuis le panneau d'achat.
+      const _hote = badgeEl.closest('[data-track-id], [data-td-track-uuid]');
+      const _tid = badgeEl.dataset.trackUuid
+        || (_hote && (_hote.getAttribute('data-td-track-uuid') || _hote.getAttribute('data-track-id'))) || '';
+      window.PurchaseDrawer.open({ type: 'son', id: promptId, price: price || null, title: trackName, trackId: _tid || null });
       return;
     }
 
@@ -2646,6 +2666,16 @@
     await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);
     _renderAll();
 
+    // Lot M — /?son=<id> (clic sur la barre de lecture depuis une autre
+    // page) : on ouvre directement la carte ID du son.
+    try {
+      const _sonQ = new URLSearchParams(location.search).get('son');
+      if (_sonQ) {
+        if (!_ouvrirCarteSon(_sonQ) && typeof showToast === 'function') showToast('Ce son n\'est plus disponible.');
+        history.replaceState(null, '', location.pathname + location.hash);
+      }
+    } catch (_) {}
+
     // C4 étape 2 — commutateur Musique ⇄ Image + section Œuvre complète,
     // UNIQUEMENT sur la home (les pages dédiées /sons, /images… gardent leur
     // comportement plein écran via mp-only-*). Le mode est restauré depuis
@@ -2742,12 +2772,12 @@
           'width:min(620px,94%);flex-wrap:wrap}' +
         '.mp-hsb-wrap{display:flex;align-items:center;gap:9px;flex:1;min-width:220px;' +
           'padding:11px 18px;border-radius:999px;border:1px solid rgba(124,58,237,.45);' +
-          'background:rgba(255,255,255,.04);color:rgba(255,255,255,.55);' +
+          'background:rgba(255,255,255,.04);color:rgba(255,255,255,.82);' +
           'transition:border-color .15s,background .15s}' +
         '.mp-hsb-wrap:focus-within{border-color:rgba(124,58,237,.9);background:rgba(124,58,237,.08)}' +
         '.mp-hsb-input{flex:1;background:transparent;border:0;outline:0;color:#fff;' +
           'font-size:.92rem;font-family:inherit;min-width:0}' +
-        '.mp-hsb-input::placeholder{color:rgba(255,255,255,.4)}' +
+        '.mp-hsb-input::placeholder{color:rgba(255,255,255,.70)}' +
         // bouton dépliant
         '.mp-hsb-toggle{display:inline-flex;align-items:center;gap:6px;cursor:pointer;' +
           'padding:10px 14px;border-radius:999px;font-size:.82rem;font-family:inherit;' +
@@ -2774,7 +2804,7 @@
         // titres de groupes (dépliant combiné de la home)
         '.mp-hsb-group-lbl{width:100%;text-align:center;font-size:.66rem;' +
           'letter-spacing:.1em;text-transform:uppercase;' +
-          'color:rgba(255,255,255,.38);margin:7px 0 2px}';
+          'color:rgba(255,255,255,.70);margin:7px 0 2px}';
       document.head.appendChild(st);
     }
 

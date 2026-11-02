@@ -36,7 +36,7 @@
       '.oc-close{position:absolute;top:12px;right:14px;background:none;border:none;color:#cfc9e0;font-size:22px;cursor:pointer;line-height:1}' +
       '.oc-kicker{font-size:11px;font-weight:700;letter-spacing:.12em;color:#c7b8ff;margin:0 0 2px}' +
       '.oc-title{margin:0 0 4px;color:#fff;font-size:19px}' +
-      '.oc-sub{margin:0 0 16px;font-size:12.5px;color:rgba(255,255,255,.55)}' +
+      '.oc-sub{margin:0 0 16px;font-size:12.5px;color:rgba(255,255,255,.82)}' +
       '.oc-field{margin-bottom:13px}' +
       '.oc-label{display:block;font-size:12px;color:rgba(255,255,255,.7);margin-bottom:5px}' +
       '.oc-label .oc-face{font-size:9px;font-weight:700;letter-spacing:.1em;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.1);margin-right:6px}' +

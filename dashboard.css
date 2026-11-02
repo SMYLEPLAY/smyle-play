@@ -761,7 +761,7 @@ html { scroll-behavior: smooth; }
   transition: border-color .2s;
 }
 .dte2-search:focus { border-color: rgba(255,215,0,.4); }
-.dte2-search::placeholder { color: rgba(255,255,255,.3); }
+.dte2-search::placeholder { color: rgba(255,255,255,.70); }
 
 /* Liste résultats */
 .dte2-results {
@@ -805,13 +805,13 @@ html { scroll-behavior: smooth; }
 }
 .dte2-result-meta {
   font-size: .7rem;
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.70);
   flex-shrink: 0;
 }
 .dte2-result-empty {
   padding: 10px 14px;
   font-size: .8rem;
-  color: rgba(255,255,255,.3);
+  color: rgba(255,255,255,.70);
   font-style: italic;
 }
 
@@ -873,7 +873,7 @@ html { scroll-behavior: smooth; }
 .dte2-selected-plays {
   display: block;
   font-size: .72rem;
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.70);
   margin-top: 3px;
 }
 
@@ -885,7 +885,7 @@ html { scroll-behavior: smooth; }
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.4);
+  color: rgba(255,255,255,.70);
 }
 .dte2-input {
   background: rgba(255,255,255,.05);
@@ -1067,7 +1067,7 @@ html { scroll-behavior: smooth; }
 .dte-close {
   background: none;
   border: none;
-  color: rgba(255,255,255,.4);
+  color: rgba(255,255,255,.70);
   font-size: 18px;
   cursor: pointer;
   padding: 2px 6px;
@@ -1090,7 +1090,7 @@ html { scroll-behavior: smooth; }
   font-weight: 700;
   letter-spacing: .07em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.45);
+  color: rgba(255,255,255,.76);
 }
 .dte-input, .dte-select {
   background: rgba(255,255,255,.05);
@@ -1108,7 +1108,7 @@ html { scroll-behavior: smooth; }
 .dte-select option { background: #17152a; }
 .dte-hint {
   font-size: .68rem;
-  color: rgba(255,255,255,.3);
+  color: rgba(255,255,255,.70);
   line-height: 1.4;
 }
 
@@ -1195,7 +1195,7 @@ html { scroll-behavior: smooth; }
 .dte-cover-pick-btn:hover { background: rgba(255,255,255,.1); border-color: rgba(255,215,0,.3); }
 .dte-cover-hint {
   font-size: .65rem;
-  color: rgba(255,255,255,.25);
+  color: rgba(255,255,255,.62);
   line-height: 1.3;
 }
 
@@ -1770,7 +1770,7 @@ html { scroll-behavior: smooth; }
   outline: none;
   transition: border-color .2s, box-shadow .2s;
 }
-.dash-input::placeholder { color: rgba(255,255,255,.22); }
+.dash-input::placeholder { color: rgba(255,255,255,.62); }
 .dash-input:focus {
   border-color: rgba(255,215,0,.5);
   box-shadow: 0 0 0 3px rgba(255,215,0,.08);
@@ -1789,7 +1789,7 @@ html { scroll-behavior: smooth; }
   font-family: inherit;
   transition: border-color .2s;
 }
-.dash-textarea::placeholder { color: rgba(255,255,255,.22); }
+.dash-textarea::placeholder { color: rgba(255,255,255,.62); }
 .dash-textarea:focus { border-color: rgba(255,215,0,.5); }
 
 /* Texte d'aide sous un input/textarea */
@@ -1901,7 +1901,7 @@ html { scroll-behavior: smooth; }
   font-size: .7rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, .48);
+  color: rgba(255, 255, 255, .76);
   background: transparent;
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: var(--d-radius-sm);
@@ -1970,7 +1970,7 @@ html { scroll-behavior: smooth; }
   font-size: .62rem;
   text-transform: uppercase;
   letter-spacing: .14em;
-  color: rgba(255, 255, 255, .48);
+  color: rgba(255, 255, 255, .76);
   margin-right: 2px;
 }
 
@@ -2388,12 +2388,12 @@ html { scroll-behavior: smooth; }
 .dash-publish-btn:active { transform: scale(.97); }
 .dash-publish-btn[disabled] {
   background: rgba(255,215,0,.12);
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.70);
   cursor: not-allowed;
 }
 .dash-publish-btn[disabled]:hover { filter: none; }
 .dash-publish-hint {
-  font-size: 10.5px; color: rgba(255,255,255,.5);
+  font-size: 10.5px; color: rgba(255,255,255,.76);
   line-height: 1.5;
 }
 .dash-publish-hint strong { color: rgba(255,215,0,.85); font-weight: 600; }
@@ -2598,7 +2598,7 @@ html { scroll-behavior: smooth; }
 .dash-creation-gate-sub {
   font-size: 13px;
   line-height: 1.55;
-  color: rgba(255, 255, 255, .62);
+  color: rgba(255, 255, 255, .86);
 }
 .dash-creation-gate .dash-btn-primary {
   align-self: flex-start;
@@ -3071,13 +3071,13 @@ html { scroll-behavior: smooth; }
 }
 .dash-mood-sub {
   font-size: .68rem;
-  color: rgba(255, 255, 255, .45);
+  color: rgba(255, 255, 255, .76);
 }
 .dash-mood-extremes {
   display: flex;
   justify-content: space-between;
   font-size: .65rem;
-  color: rgba(255, 255, 255, .35);
+  color: rgba(255, 255, 255, .70);
   margin-top: 2px;
 }
 .dash-slider {
@@ -3115,7 +3115,7 @@ html { scroll-behavior: smooth; }
 }
 .dash-prompt-settings-sub {
   font-size: .68rem;
-  color: rgba(255, 255, 255, .55);
+  color: rgba(255, 255, 255, .82);
 }
 
 .dash-char-count {
@@ -3610,7 +3610,7 @@ html { scroll-behavior: smooth; }
   font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;
 }
 .dash-plug-toggle-sub {
-  font-size: 12px; color: rgba(255,255,255,.55); line-height: 1.35;
+  font-size: 12px; color: rgba(255,255,255,.82); line-height: 1.35;
 }
 
 /* ── Switch (checkbox + slider) ─────────────────────────────────────────── */
@@ -3657,7 +3657,7 @@ html { scroll-behavior: smooth; }
 }
 .dash-plug-preview-head {
   font-size: 11px; text-transform: uppercase; letter-spacing: .12em;
-  color: rgba(255,255,255,.45); margin-bottom: 10px;
+  color: rgba(255,255,255,.76); margin-bottom: 10px;
 }
 .dash-plug-cell {
   --brand: #8800ff;
@@ -3684,7 +3684,7 @@ html { scroll-behavior: smooth; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dash-plug-cell-genre {
-  font-size: 12px; color: rgba(255,255,255,.55);
+  font-size: 12px; color: rgba(255,255,255,.82);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dash-plug-cell-chip {
@@ -3706,7 +3706,7 @@ html { scroll-behavior: smooth; }
 .dash-plug-preview-note {
   margin-top: 10px;
   font-size: 12px; line-height: 1.4;
-  color: rgba(255,255,255,.55);
+  color: rgba(255,255,255,.82);
 }
 
 /* ── Stats ──────────────────────────────────────────────────────────────── */
@@ -3727,7 +3727,7 @@ html { scroll-behavior: smooth; }
 }
 .dash-plug-stat-lbl {
   font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
-  color: rgba(255,255,255,.45); margin-top: 4px;
+  color: rgba(255,255,255,.76); margin-top: 4px;
 }
 
 /* ── Actions ────────────────────────────────────────────────────────────── */
@@ -3754,13 +3754,13 @@ html { scroll-behavior: smooth; }
   opacity: .45;
 }
 .dash-plug-actions-hint {
-  font-size: 11px; color: rgba(255,255,255,.42);
+  font-size: 11px; color: rgba(255,255,255,.70);
 }
 .dash-plug-actions-hint code {
   background: rgba(255,255,255,.06);
   padding: 1px 5px; border-radius: 2px;
   font-size: 10px;
-  color: rgba(255,255,255,.6);
+  color: rgba(255,255,255,.82);
 }
 
 /* ── Mobile ─────────────────────────────────────────────────────────────── */
@@ -3865,7 +3865,7 @@ html { scroll-behavior: smooth; }
 
 .dash-field-input::placeholder,
 .dash-field-textarea::placeholder {
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, .62);
 }
 
 .dash-field-textarea {
@@ -4139,7 +4139,7 @@ html { scroll-behavior: smooth; }
   padding: 40px 16px;
   text-align: center;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, .70);
   font-style: italic;
 }
 
@@ -4188,7 +4188,7 @@ html { scroll-behavior: smooth; }
 .dash-preview-meta {
   padding: 10px 14px 6px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, .82);
   letter-spacing: 0.02em;
 }
 
@@ -4250,12 +4250,12 @@ html { scroll-behavior: smooth; }
   text-align: center;
 }
 .tph-axis-icon { font-size: 24px; margin-bottom: 6px; }
-.tph-axis-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-bottom: 8px; }
+.tph-axis-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.76); margin-bottom: 8px; }
 .tph-axis-val { font-size: 28px; font-weight: 900; color: #cc88ff; line-height: 1; }
-.tph-axis-sub { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 4px; }
+.tph-axis-sub { font-size: 10px; color: rgba(255,255,255,.70); margin-top: 4px; }
 
 .tph-axis-group { margin-bottom: 28px; }
-.tph-axis-group-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: 14px; padding-left: 2px; }
+.tph-axis-group-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.76); margin-bottom: 14px; padding-left: 2px; }
 .tph-badges-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
 
 .tph-badge {
@@ -4279,16 +4279,16 @@ html { scroll-behavior: smooth; }
 }
 .tph-badge-icon { font-size: 22px; }
 .tph-badge-name { font-size: 13px; font-weight: 700; color: #fff; }
-.tph-badge-desc { font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.45; }
+.tph-badge-desc { font-size: 11px; color: rgba(255,255,255,.76); line-height: 1.45; }
 .tph-badge-reward { font-size: 11px; font-weight: 700; color: #FFD700; margin-top: 2px; }
 .tph-badge-unlocked-at { font-size: 10px; color: rgba(204,136,255,.8); margin-top: 4px; }
 
 .tph-badge-progress { margin-top: 6px; }
 .tph-progress-bar { height: 4px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
 .tph-progress-fill { height: 100%; background: linear-gradient(90deg, #cc88ff, #7C3AED); border-radius: 99px; transition: width .4s; }
-.tph-progress-txt { font-size: 10px; color: rgba(255,255,255,.4); }
+.tph-progress-txt { font-size: 10px; color: rgba(255,255,255,.70); }
 
-.tph-loading { padding: 40px; text-align: center; color: rgba(255,255,255,.4); font-size: 13px; }
+.tph-loading { padding: 40px; text-align: center; color: rgba(255,255,255,.70); font-size: 13px; }
 
 
 /* ── Chips mood / tags (dte2 + création) ────────────────────────────────── */
@@ -4302,7 +4302,7 @@ html { scroll-behavior: smooth; }
   border-radius: 999px;
   border: 1px solid rgba(204,136,255,.25);
   background: rgba(204,136,255,.08);
-  color: rgba(255,255,255,.65);
+  color: rgba(255,255,255,.86);
   font-size: 12px;
   cursor: pointer;
   transition: border-color .15s, background .15s, color .15s;

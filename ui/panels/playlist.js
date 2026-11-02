@@ -92,7 +92,7 @@ function openPlaylist(key, cardEl) {
                   onclick="addToMix(event,'${key}',${i})">＋ Mix</button>
         </div>`;
       }).join('')
-    : `<div style="padding:32px 28px;font-size:11px;letter-spacing:.25em;color:rgba(136,0,255,.25);text-transform:uppercase">Aucun fichier audio trouvé</div>`;
+    : `<div style="padding:32px 28px;font-size:11px;letter-spacing:.25em;color:rgba(196,140,255,.90);text-transform:uppercase">Aucun fichier audio trouvé</div>`;
 
   panel.classList.add('open');
   document.getElementById('overlay').classList.add('show');

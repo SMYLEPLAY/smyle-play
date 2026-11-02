@@ -4790,7 +4790,7 @@ function _portefeuilleHtml(p, tile) {
     tile('💶', 'Smyles retirables', Number(p.retirables) || 0) +
     tile('🎁', 'Smyles bonus', Number(p.bonus) || 0) +
     '</div>' +
-    '<p style="margin:0 0 16px;font-size:12px;color:rgba(255,255,255,.6);line-height:1.5">' +
+    '<p style="margin:0 0 16px;font-size:12px;color:rgba(255,255,255,.82);line-height:1.5">' +
     '100 Smyles gagnés en vendant valent 5 € au retrait, quand les retraits ' +
     'seront ouverts (conditions dans les CGU, article 5.5). ' +
     'Les Smyles bonus se dépensent sur WATT mais ne se retirent pas.</p>';
@@ -4833,7 +4833,7 @@ async function loadCreatorStats() {
     'border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px 14px">' +
     '<div style="font-size:20px;line-height:1">' + ico + '</div>' +
     '<div style="font-size:22px;font-weight:800;margin-top:6px">' + fmt(val) + '</div>' +
-    '<div style="font-size:11px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.5px">' + label + '</div>' +
+    '<div style="font-size:11px;color:rgba(255,255,255,.82);text-transform:uppercase;letter-spacing:.5px">' + label + '</div>' +
     '</div>';
   try {
     const s = await apiFetch('/me/creator-stats');
@@ -4849,7 +4849,7 @@ async function loadCreatorStats() {
         : '') +
       '</div>' +
       (Number(s.revenue_non_retirable_smyles) > 0
-        ? '<p style="margin:-8px 0 16px;font-size:12px;color:rgba(255,255,255,.55)">' +
+        ? '<p style="margin:-8px 0 16px;font-size:12px;color:rgba(255,255,255,.82)">' +
           '« Non retirables » : la part de tes ventes payée par les acheteurs avec des Smyles offerts. ' +
           'Tu peux les dépenser sur WATT, mais pas les retirer en euros.</p>'
         : '') +
@@ -5887,7 +5887,7 @@ function renderTrades(root, trades) {
     root.innerHTML = `
       <div class="trades-empty">
         <p>Aucun échange en cours.</p>
-        <p style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:6px">
+        <p style="font-size:12px;color:rgba(255,255,255,.70);margin-top:6px">
           Visite la boutique d'un artiste et clique sur 🔄 Échanger pour proposer un trade.
         </p>
       </div>`;

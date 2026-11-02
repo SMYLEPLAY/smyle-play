@@ -715,7 +715,11 @@ async def list_public_images(
     # (sinon un lien direct/partagé/crawler SEO affiche le JSON). Les appels
     # data passent par apiFetch (Accept: application/json) ou fetch (*/*) → JSON.
     if "text/html" in request.headers.get("accept", ""):
-        return FileResponse(_INDEX_HTML)
+        # Lot M — même page que /sons, AVEC le bloc commun (correctifs
+        # mobiles, lissage, application installable) : servie par pages.py.
+        from app.routers.pages import _page
+
+        return _page("index.html")
 
     base = (
         select(Prompt, User)

@@ -414,6 +414,15 @@ def _bloc_pwa(low: str, actif: bool) -> str:
     parts.append(
         f'<link rel="stylesheet" href="/ui/pwa/lissage.css?v={_version("lissage.css")}" />'
     )
+    # Lot M — la barre de lecture sur TOUTES les pages : la musique reprend
+    # (et la playlist continue) quelle que soit la page ouverte ensuite.
+    if "mini-bar.js" not in low:
+        mb = REPO_ROOT / "ui" / "player" / "mini-bar.js"
+        try:
+            v_mb = _empreinte(str(mb), mb.stat().st_mtime_ns)
+        except OSError:
+            v_mb = "0"
+        parts.append(f'<script src="/ui/player/mini-bar.js?v={v_mb}" defer></script>')
     parts.append(
         f'<script src="/ui/pwa/pwa.js?v={_version("pwa.js")}" '
         f'data-sw="{"on" if actif else "off"}" defer></script>'

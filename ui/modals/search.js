@@ -175,7 +175,7 @@
   background: rgba(255,255,255,.02);
 }
 .smyle-search-header-ico {
-  color: rgba(255,255,255,.35); flex-shrink: 0;
+  color: rgba(255,255,255,.70); flex-shrink: 0;
 }
 .smyle-search-header-ico svg { width: 18px; height: 18px; display: block; }
 .smyle-search-input {
@@ -183,9 +183,9 @@
   font-size: 17px; font-weight: 500; color: #fff;
   font-family: inherit; letter-spacing: -.01em;
 }
-.smyle-search-input::placeholder { color: rgba(255,255,255,.28); }
+.smyle-search-input::placeholder { color: rgba(255,255,255,.62); }
 .smyle-search-kbd {
-  font-size: 11px; color: rgba(255,255,255,.25);
+  font-size: 11px; color: rgba(255,255,255,.62);
   border: 1px solid rgba(255,255,255,.1); border-radius: 5px;
   padding: 2px 6px; flex-shrink: 0; letter-spacing: .04em;
 }
@@ -193,7 +193,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 30px; border-radius: 50%;
   border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04);
-  color: rgba(255,255,255,.5); cursor: pointer; flex-shrink: 0;
+  color: rgba(255,255,255,.76); cursor: pointer; flex-shrink: 0;
   transition: all .12s ease; padding: 0;
 }
 .smyle-search-close:hover { background: rgba(255,255,255,.1); color: #fff; }
@@ -223,7 +223,7 @@
   display: flex; align-items: center; gap: 7px;
   padding: 10px 16px 8px;
   font-size: 10px; font-weight: 700; letter-spacing: .12em;
-  text-transform: uppercase; color: rgba(255,255,255,.35);
+  text-transform: uppercase; color: rgba(255,255,255,.70);
   border-bottom: 1px solid rgba(255,255,255,.04);
   flex-shrink: 0;
 }
@@ -255,7 +255,7 @@
 .ss-img-thumb img { width:100%; height:100%; object-fit:cover; }
 .ss-img-body { flex:1; min-width:0; }
 .ss-img-title { font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.ss-img-sub { font-size:11px; color:rgba(255,255,255,.4); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ss-img-sub { font-size:11px; color:rgba(255,255,255,.70); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ss-img-meta { font-size:10px; color:#cbb3ff; font-weight:700; flex-shrink:0; }
 
 /* Chips filtre */
@@ -314,10 +314,10 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ss-artist-sub {
-  font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px;
+  font-size: 11px; color: rgba(255,255,255,.70); margin-top: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ss-artist-meta { font-size: 10px; color: rgba(255,255,255,.28); flex-shrink: 0; text-align: right; }
+.ss-artist-meta { font-size: 10px; color: rgba(255,255,255,.62); flex-shrink: 0; text-align: right; }
 
 /* ── Cards sons ──────────────────────────────────────────────────────── */
 .ss-track-card {
@@ -356,7 +356,7 @@
 }
 .ss-track-title:hover { color: #c4b5fd; text-decoration: underline; }
 .ss-track-sub {
-  font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px;
+  font-size: 11px; color: rgba(255,255,255,.70); margin-top: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ss-track-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
@@ -365,12 +365,12 @@
   background: rgba(204,136,255,.1); border: 1px solid rgba(204,136,255,.18);
   color: rgba(204,136,255,.85);
 }
-.ss-track-meta { font-size: 10px; color: rgba(255,255,255,.28); flex-shrink: 0; text-align: right; }
+.ss-track-meta { font-size: 10px; color: rgba(255,255,255,.62); flex-shrink: 0; text-align: right; }
 
 /* ── États vide / chargement ─────────────────────────────────────────── */
 .ss-empty {
   padding: 32px 16px; text-align: center;
-  color: rgba(255,255,255,.3); font-size: 12px; line-height: 1.6;
+  color: rgba(255,255,255,.70); font-size: 12px; line-height: 1.6;
 }
 .ss-loading { padding: 28px 16px; text-align: center; }
 .ss-loading-dot {
