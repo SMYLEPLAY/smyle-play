@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="style.css?v=20261102lis" />
   <script src="watt-ambient.js?v=20260626watt2" defer></script>
   <link rel="stylesheet" href="watt-panel.css?v=20261102lis" />
-  <link rel="stylesheet" href="/topbar.css?v=20261102lis" />
+  <link rel="stylesheet" href="/topbar.css?v=20261102lg" />
   <!-- Phase 2 refonte marketplace : hero + vitrine Smyle + rankings + listes -->
   <link rel="stylesheet" href="marketplace.css?v=20261102lis" />
   <!-- C0 design system (blueprint VF 2026-06-10) : tokens + pilules 3 repères -->
@@ -29,72 +29,8 @@
 <!-- ═══════════════════════════════════════════════════════════ HEADER -->
 <header>
   <a href="/" class="header-logo" style="text-decoration:none;cursor:pointer" aria-label="Retour à l'accueil marketplace">
-    <!-- Logo masque SMYLE — perles noires, yeux & sourire blancs, tilt -11° -->
-    <svg class="header-logo-icon" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
-      <g transform="translate(30,42)">
-        <!-- Anneau extérieur : perles noires profondes avec reflet violet -->
-        <circle cx="24"   cy="0"     r="2.4" fill="#0c0018"/>
-        <circle cx="22.1" cy="8.9"   r="2.4" fill="#0e001e"/>
-        <circle cx="16.9" cy="16.9"  r="2.4" fill="#0c0016"/>
-        <circle cx="8.9"  cy="22.1"  r="2.4" fill="#0e001e"/>
-        <circle cx="0"    cy="24"    r="2.4" fill="#0c0018"/>
-        <circle cx="-8.9" cy="22.1"  r="2.4" fill="#0e001e"/>
-        <circle cx="-16.9"cy="16.9"  r="2.4" fill="#0c0016"/>
-        <circle cx="-22.1"cy="8.9"   r="2.4" fill="#0e001e"/>
-        <circle cx="-24"  cy="0"     r="2.4" fill="#0c0018"/>
-        <circle cx="-22.1"cy="-8.9"  r="2.4" fill="#0e001e"/>
-        <circle cx="-16.9"cy="-16.9" r="2.4" fill="#0c0016"/>
-        <circle cx="-8.9" cy="-22.1" r="2.4" fill="#0e001e"/>
-        <circle cx="0"    cy="-24"   r="2.4" fill="#0c0018"/>
-        <circle cx="8.9"  cy="-22.1" r="2.4" fill="#0e001e"/>
-        <circle cx="16.9" cy="-16.9" r="2.4" fill="#0c0016"/>
-        <circle cx="22.1" cy="-8.9"  r="2.4" fill="#0e001e"/>
-        <!-- Interstitiels : noir légèrement plus chaud -->
-        <circle cx="23.6" cy="4.4"   r="2.1" fill="#110020"/>
-        <circle cx="20.6" cy="12.7"  r="2.1" fill="#110020"/>
-        <circle cx="12.7" cy="20.6"  r="2.1" fill="#110020"/>
-        <circle cx="4.4"  cy="23.6"  r="2.1" fill="#110020"/>
-        <circle cx="-4.4" cy="23.6"  r="2.1" fill="#110020"/>
-        <circle cx="-12.7"cy="20.6"  r="2.1" fill="#110020"/>
-        <circle cx="-20.6"cy="12.7"  r="2.1" fill="#110020"/>
-        <circle cx="-23.6"cy="4.4"   r="2.1" fill="#110020"/>
-        <circle cx="-23.6"cy="-4.4"  r="2.1" fill="#110020"/>
-        <circle cx="-20.6"cy="-12.7" r="2.1" fill="#110020"/>
-        <circle cx="-12.7"cy="-20.6" r="2.1" fill="#110020"/>
-        <circle cx="-4.4" cy="-23.6" r="2.1" fill="#110020"/>
-        <circle cx="4.4"  cy="-23.6" r="2.1" fill="#110020"/>
-        <circle cx="12.7" cy="-20.6" r="2.1" fill="#110020"/>
-        <circle cx="20.6" cy="-12.7" r="2.1" fill="#110020"/>
-        <!-- Anneau intérieur : noir mat -->
-        <circle cx="15"   cy="0"     r="1.9" fill="#130025"/>
-        <circle cx="13.5" cy="7.5"   r="1.9" fill="#130025"/>
-        <circle cx="7.5"  cy="13.5"  r="1.9" fill="#130025"/>
-        <circle cx="0"    cy="15"    r="1.9" fill="#130025"/>
-        <circle cx="-7.5" cy="13.5"  r="1.9" fill="#130025"/>
-        <circle cx="-13.5"cy="7.5"   r="1.9" fill="#130025"/>
-        <circle cx="-15"  cy="0"     r="1.9" fill="#130025"/>
-        <circle cx="-13.5"cy="-7.5"  r="1.9" fill="#130025"/>
-        <circle cx="-7.5" cy="-13.5" r="1.9" fill="#130025"/>
-        <circle cx="0"    cy="-15"   r="1.9" fill="#130025"/>
-        <circle cx="7.5"  cy="-13.5" r="1.9" fill="#130025"/>
-        <circle cx="13.5" cy="-7.5"  r="1.9" fill="#130025"/>
-        <!-- YEUX : perles blanches lumineuses -->
-        <circle cx="-5.5" cy="-5"   r="3.2" fill="#ffffff" opacity="0.96"/>
-        <circle cx="5.5"  cy="-5"   r="3.2" fill="#ffffff" opacity="0.96"/>
-        <!-- Pupilles légères -->
-        <circle cx="-5.5" cy="-5"   r="1.4" fill="#1a0030" opacity="0.55"/>
-        <circle cx="5.5"  cy="-5"   r="1.4" fill="#1a0030" opacity="0.55"/>
-        <!-- SOURIRE : 7 perles blanches -->
-        <circle cx="-10"  cy="2"    r="2"   fill="#ffffff" opacity="0.90"/>
-        <circle cx="-6.5" cy="7"    r="2"   fill="#ffffff" opacity="0.90"/>
-        <circle cx="-2"   cy="9.8"  r="2"   fill="#ffffff" opacity="0.90"/>
-        <circle cx="2.5"  cy="10"   r="2"   fill="#ffffff" opacity="0.90"/>
-        <circle cx="7"    cy="7.5"  r="2"   fill="#ffffff" opacity="0.90"/>
-        <circle cx="10"   cy="3"    r="2"   fill="#ffffff" opacity="0.90"/>
-        <!-- Reflet nacré global -->
-        <ellipse cx="0" cy="-2" rx="11" ry="10" fill="none" stroke="rgba(200,150,255,.06)" stroke-width="8"/>
-      </g>
-    </svg>
+    <!-- Logo : vrai masque perlé de SMYLE (égérie officielle) -->
+    <img class="header-logo-icon" src="/ui/img/smyle-logo.png?v=20261102" alt="" width="30" height="47" decoding="async" />
     <span class="logo-text">WATT</span>
   </a>
 

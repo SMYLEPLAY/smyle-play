@@ -19,7 +19,7 @@ header { display: flex; align-items: center; padding: 18px 48px; gap: 12px;
   border-bottom: 1px solid rgba(136,0,255,.07); position: sticky; top: 0;
   background: rgba(5,5,8,.92); backdrop-filter: blur(16px); z-index: 100; }
 .header-logo { display: flex; align-items: center; gap: 12px; flex: 1; }
-.header-logo-icon { width: 30px; height: 40px; flex-shrink: 0; transform: rotate(-11deg); transform-origin: 50% 60%; }
+.header-logo-icon { width: auto; height: 42px; flex-shrink: 0; filter: drop-shadow(0 0 8px rgba(150, 70, 255, .55)); }
 .logo-text { font-size: 15px; font-weight: 900; letter-spacing: .35em; text-transform: uppercase;
   color: #220044; text-shadow: 0 0 4px #aa00ff, 0 0 12px #8800ff, 0 0 24px #660099, 0 0 48px #440066;
   animation: neon-v 3.5s infinite; }
