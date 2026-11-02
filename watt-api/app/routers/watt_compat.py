@@ -1257,6 +1257,7 @@ async def get_artist(
 async def tracks_recent(
     limit: int = 12,
     beats_only: bool = False,
+    track: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
@@ -1270,6 +1271,12 @@ async def tracks_recent(
 
     `limit` accepté en query (1-50). Default 12 pour conserver la shape
     historique consommée par ui/hub/community.js et ui/panels/agent.js.
+
+    Liens directs (02/11) : `track=<id public>` (UUID ou legacy_id, la valeur
+    `id` renvoyée par cet endpoint) ne renvoie QUE ce son, avec exactement les
+    mêmes filtres de visibilité et le même enrichissement. Sert au lien
+    partageable `/sons?son=<id>` quand le son n'est pas dans les 100 derniers.
+    Son introuvable / non visible → `{"tracks": []}` (aucune fuite).
     """
     safe_limit = max(1, min(int(limit or 12), 100))
     stmt = (
@@ -1279,6 +1286,14 @@ async def tracks_recent(
         .order_by(desc(Track.created_at))
         .limit(safe_limit)
     )
+    if track is not None:
+        cle = str(track).strip()[:128]
+        if not cle:
+            return {"tracks": []}
+        try:
+            stmt = stmt.where(Track.id == _uuid_module.UUID(cle))
+        except ValueError:
+            stmt = stmt.where(Track.legacy_id == cle)
     # C2 — étagère /beats : sons flagués beat (nouveau drapeau) OU liés à
     # un produit beat legacy (beat_id, pré-C2).
     if beats_only:

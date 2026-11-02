@@ -1062,6 +1062,11 @@ function _maybeAutoOpenFromQuery() {
       catch (_) { ref = ''; }
     }
     if (ref && !/^[A-Za-z0-9-]{1,16}$/.test(ref)) ref = '';
+    // Liens directs (02/11) — un lien partagé vers un son ou une playlist
+    // (/sons?son=…&ref=…, /?playlist=…&ref=…) montre d'abord le contenu :
+    // pas d'inscription forcée à l'arrivée. Le code reste dans l'adresse ;
+    // la barrière visiteur le retrouve via ?return= à la 1re action.
+    if (ref && !pio && !params.get('auth') && (params.get('son') || params.get('playlist'))) return;
     let tab = params.get('auth');
     if (ref || pio) tab = 'signup';
     if (tab !== 'login' && tab !== 'signup') return;

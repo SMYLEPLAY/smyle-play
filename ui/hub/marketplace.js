@@ -1216,6 +1216,24 @@
   }
 
 
+  // ── Lien direct vers un son : /sons?son=<id> (02/11) ─────────────────────
+  // Ouvre la fiche du son à l'arrivée. Cherché d'abord dans les sons déjà
+  // chargés, sinon demandé seul à l'API (même filtres de visibilité).
+  async function _openSonFromQuery() {
+    let id = '';
+    try { id = (new URLSearchParams(location.search).get('son') || '').trim(); } catch (_) { return; }
+    if (!id || id.length > 128) return;
+    let t = _state.tracks.find(x => String(x.id) === id || String(x.trackUuid) === id);
+    if (!t) {
+      try {
+        const d = await apiFetch('/watt/tracks-recent?track=' + encodeURIComponent(id), { auth: false });
+        t = d && Array.isArray(d.tracks) ? d.tracks[0] : null;
+      } catch (_) { t = null; }
+    }
+    if (t) { _openTrackDetailDrawer(t); return; }
+    if (window.smyleToast) window.smyleToast('Ce son n’est plus disponible.', { type: 'error' });
+  }
+
   // ── Drawer détail track (clic sur titre ou cover d'une card son) ─────────
   // Lot M — ouvre la carte ID d'un son (id ou UUID) s'il est au catalogue
   // chargé. Utilisé par la barre de lecture (clic sur la pochette/le titre).
@@ -1347,6 +1365,8 @@
         <button class="like-btn mp-td-like-btn watt-soc" type="button" data-like-btn="${tuuid}" title="Ajouter à ma Wishlist"><span class="watt-soc-lbl">Wishlist</span></button>
         <button class="add-to-pl-btn mp-td-addpl-btn watt-soc" type="button" data-add-to-playlist="${tuuid}" title="Ajouter à une playlist"><span class="watt-soc-lbl">Playlist</span></button>
         ${tdLi && tdLi.id ? `<button class="like-btn watt-soc" type="button" data-img-like-btn="${_esc(tdLi.id)}" title="J'aime l'image"><span class="watt-soc-lbl">J'aime l'image</span></button>` : ''}
+        <button class="mp-td-share-btn" type="button" id="mp-td-share" title="Copier le lien direct vers ce son"
+                style="height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.06);color:#f4f2fb;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer">🔗 Partager</button>
         <button class="mp-report-btn" type="button" data-report-type="track" data-report-id="${_esc(t.trackUuid || t.id || '')}"
                 data-report-title="${_esc(title)}"
                 title="Signaler ce contenu" aria-label="Signaler ce contenu"
@@ -1407,6 +1427,21 @@
 
     overlay.addEventListener('click', (e) => { if (e.target === overlay) _close(); });
     overlay.querySelector('.mp-td-close').addEventListener('click', _close);
+
+    // Liens directs (02/11) — le lien mène à CE son : page de l'Œuvre s'il en
+    // fait partie, sinon /sons?son=<id> qui rouvre cette fiche.
+    const shareBtn = overlay.querySelector('#mp-td-share');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', () => {
+        if (window.WattPlaylists) { window.WattPlaylists.shareSon(t); return; }
+        const url = location.origin + '/sons?son=' + encodeURIComponent(String(t.trackUuid || t.id || ''));
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(() => {
+            if (window.smyleToast) window.smyleToast('Lien copié — colle-le où tu veux.', { type: 'success' });
+          }, () => window.prompt('Copie ce lien :', url));
+        } else { window.prompt('Copie ce lien :', url); }
+      });
+    }
     document.addEventListener('keydown', function onEsc(e) {
       if (e.key === 'Escape') { _close(); document.removeEventListener('keydown', onEsc); }
     });
@@ -2665,6 +2700,7 @@
     // Trois fetches en parallèle — indépendants, pas de cascade.
     await Promise.all([_fetchSmyle(), _fetchArtists(), _fetchTracks()]);
     _renderAll();
+    _openSonFromQuery();
 
     // Lot M — /?son=<id> (clic sur la barre de lecture depuis une autre
     // page) : on ouvre directement la carte ID du son.
