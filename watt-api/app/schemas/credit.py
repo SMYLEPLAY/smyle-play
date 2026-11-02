@@ -13,10 +13,25 @@ class CreditPack(BaseModel):
     unit_price_cents: int
     # Lot L — prix unitaire exact, au format français (« 0,065 € »).
     unit_price_display: str = ""
+    # Économie par rapport au plus petit pack, en % entier (0 = aucune).
+    remise_pct: int = 0
+
+
+class TranchePrix(BaseModel):
+    """02/11/2026 — achat au montant libre : prix d'un Smyle par tranche."""
+    a_partir_de: int
+    prix_millieme: int          # prix d'un Smyle en millièmes d'euro
+    prix_display: str           # « 0,065 € »
+    remise_pct: int = 0
 
 
 class CreditPacksResponse(BaseModel):
+    # Raccourcis affichés en boutons rapides (montants libres pré-remplis).
     packs: list[CreditPack]
+    tranches: list[TranchePrix] = []
+    min_smyles: int = 0
+    max_smyles: int = 0
+    pas_smyles: int = 1
     # Lot 3 — mention légale à afficher sous les prix (franchise de TVA), ou None.
     mention_tva: str | None = None
     # Lot 3 — paiement par carte réellement disponible (clé Stripe posée).

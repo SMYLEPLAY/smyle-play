@@ -159,7 +159,7 @@
             : 'Pas assez de Smyles pour cette œuvre.';
           // Lot L : achat de Smyles proposé directement quand il est ouvert.
           if (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles && typeof window.openCreditsBuyModal === 'function') {
-            try { window.openCreditsBuyModal(); } catch (_) {}
+            try { window.openCreditsBuyModal((d && typeof d === 'object' && d.required != null) ? { manque: d.required - d.available } : undefined); } catch (_) {}
           } else {
             msg += ' Invite un ami : +20 Smyles pour toi et pour lui.';
           }
