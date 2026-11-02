@@ -4698,3 +4698,73 @@ body:not(.ap-owner) .ap-meta-sep:has(+ .ap-meta-chip.ap-editable-empty) { displa
   .ap-oe-plays { display: none; }
   .ap-oe-actions .ap-oe-ico { display: none; }
 }
+
+/* ── Profil rangé (02/11/2026) — toutes les sections de contenu (Œuvres,
+   Sons, Images, Collections, Voix, Recettes) partagent le MÊME cadre et le
+   MÊME en-tête dépliable (titre en capitales + tiret, nombre, flèche). ──── */
+.ap-rangee {
+  box-sizing: border-box;
+  width: calc(100% - 40px) !important;
+  max-width: 960px !important;
+  margin: 14px auto 0 !important;
+  padding: 2px 24px 16px !important;
+  border: 1px solid rgba(255, 255, 255, .08) !important;
+  border-radius: 18px !important;
+  background: rgba(255, 255, 255, .025) !important;
+  box-shadow: none !important;
+}
+.ap-rangee.ap-acc-ferme { padding-bottom: 2px !important; }
+#ap-playlists-root.ap-rangee .ap-pl-worlds { border: none; background: none; padding: 0; margin: 0; }
+/* lissage.css fixe #ap-images-section à 920 px : même largeur que les autres. */
+#ap-images-section.ap-rangee { max-width: 960px !important; }
+.ap-acc-hdr {
+  display: flex !important; align-items: center; gap: 10px;
+  cursor: pointer; user-select: none;
+  padding: 14px 0 !important; margin: 0 !important;
+}
+.ap-rangee:not(.ap-acc-ferme) .ap-acc-hdr { border-bottom: 1px solid rgba(255, 255, 255, .07); }
+.ap-acc-hdr:focus-visible { outline: 2px solid #8800ff; outline-offset: 4px; border-radius: 6px; }
+.ap-acc-hdr .ap-section-arrow { margin-left: auto; transition: transform .25s ease; }
+/* Sons et Voix (accordéon historique) : même en-tête que les autres. */
+.ap-rangee .ap-tracks-hdr,
+.ap-rangee .ap-voices-hdr {
+  display: flex !important; align-items: center; justify-content: flex-start !important; gap: 10px;
+  padding: 14px 0 !important; margin: 0 !important;
+}
+.ap-rangee .ap-tracks-hdr .ap-section-arrow,
+.ap-rangee .ap-voices-hdr .ap-section-arrow { margin-left: auto; }
+.ap-rangee .ap-tracks-title,
+.ap-rangee .ap-voices-title,
+.ap-rangee .ap-prompts-title { margin: 0 !important; text-shadow: none; }
+.ap-rangee .ap-tracks-count,
+.ap-rangee .ap-voices-count,
+.ap-rangee .ap-prompts-count,
+.ap-rangee .ap-acc-count { font-size: 11px; letter-spacing: .05em; color: rgba(160, 156, 184, .85); }
+.ap-rangee .ap-img-hdr .ap-section-title { text-shadow: none; }
+.ap-rangee .ap-pl-worlds-hdr { justify-content: flex-start !important; }
+.ap-rangee .ap-pl-worlds-hdr .ap-pl-view-toggle { margin: -4px 0 -4px 4px; height: 26px; min-height: 0; width: 26px; padding: 0; line-height: 1; }
+.ap-rangee .ap-pl-worlds-hdr { padding-top: 13px !important; padding-bottom: 13px !important; }
+.ap-rangee:not(.ap-acc-ferme) .ap-acc-hdr .ap-section-arrow { transform: rotate(180deg); }
+.ap-acc-ferme .ap-acc-body { display: none; }
+.ap-acc-body { padding-top: 12px; }
+/* Œuvres : même titre que les autres sections (capitales + tiret dégradé). */
+.ap-rangee .ap-oe-title {
+  display: flex; align-items: center; gap: 10px; margin: 0;
+  font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+  color: rgba(245, 242, 252, .82);
+}
+.ap-rangee .ap-oe-title::before {
+  content: ''; flex: 0 0 18px; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(var(--brand-rgb, 136, 0, 255), .95), #7c5cff);
+}
+.ap-rangee .ap-oe-count { font-size: 11px; letter-spacing: .05em; color: rgba(160, 156, 184, .85); }
+.ap-rangee .ap-img-hdr .ap-section-title { margin: 0 !important; }
+@media (max-width: 640px) {
+  .ap-rangee { width: calc(100% - 24px) !important; padding: 2px 14px 14px !important; }
+}
+
+/* Profil (02/11) — l'ancien lecteur de l'accueil (#player) restait affiché
+   VIDE en bas du profil (bande noire de 80 px par-dessus le contenu). Ici,
+   la mini-barre gère toute la lecture et masque déjà #player dès qu'un son
+   joue : on ne l'affiche donc jamais sur le profil. */
+#player { display: none !important; }

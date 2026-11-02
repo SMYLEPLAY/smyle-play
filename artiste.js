@@ -2930,6 +2930,7 @@ function _apSectionNavNow() {
     if (!colls.id) colls.id = 'ap-collections';
     items.push([colls.id, 'Collections', colls.querySelectorAll('.ap-pl-world').length]);
   }
+  _apRanger();
   let nav = document.getElementById('ap-secnav');
   if (items.length < 2) { if (nav) nav.remove(); return; }
   if (!nav) {
@@ -2946,17 +2947,149 @@ function _apSectionNavNow() {
       ev.preventDefault();
       const cible = document.getElementById(a.getAttribute('data-cible'));
       if (!cible) return;
-      const body = cible.querySelector('.ap-tracks-body');
-      if (body && !body.classList.contains('is-open')) cible.querySelector('.ap-tracks-hdr')?.click();
+      _apAccSet(_apSectionDe(cible), true);
       cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      nav.querySelectorAll('a').forEach(x => x.classList.toggle('is-active', x === a));
     });
   }
-  nav.innerHTML = items.map(([id, label, n], i) =>
-    `<a href="#${id}" data-cible="${id}" class="${i === 0 ? 'is-active' : ''}">${label}${n ? ` <span>${n}</span>` : ''}</a>`
+  nav.innerHTML = items.map(([id, label, n]) =>
+    `<a href="#${id}" data-cible="${id}">${label}${n ? ` <span>${n}</span>` : ''}</a>`
   ).join('');
+  _apRanger();   // une fois les onglets en place : sections rangées juste dessous
+  _apSyncOnglets();
 }
 window.addEventListener('load', () => { apSectionNav(); setTimeout(apSectionNav, 2000); });
+
+// ── Profil rangé (décision Tom, 02/11/2026) ─────────────────────────────────
+// À l'arrivée, le profil doit être propre : les sections suivent l'ordre des
+// onglets (Œuvres, Sons, Images, Collections, Voix, Recettes), elles ont
+// toutes le même en-tête dépliable (titre, nombre, flèche) et elles sont
+// TOUTES REPLIÉES à l'arrivée : c'est le visiteur qui choisit ce qu'il ouvre
+// (en-tête ou onglet). L'état choisi est gardé quand une section se
+// re-dessine (like, achat…).
+const _AP_ORDRE = [
+  'ap-oeuvres-section', 'ap-tracks-section', 'ap-images-section',
+  'ap-playlists-root', 'ap-voices-section', 'ap-prompts-section',
+];
+// En-tête de chaque section ; Sons et Voix gardent leur accordéon historique
+// (corps .is-open), les autres reçoivent l'accordéon commun.
+const _AP_HDR = {
+  'ap-oeuvres-section': '.ap-oe-hdr',
+  'ap-images-section':  '.ap-img-hdr',
+  'ap-playlists-root':  '.ap-pl-worlds-hdr',
+  'ap-prompts-section': '.ap-prompts-hdr',
+};
+const _AP_HISTO = { 'ap-tracks-section': '.ap-tracks', 'ap-voices-section': '.ap-voices' };
+const _apEtat = {};          // id → true (ouverte) / false (repliée)
+
+function _apSectionDe(el) {
+  if (!el) return null;
+  if (el.id === 'ap-collections') return document.getElementById('ap-playlists-root') || el;
+  return el;
+}
+function _apVisible(el) {
+  return !!(el && el.style.display !== 'none' && el.offsetParent !== null && el.childElementCount);
+}
+function _apAccOuverte(sec) {
+  if (!sec) return false;
+  const h = _AP_HISTO[sec.id];
+  if (h) { const b = sec.querySelector(h + '-body'); return !!(b && b.classList.contains('is-open')); }
+  return !sec.classList.contains('ap-acc-ferme');
+}
+function _apAccSet(sec, ouvrir) {
+  if (!sec) return;
+  _apEtat[sec.id] = !!ouvrir;
+  const h = _AP_HISTO[sec.id];
+  if (h) {
+    // Accordéon historique : on passe par son propre en-tête (flèche synchro).
+    if (_apAccOuverte(sec) !== !!ouvrir) sec.querySelector(h + '-hdr')?.click();
+    sec.classList.toggle('ap-acc-ferme', !ouvrir);   // cadre resserré quand replié
+  } else {
+    sec.classList.toggle('ap-acc-ferme', !ouvrir);
+    const hdr = _AP_HDR[sec.id] && sec.querySelector(_AP_HDR[sec.id]);
+    if (hdr) hdr.setAttribute('aria-expanded', ouvrir ? 'true' : 'false');
+  }
+  _apSyncOnglets();
+}
+// Onglets : allumés pour les sections ouvertes (aucun à l'arrivée).
+function _apSyncOnglets() {
+  document.querySelectorAll('#ap-secnav a[data-cible]').forEach(a => {
+    const sec = _apSectionDe(document.getElementById(a.getAttribute('data-cible')));
+    const on = !!(sec && (sec.id in _apEtat ? _apEtat[sec.id] : _apAccOuverte(sec)));
+    a.classList.toggle('is-active', on);
+  });
+}
+// Pose l'accordéon commun : flèche dans l'en-tête, tout ce qui suit l'en-tête
+// rangé dans un corps .ap-acc-body. Idempotent (re-posé après un re-rendu).
+function _apAccPoser(sec) {
+  const sel = _AP_HDR[sec.id];
+  if (!sel) return;
+  const hdr = sec.querySelector(sel);
+  if (!hdr || hdr.dataset.apAcc) return;
+  hdr.dataset.apAcc = '1';
+  hdr.classList.add('ap-acc-hdr');
+  hdr.setAttribute('role', 'button');
+  hdr.setAttribute('tabindex', '0');
+  if (!hdr.querySelector('.ap-section-arrow')) {
+    const fl = document.createElement('span');
+    fl.className = 'ap-section-arrow';
+    fl.textContent = '▼';
+    hdr.appendChild(fl);
+  }
+  let body = hdr.nextElementSibling;
+  if (!(body && body.classList.contains('ap-acc-body'))) {
+    body = document.createElement('div');
+    body.className = 'ap-acc-body';
+    while (hdr.nextSibling) body.appendChild(hdr.nextSibling);
+    hdr.parentNode.appendChild(body);
+  }
+  const basculer = (ev) => {
+    // Les boutons de l'en-tête (affichage grille des Collections…) gardent leur rôle.
+    if (ev.target.closest('button, a, input, select') && !ev.target.closest('.ap-section-arrow')) return;
+    _apAccSet(sec, !_apAccOuverte(sec));
+  };
+  hdr.addEventListener('click', basculer);
+  hdr.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); _apAccSet(sec, !_apAccOuverte(sec)); }
+  });
+}
+
+function _apRanger() {
+  const profil = document.getElementById('ap-profile');
+  if (!profil) return;
+  const sections = _AP_ORDRE.map(id => document.getElementById(id)).filter(_apVisible);
+  if (!sections.length) return;
+  // 1. Ordre : juste après les onglets (ou les statistiques).
+  let repere = document.getElementById('ap-secnav') || document.getElementById('ap-stats');
+  if (repere && repere.closest('#ap-profile')) {
+    sections.forEach(sec => {
+      if (repere.nextElementSibling !== sec) repere.parentNode.insertBefore(sec, repere.nextSibling);
+      repere = sec;
+    });
+  }
+  // 2. Accordéons + état : tout replié à l'arrivée ; une section déjà
+  //    ouverte ou fermée par le visiteur garde son état.
+  sections.forEach(sec => {
+    sec.classList.add('ap-rangee');
+    _apAccPoser(sec);
+    // Accordéons historiques (Sons, Voix) : un clic direct sur leur en-tête
+    // met aussi l'état mémorisé à jour (sinon le rangement le rétablirait).
+    const h = _AP_HISTO[sec.id];
+    const hh = h && sec.querySelector(h + '-hdr');
+    if (hh && !hh.dataset.apSync) {
+      hh.dataset.apSync = '1';
+      hh.addEventListener('click', () => setTimeout(() => {
+        _apEtat[sec.id] = _apAccOuverte(sec);
+        sec.classList.toggle('ap-acc-ferme', !_apEtat[sec.id]);
+        _apSyncOnglets();
+      }, 0));
+    }
+    if (!(sec.id in _apEtat)) {
+      _apAccSet(sec, false);
+    } else if (_apAccOuverte(sec) !== _apEtat[sec.id]) {
+      _apAccSet(sec, _apEtat[sec.id]);
+    }
+  });
+}
 
 function renderArtistImages(images) {
   const isSelf = !!(state.artist && state.artist.isSelf);
@@ -3046,6 +3179,7 @@ function renderArtistImages(images) {
   section.innerHTML =
     '<div class="ap-img-hdr" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">' +
       '<h2 class="ap-section-title" style="margin:0">🖼️ Images IA</h2>' +
+      '<span class="ap-acc-count">' + images.length + ' image' + (images.length > 1 ? 's' : '') + '</span>' +
       '<span class="ap-section-arrow ap-img-arrow" style="margin-left:auto;transition:transform .2s">▼</span>' +
     '</div>' +
     '<div class="ap-img-body">' +
@@ -3053,19 +3187,9 @@ function renderArtistImages(images) {
       '<div class="ap-img-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">' + cards + '</div>' +
     '</div>';
 
-  // Accordéon — plier / déplier la section Images (ouverte par défaut).
-  {
-    const hdr   = section.querySelector('.ap-img-hdr');
-    const body  = section.querySelector('.ap-img-body');
-    const arrow = section.querySelector('.ap-img-arrow');
-    if (hdr && body) {
-      hdr.addEventListener('click', () => {
-        const isOpen = body.style.display !== 'none';
-        body.style.display = isOpen ? 'none' : '';
-        if (arrow) arrow.style.transform = isOpen ? 'rotate(-90deg)' : '';
-      });
-    }
-  }
+  // Profil rangé (02/11) — l'accordéon de la section est posé par le
+  // rangement commun (_apRanger), comme pour toutes les sections du profil.
+  apSectionNav();
 
   // Hydrate l'état liked (cœur plein) via le système wishlist partagé.
   if (window.SmylePlaylists && typeof window.SmylePlaylists.hydrateImgLikes === 'function') {
