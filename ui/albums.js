@@ -928,7 +928,10 @@
     // Deep-link depuis le WattBoard (tuile « ADN visuel » / « Albums ») : si la
     // tuile a posé `mymix_open` avant de rediriger ici, on ouvre My Mix une fois.
     try {
-      if (localStorage.getItem('mymix_open') === '1') {
+      // 02/11 — MY MIX fusionné dans « Playlists » : ui/watt-playlists.js
+      // consomme `mymix_open` lui-même quand il est chargé.
+      const _wpl = window.WattPlaylists || document.querySelector('script[src*="watt-playlists.js"]');
+      if (!_wpl && localStorage.getItem('mymix_open') === '1') {
         localStorage.removeItem('mymix_open');
         if (typeof toggleMixPanel === 'function') {
           // léger délai → laisse le reste du boot home s'initialiser

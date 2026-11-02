@@ -517,16 +517,14 @@
         // (curation des albums). « ADN visuel » a désormais son ÉCRAN DÉDIÉ
         // (#sec-adn-visuel) : il passe par la branche normale openScreen(key).
         if (key === 'albums') {
+          // 02/11 — MY MIX fusionné dans « Playlists » : on ouvre directement
+          // le volet Images (images likées + albums), disponible sur toutes
+          // les pages (ui/watt-playlists.js).
           try { localStorage.setItem('mymix_mode', 'image'); } catch (_) {}
-          // My Mix vit sur la home (index.html). Si la page courante l'expose
-          // (toggleMixPanel), on l'ouvre ; sinon (cas dashboard) on redirige
-          // vers / qui le porte — le mode image est déjà persisté ci-dessus.
-          if (typeof toggleMixPanel === 'function') {
-            toggleMixPanel();
-            try { if (window.SmyleAlbums && SmyleAlbums.applyMixMode) SmyleAlbums.applyMixMode('image'); } catch (_) {}
+          if (window.WattPlaylists && window.WattPlaylists.openMine) {
+            window.WattPlaylists.openMine({ world: 'image' });
           } else {
-            try { localStorage.setItem('mymix_open', '1'); } catch (_) {}
-            window.location.href = '/';
+            window.location.href = '/?mes-playlists=1';
           }
           return;
         }

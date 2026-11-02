@@ -1765,7 +1765,7 @@
           '<span class="pl-badge pl-badge-' + (playlist.visibility === 'public' ? 'public' : 'private') + '">' + badge + '</span>' +
         '</div>' +
         '<p class="pl-view-sub">' + tracks.length + ' titre' + (tracks.length > 1 ? 's' : '') + '</p>' +
-        (tracks.length > 0 ? '<button class="pl-btn pl-btn-primary pl-load-mix-btn" type="button" data-pl-id="' + playlist.id + '" style="margin-bottom:14px;background:' + plColor + ';color:#0a0a12">▶ Charger dans MY MIX</button>' : '') +
+        (tracks.length > 0 ? '<button class="pl-btn pl-btn-primary pl-load-mix-btn" type="button" data-pl-id="' + playlist.id + '" style="margin-bottom:14px;background:' + plColor + ';color:#0a0a12">▶ Écouter la playlist</button>' : '') +
         (tracks.length === 0
           ? '<p class="pl-empty">Aucune track. Ajoute des sons depuis la marketplace via le bouton +.</p>'
           : '<ul class="pl-view-list">' + tracks.map((t, idx) => {
@@ -1885,6 +1885,13 @@
       const loadBtn = overlay.querySelector('.pl-load-mix-btn');
       if (loadBtn) {
         loadBtn.onclick = async () => {
+          // 02/11 — MY MIX fusionné dans « Playlists » : lecture directe dans
+          // la file d'écoute (mini-barre), sur n'importe quelle page.
+          if (window.WattPlaylists && window.WattPlaylists.playQueue) {
+            window.WattPlaylists.playQueue(tracks, 0, String(playlist.id), playlist.title || 'Playlist');
+            close();
+            return;
+          }
           loadBtn.disabled = true;
           loadBtn.textContent = 'Chargement…';
           try {
@@ -1901,7 +1908,7 @@
           } catch (e) {
             _showToast('Chargement impossible : ' + (e && e.message || 'erreur'));
             loadBtn.disabled = false;
-            loadBtn.textContent = '▶ Charger dans MY MIX';
+            loadBtn.textContent = '▶ Écouter la playlist';
           }
         };
       }
