@@ -162,10 +162,10 @@
     }
     .credits-pack.is-selected { border-color: #ffd700; box-shadow: 0 0 0 2px rgba(255,215,0,.45); }
     .credits-modal__packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 14px 0 10px; }
-    .credits-buy__tva { margin: 0 0 8px; font-size: 12px; color: rgba(255,255,255,.6); }
+    .credits-buy__tva { margin: 0 0 8px; font-size: 12px; color: rgba(255,255,255,.82); }
     .credits-buy__consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: rgba(255,255,255,.85); cursor: pointer; margin: 6px 0; }
     .credits-buy__consent input { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 1px; accent-color: #ffd700; }
-    .credits-buy__legal { font-size: 12px; color: rgba(255,255,255,.55); margin: 6px 0 12px; }
+    .credits-buy__legal { font-size: 12px; color: rgba(255,255,255,.82); margin: 6px 0 12px; }
     .credits-buy__legal a { color: #cc88ff; }
     .credits-buy__pay { width: 100%; padding: 13px 16px; border: none; border-radius: 12px; font-weight: 800; font-size: 15px; cursor: pointer; background: linear-gradient(120deg, #ffd700, #ff9f1a); color: #1a1206; }
     .credits-buy__pay:disabled { opacity: .45; cursor: not-allowed; }

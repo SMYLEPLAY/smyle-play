@@ -211,7 +211,7 @@
   padding: 10px 12px; outline: none;
   transition: border-color .2s;
 }
-.dna-input::placeholder { color: rgba(136,0,255,.3); }
+.dna-input::placeholder { color: rgba(196,140,255,.90); }
 .dna-input:focus { border-color: rgba(136,0,255,.5); }
 .dna-submit {
   background: rgba(136,0,255,.12);
@@ -231,7 +231,7 @@
   font-size: 10px; letter-spacing: .08em;
   padding: 5px 12px; border-radius: 99px;
   border: 1px solid rgba(136,0,255,.15);
-  color: rgba(200,160,255,.45);
+  color: rgba(200,160,255,.86);
   cursor: pointer; background: none;
   font-family: inherit; transition: all .2s;
 }
@@ -262,12 +262,12 @@
 .dna-result-badge.night   { color: var(--w-night);   border-color: rgba(34,102,255,.35); text-shadow: 0 0 12px rgba(34,102,255,.3); }
 .dna-result-badge.hitmix  { color: var(--w-hitmix);  border-color: rgba(170,0,255,.35); text-shadow: 0 0 12px rgba(170,0,255,.3); }
 
-.dna-result-mood { font-size: 11px; color: rgba(200,180,255,.5); font-style: italic; line-height: 1.6; margin-bottom: 14px; }
+.dna-result-mood { font-size: 11px; color: rgba(200,180,255,.86); font-style: italic; line-height: 1.6; margin-bottom: 14px; }
 
 /* Score bars */
 .dna-scores { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .dna-score-row { display: flex; align-items: center; gap: 8px; font-size: 9px; }
-.dna-score-label { width: 90px; flex-shrink: 0; letter-spacing: .08em; text-transform: uppercase; color: rgba(200,180,255,.35); }
+.dna-score-label { width: 90px; flex-shrink: 0; letter-spacing: .08em; text-transform: uppercase; color: rgba(200,180,255,.86); }
 .dna-score-row.winner .dna-score-label { font-weight: 700; }
 .dna-score-bar-wrap { flex: 1; height: 3px; background: rgba(255,255,255,.05); border-radius: 99px; overflow: hidden; }
 .dna-score-bar { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
@@ -275,13 +275,13 @@
 .dna-score-bar.jungle  { background: var(--w-jungle); }
 .dna-score-bar.night   { background: var(--w-night); }
 .dna-score-bar.hitmix  { background: var(--w-hitmix); }
-.dna-score-pct { width: 30px; text-align: right; color: rgba(200,180,255,.4); flex-shrink: 0; }
+.dna-score-pct { width: 30px; text-align: right; color: rgba(200,180,255,.86); flex-shrink: 0; }
 .dna-score-row.winner .dna-score-pct { color: rgba(230,210,255,.8); }
 
 /* Track recommendations */
 .dna-tracks-title {
   font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
-  color: rgba(136,0,255,.4); margin: 16px 0 10px;
+  color: rgba(196,140,255,.90); margin: 16px 0 10px;
   display: flex; align-items: center; gap: 6px;
 }
 .dna-track-list { display: flex; flex-direction: column; gap: 4px; }
@@ -304,16 +304,16 @@
 .dna-track-play-icon.hitmix  { background: rgba(170,0,255,.12); color: var(--w-hitmix); }
 .dna-track-info { flex: 1; min-width: 0; }
 .dna-track-name { font-size: 12px; font-weight: 600; color: rgba(230,220,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dna-track-meta { font-size: 10px; color: rgba(180,160,220,.4); margin-top: 2px; }
-.dna-track-dur { font-size: 10px; color: rgba(200,180,255,.3); flex-shrink: 0; }
+.dna-track-meta { font-size: 10px; color: rgba(180,160,220,.86); margin-top: 2px; }
+.dna-track-dur { font-size: 10px; color: rgba(200,180,255,.86); flex-shrink: 0; }
 
 /* Suno prompt */
 .dna-suno-box {
   background: rgba(136,0,255,.03); border: 1px solid rgba(136,0,255,.1);
   border-radius: 5px; padding: 12px; margin-top: 14px; position: relative;
 }
-.dna-suno-label { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: rgba(136,0,255,.35); margin-bottom: 6px; }
-.dna-suno-prompt { font-size: 11px; color: rgba(200,180,255,.55); line-height: 1.7; padding-right: 60px; }
+.dna-suno-label { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: rgba(196,140,255,.90); margin-bottom: 6px; }
+.dna-suno-prompt { font-size: 11px; color: rgba(200,180,255,.86); line-height: 1.7; padding-right: 60px; }
 .dna-suno-copy {
   position: absolute; top: 10px; right: 10px;
   background: rgba(136,0,255,.1); border: 1px solid rgba(136,0,255,.25);

@@ -293,7 +293,7 @@
       '.pl-vis-opt { display: flex; gap: 10px; padding: 10px 0; font-size: 14px; color: #c7c4d8; cursor: pointer; align-items: flex-start; }' +
       '.pl-vis-opt input { margin-top: 3px; }' +
       '.pl-vis-opt strong { color: #fff; font-weight: 600; }' +
-      '.pl-field-label { display:block; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:6px; }' +
+      '.pl-field-label { display:block; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.70); margin-bottom:6px; }' +
       '.pl-field-input { width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#fff; font-size:.88rem; padding:9px 13px; outline:none; transition:border-color .15s; box-sizing:border-box; margin-bottom:14px; font-family:inherit; }' +
       '.pl-field-input:focus { border-color:rgba(204,136,255,.5); }' +
       '.pl-field-input option { background:#14111f; }' +
@@ -1076,7 +1076,7 @@
                     : null)
               || t.audio_url
               || null;
-            return { url: url, name: t.title, id: t.id };
+            return { url: url, name: t.title, id: t.id, cover_url: t.cover_url || t.coverUrl || null };
           })
           .filter(function(t) { return t.url; })
       };
@@ -1940,7 +1940,7 @@
 
     const audioHTML = url
       ? '<div style="margin-top:8px">' +
-          '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">Pré-écoute</div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,.70);margin-bottom:4px">Pré-écoute</div>' +
           '<audio controls preload="none" controlsList="nodownload noremoteplayback" oncontextmenu="return false" style="width:100%;height:28px" src="' + _e(url) + '"></audio>' +
         '</div>'
       : '';
@@ -1949,9 +1949,9 @@
       ? '<div style="margin-top:12px;padding:14px 16px;border-radius:12px;background:rgba(204,136,255,.07);border:1px solid rgba(204,136,255,.2)">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
             '<div>' +
-              '<div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Recette Suno</div>' +
+              '<div style="font-size:11px;color:rgba(255,255,255,.70);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Recette Suno</div>' +
               '<div id="pl-td-recipe-teaser" style="font-size:11px;color:#a79fc0;margin:2px 0 4px;line-height:1.5"></div>' +
-              '<div style="font-size:20px;font-weight:700;color:#fff">' + promptPrice + ' <span style="font-size:12px;color:rgba(255,255,255,.4)">Smyles</span></div>' +
+              '<div style="font-size:20px;font-weight:700;color:#fff">' + promptPrice + ' <span style="font-size:12px;color:rgba(255,255,255,.70)">Smyles</span></div>' +
             '</div>' +
             '<button id="pl-td-recipe-btn" data-prompt-id="' + _e(promptId) + '" data-prompt-price="' + promptPrice + '" data-track-name="' + _e(title) + '" ' +
               'style="padding:9px 16px;border-radius:999px;background:rgba(204,136,255,.18);border:1px solid rgba(204,136,255,.5);color:#cc88ff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">' +
@@ -1985,7 +1985,7 @@
         '<div style="width:100%;aspect-ratio:1/1;max-height:260px;overflow:hidden;flex-shrink:0">' + coverHTML + '</div>' +
         '<div style="padding:18px 20px 32px;display:flex;flex-direction:column;gap:10px">' +
           '<div style="height:3px;border-radius:2px;background:' + _e(color) + ';margin-bottom:4px"></div>' +
-          '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4)">Son</div>' +
+          '<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.70)">Son</div>' +
           '<h2 style="font-size:20px;font-weight:700;color:#fff;margin:0;line-height:1.2">' + _e(title) + '</h2>' +
           metaRow +
           audioHTML +
@@ -2092,12 +2092,12 @@
       '.pl-view-row-cover-fallback { width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0; }' +
       '.pl-view-row-info { flex: 1; min-width: 0; }' +
       '.pl-view-row-title { color: var(--pl-c,#cc88ff); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }' +
-      '.pl-view-row-hint { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 2px; }' +
+      '.pl-view-row-hint { font-size: 10px; color: rgba(255,255,255,.70); margin-top: 2px; }' +
       '.pl-view-row-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }' +
-      '.pl-view-row-arrow { font-size: 18px; color: rgba(255,255,255,.3); }' +
-      '.pl-view-row-remove { background: none; border: none; color: rgba(255,255,255,.3); cursor: pointer; font-size: 14px; padding: 4px; border-radius: 4px; line-height: 1; }' +
+      '.pl-view-row-arrow { font-size: 18px; color: rgba(255,255,255,.70); }' +
+      '.pl-view-row-remove { background: none; border: none; color: rgba(255,255,255,.70); cursor: pointer; font-size: 14px; padding: 4px; border-radius: 4px; line-height: 1; }' +
       '.pl-view-row-remove:hover { color: #ff6b6b; background: rgba(255,107,107,.1); }' +
-      '.pl-row-like,.pl-row-addpl { width:26px!important; height:26px!important; display:inline-flex!important; align-items:center!important; justify-content:center!important; padding:0!important; background:transparent!important; border:1px solid rgba(255,255,255,.1)!important; color:rgba(255,255,255,.35)!important; border-radius:7px!important; font-size:12px!important; cursor:pointer!important; flex:0 0 26px!important; }' +
+      '.pl-row-like,.pl-row-addpl { width:26px!important; height:26px!important; display:inline-flex!important; align-items:center!important; justify-content:center!important; padding:0!important; background:transparent!important; border:1px solid rgba(255,255,255,.1)!important; color:rgba(255,255,255,.70)!important; border-radius:7px!important; font-size:12px!important; cursor:pointer!important; flex:0 0 26px!important; }' +
       '.pl-row-like::before { content:"\\2661"; }' +
       '.pl-row-like.liked { color:#ff7799!important; border-color:rgba(255,119,153,.4)!important; }' +
       '.pl-row-like.liked::before { content:"\\2665"; }' +
@@ -2506,6 +2506,11 @@
   }
 
   if (window.SmylePlaylists) {
+    // Lot M — réapplique l'état « aimé » aux boutons ajoutés après coup
+    // (panneau d'achat, carte ID, page Œuvre).
+    window.SmylePlaylists.refreshLiked = function () {
+      try { _applyLikedClass(_readLiked()); _applyImgLikedClass(_imgLikedSet || new Set()); } catch (_) {}
+    };
     window.SmylePlaylists.toggleLike = toggleLike;
     window.SmylePlaylists.loadLikedTrackIds = loadLikedTrackIds;
     window.SmylePlaylists.hydrateImgLikes = hydrateImgLikes;

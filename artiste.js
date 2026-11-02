@@ -928,6 +928,23 @@ function _openSonFromHash() {
   try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
 }
 
+// Lot M — la barre de lecture ouvre la carte du son si elle est sur ce
+// profil (sinon elle renvoie vers l'accueil, qui l'ouvre).
+if (!window.SmyleTrackCard) {
+  window.SmyleTrackCard = {
+    open(id) {
+      const w = String(id || '');
+      const key = _trackDetailCache[w] ? w : Object.keys(_trackDetailCache).find((k) => {
+        const d = _trackDetailCache[k] || {};
+        return String(d.trackUuid) === w || String(d.trackId) === w || String(d.id) === w;
+      });
+      if (!key) return false;
+      openTrackDetailById(key);
+      return true;
+    },
+  };
+}
+
 function openVoiceDetailById(voiceId) {
   const data = _voiceDetailCache[voiceId];
   if (!data) return;

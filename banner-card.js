@@ -134,7 +134,7 @@
   function renderArtistBannerList(container, artists, opts) {
     if (!container) return;
     if (!Array.isArray(artists) || artists.length === 0) {
-      container.innerHTML = '<div class="banner-card-empty" style="padding:24px;text-align:center;font-size:13px;color:rgba(255,255,255,.35)">Aucun résultat</div>';
+      container.innerHTML = '<div class="banner-card-empty" style="padding:24px;text-align:center;font-size:13px;color:rgba(255,255,255,.70)">Aucun résultat</div>';
       return;
     }
     const o = opts || {};

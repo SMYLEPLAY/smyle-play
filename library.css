@@ -13,7 +13,7 @@
   --lib-border:  rgba(255, 215, 0, .1);
   --lib-border2: rgba(255, 215, 0, .06);
   --lib-text:    rgba(232, 228, 240, .9);
-  --lib-dim:     rgba(255, 255, 255, .35);
+  --lib-dim:     rgba(255, 255, 255, .7);
   --lib-topbar:  54px;
 }
 
@@ -45,7 +45,7 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 }
 .lib-topbar-logo {
   display: flex; align-items: center; gap: 10px;
-  color: rgba(136, 0, 255, .65);
+  color: rgba(196,140,255,.90);
   font-size: 13px; font-weight: 900;
   letter-spacing: .35em; text-transform: uppercase;
   transition: color .2s;
@@ -54,7 +54,7 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
 .lib-topbar-right { display: flex; align-items: center; gap: 14px; }
 .lib-topbar-link {
   font-size: 9px; letter-spacing: .2em; text-transform: uppercase;
-  color: rgba(255, 255, 255, .35);
+  color: rgba(255, 255, 255, .70);
   padding: 7px 12px;
   border: 1px solid rgba(255, 255, 255, .08);
   border-radius: 6px;
@@ -149,7 +149,7 @@ textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; }
   cursor: pointer;
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, .6);
+  color: rgba(255, 255, 255, .82);
   font-family: inherit;
   font-size: .92rem;
   font-weight: 700;
@@ -218,7 +218,7 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
   background: rgba(255, 255, 255, .06);
   border-radius: 10px;
   font-weight: 700;
-  color: rgba(255, 255, 255, .6);
+  color: rgba(255, 255, 255, .82);
 }
 .lib-tab.active .lib-tab-count {
   background: rgba(255, 215, 0, .12);
@@ -315,7 +315,7 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
   display: inline-block;
   margin-top: 8px;
   font-size: 11px;
-  color: rgba(255, 255, 255, .55);
+  color: rgba(255, 255, 255, .82);
   line-height: 1.55;
 }
 .lib-empty-note b { color: rgba(255, 255, 255, .85); font-weight: 700; }
@@ -343,7 +343,7 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
 
 .lib-item-desc {
   font-size: 11px; line-height: 1.55;
-  color: rgba(232, 228, 240, .65);
+  color: rgba(232, 228, 240, .86);
   margin-bottom: 12px;
 }
 
@@ -414,7 +414,7 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
   letter-spacing: .18em;
   text-transform: uppercase;
   font-weight: 700;
-  color: rgba(255, 255, 255, .45);
+  color: rgba(255, 255, 255, .76);
 }
 
 
@@ -538,7 +538,7 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
 }
 .lib-adn-col-arrow {
   font-size: 10px;
-  color: #6b677f;
+  color: #a8a3bd;
   flex-shrink: 0;
   transition: transform .2s ease;
 }
@@ -617,7 +617,7 @@ body:not(.lib-mode-musique):not(.lib-mode-image) .lib-world-musique { display: b
 }
 .lib-item-cell-chevron {
   font-size: 9px;
-  color: #6b677f;
+  color: #a8a3bd;
   flex-shrink: 0;
   transition: transform .2s ease;
 }

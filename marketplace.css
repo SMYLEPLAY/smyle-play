@@ -42,7 +42,7 @@
   font-size: 11px;
   letter-spacing: 0.38em;
   text-transform: uppercase;
-  color: rgba(200, 163, 255, 0.75);
+  color: rgba(200, 163, 255, .86);
   margin: 0 0 10px;
   font-weight: 600;
 }
@@ -51,7 +51,7 @@
   font-size: 14px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, .82);
   margin: 0 0 32px;
   font-weight: 500;
 }
@@ -59,7 +59,7 @@
 /* Hint loupe (remplace les barres supprimées) */
 .mp-hero-search-hint {
   font-size: 13px;
-  color: rgba(255,255,255,.38);
+  color: rgba(255,255,255,.70);
   margin: 4px 0 0;
   letter-spacing: .02em;
 }
@@ -107,7 +107,7 @@
 
 .mp-search-icon {
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, .76);
 }
 
 .mp-search-bar-dna .mp-search-icon {
@@ -123,7 +123,7 @@
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, .76);
   padding: 3px 7px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
@@ -151,7 +151,7 @@
 }
 
 .mp-search-input::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, .70);
 }
 
 /* ── Pill de match DNA / CONNECT ─────────────────────────────────────
@@ -286,7 +286,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, .82);
   flex-wrap: wrap;
 }
 
@@ -338,7 +338,7 @@
   font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, .82);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -399,7 +399,7 @@ body.mp-mode-image {
 
 .mp-section-sub {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, .76);
   margin-left: auto;
 }
 
@@ -433,7 +433,7 @@ body.mp-mode-image {
 .mp-ranking-rank {
   font-size: 18px;
   font-weight: 800;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, .62);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -460,7 +460,7 @@ body.mp-mode-image {
 
 .mp-ranking-sub {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, .76);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -472,7 +472,7 @@ body.mp-mode-image {
 
 .mp-ranking-meta {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, .82);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -481,7 +481,7 @@ body.mp-mode-image {
   padding: 24px;
   text-align: center;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, .70);
   list-style: none;
 }
 
@@ -499,7 +499,7 @@ body.mp-mode-image {
   padding: 48px 24px;
   text-align: center;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, .70);
   border: 1px dashed rgba(255, 255, 255, 0.08);
   border-radius: 12px;
 }
@@ -751,7 +751,7 @@ body.mp-mode-image {
 
 .mp-son-card-artist {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, .82);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -765,7 +765,7 @@ body.mp-mode-image {
 
 .mp-son-card-meta {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, .70);
   letter-spacing: 0.05em;
 }
 
@@ -847,7 +847,7 @@ body.mp-mode-image {
 
 .mp-artist-card-sub {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, .76);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -881,7 +881,7 @@ body.mp-mode-image {
   justify-content: space-between;
   gap: 8px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, .70);
   letter-spacing: 0.05em;
   padding: 4px 0 0;
   border-top: 1px solid rgba(255,255,255,.05);
@@ -914,7 +914,7 @@ body.mp-mode-image {
   justify-content: center;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, .76);
   border-radius: 7px;
   font-size: 13px;
   line-height: 1;
@@ -960,7 +960,7 @@ body.mp-mode-image {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, .12);
   background: rgba(255, 255, 255, .04);
-  color: rgba(255, 255, 255, .65);
+  color: rgba(255, 255, 255, .86);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -1078,7 +1078,7 @@ body.mp-mode-image {
   right: 16px;
   background: none;
   border: none;
-  color: rgba(255,255,255,.4);
+  color: rgba(255,255,255,.70);
   font-size: 20px;
   cursor: pointer;
   line-height: 1;
@@ -1101,7 +1101,7 @@ body.mp-mode-image {
 
 .mp-adn-modal-desc {
   font-size: 13px;
-  color: rgba(255,255,255,.65);
+  color: rgba(255,255,255,.86);
   line-height: 1.5;
   margin: 0 0 18px;
 }
@@ -1142,7 +1142,7 @@ body.mp-mode-image {
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,.15);
   background: transparent;
-  color: rgba(255,255,255,.6);
+  color: rgba(255,255,255,.82);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1178,7 +1178,7 @@ body.mp-mode-image {
 
 .mp-adn-modal-note {
   font-size: 11px;
-  color: rgba(255,255,255,.3);
+  color: rgba(255,255,255,.70);
   margin: 0;
 }
 
@@ -1228,7 +1228,7 @@ body.mp-mode-image {
   right: 16px;
   background: none;
   border: none;
-  color: rgba(255,255,255,.4);
+  color: rgba(255,255,255,.70);
   font-size: 20px;
   cursor: pointer;
   line-height: 1;
@@ -1245,7 +1245,7 @@ body.mp-mode-image {
 }
 .mp-recipe-modal-desc {
   font-size: 13px;
-  color: rgba(255,255,255,.65);
+  color: rgba(255,255,255,.86);
   line-height: 1.5;
   margin: 0 0 18px;
 }
@@ -1283,7 +1283,7 @@ body.mp-mode-image {
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,.15);
   background: transparent;
-  color: rgba(255,255,255,.6);
+  color: rgba(255,255,255,.82);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1308,7 +1308,7 @@ body.mp-mode-image {
 .mp-recipe-modal-confirm:disabled { opacity: .45; cursor: not-allowed; }
 .mp-recipe-modal-note {
   font-size: 11px;
-  color: rgba(255,255,255,.3);
+  color: rgba(255,255,255,.70);
   margin: 0;
 }
 
@@ -1388,14 +1388,14 @@ body.mp-mode-image {
 
 .mp-shop-card-artist {
   font-size: 11px;
-  color: rgba(255,255,255,.45);
+  color: rgba(255,255,255,.76);
   text-decoration: none;
 }
 .mp-shop-card-artist:hover { color: rgba(255,255,255,.75); text-decoration: underline; }
 
 .mp-shop-card-desc {
   font-size: 11px;
-  color: rgba(255,255,255,.45);
+  color: rgba(255,255,255,.76);
   line-height: 1.5;
   margin: 0;
   display: -webkit-box;
@@ -1417,7 +1417,7 @@ body.mp-mode-image {
   border-radius: 999px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.1);
-  color: rgba(255,255,255,.6);
+  color: rgba(255,255,255,.82);
   letter-spacing: .2px;
 }
 
@@ -1510,14 +1510,14 @@ body.mp-mode-image {
 .mp-td-body { padding: 18px 20px 32px; display: flex; flex-direction: column; gap: 10px; }
 
 .mp-td-color-bar { height: 3px; border-radius: 2px; margin-bottom: 4px; }
-.mp-td-type { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.4); }
+.mp-td-type { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.70); }
 .mp-td-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0; line-height: 1.2; }
 .mp-td-artist { font-size: 13px; color: rgba(204,136,255,.9); text-decoration: none; }
 .mp-td-artist:hover { text-decoration: underline; }
-.mp-td-plays { font-size: 12px; color: rgba(255,255,255,.4); }
+.mp-td-plays { font-size: 12px; color: rgba(255,255,255,.70); }
 
 .mp-td-audio-wrap { margin-top: 4px; }
-.mp-td-audio-label { font-size: 11px; color: rgba(255,255,255,.4); margin-bottom: 4px; }
+.mp-td-audio-label { font-size: 11px; color: rgba(255,255,255,.70); margin-bottom: 4px; }
 .mp-td-audio { width: 100%; height: 28px; outline: none; border-radius: 6px; }
 
 .mp-td-recipe {
@@ -1527,9 +1527,9 @@ body.mp-mode-image {
   border: 1px solid rgba(204,136,255,.2);
 }
 .mp-td-recipe-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.mp-td-recipe-label { font-size: 11px; color: rgba(255,255,255,.45); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .08em; }
+.mp-td-recipe-label { font-size: 11px; color: rgba(255,255,255,.76); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .08em; }
 .mp-td-recipe-price { font-size: 20px; font-weight: 700; color: #fff; }
-.mp-td-recipe-unit { font-size: 12px; color: rgba(255,255,255,.45); }
+.mp-td-recipe-unit { font-size: 12px; color: rgba(255,255,255,.76); }
 .mp-td-recipe-btn {
   padding: 9px 16px; border-radius: 999px;
   background: rgba(204,136,255,.18);
@@ -1604,13 +1604,13 @@ body.mp-mode-image {
 }
 
 .mp-id-body { padding: 18px 20px 32px; display: flex; flex-direction: column; gap: 10px; }
-.mp-id-type { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.4); }
+.mp-id-type { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.70); }
 .mp-id-title { font-size: 20px; font-weight: 700; color: #fff; margin: 0; line-height: 1.2; }
 .mp-id-artist { font-size: 13px; color: rgba(204,136,255,.9); text-decoration: none; }
 .mp-id-artist:hover { text-decoration: underline; }
 .mp-id-badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 2px; }
-.mp-id-meta-line { font-size: 12px; color: rgba(255,255,255,.45); }
-.mp-id-desc { font-size: 13px; color: rgba(255,255,255,.62); line-height: 1.5; }
+.mp-id-meta-line { font-size: 12px; color: rgba(255,255,255,.76); }
+.mp-id-desc { font-size: 13px; color: rgba(255,255,255,.86); line-height: 1.5; }
 
 .mp-id-social-row { display: flex; gap: 8px; padding: 6px 0 2px; }
 .mp-id-like-btn {
@@ -1619,7 +1619,7 @@ body.mp-mode-image {
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.04);
-  color: rgba(255,255,255,.65);
+  color: rgba(255,255,255,.86);
   font-size: 12px; font-weight: 500;
   cursor: pointer; font-family: inherit;
   transition: color .14s, border-color .14s, background .14s;
@@ -1654,7 +1654,7 @@ body.mp-mode-image {
   border: 1px solid rgba(255,255,255,.1);
   -webkit-user-drag: none; user-select: none;
 }
-.mp-id-gallery-note { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,.5); }
+.mp-id-gallery-note { margin-top: 8px; font-size: 11px; color: rgba(255,255,255,.76); }
 
 .mp-id-linked {
   margin-top: 6px; padding: 12px 14px;
@@ -1662,7 +1662,7 @@ body.mp-mode-image {
   background: rgba(124,58,237,.07);
   border: 1px solid rgba(124,58,237,.2);
 }
-.mp-id-linked-label { font-size: 11px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.mp-id-linked-label { font-size: 11px; color: rgba(255,255,255,.76); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
 .mp-id-linked-row { display: flex; align-items: center; gap: 10px; }
 .mp-id-linked-cover { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .mp-id-linked-cover-fallback { display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.06); font-size: 1.2rem; }
@@ -1701,7 +1701,7 @@ body.mp-mode-image {
 .mp-id-buy:active { transform: translateY(1px); }
 .mp-id-buy:disabled {
   background: rgba(255,255,255,.08);
-  color: rgba(255,255,255,.45);
+  color: rgba(255,255,255,.76);
   cursor: default;
 }
 .mp-id-state {
@@ -1763,7 +1763,7 @@ body.mp-mode-image {
 /* Lien perma artiste (↗) sur la card */
 .mp-son-card-permalink {
   font-size: 11px;
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.70);
   text-decoration: none;
   flex-shrink: 0;
   margin-left: auto;

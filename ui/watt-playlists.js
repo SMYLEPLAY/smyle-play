@@ -180,6 +180,9 @@
     document.body.appendChild(host);
     _player.host = host;
     _player.audio = host.querySelector('audio');
+    // Lecteur de file : la mini-barre garde la file d'attente (sinon elle la
+    // vide pour tout son « lancé seul »).
+    _player.audio._smbQueue = true;
     _player.audio.addEventListener('ended', function () { _playIdx(_player.idx + 1); });
     _player.audio.addEventListener('play', _syncRows);
     _player.audio.addEventListener('pause', _syncRows);
@@ -202,6 +205,16 @@
     p.host.querySelector('.ap-artist-name').textContent = p.label || 'WATT';
     var img = p.host.querySelector('img.ap-cover');
     if (t.cover_url) { img.src = t.cover_url; } else { img.removeAttribute('src'); }
+    // File d'attente de la mini-barre (Lot M) : la playlist continue de page
+    // en page et ⏮ / ⏭ marchent partout.
+    try {
+      if (window.SmyleMiniBar && window.SmyleMiniBar.setQueue) {
+        window.SmyleMiniBar.setQueue(p.queue.map(function (x) {
+          return { src: _srcOf(x), id: x.id || null, name: x.title || x.name || '—',
+                   artist: p.label || 'WATT', cover: x.cover_url || null };
+        }), i);
+      }
+    } catch (_) {}
     p.audio.src = _srcOf(t);
     var pr = p.audio.play();
     if (pr && pr.catch) pr.catch(function () {});

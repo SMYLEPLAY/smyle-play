@@ -275,3 +275,45 @@ body.mp-only-artists .watt-trust { display: none; }
 /* La pastille « ← Retour au WATT BOARD » ne chevauche plus le titre de
    la section ouverte. */
 body.wb3-active.wb3-screen-open #wb3-backbar { margin-bottom: 22px; position: relative; z-index: 2; }
+
+/* ── Lisibilité (demande de Tom, 02/11) : textes plus clairs, accents plus
+   lumineux, partout. Les couleurs de texte trop pâles ont aussi été
+   relevées directement dans les feuilles de chaque page. ─────────────── */
+:root {
+  --sp-text: #f4f2fb;
+  --sp-text-muted: rgba(255, 255, 255, .86);
+  --sp-text-faint: rgba(255, 255, 255, .74);
+}
+.mix-panel-title { color: #f1e6ff !important; text-shadow: 0 0 6px rgba(170, 0, 255, .9), 0 0 18px rgba(136, 0, 255, .55); }
+.player-empty, .mix-empty, .mix-panel-sub { color: rgba(255, 255, 255, .7) !important; }
+.panel-close, .watt-panel-close { color: rgba(255, 255, 255, .8) !important; }
+.sp-pill { color: color-mix(in srgb, var(--pill-c, #cc88ff) 55%, #ffffff) !important; }
+.o-half-kind--son { color: #6f9bff !important; filter: none !important; }
+.mp-socle-half--music .mp-socle-face,
+.mp-socle-half--music .mp-socle-line { color: #8fb2ff; }
+.mp-socle-half--visual .mp-socle-face,
+.mp-socle-half--visual .mp-socle-line { color: #e2c0ff; }
+.mp-son-card-permalink, .mp-son-card-meta-plays { color: rgba(255, 255, 255, .72) !important; }
+
+/* ── Boutons « Wishlist / J'aime / + Playlist » avec libellé (lot M) ─────
+   (ui/playlists.js impose des boutons carrés de 26 px en !important :
+   les boutons à libellé reprennent la main de la même façon.) */
+.watt-soc-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.watt-soc.like-btn,
+.watt-soc.add-to-pl-btn {
+  width: auto !important; min-width: 0 !important; height: 36px !important; min-height: 36px !important;
+  flex: 0 0 auto !important; padding: 0 14px !important; gap: 6px; border-radius: 999px !important;
+  font-size: 13px !important; font-weight: 700; white-space: nowrap; line-height: 1 !important;
+  border: 1px solid rgba(255, 255, 255, .24) !important; color: #f4f2fb !important;
+  background: rgba(255, 255, 255, .06) !important;
+}
+.watt-soc.like-btn::before { content: "\2661"; font-size: 15px; position: static; }
+.watt-soc.add-to-pl-btn::before { content: "+"; font-size: 16px; font-weight: 800; position: static; }
+.watt-soc.like-btn:hover { color: #ff8fa8 !important; border-color: rgba(255, 119, 153, .55) !important; }
+.watt-soc.add-to-pl-btn:hover { color: #e2c0ff !important; border-color: rgba(204, 136, 255, .6) !important; }
+.watt-soc.like-btn.liked { color: #ff6f8e !important; border-color: rgba(255, 111, 142, .65) !important; background: rgba(255, 85, 119, .12) !important; }
+.watt-soc.like-btn.liked::before { content: "\2665"; }
+.watt-soc.like-btn.liked .watt-soc-lbl::after { content: " ✓"; }
+.watt-soc .watt-soc-lbl { pointer-events: none; }
+.mp-td-social-row.watt-soc-row .mp-report-btn { margin-left: auto; }
+.pd-social { margin: 6px 0 12px; }
