@@ -366,7 +366,7 @@
             ? 'Solde insuffisant — il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.' +
               (_achatOuvert ? '' : ' Invite un ami : +20 Smyles pour toi et pour lui.')
             : 'Solde de Smyles insuffisant.' + (_achatOuvert ? '' : ' Invite un ami : +20 Smyles pour toi et pour lui.'), 'error');
-          if (_achatOuvert) { try { close(); window.openCreditsBuyModal(); } catch (_) {} }
+          if (_achatOuvert) { try { close(); window.openCreditsBuyModal((d && typeof d === 'object' && d.required != null) ? { manque: d.required - d.available } : undefined); } catch (_) {} }
         } else if (status === 409 && err.body && err.body.detail && err.body.detail.code === 'prix_change') {
           _toast(err.body.detail.message + ' — réessaie.', 'error');
         } else if (status === 409) {

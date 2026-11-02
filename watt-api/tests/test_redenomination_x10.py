@@ -40,7 +40,9 @@ def test_packs_et_valeur_de_retrait():
     from app.services.credits import CREDIT_PACKS, EUR_PER_CREDIT, get_pack_by_id
     from app.services.reserve import PAYOUT_RATE_CENTS
 
-    assert [(p["id"], p["credits"], p["price_eur_cents"]) for p in CREDIT_PACKS] == [
+    # Les 3 anciens packs gardent leurs prix (montant libre : test_achat_montant_libre.py).
+    assert [(p["id"], p["credits"], p["price_eur_cents"])
+            for p in map(get_pack_by_id, ("pack_100", "pack_500", "pack_2000"))] == [
         ("pack_100", 100, 800), ("pack_500", 500, 3500), ("pack_2000", 2000, 13000),
     ]
     # Anciens identifiants encore acceptés (onglet resté ouvert).
