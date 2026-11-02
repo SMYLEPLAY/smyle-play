@@ -9,8 +9,8 @@
        côté serveur (watt-api/app/routers/pages.py::_oeuvre_c4_meta).
        Chemins ABSOLUS partout : la page vit sous /o/<id>. -->
   <title>Œuvre · WATT</title>
-  <link rel="stylesheet" href="/topbar.css" />
-  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <link rel="stylesheet" href="/topbar.css?v=20261102lis" />
+  <link rel="stylesheet" href="/ui/core/tokens.css?v=20261102lis" />
   <style>
     body.o-page { margin: 0; background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -57,7 +57,7 @@
     .o-bundle-note { margin: 6px 0 0; font-size: 12px; color: var(--sp-text-muted, rgba(255,255,255,.72)); }
     .o-report { align-self: flex-start; background: none; border: none; padding: 4px 0; cursor: pointer;
       color: var(--sp-text-faint, rgba(255,255,255,.55)); font-size: 12px; text-decoration: underline; }
-    .o-licence { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: rgba(255,255,255,.62); }
+    .o-licence { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: rgba(255,255,255,.86); }
     .o-licence a { color: inherit; }
     .o-half-prov { opacity: .8; }
     .o-share { align-self: flex-start; padding: 10px 14px; border-radius: 11px; cursor: pointer; font-weight: 600; font-size: 13px;
@@ -137,6 +137,8 @@
 
       <div class="o-side">
         <div class="o-player" id="o-player"></div>
+        <!-- Lot M — Wishlist, J'aime et playlist directement depuis l'Œuvre. -->
+        <div class="watt-soc-row" id="o-social"></div>
 
         <!-- Achat de l'Œuvre entière (Lot 3) : son + image − 10 %, un seul achat.
              Placé AVANT les moitiés : c'est l'offre mise en avant. Chaque moitié
@@ -172,13 +174,15 @@
 <script src="/ui/core/toast.js"></script>
 <script src="/ui/topbar/topbar.js?v=20261029m2" defer></script>
 <script src="/ui/modals/boutique.js?v=20261011lotg" defer></script>
-<script src="/ui/modals/purchase-drawer.js?v=20261029lotl"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20261102lis"></script>
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
-<script src="/oeuvre-c4.js?v=20261029m1" defer></script>
-<script src="/ui/smyle-balance.js?v=20261029bonus" defer></script>
-<script src="/ui/modals/credits-buy.js?v=20261029bonus" defer></script>
+<script src="/ui/playlists.js?v=20261102lis" defer></script>
+<script src="/oeuvre-c4.js?v=20261102lis" defer></script>
+<script src="/ui/player/mini-bar.js?v=20261102lis" defer></script>
+<script src="/ui/smyle-balance.js?v=20261102lis" defer></script>
+<script src="/ui/modals/credits-buy.js?v=20261102lis" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <!-- Lot D : pied de page légal (Mentions, CGU, Confidentialité, Cookies, Contact) -->
-<script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>
+<script src="/ui/core/legal-footer.js?v=20261102lis" defer></script>
 </body>
 </html>

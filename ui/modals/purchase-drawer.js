@@ -164,6 +164,21 @@
   };
   function _knownType(t) { return !!(ENDPOINTS[t] || OFFER_ONLY_TYPES[t]); }
 
+  // Lot M — Wishlist / J'aime / + Playlist directement dans le panneau
+  // d'achat. Le son a besoin de l'identifiant du MORCEAU (opts.trackId) ;
+  // l'image se like par son propre identifiant.
+  function _socialHtml(type, id, opts) {
+    var b = [];
+    if (opts.trackId) {
+      b.push('<button type="button" class="like-btn watt-soc" data-like-btn="' + _esc(opts.trackId) + '"><span class="watt-soc-lbl">Wishlist</span></button>');
+      b.push('<button type="button" class="add-to-pl-btn watt-soc" data-add-to-playlist="' + _esc(opts.trackId) + '"><span class="watt-soc-lbl">Playlist</span></button>');
+    }
+    if (type === 'image' && id) {
+      b.push('<button type="button" class="like-btn watt-soc" data-img-like-btn="' + _esc(id) + '"><span class="watt-soc-lbl">J\'aime</span></button>');
+    }
+    return b.length ? '<div class="watt-soc-row pd-social">' + b.join('') + '</div>' : '';
+  }
+
   function open(opts) {
     opts = opts || {};
     // K-04 — un type « offre uniquement » n'est plus dans ENDPOINTS : sans ce
@@ -224,6 +239,7 @@
         '<h3 class="pd-title">' + _esc(title) + '</h3>' +
         (opts.artistName ? '<p class="pd-artist">par ' + _esc(opts.artistName) + '</p>' : '<p class="pd-artist"></p>') +
         (opts.desc ? '<p class="pd-desc">' + _esc(opts.desc) + '</p>' : '') +
+        _socialHtml(type, id, opts) +
         '<ul class="pd-reperes">' + reperes + '</ul>' +
         '<div class="pd-market" id="pd-market"></div>' +
         _linkedBlockHtml(type, opts) +
@@ -236,6 +252,7 @@
         '<p class="pd-note">Exemplaire ajouté à ta bibliothèque immédiatement après achat.</p>' +
       '</div>';
     document.body.appendChild(ov);
+    try { if (window.SmylePlaylists && window.SmylePlaylists.refreshLiked) window.SmylePlaylists.refreshLiked(); } catch (_) {}
 
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     ov.querySelector('.pd-close').addEventListener('click', close);

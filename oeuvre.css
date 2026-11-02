@@ -18,7 +18,7 @@
 .oeuvre-empty {
   text-align: center;
   padding: 64px 16px;
-  color: rgba(255, 255, 255, .5);
+  color: rgba(255, 255, 255, .76);
 }
 .oeuvre-empty-icon { font-size: 40px; opacity: .5; margin-bottom: 8px; }
 .oeuvre-empty h2 { margin: 8px 0; color: #fff; }
@@ -165,7 +165,7 @@
   padding: 28px 8px;
   text-align: center;
   font-size: 13px;
-  color: rgba(255, 255, 255, .35);
+  color: rgba(255, 255, 255, .70);
 }
 
 /* Bloc ADN collection */
@@ -194,7 +194,7 @@
 }
 .oeuvre-adn-desc {
   font-size: 12px;
-  color: rgba(255, 255, 255, .6);
+  color: rgba(255, 255, 255, .82);
   margin: 7px 0 10px;
 }
 
@@ -244,7 +244,7 @@
   white-space: nowrap;
 }
 .oeuvre-owned { font-size: 12px; color: #5fd0a0; font-weight: 600; white-space: nowrap; }
-.oeuvre-noprompt { color: rgba(255, 255, 255, .25); }
+.oeuvre-noprompt { color: rgba(255, 255, 255, .62); }
 
 /* Grille d'images (VISUEL) */
 .oeuvre-img-grid {
@@ -317,7 +317,7 @@
   -webkit-text-fill-color: transparent;
 }
 .oeuvre-pack-ttl { margin: 8px 0; color: #fff; font-size: 18px; }
-.oeuvre-pack-note { font-size: 13px; color: rgba(255, 255, 255, .65); margin: 6px 0 0; }
+.oeuvre-pack-note { font-size: 13px; color: rgba(255, 255, 255, .86); margin: 6px 0 0; }
 .oeuvre-pack-save {
   display: inline-block;
   margin-left: 4px;

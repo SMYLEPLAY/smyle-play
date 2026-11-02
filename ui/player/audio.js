@@ -62,6 +62,15 @@ function loadTrack(playlistKey, idx) {
   // NE PAS appeler audio.load() — sur iOS Safari, load() brise la permission
   // de lecture automatique. Changer audio.src suffit ; play() déclenche le
   // chargement. Sans load() l'auto-avance fonctionne dans les événements 'ended'.
+  // Lot M — la playlist suit l'utilisateur de page en page (mini-bar).
+  try {
+    if (window.SmyleMiniBar && window.SmyleMiniBar.setQueue) {
+      window.SmyleMiniBar.setQueue(pl.tracks.map(function (t) {
+        return { src: t.url || encodeFilePath(pl.folder, t.file), id: t.id || null, name: t.name || '—',
+                 artist: pl.label || 'WATT', cover: t.cover_url || null };
+      }), idx);
+    }
+  } catch (_) {}
   audio.src = primaryUrl;
   console.log('[SMYLE] Loading:', primaryUrl);
   audio.play().catch(e => console.warn('[SMYLE] play():', e.message));
@@ -197,6 +206,16 @@ function loadMixTrack() {
   const track = pl.tracks[m.trackIdx];
 
   currentTheme = pl.theme;
+  // Lot M — My Mix suit aussi l'utilisateur de page en page.
+  try {
+    if (window.SmyleMiniBar && window.SmyleMiniBar.setQueue) {
+      window.SmyleMiniBar.setQueue(myMixTracks.map(function (mm) {
+        const p2 = PLAYLISTS[mm.playlistKey]; const t2 = p2 && p2.tracks[mm.trackIdx];
+        return t2 ? { src: t2.url || encodeFilePath(p2.folder, t2.file), id: t2.id || null, name: t2.name || '—',
+                      artist: 'MY MIX', cover: t2.cover_url || null } : null;
+      }), mixIdx);
+    }
+  } catch (_) {}
   // Pas de audio.load() — voir commentaire dans loadTrack()
   audio.src    = track.url || encodeFilePath(pl.folder, track.file);
   audio.play().catch(() => {});

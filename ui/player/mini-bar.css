@@ -70,7 +70,7 @@ body.smyle-mini-bar-open { padding-bottom: 68px; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .smb-artist {
-  font-size: 11px; color: rgba(255,255,255,.4);
+  font-size: 11px; color: rgba(255,255,255,.70);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -97,7 +97,7 @@ body.smyle-mini-bar-open { padding-bottom: 68px; }
   padding: 0;
   background: transparent;
   border: 1px solid rgba(255,255,255,.1);
-  color: rgba(255,255,255,.55);
+  color: rgba(255,255,255,.82);
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
@@ -144,7 +144,7 @@ body.smyle-mini-bar-open { padding-bottom: 68px; }
   width: 28px; height: 28px;
   display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: none;
-  color: rgba(255,255,255,.3);
+  color: rgba(255,255,255,.70);
   font-size: 20px; cursor: pointer; border-radius: 50%;
   transition: color .14s, background .14s;
   padding: 0; line-height: 1;
@@ -158,3 +158,10 @@ body.smyle-mini-bar-open { padding-bottom: 68px; }
   .smb-prev, .smb-next { display: none; }
   .smb-loop { display: none; }
 }
+
+/* Lot M — une seule barre de lecture partout : sur l'accueil, la barre WATT
+   remplace l'ancienne barre du bas dès qu'un son est lancé. */
+body.smyle-mini-bar-open #player { display: none !important; }
+.smb-left.is-link { cursor: pointer; border-radius: 10px; }
+.smb-left.is-link:hover .smb-title { text-decoration: underline; }
+.smb-left.is-link:focus-visible { outline: 2px solid #ffd700; outline-offset: 2px; }

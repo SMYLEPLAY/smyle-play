@@ -14,11 +14,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Dashboard Artiste · WATT</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="dashboard.css?v=20261011lotg" />
-  <link rel="stylesheet" href="/topbar.css" />
+  <link rel="stylesheet" href="style.css?v=20261102lis" />
+  <link rel="stylesheet" href="dashboard.css?v=20261102lis" />
+  <link rel="stylesheet" href="/topbar.css?v=20261102lis" />
   <!-- C0 design system (blueprint VF 2026-06-10) : tokens + pilules 3 repères -->
-  <link rel="stylesheet" href="/ui/core/tokens.css" />
+  <link rel="stylesheet" href="/ui/core/tokens.css?v=20261102lis" />
   <link rel="stylesheet" href="/ui/core/badges.css?v=20260616c4oc" />
   <script src="/ui/core/badges.js?v=20261021lotj" defer></script>
   <!-- C1 — WattBoard v3 (bandeau + 2 mondes + tuiles + création Audio) -->
@@ -356,7 +356,7 @@
       #sec-identity .dash-roles-group { display: flex; flex-direction: column; gap: 8px; }
       #sec-identity .dash-roles-group-title {
         font-size: 11px; font-weight: 700; letter-spacing: .08em;
-        text-transform: uppercase; color: rgba(255,255,255,.55);
+        text-transform: uppercase; color: rgba(255,255,255,.82);
       }
       #sec-identity .dash-roles-group-chips { display: flex; flex-wrap: wrap; gap: 8px; }
     </style>
@@ -616,7 +616,7 @@
       <div style="font-size:.85rem;font-weight:700;margin-bottom:6px;">
         Mes données
       </div>
-      <div style="font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:12px;">
+      <div style="font-size:.78rem;color:rgba(255,255,255,.82);line-height:1.6;margin-bottom:12px;">
         Télécharge une copie de toutes les données de ton compte (profil,
         œuvres, achats, ventes, transactions, messages, signalements,
         abonnements, consentements) dans un fichier JSON — droit d'accès RGPD.
@@ -631,7 +631,7 @@
       <div style="font-size:.85rem;font-weight:700;color:var(--sp-danger,#ff5577);margin-bottom:6px;">
         Zone danger
       </div>
-      <div style="font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:12px;">
+      <div style="font-size:.78rem;color:rgba(255,255,255,.82);line-height:1.6;margin-bottom:12px;">
         Supprimer ton compte efface ton profil et tes œuvres invendues, et fait
         perdre <strong>tous tes Smyles</strong>, y compris ceux gagnés en
         vendant. Les exemplaires déjà achetés par d'autres restent dans leur
@@ -1205,7 +1205,7 @@
             <input class="dte2-input" id="dte2Tags" type="text" maxlength="500"
                    placeholder="Ex : chill, dark, guitare, 90bpm, nuit…"
                    style="margin-top:8px">
-            <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px">
+            <div style="font-size:11px;color:rgba(255,255,255,.70);margin-top:4px">
               Séparés par des virgules. Utilisés par les fans pour trouver ton son.
             </div>
           </div>
@@ -1217,12 +1217,12 @@
             <label style="display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none">
               <input type="checkbox" id="dte2BeatFlag" onchange="dte2ToggleBeatFlag()" style="width:15px;height:15px;accent-color:#7c5cff">
               <span><strong>🥁 Proposer comme beat</strong>
-              <em style="display:block;font-size:11px;color:rgba(255,255,255,.35);font-style:normal">Le son apparaît en plus sur l'étagère /beats. « Instrumental » décrit le son ; « Beat » est un choix de placement.</em></span>
+              <em style="display:block;font-size:11px;color:rgba(255,255,255,.70);font-style:normal">Le son apparaît en plus sur l'étagère /beats. « Instrumental » décrit le son ; « Beat » est un choix de placement.</em></span>
             </label>
             <span id="dte2BpmWrap" hidden style="display:flex;align-items:center;gap:8px;margin-top:8px">
               <label class="dte2-label" for="dte2Bpm" style="margin:0">BPM</label>
               <input class="dte2-input" id="dte2Bpm" type="number" min="40" max="300" placeholder="ex : 140" style="width:90px">
-              <em style="font-size:11px;color:rgba(255,255,255,.35);font-style:normal">optionnel</em>
+              <em style="font-size:11px;color:rgba(255,255,255,.70);font-style:normal">optionnel</em>
             </span>
           </div>
           <div class="dte2-field-group">
@@ -1234,7 +1234,7 @@
               <button type="button" class="dte2-create-prompt-btn" onclick="dte2OpenCreatePrompt()"
                       title="Créer une nouvelle recette pour ce son">+ Créer</button>
             </div>
-            <span style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.4">
+            <span style="font-size:11px;color:rgba(255,255,255,.70);line-height:1.4">
               Lier une recette rend ce son achetable sur la marketplace.
             </span>
           </div>
@@ -1792,7 +1792,7 @@
     #sec-voice-sale .dash-voice-radio input{ margin-top:3px; }
     #sec-voice-sale .dash-voice-radio-lbl{ font-weight:600; color:#fff; font-size:13px; }
     #sec-voice-sale .dash-voice-radio-sub{
-      font-size:11px; color:rgba(255,255,255,.55);
+      font-size:11px; color:rgba(255,255,255,.82);
       margin-top:2px; line-height:1.4;
     }
     #sec-voice-sale .dash-voice-sample-zone{
@@ -1857,7 +1857,7 @@
     }
     #sec-voice-sale .dash-voice-card-meta{
       margin-top:3px; font-size:12px;
-      color:rgba(255,255,255,.6);
+      color:rgba(255,255,255,.82);
     }
     #sec-voice-sale .dash-voice-card-status{
       font-size:11px; font-weight:700;
@@ -1887,7 +1887,7 @@
     }
     #sec-voice-sale .dash-voices-empty{
       padding:14px; text-align:center;
-      font-size:12px; color:rgba(255,255,255,.45);
+      font-size:12px; color:rgba(255,255,255,.76);
       border:1px dashed rgba(255,255,255,.1); border-radius:10px;
     }
   </style>
@@ -2624,24 +2624,24 @@
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
 <!-- C2 — drawer d'achat unifié -->
-<script src="/ui/modals/purchase-drawer.js?v=20261029lotl"></script>
+<script src="/ui/modals/purchase-drawer.js?v=20261102lis"></script>
 <script src="/ui/modals/offer-modal.js?v=20261021lotj"></script>
 <script src="/ui/modals/report-modal.js?v=20261011lotg"></script>
-<script src="/ui/modals/oeuvre-compose.js?v=20260707oc" defer></script>
-<script src="/ui/playlists.js?v=20261021lotj" defer></script>
+<script src="/ui/modals/oeuvre-compose.js?v=20261102lis" defer></script>
+<script src="/ui/playlists.js?v=20261102lis" defer></script>
 <script src="ui/core/droits-ia.js?v=20261020licence"></script>
-<script src="dashboard.js?v=20261029lotl"></script>
+<script src="dashboard.js?v=20261102lis"></script>
 <!-- C1 — WattBoard v3 (defer : s'initialise après dashboard.js + inline) -->
 <script src="wattboard-v3.js?v=20261029m0" defer></script>
 <!-- C4 livraison ② — formulaire de création d'image (monde Visuel) -->
-<script src="/ui/modals/oeuvre-invite.js?v=20260923o" defer></script>
+<script src="/ui/modals/oeuvre-invite.js?v=20261102lis" defer></script>
 <script src="images-create.js?v=20261021lotj" defer></script>
 <script src="images-list.js?v=20261011lotg" defer></script>
-<script src="/ui/smyle-balance.js?v=20261029bonus" defer></script>
-<script src="/ui/modals/credits-buy.js?v=20261029bonus" defer></script>
+<script src="/ui/smyle-balance.js?v=20261102lis" defer></script>
+<script src="/ui/modals/credits-buy.js?v=20261102lis" defer></script>
 <script src="/ui/modals/boutique.js?v=20261011lotg" defer></script>
 <script src="/ui/modals/engagement.js?v=20261011lotg" defer></script>
-<script src="/ui/modals/search.js?v=20261021lotj" defer></script>
+<script src="/ui/modals/search.js?v=20261102lis" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 
 <!-- DASH_SECTIONS_COLLAPSIBLE -->
@@ -2715,7 +2715,7 @@
     justify-content: space-between;
     gap: 8px;
   }
-  .trade-direction { font-size: 13px; color: rgba(255,255,255,0.6); }
+  .trade-direction { font-size: 13px; color: rgba(255,255,255,.82); }
   .trade-direction strong { color: #fff; }
   .trade-status {
     font-size: 11px;
@@ -2728,7 +2728,7 @@
   .trade-status-accepted { color: #4ade80; background: rgba(74,222,128,0.12); }
   .trade-status-rejected,
   .trade-status-cancelled { color: #f87171; background: rgba(248,113,113,0.12); }
-  .trade-status-expired  { color: rgba(255,255,255,0.35); }
+  .trade-status-expired  { color: rgba(255,255,255,.70); }
 
   .trade-card-body {
     display: flex;
@@ -2747,22 +2747,22 @@
     border-radius: 9px;
     padding: 9px 12px;
   }
-  .trade-prompt-lbl  { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing:0.06em; }
+  .trade-prompt-lbl  { font-size: 10px; color: rgba(255,255,255,.70); text-transform: uppercase; letter-spacing:0.06em; }
   .trade-prompt-name { font-size: 13px; color: #fff; font-weight: 600; }
   .trade-prompt-price { font-size: 11px; color: #ffd700; }
-  .trade-arrow { font-size: 18px; color: rgba(255,255,255,0.3); flex-shrink: 0; }
+  .trade-arrow { font-size: 18px; color: rgba(255,255,255,.70); flex-shrink: 0; }
   .trade-supp { font-size: 12px; color: #fbbf24; font-weight: 600; }
 
   .trade-message {
     font-size: 12px;
-    color: rgba(255,255,255,0.45);
+    color: rgba(255,255,255,.76);
     font-style: italic;
     margin: 0;
     padding: 8px 12px;
     background: rgba(255,255,255,0.03);
     border-radius: 7px;
   }
-  .trade-expires { font-size: 11px; color: rgba(255,255,255,0.3); margin: 0; }
+  .trade-expires { font-size: 11px; color: rgba(255,255,255,.70); margin: 0; }
 
   .trade-actions {
     display: flex;
@@ -2793,13 +2793,13 @@
   .trade-cancel-btn {
     background: rgba(255,255,255,0.05);
     border-color: rgba(255,255,255,0.12);
-    color: rgba(255,255,255,0.55);
+    color: rgba(255,255,255,.82);
   }
 
   .trades-empty {
     text-align: center;
     padding: 32px 20px;
-    color: rgba(255,255,255,0.35);
+    color: rgba(255,255,255,.70);
     font-size: 14px;
   }
 </style>
@@ -3070,14 +3070,14 @@
 </script>
 
 <!-- Messagerie 1:1 (Phase C) -->
-<link rel="stylesheet" href="/ui/messaging/messaging.css" />
+<link rel="stylesheet" href="/ui/messaging/messaging.css?v=20261102lis" />
 <script src="/ui/messaging/messaging.js?v=20261011lotg" defer></script>
 <script src="/ui/core/trade-view.js?v=20261011lotg" defer></script>
 <script src="/ui/core/page-services.js" defer></script>
 <script src="/ui/pioneer-counter.js?v=20261015lotib" defer></script>
 <script src="/ui/goal-bar.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
-<script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>
-<script src="/ui/player/mini-bar.js?v=20260707player" defer></script>
+<script src="/ui/core/legal-footer.js?v=20261102lis" defer></script>
+<script src="/ui/player/mini-bar.js?v=20261102lis" defer></script>
 </body>
 </html>

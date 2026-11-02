@@ -853,7 +853,7 @@
 }
 
 .watt-rank-item.rank-1 .watt-rank-num { color: #FFD700; font-size: 16px; }
-.watt-rank-item.rank-2 .watt-rank-num { color: rgba(200, 200, 200, 0.65); }
+.watt-rank-item.rank-2 .watt-rank-num { color: rgba(200, 200, 200, .86); }
 .watt-rank-item.rank-3 .watt-rank-num { color: rgba(200, 130, 70, 0.75); }
 
 .watt-rank-info { flex: 1; }
