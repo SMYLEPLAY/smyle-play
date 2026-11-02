@@ -172,3 +172,24 @@ async def test_slug_inconnu_sert_la_page_brute(client: AsyncClient, monkeypatch)
         r = await client.get(path)
         assert r.status_code == 200, path
         assert 'property="og:' not in r.text, path
+
+
+async def test_accueil_image_de_marque_et_favicons(client: AsyncClient) -> None:
+    """02/11/2026 — visage de SMYLE : aperçu des liens + favicon 48 px (Google)."""
+    from app.routers.pages import REPO_ROOT
+
+    html = (await client.get("/")).text
+    assert 'property="og:image" content="http' in html
+    assert "/ui/pwa/icones/og-watt.png" in html
+    assert 'name="twitter:card" content="summary_large_image"' in html
+    assert 'sizes="48x48" href="/ui/pwa/icones/favicon-48.png' in html
+    from PIL import Image
+
+    icones = REPO_ROOT / "ui" / "pwa" / "icones"
+    for nom, taille in (("og-watt.png", (1200, 630)), ("favicon-48.png", (48, 48)),
+                        ("favicon-32.png", (32, 32)), ("icone-192.png", (192, 192)),
+                        ("icone-512.png", (512, 512)), ("icone-maskable-512.png", (512, 512)),
+                        ("apple-touch-icon.png", (180, 180))):
+        assert Image.open(icones / nom).size == taille, nom
+    r = await client.get("/ui/pwa/icones/og-watt.png")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
