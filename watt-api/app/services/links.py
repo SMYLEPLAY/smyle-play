@@ -737,10 +737,14 @@ async def public_oeuvre(
             "platform": img.image_platform,
             # Lot J — provenance complète affichée sur /o/ (CGU art. 13).
             "modelVersion": img.image_model_version,
+            # Lot M — aperçu de la recette : sa longueur seulement, jamais
+            # son texte (réservé à l'acheteur).
+            "promptLength": len(img.prompt_text or ""),
         },
         "sound": {
             "trackId": str(track.id) if track is not None else None,
             "title": title,
+            "plays": int(track.plays or 0) if track is not None else 0,
             "streamUrl": _build_stream_url(track) if track is not None else "",
             "coverUrl": (track.cover_url or "") if track is not None else "",
             # Lot J — outil et version du son (la recette prime : c'est elle
@@ -753,7 +757,8 @@ async def public_oeuvre(
             # La moitié SON n'est achetable que si le morceau a une recette.
             "recipe": (
                 {"id": str(recipe.id), "priceCredits": recipe.price_credits,
-                 "productType": recipe.product_type}
+                 "productType": recipe.product_type,
+                 "promptLength": len(recipe.prompt_text or "")}
                 if recipe is not None else None
             ),
         },

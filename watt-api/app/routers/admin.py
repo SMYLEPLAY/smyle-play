@@ -278,6 +278,71 @@ async def search_users(
     return [_user_out(u) for u in rows]
 
 
+# ── Lot M — vitrine : retirer ou remettre un profil ─────────────────────────
+# Un profil retiré de la vitrine (profile_public = false) disparaît de
+# l'accueil, des listes, de la recherche et de sa page publique ; ses sons et
+# images aussi. Rien n'est supprimé : les acheteurs gardent ce qu'ils ont
+# débloqué, et le profil peut être remis d'un clic.
+
+
+class VitrineIn(BaseModel):
+    visible: bool
+
+
+@router.get("/profils")
+async def admin_profils(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Profils créateurs (avec un nom d'artiste), en vitrine ou non."""
+    from app.models.track import Track
+
+    nb_sons = (
+        select(func.count(Track.id))
+        .where(Track.artist_id == User.id, Track.is_deleted.is_(False))
+        .correlate(User)
+        .scalar_subquery()
+    )
+    rows = (
+        await db.execute(
+            select(User, nb_sons.label("nb_sons"))
+            .where(User.artist_name.is_not(None), User.artist_name != "")
+            .order_by(User.profile_public.desc(), User.artist_name)
+        )
+    ).all()
+    return {
+        "profils": [
+            {
+                "id": str(u.id),
+                "nom": u.artist_name,
+                "slug": _derive_artist_slug(u),
+                "enVitrine": bool(u.profile_public),
+                "nbSons": int(n or 0),
+                "banni": bool(u.is_banned),
+            }
+            for u, n in rows
+        ]
+    }
+
+
+@router.post("/profils/{user_id}/vitrine")
+async def admin_profil_vitrine(
+    user_id: UUID,
+    body: VitrineIn,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retire (visible=false) ou remet (visible=true) un profil en vitrine."""
+    u = await db.get(User, user_id)
+    if u is None:
+        raise HTTPException(status_code=404, detail="Compte introuvable.")
+    if body.visible and u.is_banned:
+        raise HTTPException(status_code=409, detail="Compte banni : il ne peut pas revenir en vitrine.")
+    u.profile_public = bool(body.visible)
+    await db.commit()
+    return {"ok": True, "id": str(u.id), "enVitrine": bool(u.profile_public)}
+
+
 @router.get("/grants", response_model=list[AdminGrantRead])
 async def list_grants(
     limit: int = Query(default=50, ge=1, le=200),

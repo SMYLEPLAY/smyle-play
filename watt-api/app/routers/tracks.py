@@ -45,8 +45,17 @@ async def create(
     # premier son publié (l'étape « publier mon profil » était cachée et
     # bloquait). Seul prérequis restant : un nom d'artiste (sinon la page
     # publique n'a pas d'adresse) → 409, comme avant.
-    profil_a_publier = not bool(getattr(current_user, "profile_public", False))
-    if profil_a_publier and not (current_user.artist_name or "").strip():
+    # Lot M (décision de Tom) — un profil mis HORS LIGNE volontairement le
+    # reste : publier un nouveau son ne le remet plus en vitrine. Seul le tout
+    # premier son d'un compte publie le profil automatiquement.
+    from sqlalchemy import exists, select as _select
+
+    from app.models.track import Track as _Track
+
+    deja_publie = bool((await db.execute(_select(exists().where(
+        _Track.artist_id == current_user.id)))).scalar())
+    profil_a_publier = not bool(getattr(current_user, "profile_public", False)) and not deja_publie
+    if not bool(getattr(current_user, "profile_public", False)) and not (current_user.artist_name or "").strip():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={

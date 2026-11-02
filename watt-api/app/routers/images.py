@@ -45,7 +45,7 @@ from pydantic import ValidationError
 from sqlalchemy import desc, false as sa_false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.config import settings
 from app.core.fichiers import lire_fichier_borne, max_octets, verifier_image
 from app.core.ratelimit import LIMIT_UPLOAD, limiter
@@ -61,12 +61,25 @@ from app.services.images import (
     ImageUploadError,
     R2NotConfigured,
     create_image,
+    redresser_apercus,
     upload_image_assets,
 )
 
 from app.services.r2 import flux_objet as _flux_objet
 
 router = APIRouter(tags=["images"])
+
+
+@router.post("/admin/images/redresser-apercus")
+async def admin_redresser_apercus(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lot M (B1) : refait les aperçus des photos enregistrées couchées."""
+    try:
+        return await redresser_apercus(db)
+    except R2NotConfigured:
+        raise HTTPException(status_code=503, detail="Stockage des fichiers non configuré.")
 
 # Limite dure de résultats (miroir de /watt/search/*). Pagination simple par
 # offset/limit ; l'UI affiche une grille compacte, pas d'infinite scroll au MVP.
@@ -220,12 +233,15 @@ async def create_my_image(
     # (users.profile_public). Même payload 409 + redirect /u/me que tracks.py
     # pour que le front réutilise la même CTA. 409 = intention-utilisateur non
     # remplie (ni 400 validation, ni 403 permissions).
-    if not bool(getattr(current_user, "profile_public", False)):
+    # Lot M — un profil mis hors ligne peut continuer à préparer ses Œuvres
+    # (elles restent invisibles tant que le profil est hors ligne). Seul
+    # prérequis : un nom d'artiste, comme pour les sons.
+    if not bool(getattr(current_user, "profile_public", False)) and not (current_user.artist_name or "").strip():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "error":    "profile_not_published",
-                "message":  "Publie d'abord ton profil pour pouvoir publier une image.",
+                "message":  "Choisis d'abord ton nom d'artiste pour publier une image.",
                 "redirect": "/u/me",
             },
         )

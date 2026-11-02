@@ -119,6 +119,18 @@
     son:  'with_prompt',
     beat: 'pack',
   };
+  // Lot M (B3) — la section « Création » et son sous-bloc « Poster un
+  // morceau » sont pliés par défaut : on les déplie avant d'y emmener.
+  function deplierCreation() {
+    var sec = $('sec-upload');
+    if (!sec) return;
+    sec.classList.remove('is-collapsed', 'is-collapsed-sub');
+    var sub = sec.querySelector(':scope > .dash-subhdr');
+    var contenu = sec.querySelector(':scope > .dash-subhdr1a-content');
+    if (sub) sub.classList.remove('is-1a-collapsed');
+    if (contenu) contenu.style.display = '';
+  }
+
   function createAction(kind) {
     closeCreateMenu();
     if (kind === 'image') {
@@ -156,6 +168,7 @@
     }
     if (kind === 'voix') { openScreen('voix'); return; }
     openScreen('sons');
+    deplierCreation();
     try { if (typeof setUploadMode === 'function') setUploadMode(CREATE_MAP[kind] || 'with_prompt'); } catch (_) {}
     // Amène directement la dropzone à l'écran (zone 1b de la section).
     var dz = $('dashDropzone');
@@ -392,7 +405,7 @@
           '<button type="button" class="wb3-monde-btn' + (monde === 'visuel' ? ' is-active' : '') + '" data-monde="visuel" role="tab" aria-selected="' + (monde === 'visuel') + '">🎨 Visuel</button>' +
         '</div>' +
         '<div class="wb3-create-wrap">' +
-          '<button type="button" class="wb3-create-btn" id="wb3-create-btn">+ Créer</button>' +
+          '<button type="button" class="wb3-create-btn" id="wb3-create-btn">' + (monde === 'audio' ? '+ Publier une Œuvre' : '+ Créer') + '</button>' +
           '<div class="wb3-create-menu" id="wb3-create-menu" role="menu">' + createMenuHtml(monde) + '</div>' +
         '</div>' +
       '</div>' +
@@ -491,6 +504,9 @@
 
       if (t.id === 'wb3-create-btn') {
         var m = $('wb3-create-menu');
+        // Lot M (B3) — un seul choix possible : on y va directement.
+        var choix = m ? m.querySelectorAll('[data-wb3-create]') : [];
+        if (choix.length === 1) { createAction(choix[0].getAttribute('data-wb3-create')); return; }
         if (m) m.classList.toggle('is-open');
         return;
       }

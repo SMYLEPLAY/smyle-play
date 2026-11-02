@@ -409,6 +409,11 @@ def _bloc_pwa(low: str, actif: bool) -> str:
     parts.append(
         f'<link rel="stylesheet" href="/ui/pwa/mobile.css?v={_version("mobile.css")}" />'
     )
+    # Lot M — lissage visuel commun (menu identique, couleurs fixes son /
+    # image / Œuvre), chargé en dernier sur toutes les pages.
+    parts.append(
+        f'<link rel="stylesheet" href="/ui/pwa/lissage.css?v={_version("lissage.css")}" />'
+    )
     parts.append(
         f'<script src="/ui/pwa/pwa.js?v={_version("pwa.js")}" '
         f'data-sw="{"on" if actif else "off"}" defer></script>'
@@ -459,7 +464,7 @@ class _PageHTML(HTMLResponse):
 def _sw_corps(mtime_ns: int, actif: bool, commit: str) -> str:
     modele = (_PWA_DIR / "sw.js").read_text(encoding="utf-8")
     version = hashlib.sha256(
-        (modele + commit + _version("mobile.css") + _version("pwa.js")).encode()
+        (modele + commit + _version("mobile.css") + _version("lissage.css") + _version("pwa.js")).encode()
     ).hexdigest()[:12]
     return (
         modele.replace("__WATT_SW_VERSION__", version)
