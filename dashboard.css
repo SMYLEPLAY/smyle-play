@@ -4327,3 +4327,38 @@ html { scroll-behavior: smooth; }
   .dash-cover-col { flex-wrap: wrap; }
   .dash-cover-col > * { max-width: 100%; }
 }
+
+/* ── Décision 02/11/2026 — Publier un son / Poster un beat ─────────────── */
+.dash-kind { margin-bottom: 16px; }
+.dash-kind-title { font-size: 13px; font-weight: 700; color: #e8e8f0; margin: 0 0 8px; }
+.dash-kind-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dash-kind-card {
+  display: flex; align-items: flex-start; gap: 12px; text-align: left; cursor: pointer;
+  padding: 14px; border-radius: 14px; font: inherit; color: #e8e8f0;
+  background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .12);
+  transition: border-color .15s, background .15s;
+}
+.dash-kind-card:hover { border-color: rgba(255, 255, 255, .28); }
+.dash-kind-card.is-active { border-color: #7c5cff; background: rgba(124, 92, 255, .12); }
+.dash-kind-ico { font-size: 22px; line-height: 1; }
+.dash-kind-txt strong { display: block; font-size: 14px; margin-bottom: 3px; }
+.dash-kind-txt em { display: block; font-style: normal; font-size: 12px; line-height: 1.45; color: #a09cb8; }
+.dash-kind-txt b { color: #e8e8f0; }
+.dash-beat-panel {
+  margin-top: 10px; padding: 14px; border-radius: 12px;
+  border: 1px solid rgba(124, 92, 255, .35); background: rgba(124, 92, 255, .06);
+}
+.dash-beat-panel[hidden], #dashBeatLicCountWrap[hidden], #dashPromptSupplyWrap[hidden] { display: none !important; }
+.dash-beat-licences { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dash-beat-lic {
+  display: flex; gap: 8px; align-items: flex-start; cursor: pointer; padding: 10px;
+  border-radius: 10px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(0, 0, 0, .15);
+}
+.dash-beat-lic input { margin-top: 2px; accent-color: #7c5cff; }
+.dash-beat-lic strong { display: block; font-size: 13px; }
+.dash-beat-lic em { display: block; font-style: normal; font-size: 11.5px; color: #a09cb8; line-height: 1.4; }
+.dash-beat-lic:has(input:checked) { border-color: #7c5cff; }
+.dash-beat-lic-rules { margin-top: 10px; line-height: 1.5; }
+@media (max-width: 640px) {
+  .dash-kind-cards, .dash-beat-licences { grid-template-columns: 1fr; }
+}

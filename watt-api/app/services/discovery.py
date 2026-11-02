@@ -32,6 +32,7 @@ from app.models.prompt import Prompt
 from app.models.prompt_gallery_image import PromptGalleryImage
 from app.models.track import Track
 from app.models.unlocked_prompt import UnlockedPrompt
+from app.services.fichier_audio import clause_produit_beat, fichier_autorise
 from app.services.acces_audio import url_acheteur
 from app.models.owned_visual_adn import OwnedVisualAdn
 from app.models.user import User
@@ -262,6 +263,8 @@ async def get_public_prompt(
     if row is None:
         return None
     p, u = row
+    from app.services.fichier_audio import produit_est_beat
+
     return {
         "id": p.id,
         "title": p.title,
@@ -273,6 +276,7 @@ async def get_public_prompt(
         "platform": p.prompt_platform,
         "model_version": p.prompt_model_version,
         "has_lyrics": bool(p.lyrics),
+        "fichier_inclus": await produit_est_beat(db, p.id),
     }
 
 
@@ -432,6 +436,7 @@ async def list_user_library_prompts(
             audio_url_subq.label("audio_url"),
             cover_url_subq.label("cover_url"),
             track_color_subq.label("track_color"),
+            clause_produit_beat().label("est_beat"),
         )
         .join(Prompt, Prompt.id == UnlockedPrompt.prompt_id)
         .join(User, User.id == Prompt.artist_id)
@@ -523,8 +528,15 @@ async def list_user_library_prompts(
             # sur les beats possédés (download gaté /beats/{id}/download).
             "product_type": p.product_type,
             "license_type": p.license_type,
+            # Décision 02/11 — fichier audio téléchargeable ? (beat, achat
+            # antérieur à la bascule, ou l'exemplaire du créateur lui-même).
+            "fichier_inclus": p.product_type != "image" and fichier_autorise(
+                est_beat=bool(est_beat),
+                fichier_inclus=bool(up.fichier_inclus),
+                est_createur=(p.artist_id == user_id),
+            ),
         }, CONTENU_RETIRE)
-        for up, p, u, audio_url, cover_url, track_color in rows
+        for up, p, u, audio_url, cover_url, track_color, est_beat in rows
     ]
     return items, int(total)
 

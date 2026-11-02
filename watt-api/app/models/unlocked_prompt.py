@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, UniqueConstraint, false, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -86,4 +86,11 @@ class UnlockedPrompt(Base):
     # migration 0051 (backfill par ordre d'achat).
     edition_number: Mapped[int | None] = mapped_column(
         Integer, nullable=True
+    )
+    # Décision 02/11/2026 (migration 0111) — l'exemplaire donne-t-il le
+    # FICHIER audio ? TRUE pour tout achat antérieur à la bascule (vendu
+    # « fichier + recette »), FALSE pour les nouveaux : un son donne la
+    # recette ; un beat donne le fichier par nature (services/fichier_audio).
+    fichier_inclus: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
     )

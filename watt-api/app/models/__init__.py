@@ -57,3 +57,8 @@ __all__ = [
     "VOICE_LICENSES",
     "Voice",
 ]
+
+# Décision 02/11 — règle « fichier audio inclus » figée à l'achat (écouteur
+# before_insert sur UnlockedPrompt). Importée ici, après tous les modèles,
+# pour être active partout où les modèles sont chargés.
+from app.services import fichier_audio as _fichier_audio  # noqa: E402,F401

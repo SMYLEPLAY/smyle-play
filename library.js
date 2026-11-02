@@ -640,14 +640,21 @@ function renderPrompts(items) {
              </div>`}
       </div>` : '';
 
-    // C2 — DOWNLOAD UNIVERSEL : tout exemplaire possédé donne droit au
-    // fichier (« achat = fichier + recette »), plus seulement les beats.
-    const downloadBlock = `
+    // Décision 02/11 — le fichier n'est servi que s'il fait partie de l'achat
+    // (beat, exemplaire acheté avant la bascule, ou son propre son) ; sinon
+    // l'achat d'un son = la recette, écoutable ici.
+    const downloadBlock = p.fichier_inclus === false ? `
+      <div class="lib-content-block">
+        <div class="lib-content-header"><span class="lib-content-label">🎵 Fichier audio</span></div>
+        <div class="lib-content-body">
+          <span style="display:block;font-size:12px;color:#a09cb8">Cet achat comprend la recette, pas le fichier audio. Le fichier est vendu avec les beats.</span>
+        </div>
+      </div>` : `
       <div class="lib-content-block">
         <div class="lib-content-header"><span class="lib-content-label">${p.product_type === 'beat' ? '🎚 Beat' : '🎵 Fichier audio'}</span></div>
         <div class="lib-content-body">
           <button class="lib-copy-btn" onclick="libDownloadProduct('${p.prompt_id}', this)">⬇ Télécharger le fichier</button>
-          <span style="display:block;margin-top:4px;font-size:11px;color:#a09cb8">Achat = fichier + recette — le fichier exact est à toi.</span>
+          <span style="display:block;margin-top:4px;font-size:11px;color:#a09cb8">Le fichier fait partie de ton achat — il est à toi.</span>
         </div>
       </div>`;
 

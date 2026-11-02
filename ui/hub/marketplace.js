@@ -2533,7 +2533,11 @@
       const _hote = badgeEl.closest('[data-track-id], [data-td-track-uuid]');
       const _tid = badgeEl.dataset.trackUuid
         || (_hote && (_hote.getAttribute('data-td-track-uuid') || _hote.getAttribute('data-track-id'))) || '';
-      window.PurchaseDrawer.open({ type: 'son', id: promptId, price: price || null, title: trackName, trackId: _tid || null });
+      // Décision 02/11 — beat (fichier vendu) ou son (recette seule) : le
+      // panneau d'achat le dit avant l'achat.
+      const _trB = (_state.tracks || []).find(t => String(t.promptId) === String(promptId));
+      window.PurchaseDrawer.open({ type: 'son', id: promptId, price: price || null, title: trackName, trackId: _tid || null,
+                                   isBeat: _trB ? !!_trB.isBeat : undefined });
       return;
     }
 

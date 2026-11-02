@@ -139,8 +139,10 @@ async def buy_pack(
     return PackBuyResult(**result)
 
 
-# Lot 1 : téléchargement NON gaté — universel (recettes comprises),
-# un acheteur ne perd jamais l'accès à un exemplaire déjà payé.
+# Lot 1 : un acheteur ne perd jamais l'accès à un exemplaire déjà payé.
+# Décision 02/11 : le FICHIER est réservé aux beats et aux exemplaires
+# achetés avant la bascule (unlocked_prompts.fichier_inclus) ; un son
+# acheté depuis donne la recette seule.
 @router.get("/products/{beat_id}/download")
 @router.get("/beats/{beat_id}/download")
 async def download_beat(
@@ -149,10 +151,12 @@ async def download_beat(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    C2 — DOWNLOAD UNIVERSEL : télécharge le fichier audio de TOUT
-    exemplaire possédé (recette OU beat legacy) — réservé aux acheteurs
-    (ou à l'artiste). Rend vraie la règle « achat = fichier + recette ».
-    L'écoute streaming reste libre, le téléchargement est gaté par l'achat.
+    Téléchargement du fichier audio d'un exemplaire possédé.
+
+    Décision 02/11/2026 : servi au créateur, aux détenteurs d'un BEAT, et
+    aux exemplaires achetés avant la bascule (« fichier + recette » à
+    l'époque). Un son acheté depuis donne la recette seule → 403.
+    L'écoute streaming reste libre.
 
     Deux routes, un handler : /products/{id}/download (canonique C2) et
     /beats/{id}/download (rétro-compat front bibliothèque pré-C2).
@@ -171,12 +175,13 @@ async def download_beat(
 
     # Possession : une ligne UnlockedPrompt pour ce produit, ou l'artiste lui-même.
     owns = (await db.execute(
-        select(UnlockedPrompt.id).where(
+        select(UnlockedPrompt.fichier_inclus).where(
             UnlockedPrompt.prompt_id == beat_id,
             UnlockedPrompt.current_owner_id == current_user.id,
-        )
-    )).scalar_one_or_none()
-    if owns is None and product.artist_id != current_user.id:
+        ).order_by(UnlockedPrompt.fichier_inclus.desc()).limit(1)
+    )).first()
+    est_createur = product.artist_id == current_user.id
+    if owns is None and not est_createur:
         if product.is_deleted:
             # Œuvre supprimée : introuvable pour qui ne l'a pas achetée.
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
@@ -187,10 +192,6 @@ async def download_beat(
     # Lot G : contenu retiré par la modération → plus servi à personne.
     if product.taken_down_at is not None:
         raise HTTPException(status_code=status.HTTP_410_GONE, detail=CONTENU_RETIRE)
-
-    # Journal de téléchargement (H0.5+) — best-effort, n'interrompt jamais le DL.
-    from app.services.downloads import log_download
-    await log_download(db, user_id=current_user.id, product_id=beat_id, kind="audio")
 
     # Fichier = audio du track lié : via prompt_id (recette, cas C2) OU
     # beat_id (produit beat legacy). Le plus récent si plusieurs.
@@ -208,6 +209,24 @@ async def download_beat(
         select(Track.id).where(*porte, Track.taken_down_at.is_not(None)).limit(1)
     )).scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_410_GONE, detail=CONTENU_RETIRE)
+    # Décision 02/11 — un son donne la recette, pas le fichier ; le fichier
+    # est réservé aux beats et aux exemplaires achetés avant la bascule.
+    from app.services.fichier_audio import (
+        MESSAGE_RECETTE_SEULE,
+        fichier_autorise,
+        produit_est_beat,
+    )
+    if not fichier_autorise(
+        est_beat=await produit_est_beat(db, beat_id),
+        fichier_inclus=bool(owns and owns[0]),
+        est_createur=est_createur,
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MESSAGE_RECETTE_SEULE)
+
+    # Journal de téléchargement (H0.5+) — best-effort, n'interrompt jamais le DL.
+    from app.services.downloads import log_download
+    await log_download(db, user_id=current_user.id, product_id=beat_id, kind="audio")
+
     track = (await db.execute(
         select(Track).where(
             *porte,

@@ -87,6 +87,9 @@ class PromptPublicDetail(PromptPublicCard):
     platform: str | None = None        # ex: "suno"
     model_version: str | None = None   # ex: "v5.5"
     has_lyrics: bool = False           # paroles incluses (sans les révéler)
+    # Décision 02/11 — l'achat donne-t-il le FICHIER audio ? True pour un
+    # beat ; False pour un son (recette seule). Le panneau d'achat l'affiche.
+    fichier_inclus: bool = False
 
 
 class PromptCatalogResponse(BaseModel):
@@ -206,6 +209,9 @@ class LibraryPromptItem(BaseModel):
     # Lot G — produit retiré par la modération : listé (trace de l'achat),
     # contenu masqué pour tous.
     retire: bool = False
+    # Décision 02/11 — l'exemplaire donne-t-il le fichier audio (beat, achat
+    # antérieur à la bascule, ou créateur) ? Sinon : recette seule.
+    fichier_inclus: bool = False
 
 
 class LibraryPromptsResponse(BaseModel):

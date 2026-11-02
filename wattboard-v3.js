@@ -356,10 +356,10 @@
           : '');
     }
     return '' +
-      '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque recette + fichier</em></span></button>' +
+      '<button type="button" class="wb3-create-item" data-wb3-create="son">🎵 <span>Musique<em>On écoute le morceau — l\'achat débloque la recette</em></span></button>' +
       // Lot 1 : beats cachés au lancement.
       ((window.WATT_LAUNCH && window.WATT_LAUNCH.beats)
-        ? '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste crée dessus — l\'achat débloque fichier + recette</em></span></button>'
+        ? '<button type="button" class="wb3-create-item" data-wb3-create="beat">🥁 <span>Beat<em>Un artiste chante dessus — l\'achat débloque le fichier + la recette, sous licence</em></span></button>'
         : '') +
       (_adnOn() ? '<button type="button" class="wb3-create-item" data-wb3-create="adn">🧬 <span>ADN musical<em>Ta signature sonore vendable</em></span></button>' : '') +
       ((window.WATT_LAUNCH && window.WATT_LAUNCH.voix)

@@ -1807,8 +1807,10 @@ function showUploadForm(file) {
 
   // Initialise le mode par défaut (with_prompt) + le widget live de la grille
   // crédits↔euros + le compteur 0/1000 du prompt_text. Ces fonctions sont
-  // idempotentes (safe si déjà appelées).
-  setUploadMode('with_prompt');
+  // idempotentes (safe si déjà appelées). Décision 02/11 : on garde le choix
+  // « beat » s'il a été fait avant de déposer le fichier (menu Créer → Beat).
+  const _formKind = document.getElementById('dashUploadForm')?.dataset.kind;
+  setUploadMode(_formKind === 'beat' ? 'beat' : 'with_prompt');
   updatePromptCharCount();
   updateCreditGrid();
 }
@@ -1870,6 +1872,7 @@ function cancelUpload() {
 // État stocké dans dashUploadForm.dataset.mode, lu par uploadTrack() au submit.
 // Valeurs : 'with_prompt' (défaut) · 'simple' · 'beat' · 'pack' (C1).
 function setUploadMode(mode) {
+  const demande = mode;  // avant la réécriture ci-dessous (beat ou son)
   // C2 (2026-06-12) — FLUX UNIQUE : le mode 'pack' est supprimé, tout
   // retombe sur with_prompt. La fonction est conservée (appelée à l'init
   // et par d'anciens raccourcis) mais ne pilote plus de pilules.
@@ -1885,13 +1888,53 @@ function setUploadMode(mode) {
     p.setAttribute('aria-selected', on ? 'true' : 'false');
   });
 
-  // Libellé du CTA — reflète la destination
+  // Décision 02/11 — l'ancien raccourci « Beat » (mode 'pack') ouvre la
+  // section « Poster un beat » ; tout le reste publie un son.
+  dashSetKind(demande === 'pack' || demande === 'beat' ? 'beat' : 'son');
+}
+
+/* Décision 02/11/2026 — SON (l'acheteur reçoit la recette) ou BEAT
+   (l'acheteur reçoit le fichier + la recette, sous licence). Le choix pilote
+   la case cachée #dashBeatFlag lue par uploadTrack, le panneau beat (BPM +
+   licence) et le libellé du bouton de publication. */
+function dashSetKind(kind) {
+  const beat = kind === 'beat';
+  const form = document.getElementById('dashUploadForm');
+  if (form) form.dataset.kind = beat ? 'beat' : 'son';
+  const flag = document.getElementById('dashBeatFlag');
+  if (flag) flag.checked = beat;
+  document.querySelectorAll('.dash-kind-card').forEach(c => {
+    const on = c.dataset.kind === (beat ? 'beat' : 'son');
+    c.classList.toggle('is-active', on);
+    c.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  const panel = document.getElementById('dashBeatPanel');
+  if (panel) panel.hidden = !beat;
+  // En beat, le nombre d'exemplaires est porté par la licence.
+  const sup = document.getElementById('dashPromptSupplyWrap');
+  if (sup) sup.hidden = beat;
   const cta = document.getElementById('dashUploadCtaLbl');
-  if (cta) {
-    cta.textContent = ({
-      with_prompt: 'Publier la musique',
-      pack:        'Publier le beat',
-    })[mode];
+  if (cta) cta.textContent = beat ? 'Publier le beat' : 'Publier le son';
+  if (beat) dashBeatLicence();
+}
+
+/* Licence du beat → nombre d'exemplaires (max_supply) : illimitée = vide,
+   limitée = N, exclusive = 1 (pièce unique : le beat sort de la vente après
+   le premier achat — stock épuisé). */
+function dashBeatLicence() {
+  const choix = document.querySelector('input[name="dashBeatLicence"]:checked');
+  const v = choix ? choix.value : 'illimitee';
+  const wrap = document.getElementById('dashBeatLicCountWrap');
+  if (wrap) wrap.hidden = v !== 'limitee';
+  const sup = document.getElementById('dashPromptMaxSupply');
+  if (!sup) return;
+  if (v === 'exclusive') sup.value = '1';
+  else if (v === 'limitee') {
+    const n = parseInt(document.getElementById('dashBeatLicCount')?.value || '', 10);
+    sup.value = Number.isInteger(n) && n >= 2 ? String(n) : '';
+  } else sup.value = '';
+  if (typeof dashPromptUpdateRarityPreview === 'function') {
+    try { dashPromptUpdateRarityPreview(); } catch (_) {}
   }
 }
 
@@ -5782,6 +5825,8 @@ if (typeof window !== 'undefined') {
   // Ma Musique — mode switcher + widgets live
   window.setUploadMode        = setUploadMode;
   window.dashToggleBeatFlag   = dashToggleBeatFlag;
+  window.dashSetKind          = dashSetKind;
+  window.dashBeatLicence      = dashBeatLicence;
   window.dte2ToggleBeatFlag   = dte2ToggleBeatFlag;
   window.updatePromptCharCount = updatePromptCharCount;
   window.updateCreditGrid     = updateCreditGrid;
