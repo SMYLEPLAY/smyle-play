@@ -48,6 +48,14 @@ async def _retirer(cible_type: str, cible_id, motif="Contrefaçon avérée"):
 async def test_acheteur_telecharge_apres_suppression_par_le_createur(client):
     a, acheteur, o, h, hb = await _vente(client)
     autre = await _user()
+    # Décision 02/11 : seul un exemplaire acheté AVANT la bascule (« fichier +
+    # recette ») ou un beat donne le fichier. On simule un achat d'avant.
+    async with SessionLocal() as db:
+        await db.execute(text(
+            "UPDATE unlocked_prompts SET fichier_inclus = TRUE "
+            "WHERE prompt_id = :p AND current_owner_id = :u"),
+            {"p": str(o["recette"]), "u": str(acheteur["id"])})
+        await db.commit()
     try:
         r = await client.post("/artist/me/oeuvres/actions", headers=h, json={
             "track_ids": [str(o["track"])], "action": "supprimer"})

@@ -350,7 +350,7 @@
       '<div class="o-half-thumb">' + sonThumb + '</div>' +
       '<div class="o-half-body"><p class="o-half-kind o-half-kind--son">Le son</p>' +
       '<p class="o-half-title">' + _esc(snd.title || title) + '</p>' +
-      '<p class="o-half-note">' + (snd.recipe ? 'Recette + fichier' : 'En écoute libre') + '</p>' +
+      '<p class="o-half-note">' + (snd.recipe ? 'Recette' : 'En écoute libre') + '</p>' +
       (_provenance(snd.platform, snd.modelVersion)
         ? '<p class="o-half-note o-half-prov">' + _esc(_provenance(snd.platform, snd.modelVersion)) + '</p>' : '') +
       '</div>' +

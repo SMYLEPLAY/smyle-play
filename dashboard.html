@@ -759,21 +759,55 @@
              sons avec/sans prompt ne cohabiteront PAS dans les mêmes
              sections de la plateforme — traité plus tard.
              ═════════════════════════════════════════════════════════════ -->
-        <!-- C2 (2026-06-12) — FLUX UNIQUE : les 2 pilules Musique/Beat sont
-             remplacées par une case « Proposer aussi comme beat ». La recette
-             est LE produit (un seul prix, une seule rareté) ; le flag beat
-             est un PLACEMENT (étagère /beats), plus un produit distinct. -->
-        <div class="dash-beat-flag" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:10px 14px;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:14px;background:rgba(255,255,255,.02)">
-          <label style="display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none">
-            <input type="checkbox" id="dashBeatFlag" onchange="dashToggleBeatFlag()" style="width:16px;height:16px;accent-color:#7c5cff">
-            <span><strong>🥁 Proposer aussi comme beat</strong>
-            <em style="display:block;font-size:12px;color:#a09cb8;font-style:normal">Même produit, même prix — ton son apparaît en plus sur l'étagère /beats pour les artistes qui cherchent une base.</em></span>
-          </label>
-          <span id="dashBpmWrap" hidden style="display:flex;align-items:center;gap:8px">
-            <label class="dash-label" for="dashTrackBpm" style="margin:0">BPM</label>
-            <input class="dash-input" id="dashTrackBpm" type="number" min="40" max="300" placeholder="ex : 140" style="width:90px">
-            <em style="font-size:11px;color:#a09cb8;font-style:normal">optionnel</em>
-          </span>
+        <!-- Décision 02/11/2026 — SON ou BEAT : deux produits distincts.
+             Son = l'acheteur reçoit la RECETTE (le fichier reste à l'artiste).
+             Beat = l'acheteur reçoit le FICHIER + la recette, sous licence.
+             La classe .dash-beat-flag est conservée : tant que les beats sont
+             cachés (mode lancement), ce choix est masqué → publication en son.
+             #dashBeatFlag / #dashBpmWrap / #dashTrackBpm restent les champs
+             lus par uploadTrack (is_beat + bpm). -->
+        <div class="dash-beat-flag dash-kind" id="dashKind">
+          <div class="dash-kind-title">Que veux-tu publier ?</div>
+          <div class="dash-kind-cards" role="radiogroup" aria-label="Type de publication">
+            <button type="button" class="dash-kind-card is-active" data-kind="son" role="radio" aria-checked="true" onclick="dashSetKind('son')">
+              <span class="dash-kind-ico">🎵</span>
+              <span class="dash-kind-txt"><strong>Publier un son</strong>
+              <em>L'acheteur reçoit la <b>recette</b> pour créer le sien. Ton fichier reste à toi.</em></span>
+            </button>
+            <button type="button" class="dash-kind-card" data-kind="beat" role="radio" aria-checked="false" onclick="dashSetKind('beat')">
+              <span class="dash-kind-ico">🥁</span>
+              <span class="dash-kind-txt"><strong>Poster un beat</strong>
+              <em>L'acheteur reçoit le <b>fichier</b> + la recette, sous licence, pour chanter dessus.</em></span>
+            </button>
+          </div>
+          <input type="checkbox" id="dashBeatFlag" hidden tabindex="-1" aria-hidden="true">
+
+          <div class="dash-beat-panel" id="dashBeatPanel" hidden>
+            <span id="dashBpmWrap" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <label class="dash-label" for="dashTrackBpm" style="margin:0">BPM</label>
+              <input class="dash-input" id="dashTrackBpm" type="number" min="40" max="300" placeholder="ex : 140" style="width:90px">
+              <em style="font-size:11px;color:#a09cb8;font-style:normal">recommandé — les artistes cherchent un beat par tempo</em>
+            </span>
+
+            <div class="dash-label" style="margin:14px 0 6px">Licence</div>
+            <div class="dash-beat-licences" role="radiogroup" aria-label="Licence du beat">
+              <label class="dash-beat-lic"><input type="radio" name="dashBeatLicence" value="illimitee" checked onchange="dashBeatLicence()">
+                <span><strong>Illimitée</strong><em>Autant d'acheteurs que tu veux.</em></span></label>
+              <label class="dash-beat-lic"><input type="radio" name="dashBeatLicence" value="limitee" onchange="dashBeatLicence()">
+                <span><strong>Limitée</strong><em>Un nombre de licences que tu fixes.</em></span></label>
+              <label class="dash-beat-lic"><input type="radio" name="dashBeatLicence" value="exclusive" onchange="dashBeatLicence()">
+                <span><strong>Exclusive</strong><em>Un seul acheteur, puis le beat sort de la vente.</em></span></label>
+            </div>
+            <div id="dashBeatLicCountWrap" hidden style="margin-top:8px;display:flex;align-items:center;gap:8px">
+              <label class="dash-label" for="dashBeatLicCount" style="margin:0">Nombre de licences</label>
+              <input class="dash-input" id="dashBeatLicCount" type="number" min="2" max="10000" value="10" style="width:100px" oninput="dashBeatLicence()">
+            </div>
+            <div class="dash-help dash-beat-lic-rules">
+              📜 L'acheteur peut utiliser le beat dans <strong>ses morceaux, même publiés ou vendus</strong>.
+              Crédit « prod. by » obligatoire · Content ID interdit à l'acheteur (sauf licence exclusive) ·
+              revente du fichier tel quel interdite (<a href="/legal#cgu" target="_blank" rel="noopener">CGU art. 11</a>).
+            </div>
+          </div>
         </div>
 
         <!-- Grille du formulaire — 3 colonnes en mode with_prompt, 2 en simple -->
@@ -1126,7 +1160,7 @@
         <div class="dash-upload-actions">
           <button class="dash-btn-primary" onclick="uploadTrack()" id="dashUploadCta">
             <svg viewBox="0 0 24 24" fill="#FFD700" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span id="dashUploadCtaLbl">Publier la musique</span>
+            <span id="dashUploadCtaLbl">Publier le son</span>
           </button>
           <button class="dash-btn-ghost" onclick="cancelUpload()">Annuler</button>
         </div>
@@ -1217,8 +1251,8 @@
           <div class="dte2-field-group">
             <label style="display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none">
               <input type="checkbox" id="dte2BeatFlag" onchange="dte2ToggleBeatFlag()" style="width:15px;height:15px;accent-color:#7c5cff">
-              <span><strong>🥁 Proposer comme beat</strong>
-              <em style="display:block;font-size:11px;color:rgba(255,255,255,.70);font-style:normal">Le son apparaît en plus sur l'étagère /beats. « Instrumental » décrit le son ; « Beat » est un choix de placement.</em></span>
+              <span><strong>🥁 C'est un beat (le fichier est vendu)</strong>
+              <em style="display:block;font-size:11px;color:rgba(255,255,255,.70);font-style:normal">Coché : les acheteurs reçoivent le fichier + la recette et le son apparaît sur l'étagère /beats. Décoché : ils reçoivent la recette seule. Ceux qui l'ont déjà acheté comme beat gardent leur fichier.</em></span>
             </label>
             <span id="dte2BpmWrap" hidden style="display:flex;align-items:center;gap:8px;margin-top:8px">
               <label class="dte2-label" for="dte2Bpm" style="margin:0">BPM</label>

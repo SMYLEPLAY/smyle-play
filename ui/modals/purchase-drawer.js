@@ -2,7 +2,7 @@
    C2 (2026-06-12) — DRAWER D'ACHAT UNIFIÉ · window.PurchaseDrawer
    ─────────────────────────────────────────────────────────────────────────
    UN seul composant d'achat pour toute la plateforme : récap produit,
-   3 repères (écoute libre · achat = fichier + recette · provenance IA),
+   3 repères (écoute libre · achat = recette, ou fichier + recette pour un beat · provenance IA),
    marché primaire/secondaire (sons), confirmation, erreurs humanisées.
 
    Usage :
@@ -37,7 +37,8 @@
   // 410 Gone (« ADN uniquement sur offre »). Une table qui les citait encore
   // laissait croire à un chemin d'achat direct qui n'existe plus.
   var TYPE_LABELS = {
-    'son':        '🧬 Recette + fichier',
+    'son':        '🧬 Recette',
+    'beat':       '🥁 Beat · fichier + licence',
     'image':      '🖼️ Recette + image originale',
     'adn-artist': '🧬 ADN d’artiste',
     'visual-adn': '🎨 ADN visuel d’artiste',
@@ -45,7 +46,8 @@
     'playlist':   '🎚 ADN de playlist',
   };
   var SUCCESS_TOASTS = {
-    'son':        'Exemplaire débloqué 🔓 — fichier + recette dans ta bibliothèque',
+    'son':        'Recette débloquée 🔓 — retrouve-la dans ta bibliothèque',
+    'beat':       'Beat débloqué 🔓 — fichier + licence dans ta bibliothèque',
     'image':      'Image débloquée 🔓 — recette + original dans ta bibliothèque',
     'adn-artist': 'ADN débloqué 🧬 — retrouve-le dans ta bibliothèque',
     'visual-adn': 'ADN visuel débloqué 🎨 — retrouve-le dans ta bibliothèque',
@@ -179,6 +181,30 @@
     return b.length ? '<div class="watt-soc-row pd-social">' + b.join('') + '</div>' : '';
   }
 
+  // Décision 02/11 — un SON donne la recette (pas le fichier) ; un BEAT donne
+  // le fichier sous licence. Le panneau le dit AVANT l'achat ; la nature du
+  // produit est confirmée par la fiche publique (fichier_inclus).
+  function _achatSonHtml(beat) {
+    return beat
+      ? 'Achat = <strong>le fichier du beat + sa recette</strong>, téléchargeable depuis ta bibliothèque.'
+      : 'Achat = <strong>la recette</strong> pour créer ton propre son. Le fichier audio n’est pas inclus (il est vendu avec les beats).';
+  }
+  function _licenceSonHtml(beat) {
+    return beat
+      ? '📜 <span>Licence beat : utilisable dans <strong>tes morceaux, même publiés ou vendus</strong> · crédit « prod. by » obligatoire · Content ID interdit (sauf exclusivité) · revente du fichier interdite (<a href="/legal#cgu" target="_blank" rel="noopener">CGU art. 11</a>).</span>'
+      : '📜 <span>La recette est réutilisable dans <strong>tes créations</strong>, même publiées ou vendues — revente telle quelle interdite (<a href="/legal#cgu" target="_blank" rel="noopener">CGU art. 11</a>).</span>';
+  }
+  function _confirmerNatureSon(ov, id, opts) {
+    if (!window.apiFetch || opts.isBeat != null) return;
+    window.apiFetch('/catalog/prompts/' + encodeURIComponent(id), { auth: false }).then(function (d) {
+      if (!d || !d.fichier_inclus || !ov.parentNode) return;
+      var k = ov.querySelector('.pd-kicker'); if (k) k.textContent = TYPE_LABELS.beat;
+      var a = ov.querySelector('#pd-li-achat'); if (a) a.innerHTML = '🔓 <span>' + _achatSonHtml(true) + '</span>';
+      var l = ov.querySelector('#pd-li-licence'); if (l) l.innerHTML = _licenceSonHtml(true);
+      ov.dataset.beat = '1';
+    }).catch(function () { /* silencieux : le libellé « recette » reste */ });
+  }
+
   function open(opts) {
     opts = opts || {};
     // K-04 — un type « offre uniquement » n'est plus dans ENDPOINTS : sans ce
@@ -224,9 +250,9 @@
         '<li>🎧 <span>L’écoute est <strong>libre avec un compte gratuit</strong> — tu achètes la possession, pas l’accès.</span></li>' +
         (type === 'voix'
           ? '<li>🔓 <span>Achat = <strong>le fichier voix complet</strong> (la preview 30 s devient intégrale).</span></li>'
-          : '<li>🔓 <span>Achat = <strong>fichier + recette</strong> — l’exemplaire complet, téléchargeable depuis ta bibliothèque.</span></li>') +
+          : '<li id="pd-li-achat">🔓 <span>' + _achatSonHtml(!!opts.isBeat) + '</span></li>') +
         '<li>⚡ <span>Provenance déclarée' + (platformLbl ? ' : <strong>' + _esc(platformLbl) + '</strong>' : ' (IA nommée sur la fiche)') + '.</span></li>' +
-        (type === 'voix' ? '' : _LICENCE_LI);
+        (type === 'voix' ? '' : '<li id="pd-li-licence">' + _licenceSonHtml(!!opts.isBeat) + '</li>');
     }
 
     var ov = document.createElement('div');
@@ -235,7 +261,7 @@
     ov.innerHTML =
       '<div class="pd-box" role="dialog" aria-modal="true" aria-label="Confirmer l’achat">' +
         '<button class="pd-close" aria-label="Fermer">&times;</button>' +
-        '<p class="pd-kicker">' + _esc(TYPE_LABELS[type]) + '</p>' +
+        '<p class="pd-kicker">' + _esc(TYPE_LABELS[(type === 'son' && opts.isBeat) ? 'beat' : type]) + '</p>' +
         '<h3 class="pd-title">' + _esc(title) + '</h3>' +
         (opts.artistName ? '<p class="pd-artist">par ' + _esc(opts.artistName) + '</p>' : '<p class="pd-artist"></p>') +
         (opts.desc ? '<p class="pd-desc">' + _esc(opts.desc) + '</p>' : '') +
@@ -253,6 +279,7 @@
       '</div>';
     document.body.appendChild(ov);
     try { if (window.SmylePlaylists && window.SmylePlaylists.refreshLiked) window.SmylePlaylists.refreshLiked(); } catch (_) {}
+    if (type === 'son') _confirmerNatureSon(ov, id, opts);
 
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     ov.querySelector('.pd-close').addEventListener('click', close);
@@ -329,7 +356,7 @@
         close();
         var msg = (resp && resp.perk_applied)
           ? 'Débloqué avec perk ADN −30 % 🔓'
-          : SUCCESS_TOASTS[type];
+          : SUCCESS_TOASTS[(type === 'son' && (opts.isBeat || ov.dataset.beat === '1')) ? 'beat' : type];
         _toast(msg, 'success');
         // Badge "owned" sur toutes les cards du produit (pattern marketplace).
         try {
