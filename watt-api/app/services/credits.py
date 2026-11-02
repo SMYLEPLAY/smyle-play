@@ -15,6 +15,7 @@ Pattern d'atomicité (à respecter dans tous les services qui mutent les balance
     # Si un raise survient dans le begin_nested, le savepoint rollback;
     # si le commit() outer échoue, tout est rollback côté Postgres.
 """
+import re
 from uuid import UUID
 
 from sqlalchemy import func, or_, select, text
@@ -38,20 +39,70 @@ from app.models.transaction import (
 EUR_PER_CREDIT: float = 0.07
 
 
-CREDIT_PACKS: list[dict] = [
-    {"id": "pack_100", "credits": 100, "price_eur_cents": 800},
-    {"id": "pack_500", "credits": 500, "price_eur_cents": 3500},
-    {"id": "pack_2000", "credits": 2000, "price_eur_cents": 13000},
+# 02/11/2026 (Tom) — ACHAT AU MONTANT LIBRE, prix par tranche.
+# L'acheteur choisit son nombre de Smyles ; le prix d'un Smyle dépend de la
+# quantité achetée et s'applique à TOUT l'achat. Le serveur calcule seul le
+# prix (le client n'envoie qu'un nombre de Smyles).
+# Plancher : un Smyle gagné se retire 5 c (PAYOUT_RATE_CENTS). Pour que WATT
+# ne perde jamais d'argent (TVA 20 %, carte hors UE 3,25 %, commission
+# minimale 10 %), un Smyle ne se vend pas sous ~5,5 c TTC. Le plus bas : 5,9 c.
+ACHAT_MIN_SMYLES = 100
+ACHAT_MAX_SMYLES = 50_000      # par paiement (limite l'exposition à la fraude)
+ACHAT_PAS_SMYLES = 10          # multiples de 10 → prix en centimes exact
+
+# (à partir de N Smyles, prix d'un Smyle en MILLIÈMES d'euro)
+TRANCHES_PRIX: list[tuple[int, int]] = [
+    (100, 80),      # 0,080 €
+    (500, 70),      # 0,070 €  (−12 %)
+    (2_000, 65),    # 0,065 €  (−19 %)
+    (5_000, 62),    # 0,062 €  (−22 %)
+    (10_000, 60),   # 0,060 €  (−25 %)
+    (25_000, 59),   # 0,059 €  (−26 %)
 ]
 
+
+def prix_smyle_millieme(credits: int) -> int:
+    """Prix d'un Smyle (millièmes d'euro) pour un achat de `credits` Smyles."""
+    m = TRANCHES_PRIX[0][1]
+    for seuil, prix in TRANCHES_PRIX:
+        if credits >= seuil:
+            m = prix
+    return m
+
+
+def offre_sur_mesure(credits: int) -> dict | None:
+    """Achat de `credits` Smyles, ou None si hors bornes / pas multiple de 10."""
+    if not isinstance(credits, int) or isinstance(credits, bool):
+        return None
+    if credits < ACHAT_MIN_SMYLES or credits > ACHAT_MAX_SMYLES:
+        return None
+    if credits % ACHAT_PAS_SMYLES:
+        return None
+    return {
+        "id": f"pack_{credits}",
+        "credits": credits,
+        # credits multiple de 10 et prix en millièmes → centimes entiers.
+        "price_eur_cents": credits * prix_smyle_millieme(credits) // 10,
+    }
+
+
+# Raccourcis proposés à l'écran (boutons rapides) : un par usage.
+PRESETS_SMYLES = (100, 1_000, 5_000, 25_000)
+CREDIT_PACKS: list[dict] = [offre_sur_mesure(n) for n in PRESETS_SMYLES]
+
 # Anciens identifiants (avant la redénomination) : un lien ou un onglet resté
-# ouvert peut encore les envoyer. Ils désignent le même pack, au même prix.
+# ouvert peut encore les envoyer. Ils désignent le même achat, au même prix.
 _PACK_ALIASES = {"pack_10": "pack_100", "pack_50": "pack_500", "pack_200": "pack_2000"}
 
 
 def get_pack_by_id(pack_id: str) -> dict | None:
+    """« pack_3000 » → achat de 3 000 Smyles au prix de sa tranche.
+
+    Les anciens packs fixes (pack_100 / pack_500 / pack_2000) gardent
+    exactement leur prix (8 / 35 / 130 €) : ce sont des seuils de tranche."""
     pack_id = _PACK_ALIASES.get(pack_id, pack_id)
-    return next((p for p in CREDIT_PACKS if p["id"] == pack_id), None)
+    m = re.fullmatch(r"pack_(\d{1,6})", pack_id or "")
+    return offre_sur_mesure(int(m.group(1))) if m else None
 
 
 # -----------------------------------------------------------------------------

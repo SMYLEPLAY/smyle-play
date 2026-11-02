@@ -160,6 +160,26 @@
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(255, 215, 0, 0.18);
     }
+    #creditsPacks { display: block; padding-top: 4px; }
+    .credits-libre__lbl { display: block; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.9); margin-bottom: 8px; }
+    .credits-libre__row { display: flex; gap: 8px; align-items: stretch; }
+    .credits-libre__input { flex: 1; min-width: 0; text-align: center; font-size: 26px; font-weight: 800; color: #ffd700; background: rgba(255,215,0,.06); border: 1px solid rgba(255,215,0,.35); border-radius: 12px; padding: 10px; -moz-appearance: textfield; }
+    .credits-libre__input::-webkit-outer-spin-button, .credits-libre__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .credits-libre__input:focus { outline: 2px solid #ffd700; outline-offset: 1px; }
+    .credits-libre__step { width: 48px; border-radius: 12px; border: 1px solid rgba(255,215,0,.35); background: rgba(255,215,0,.08); color: #ffd700; font-size: 22px; font-weight: 800; cursor: pointer; }
+    .credits-libre__chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 12px; }
+    .credits-libre__chip { flex: 1 1 0; min-width: 64px; padding: 8px 6px; border-radius: 999px; border: 1px solid rgba(255,215,0,.3); background: transparent; color: #ffe680; font-weight: 700; font-size: 13px; cursor: pointer; }
+    .credits-libre__chip.is-selected { background: #ffd700; color: #1a1206; border-color: #ffd700; }
+    .credits-libre__prix { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.04); }
+    .credits-libre__prix strong { font-size: 28px; color: #fff; white-space: nowrap; }
+    .credits-libre__prix span { font-size: 13px; color: rgba(255,255,255,.82); text-align: center; }
+    .credits-libre__astuce { margin: 8px 0 0; font-size: 13px; color: #ffe680; text-align: center; }
+    .credits-libre__grille { margin: 10px 0 4px; font-size: 13px; color: rgba(255,255,255,.85); }
+    .credits-libre__grille summary { cursor: pointer; color: #cc88ff; }
+    .credits-libre__grille ul { list-style: none; padding: 0; margin: 8px 0; }
+    .credits-libre__grille li { display: grid; grid-template-columns: 1fr auto 48px; gap: 8px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .credits-libre__grille em { color: #ffd700; font-style: normal; text-align: right; }
+    .credits-libre__grille p { margin: 6px 0 0; font-size: 12px; color: rgba(255,255,255,.75); }
     .credits-pack.is-selected { border-color: #ffd700; box-shadow: 0 0 0 2px rgba(255,215,0,.45); }
     .credits-modal__packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 14px 0 10px; }
     .credits-buy__tva { margin: 0 0 8px; font-size: 12px; color: rgba(255,255,255,.82); }
@@ -310,7 +330,7 @@
           <p class="credits-buy__legal">En payant, tu acceptes les
             <a href="/legal#cgv-smyles" target="_blank" rel="noopener">conditions de vente des Smyles</a>.
             Paiement sécurisé par Stripe : WATT ne voit jamais ta carte.</p>
-          <button type="button" class="credits-buy__pay" id="creditsPayBtn" disabled>Choisis un pack</button>
+          <button type="button" class="credits-buy__pay" id="creditsPayBtn" disabled>Choisis ton nombre de Smyles</button>
         </div>
 
         <div class="credits-modal__earn">
@@ -416,30 +436,63 @@
         tva.textContent = (data && data.mention_tva) || '';
       }
       if (packs.length === 0) {
-        container.innerHTML = '<div class="credits-modal__error">Aucun pack disponible pour le moment.</div>';
+        container.innerHTML = '<div class="credits-modal__error">Achat de Smyles indisponible pour le moment.</div>';
         return;
       }
 
-      container.innerHTML = packs
-        .map((p) => {
-          // Format prix : 8.00 € → 8 € si entier, sinon garder les centimes
-          const priceDisplay = p.price_eur_display || `${(p.price_eur_cents / 100).toFixed(2)} €`;
-          const unitCents = p.unit_price_cents || 0;
-          // Lot L : prix unitaire exact au format français (« 0,065 € / Smyle »).
-          const unitDisplay = p.unit_price_display
-            || (unitCents ? `${(unitCents / 100).toFixed(2).replace('.', ',')} € / Smyle` : '');
-          return `
-            <button type="button" class="credits-pack" data-pack-id="${String(p.id).replace(/[^a-z0-9_]/gi, '')}"
-              data-pack-credits="${p.credits}" data-pack-price="${String(priceDisplay).replace(/[<>"'`&]/g, '')}"
-              onclick="window._creditsBuyPack(this)">
-              <span class="credits-pack__credits">${p.credits}</span>
-              <span class="credits-pack__credits-label">Smyles</span>
-              <span class="credits-pack__price">${priceDisplay}</span>
-              ${unitDisplay ? `<span class="credits-pack__unit">${unitDisplay}</span>` : ''}
-            </button>
-          `;
-        })
-        .join('');
+      // 02/11/2026 — ACHAT AU MONTANT LIBRE : l'acheteur tape son nombre de
+      // Smyles ; le prix vient de la grille du serveur (le serveur recalcule
+      // tout au paiement : ce qui est affiché ici n'est qu'un aperçu).
+      _grille = {
+        tranches: (data.tranches || []).map((t) => ({ seuil: +t.a_partir_de, m: +t.prix_millieme, remise: +t.remise_pct || 0 })),
+        min: +data.min_smyles || 100, max: +data.max_smyles || 50000, pas: +data.pas_smyles || 10,
+      };
+      if (!_grille.tranches.length) {
+        container.innerHTML = '<div class="credits-modal__error">Aucun prix disponible pour le moment.</div>';
+        return;
+      }
+      const chips = packs.map((p) => {
+        const n = parseInt(p.credits, 10) || 0;
+        return `<button type="button" class="credits-libre__chip" data-qty="${n}">${n.toLocaleString('fr-FR')}</button>`;
+      }).join('');
+      const grilleHtml = _grille.tranches.map((t, i) => {
+        const fin = (_grille.tranches[i + 1] ? _grille.tranches[i + 1].seuil - 1 : _grille.max);
+        return `<li><span>${t.seuil.toLocaleString('fr-FR')} à ${fin.toLocaleString('fr-FR')}</span>`
+          + `<b>${_unitFr(t.m)}</b>${t.remise ? `<em>−${t.remise} %</em>` : '<em></em>'}</li>`;
+      }).join('');
+      container.innerHTML = `
+        <div class="credits-libre">
+          <label class="credits-libre__lbl" for="creditsQty">Combien de Smyles veux-tu ?</label>
+          <div class="credits-libre__row">
+            <button type="button" class="credits-libre__step" data-step="-1" aria-label="Moins">−</button>
+            <input id="creditsQty" class="credits-libre__input" type="number" inputmode="numeric"
+              min="${_grille.min}" max="${_grille.max}" step="${_grille.pas}" value="${_qtyInitiale()}" />
+            <button type="button" class="credits-libre__step" data-step="1" aria-label="Plus">+</button>
+          </div>
+          <div class="credits-libre__chips">${chips}</div>
+          <div class="credits-libre__prix" aria-live="polite">
+            <strong id="creditsPrix"></strong>
+            <span id="creditsUnit"></span>
+          </div>
+          <p class="credits-libre__astuce" id="creditsAstuce" hidden></p>
+          <details class="credits-libre__grille">
+            <summary>Voir la grille des prix</summary>
+            <ul>${grilleHtml}</ul>
+            <p>Le prix de ta tranche s'applique à tous les Smyles de l'achat. De ${_grille.min.toLocaleString('fr-FR')} à ${_grille.max.toLocaleString('fr-FR')} Smyles par paiement.</p>
+          </details>
+        </div>`;
+      const qty = container.querySelector('#creditsQty');
+      qty.addEventListener('input', () => _majPrix(false));
+      qty.addEventListener('change', () => _majPrix(true));
+      container.querySelectorAll('.credits-libre__chip').forEach((b) => b.addEventListener('click', () => {
+        qty.value = b.getAttribute('data-qty'); _majPrix(true);
+      }));
+      container.querySelectorAll('.credits-libre__step').forEach((b) => b.addEventListener('click', () => {
+        const v = parseInt(qty.value, 10) || _grille.min;
+        const pasClic = v >= 10000 ? 1000 : v >= 1000 ? 100 : _grille.pas * 5;
+        qty.value = v + (parseInt(b.getAttribute('data-step'), 10) * pasClic); _majPrix(true);
+      }));
+      _majPrix(true);
     } catch (err) {
       console.warn('[credits-buy] fetch packs failed:', err);
       container.innerHTML = `
@@ -449,6 +502,72 @@
         </div>
       `;
     }
+  }
+
+  // ── 02/11/2026 — montant libre : aperçu du prix ───────────────────────
+  let _grille = null;
+  let _qtyDemandee = 0;     // Smyles manquants passés à l'ouverture (achat bloqué)
+
+  function _unitFr(m) {      // millièmes d'euro → « 0,065 € »
+    return (m / 1000).toFixed(3).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',') + ' €';
+  }
+  function _eurosFr(cents) {
+    return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  }
+  function _tranche(n) {
+    let t = _grille.tranches[0];
+    _grille.tranches.forEach((x) => { if (n >= x.seuil) t = x; });
+    return t;
+  }
+  function _centimes(n) { return Math.round(n * _tranche(n).m / 10); }
+  function _arrondi(n) {
+    const p = _grille.pas;
+    n = Math.ceil((parseInt(n, 10) || 0) / p) * p;
+    return Math.min(_grille.max, Math.max(_grille.min, n));
+  }
+  function _qtyInitiale() {
+    if (_qtyDemandee > 0) return _arrondi(_qtyDemandee);
+    return _arrondi(1000);
+  }
+  function _majPrix(normaliser) {
+    const input = document.getElementById('creditsQty');
+    if (!input || !_grille) return;
+    let n = parseInt(input.value, 10) || 0;
+    if (normaliser) { n = _arrondi(n); input.value = n; }
+    const ok = n >= _grille.min && n <= _grille.max && n % _grille.pas === 0;
+    const prixEl = document.getElementById('creditsPrix');
+    const unitEl = document.getElementById('creditsUnit');
+    const astuce = document.getElementById('creditsAstuce');
+    document.querySelectorAll('.credits-libre__chip').forEach((b) =>
+      b.classList.toggle('is-selected', parseInt(b.getAttribute('data-qty'), 10) === n));
+    if (!ok) {
+      prixEl.textContent = '—';
+      unitEl.textContent = `Entre ${_grille.min.toLocaleString('fr-FR')} et ${_grille.max.toLocaleString('fr-FR')} Smyles, par multiples de ${_grille.pas}.`;
+      if (astuce) astuce.hidden = true;
+      _selectedPack = null; _refreshPayBtn();
+      return;
+    }
+    const t = _tranche(n);
+    const cents = _centimes(n);
+    prixEl.textContent = _eurosFr(cents);
+    unitEl.textContent = `${n.toLocaleString('fr-FR')} Smyles · ${_unitFr(t.m)} / Smyle` + (t.remise ? ` · −${t.remise} %` : '');
+    // Astuce : la tranche suivante est proche → on le dit (même prix ou presque).
+    const idx = _grille.tranches.indexOf(t);
+    const suiv = _grille.tranches[idx + 1];
+    if (astuce) {
+      if (suiv && suiv.seuil - n <= Math.max(n * 0.5, 200)) {
+        const ajout = suiv.seuil - n;
+        const diff = _centimes(suiv.seuil) - cents;
+        astuce.textContent = diff <= 0
+          ? `Astuce : ${suiv.seuil.toLocaleString('fr-FR')} Smyles coûtent moins cher (${_eurosFr(_centimes(suiv.seuil))}) — tous à ${_unitFr(suiv.m)}.`
+          : `Astuce : ajoute ${ajout.toLocaleString('fr-FR')} Smyles (+${_eurosFr(diff)}) et tous passent à ${_unitFr(suiv.m)}.`;
+        astuce.hidden = false;
+      } else {
+        astuce.hidden = true;
+      }
+    }
+    _selectedPack = { id: 'pack_' + n, price: _eurosFr(cents) };
+    _refreshPayBtn();
   }
 
   // ── Lot 3 — sélection du pack + paiement par carte ─────────────────────
@@ -463,7 +582,7 @@
     btn.disabled = !ok;
     btn.textContent = _selectedPack
       ? `Payer ${_selectedPack.price} par carte`
-      : 'Choisis un pack';
+      : 'Choisis ton nombre de Smyles';
   }
 
   async function _payByCard() {
@@ -527,7 +646,9 @@
   }
 
   // ── API publique ───────────────────────────────────────────────────────
-  function openCreditsBuyModal() {
+  // opts.manque : Smyles qui manquent pour l'achat en cours → pré-remplis.
+  function openCreditsBuyModal(opts) {
+    _qtyDemandee = (opts && parseInt(opts.manque, 10) > 0) ? parseInt(opts.manque, 10) : 0;
     // F3-3 — INTENTION DE PAYER. Stripe n'est pas branche : ce clic est la
     // seule mesure disponible de la disposition reelle a payer, et c'est
     // l'un des 5 chiffres qui decideront de la suite de la beta.

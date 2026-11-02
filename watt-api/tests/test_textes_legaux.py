@@ -52,7 +52,7 @@ def test_chiffres_alignes_sur_le_code():
     assert f"{_fr(settings.GOAL_CIBLE_ACTIFS)} utilisateurs actifs" in TEXTE
     for pack in CREDIT_PACKS:
         euros = pack["price_eur_cents"] // 100
-        assert f"{_fr(pack['credits'])} Smyles : {euros} € TTC" in TEXTE
+        assert f"{_fr(pack['credits'])} Smyles : {_fr(euros)} € TTC" in TEXTE
     for tier in UserTier:
         assert f"{TIER_COMMISSION_PCT[tier]} %" in TEXTE
     assert f"{PIONEER_COMMISSION_PCT} % à vie" in TEXTE

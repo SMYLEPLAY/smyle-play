@@ -3,7 +3,8 @@
 Principes (décisions Tom / coordinateur, 23/09) :
   - Stripe Checkout (page de paiement hébergée par Stripe : aucune donnée de
     carte ne transite ni n'est stockée chez nous) ;
-  - packs 100 / 500 / 2000 Smyles à 8 / 35 / 130 € (CREDIT_PACKS) ;
+  - achat au montant libre (100 à 50 000 Smyles par paiement), prix d'un
+    Smyle par tranche (TRANCHES_PRIX), calculé uniquement côté serveur ;
   - le CRÉDIT se fait UNIQUEMENT sur le webhook signé (jamais sur la page de
     retour), dans le bucket `achetes`, idempotent : une session Stripe ne
     crédite qu'une fois (clé d'idempotence du ledger), et chaque événement
@@ -170,7 +171,9 @@ async def create_checkout(
         )
     pack = get_pack_by_id(pack_id)
     if pack is None:
-        raise StripeRequestError("Pack inconnu.")
+        raise StripeRequestError(
+            "Choisis entre 100 et 50 000 Smyles, par multiples de 10."
+        )
     if consent is not True:
         raise StripeRequestError(
             "Coche la case de renonciation au droit de rétractation pour continuer."

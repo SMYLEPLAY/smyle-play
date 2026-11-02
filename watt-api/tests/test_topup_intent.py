@@ -14,7 +14,7 @@ BALANCE_JS = (REPO_ROOT / "ui" / "smyle-balance.js").read_text(encoding="utf-8")
 
 
 def test_modale_recharge_emet_topup_click():
-    i = CREDITS_JS.index("function openCreditsBuyModal()")
+    i = CREDITS_JS.index("function openCreditsBuyModal(")
     assert "'topup_click'" in CREDITS_JS[i : i + 800]
 
 

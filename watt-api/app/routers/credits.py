@@ -10,12 +10,25 @@ from app.models.user import User
 from app.schemas.credit import (
     CreditPack,
     CreditPacksResponse,
+    TranchePrix,
     GrantCreditsRequest,
     TransactionRead,
 )
-from app.services.credits import CREDIT_PACKS, grant_credits_atomic
+from app.services.credits import (
+    ACHAT_MAX_SMYLES,
+    ACHAT_MIN_SMYLES,
+    ACHAT_PAS_SMYLES,
+    CREDIT_PACKS,
+    TRANCHES_PRIX,
+    grant_credits_atomic,
+)
 
 router = APIRouter(prefix="/credits", tags=["credits"])
+
+
+def _euros_fr(cents: int) -> str:
+    """« 147500 » → « 1 475,00 € » (espace fine insécable pour les milliers)."""
+    return f"{cents / 100:,.2f} €".replace(",", "\u202f").replace(".", ",")
 
 
 @router.get("/packs", response_model=CreditPacksResponse)
@@ -30,17 +43,20 @@ async def list_packs(request: Request, db: AsyncSession = Depends(get_db)):
     """
     if not settings.launch_flags_dict()["achatSmyles"]:
         return CreditPacksResponse(packs=[])
+    _ref = CREDIT_PACKS[0]["price_eur_cents"] / CREDIT_PACKS[0]["credits"]
     packs = [
         CreditPack(
             id=p["id"],
             credits=p["credits"],
             price_eur_cents=p["price_eur_cents"],
-            # Lot L : format français (« 8,00 € »), prix unitaire exact.
-            price_eur_display=f"{p['price_eur_cents'] / 100:.2f} €".replace(".", ","),
+            # Lot L : format français (« 8,00 € », « 1 475,00 € »), prix unitaire exact.
+            price_eur_display=_euros_fr(p["price_eur_cents"]),
             unit_price_cents=p["price_eur_cents"] // p["credits"],
             unit_price_display=(
-                f"{p['price_eur_cents'] / 100 / p['credits']:.3f}".rstrip("0").replace(".", ",")
+                f"{p['price_eur_cents'] / 100 / p['credits']:.4f}".rstrip("0").replace(".", ",")
                 + " € / Smyle"),
+            remise_pct=max(0, int(round(
+                100 * (1 - (p["price_eur_cents"] / p["credits"]) / _ref)))),
         )
         for p in CREDIT_PACKS
     ]
@@ -56,8 +72,22 @@ async def list_packs(request: Request, db: AsyncSession = Depends(get_db)):
     elif viewer is not None and viewer.achat_carte_bloque_at is not None:
         ouvert = False
         message = "L'achat par carte est suspendu sur ton compte. Contacte-nous pour le rétablir."
+    _ref_m = TRANCHES_PRIX[0][1]
+    tranches = [
+        TranchePrix(
+            a_partir_de=seuil,
+            prix_millieme=m,
+            prix_display=f"{m / 1000:.3f}".rstrip("0").replace(".", ",") + " €",
+            remise_pct=max(0, int(round(100 * (1 - m / _ref_m)))),
+        )
+        for seuil, m in TRANCHES_PRIX
+    ]
     return CreditPacksResponse(
         packs=packs,
+        tranches=tranches,
+        min_smyles=ACHAT_MIN_SMYLES,
+        max_smyles=ACHAT_MAX_SMYLES,
+        pas_smyles=ACHAT_PAS_SMYLES,
         mention_tva=TVA_MENTION if settings.MENTION_TVA_FRANCHISE else None,
         paiement_carte=ouvert,
         message=message,

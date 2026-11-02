@@ -2866,7 +2866,7 @@ async function _apAcheterOeuvre(btn) {
           ? 'Solde insuffisant : il te faut ' + d.required + ' Smyles, tu en as ' + d.available + '.'
           : 'Pas assez de Smyles pour cette Œuvre.';
         if (window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles && typeof window.openCreditsBuyModal === 'function') {
-          try { window.openCreditsBuyModal(); } catch (_) {}
+          try { window.openCreditsBuyModal((d && typeof d === 'object' && d.required != null) ? { manque: d.required - d.available } : undefined); } catch (_) {}
         }
       } else if (st === 409) msg = (typeof d === 'string') ? d : 'Tu possèdes déjà cette Œuvre.';
       else if (typeof d === 'string') msg = d;
