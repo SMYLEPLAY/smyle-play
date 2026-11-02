@@ -1014,6 +1014,11 @@ function openBoutiqueDrawer(type, dataStr) {
         </div>
         <span style="font-size:.74rem;color:#9dc0ff;font-weight:600">Voir l'image →</span>
       </div>`;
+      // Fix 29/10 — fiche du son depuis un profil : achat de l'Œuvre entière.
+      if (data.hasPrompt) {
+        html += `<a class="bd-oeuvre-link" href="/o/${encodeURIComponent(String(li.id))}#offre"
+                    style="display:block;margin-top:8px;padding:10px 12px;border-radius:12px;text-align:center;font-weight:700;font-size:.85rem;text-decoration:none;color:#1a1206;background:linear-gradient(120deg,#ffd700,#ff9f1a)">💠 Acheter l'œuvre complète · moins cher →</a>`;
+      }
     }
 
   } else if (type === 'voix') {
@@ -2190,19 +2195,15 @@ function renderTracks(artist) {
       unlockBlock = '<span class="ap-prompt-owner-note">Recette en vente</span>';
     }
 
-    // C4 Œuvre complète — bouton PACK (son + image, prix = somme − 10 %),
-    // cohérent avec le board. Visible seulement si les DEUX faces existent.
+    // C4 Œuvre complète — lien vers l'offre de l'Œuvre entière (page /o/),
+    // visible seulement si les DEUX faces sont en vente.
     let oeuvrePackBtn = '';
-    // DESACTIVE (2026-08-04) — ce bouton affichait un prix remise -10% calcule
-    // ici, puis postait vers une route d'unlock œuvre qui n'existe pas cote
-    // API. L'achat groupe REEL est POST /watt/oeuvre/{slug}/buy-complete, avec
-    // son propre prix calcule serveur. Rallumer quand la route existe.
-    // K-04 (2026-09-04) : son gestionnaire de clic a ete supprime — le bouton
-    // ne peut plus etre rendu, la branche est conservee comme documentation.
-    if (false && linkedPrompt && linkedImage && !artist.isSelf &&
-        linkedPrompt.priceCredits != null && linkedImage.priceCredits != null) {
-      const _packP = Math.max(2, Math.floor((linkedPrompt.priceCredits + linkedImage.priceCredits) * 0.9));
-      oeuvrePackBtn = `<button type="button" class="ap-track-oeuvre-btn" data-oeuvre-prompt-id="${linkedPrompt.id}" data-oeuvre-price="${_packP}" data-track-name="${(t.name || '').replace(/"/g, '&quot;')}" title="Acheter l'œuvre complète (son + image) · ${_packP} Smyles — remise 10%">💠 ${_packP}</button>`;
+    // Fix 29/10 — le profil n'offrait pas l'achat de l'Œuvre entière. Quand
+    // le son (recette) ET l'image sont en vente, un lien mène à l'offre de la
+    // page Œuvre (/o/<id>#offre), dont le prix est calculé par le serveur
+    // (remise choisie par le créateur).
+    if (linkedPrompt && linkedImage && !artist.isSelf) {
+      oeuvrePackBtn = `<a class="ap-track-oeuvre-btn" href="/o/${encodeURIComponent(String(linkedImage.id))}#offre" title="Acheter l'œuvre complète (son + image) en une fois, moins cher">💠 Acheter l'œuvre complète · moins cher →</a>`;
     }
 
     // Bouton supprimer — owner uniquement (le backend re-vérifie : 403 sinon).
@@ -2379,6 +2380,8 @@ function renderTracks(artist) {
     // gestionnaire sont retirés : ils postaient vers une route d'unlock œuvre
     // inexistante. L'achat groupé RÉEL est
     // POST /watt/oeuvre/{slug}/buy-complete depuis la fiche œuvre.
+    // Fix 29/10 : lien « Œuvre complète » → navigation normale (pas la fiche).
+    if (ev.target.closest('.ap-track-oeuvre-btn')) { ev.stopPropagation(); return; }
     // Cas 2bis : chip « visuel lié » (œuvre complète) → drawer image (achat séparé)
     const linkedImgBtn = ev.target.closest('.ap-track-linked-img');
     if (linkedImgBtn) {

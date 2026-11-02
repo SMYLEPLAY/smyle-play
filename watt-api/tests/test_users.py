@@ -14,7 +14,7 @@ from sqlalchemy import delete
 from app.database import SessionLocal
 from app.models.user import User
 
-WELCOME_BONUS = 30  # redénomination ×10 du 9/10/2026 (décision Tom)
+WELCOME_BONUS = 50  # 29/10/2026 (décision Tom) : une Œuvre complète dès l'inscription
 
 
 async def test_register_grants_welcome_bonus(client: AsyncClient):

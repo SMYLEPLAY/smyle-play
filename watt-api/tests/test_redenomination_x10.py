@@ -61,7 +61,7 @@ def test_recompenses_et_mecaniques():
     from app.services.users import WELCOME_BONUS_CREDITS
 
     s = Settings()
-    assert WELCOME_BONUS_CREDITS == 30
+    assert WELCOME_BONUS_CREDITS == 50  # 29/10 : une Œuvre complète dès l'inscription
     assert REFERRAL_REWARD_CREDITS == 20
     assert [tuple(p) for p in s.QUETES_PARRAINAGE_PALIERS] == [(3, 30), (10, 100), (25, 250)]
     assert s.QUETES_PARRAINAGE_PLAFOND_24H == 30000

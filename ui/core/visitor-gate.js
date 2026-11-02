@@ -3,7 +3,7 @@
    Parcours V1 (9/10/2026) — le visiteur sans compte.
 
    1. BANDEAU d'inscription en haut de l'accueil (et de /o/…) :
-      « Crée ton compte gratuit — 30 Smyles offerts ». Se monte dans
+      « Crée ton compte gratuit — 50 Smyles offerts ». Se monte dans
       l'élément #smyle-visitor-banner s'il existe, disparaît une fois connecté.
    2. Toute ACTION (débloquer, acheter, suivre, aimer, publier, commenter,
       signaler, ajouter en playlist…) ouvre l'INSCRIPTION (la connexion reste
@@ -26,7 +26,7 @@
   if (typeof window === 'undefined' || window.SmyleGate) return;
 
   var PREVIEW_SECONDS = 30;
-  var WELCOME_SMYLES = 30;
+  var WELCOME_SMYLES = 50;  // 29/10 : bonus de bienvenue porté à 50
 
   function hasToken() {
     try { return typeof window.getAuthToken === 'function' && !!window.getAuthToken(); }

@@ -606,7 +606,7 @@
          Le profil artiste (artist_name, slug, bio) se crée depuis le WATT board
          après connexion. Pas de friction au signup. -->
     <form id="form-signup" onsubmit="submitSignup(); return false;">
-      <p class="modal-signup-pitch">Crée ton compte gratuit — <b>30 Smyles offerts</b></p>
+      <p class="modal-signup-pitch">Crée ton compte gratuit — <b>50 Smyles offerts</b></p>
       <input class="modal-input" id="signup-email"    type="email"    placeholder="Email" required autocomplete="email" />
       <div class="modal-pwd-wrap">
         <input class="modal-input" id="signup-password" type="password" placeholder="Mot de passe (min 8 car.)" required autocomplete="new-password" minlength="8" />
@@ -693,7 +693,7 @@
 <script src="ui/core/telemetry.js?v=20261011lotg"></script>
 <script src="ui/core/events.js"></script>
 <script src="ui/core/toast.js"></script>
-<script src="/ui/core/visitor-gate.js?v=20261011lotg"></script>
+<script src="/ui/core/visitor-gate.js?v=20261029bonus"></script>
 <script src="ui/core/state.js"></script>
 <script src="ui/core/dom.js"></script>
 <script src="ui/core/storage.js"></script>
@@ -714,17 +714,17 @@
      d'univers + matcher de catégories). Il doit être chargé AVANT
      marketplace.js pour que les barres de recherche DNA/CONNECT puissent
      consommer ces modules dès le premier input. -->
-<script src="ui/panels/watt-panel.js?v=20261011lotg"></script>
+<script src="ui/panels/watt-panel.js?v=20261029bonus"></script>
 <!-- Phase 2 refonte marketplace : fetch + render de la vitrine Smyle, des
      classements (top sons / top artistes) et des grilles (tous sons / tous
      artistes). Écoute SmyleEvents pour rafraîchir en live sur publish. -->
 <script src="/ui/playlists.js?v=20261021lotj" defer></script>
 <script src="/ui/albums.js?v=20261011lotg" defer></script>
-<script src="ui/hub/marketplace.js?v=20261021lotj"></script>
+<script src="ui/hub/marketplace.js?v=20261029carte"></script>
 <script src="ui/app.js?v=20261011lotg"></script>
 <script src="ui/player/mini-bar.js?v=20260707player" defer></script>
-<script src="/ui/smyle-balance.js?v=20261021lotj" defer></script>
-<script src="/ui/modals/credits-buy.js?v=20261029lotl" defer></script>
+<script src="/ui/smyle-balance.js?v=20261029bonus" defer></script>
+<script src="/ui/modals/credits-buy.js?v=20261029bonus" defer></script>
 <script src="/ui/modals/search.js?v=20261021lotj" defer></script>
 <script src="/ui/session-guard.js" defer></script>
 <!-- Messagerie 1:1 + services (Phase C) -->
@@ -734,7 +734,7 @@
 <script src="/ui/core/page-services.js" defer></script>
 <!-- Pack légal v1 — footer liens /legal -->
 <script src="/ui/core/legal-footer.js?v=20261011lotg" defer></script>
-<script src="/ui/core/onboarding.js?v=20261015lotib" defer></script>
+<script src="/ui/core/onboarding.js?v=20261029bonus" defer></script>
 <script src="/ui/goal-bar.js" defer></script>
 </body>
 </html>

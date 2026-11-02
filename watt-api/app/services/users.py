@@ -11,7 +11,7 @@ from app.services.referrals import generate_referral_code
 # Bonus de bienvenue offert à l'inscription. Désormais GRANTé explicitement
 # (transaction BONUS tracée dans le ledger) au lieu du server_default de la
 # colonne credits_balance. Cf. migration 0066 + décision Tom 2026-06-25.
-WELCOME_BONUS_CREDITS = 30
+WELCOME_BONUS_CREDITS = 50  # 29/10 (Tom) : une Œuvre complète (36) dès l'inscription
 
 
 def hash_password(password: str) -> str:
