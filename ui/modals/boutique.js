@@ -94,8 +94,29 @@
     const body = document.getElementById('bqBody');
     if (!body) return;
 
-    // ── 0. GAGNER des Smyles — Récompense du jour + Parrainage ──────────
-    let html = _sectionTitle('Gagner des Smyles');
+    // ── 0. ACHETER des Smyles (02/11) — de retour dans la Boutique dès que
+    // l'achat par carte est ouvert (item `achatSmyles` du mode lancement) :
+    // montant libre, prix par tranche (#560). Fermé → la tuile n'existe pas
+    // (pas de promesse « bientôt » sans paiement réel derrière).
+    let html = '';
+    const _achatOn = !!(window.WATT_LAUNCH && window.WATT_LAUNCH.achatSmyles)
+      && typeof window.openCreditsBuyModal === 'function';
+    if (_achatOn) {
+      html += _sectionTitle('Acheter des Smyles');
+      html += `
+      <div id="bqBuySmyles" role="button" tabindex="0" style="cursor:pointer;background:linear-gradient(110deg,#2a1450 0%,#0d1a4a 100%);border:1px solid #6c4cf0;border-radius:14px;padding:18px;display:flex;gap:14px;align-items:center;transition:border-color .15s;"
+           onmouseover="this.style.borderColor='#a58bff'" onmouseout="this.style.borderColor='#6c4cf0'">
+        <div style="font-size:34px;line-height:1;">💳</div>
+        <div style="flex:1;">
+          <div style="font-size:17px;font-weight:800;">Recharger mes Smyles</div>
+          <div style="font-size:12px;color:#b9b2cc;margin-top:3px;">Le montant que tu veux, à partir de 100 Smyles. Plus tu en prends, moins le Smyle coûte. Paiement sécurisé par carte.</div>
+        </div>
+        <div style="color:#a58bff;font-size:20px;">›</div>
+      </div>`;
+    }
+
+    // ── 1. GAGNER des Smyles — Récompense du jour + Parrainage ──────────
+    html += _sectionTitle('Gagner des Smyles');
     html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div id="bqEarnStreak" style="cursor:pointer;background:#0d0a16;border:1px solid #2c2440;border-radius:14px;padding:16px;text-align:center;transition:border-color .15s;"
            onmouseover="this.style.borderColor='#6c4cf0'" onmouseout="this.style.borderColor='#2c2440'">
@@ -151,17 +172,21 @@
       </div>`;
     }
 
-    // LANCEMENT 2026-07-20 — sections « Recharger tes Smyles » (packs €) et
-    // « Abonnement » RETIRÉES de l'UI : pas de mur de paiement ni de promesse
-    // « Bientôt » tant que Stripe n'est pas branché. Elles reviendront telles
-    // quelles avec le paiement réel (la constante SUB_TIERS
-    // sont conservées pour ce retour).
+    // LANCEMENT 2026-07-20 — « Abonnement » retiré de l'UI tant que Stripe
+    // n'est pas branché (constante SUB_TIERS conservée). « Recharger mes
+    // Smyles » est revenu le 02/11 en tête de Boutique (section 0).
 
     body.innerHTML = html;
     // Lot 1 : série quotidienne cachée → on retire la tuile (drapeau absent → caché).
     if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.serie)) {
       const t = body.querySelector('#bqEarnStreak');
       if (t) { const g = t.parentNode; t.remove(); if (g) g.style.gridTemplateColumns = '1fr'; }
+    }
+    const buySmyles = body.querySelector('#bqBuySmyles');
+    if (buySmyles) {
+      const ouvrirAchat = () => { _closeBoutique(); window.openCreditsBuyModal(); };
+      buySmyles.addEventListener('click', ouvrirAchat);
+      buySmyles.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrirAchat(); } });
     }
     const earnStreak = body.querySelector('#bqEarnStreak');
     const earnRef = body.querySelector('#bqEarnRef');
