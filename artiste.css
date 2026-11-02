@@ -4698,3 +4698,25 @@ body:not(.ap-owner) .ap-meta-sep:has(+ .ap-meta-chip.ap-editable-empty) { displa
   .ap-oe-plays { display: none; }
   .ap-oe-actions .ap-oe-ico { display: none; }
 }
+
+/* 02/11/2026 — section « Œuvres » unique : étiquette de type, filtres,
+   vignette des sons sans pochette. */
+.ap-oe-visual { overflow: hidden; }
+.ap-oe-tag { position: absolute; top: 10px; left: 10px; padding: 3px 9px; border-radius: 999px;
+  font-size: .7rem; font-weight: 800; letter-spacing: .02em; backdrop-filter: blur(6px);
+  background: rgba(8, 6, 14, .72); color: #fff; border: 1px solid rgba(255,255,255,.18); pointer-events: none; }
+.ap-oe-tag--oeuvre { color: #ffd700; border-color: rgba(255,215,0,.45); }
+.ap-oe-tag--son { color: #8fb3ff; border-color: rgba(111,155,255,.5); }
+.ap-oe-tag--img { color: #d9a6ff; border-color: rgba(204,136,255,.5); }
+.ap-oe-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, var(--c, #5b2bd6) 0%, #160b2e 70%); }
+.ap-oe-fallback span { font-size: 3.2rem; color: rgba(255,255,255,.85); }
+.ap-oe-filtres { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.ap-oe-filtre { padding: 7px 13px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: transparent;
+  color: #e8e8f0; font-weight: 700; font-size: .82rem; cursor: pointer; }
+.ap-oe-filtre span { opacity: .75; font-weight: 600; margin-left: 2px; }
+.ap-oe-filtre.is-on { background: #ffd700; color: #1a1206; border-color: #ffd700; }
+.ap-oe-filtre:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ap-oe-grid[data-filtre="oeuvre"] .ap-oe-card:not([data-kind="oeuvre"]),
+.ap-oe-grid[data-filtre="son"] .ap-oe-card:not([data-kind="son"]),
+.ap-oe-grid[data-filtre="image"] .ap-oe-card:not([data-kind="image"]) { display: none; }
