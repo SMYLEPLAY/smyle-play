@@ -107,6 +107,14 @@
   transform: rotate(-11deg);
   flex-shrink: 0;
 }
+/* 02/11/2026 — logo image (masque de SMYLE) : léger halo violet pour le
+   détacher du fond noir. */
+.stb-logo-img {
+  width: auto;
+  height: 34px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(150, 70, 255, .55));
+}
 
 .stb-logo-text {
   text-transform: uppercase;

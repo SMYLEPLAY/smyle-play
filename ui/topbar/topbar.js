@@ -52,49 +52,9 @@
 
   // ── SVG logo (tête Smyle COMPLÈTE — identique au logo de la home pour un
   // rendu cohérent partout ; l'ancienne version compacte était "décousue"). ──
-  const LOGO_SVG = `
-    <svg viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <g transform="translate(30,42)">
-        <circle cx="24" cy="0" r="2.4" fill="#0c0018"/>
-        <circle cx="22.1" cy="8.9" r="2.4" fill="#0e001e"/>
-        <circle cx="16.9" cy="16.9" r="2.4" fill="#0c0016"/>
-        <circle cx="8.9" cy="22.1" r="2.4" fill="#0e001e"/>
-        <circle cx="0" cy="24" r="2.4" fill="#0c0018"/>
-        <circle cx="-8.9" cy="22.1" r="2.4" fill="#0e001e"/>
-        <circle cx="-16.9" cy="16.9" r="2.4" fill="#0c0016"/>
-        <circle cx="-22.1" cy="8.9" r="2.4" fill="#0e001e"/>
-        <circle cx="-24" cy="0" r="2.4" fill="#0c0018"/>
-        <circle cx="-22.1" cy="-8.9" r="2.4" fill="#0e001e"/>
-        <circle cx="-16.9" cy="-16.9" r="2.4" fill="#0c0016"/>
-        <circle cx="-8.9" cy="-22.1" r="2.4" fill="#0e001e"/>
-        <circle cx="0" cy="-24" r="2.4" fill="#0c0018"/>
-        <circle cx="8.9" cy="-22.1" r="2.4" fill="#0e001e"/>
-        <circle cx="16.9" cy="-16.9" r="2.4" fill="#0c0016"/>
-        <circle cx="22.1" cy="-8.9" r="2.4" fill="#0e001e"/>
-        <circle cx="15" cy="0" r="1.9" fill="#130025"/>
-        <circle cx="13.5" cy="7.5" r="1.9" fill="#130025"/>
-        <circle cx="7.5" cy="13.5" r="1.9" fill="#130025"/>
-        <circle cx="0" cy="15" r="1.9" fill="#130025"/>
-        <circle cx="-7.5" cy="13.5" r="1.9" fill="#130025"/>
-        <circle cx="-13.5" cy="7.5" r="1.9" fill="#130025"/>
-        <circle cx="-15" cy="0" r="1.9" fill="#130025"/>
-        <circle cx="-13.5" cy="-7.5" r="1.9" fill="#130025"/>
-        <circle cx="-7.5" cy="-13.5" r="1.9" fill="#130025"/>
-        <circle cx="0" cy="-15" r="1.9" fill="#130025"/>
-        <circle cx="7.5" cy="-13.5" r="1.9" fill="#130025"/>
-        <circle cx="13.5" cy="-7.5" r="1.9" fill="#130025"/>
-        <circle cx="-5.5" cy="-5" r="3.2" fill="#ffffff" opacity="0.96"/>
-        <circle cx="5.5" cy="-5" r="3.2" fill="#ffffff" opacity="0.96"/>
-        <circle cx="-5.5" cy="-5" r="1.4" fill="#1a0030" opacity="0.55"/>
-        <circle cx="5.5" cy="-5" r="1.4" fill="#1a0030" opacity="0.55"/>
-        <circle cx="-10" cy="2" r="2" fill="#ffffff" opacity="0.90"/>
-        <circle cx="-6.5" cy="7" r="2" fill="#ffffff" opacity="0.90"/>
-        <circle cx="-2" cy="9.8" r="2" fill="#ffffff" opacity="0.90"/>
-        <circle cx="2.5" cy="10" r="2" fill="#ffffff" opacity="0.90"/>
-        <circle cx="7" cy="7.5" r="2" fill="#ffffff" opacity="0.90"/>
-        <circle cx="10" cy="3" r="2" fill="#ffffff" opacity="0.90"/>
-      </g>
-    </svg>`;
+  // 02/11/2026 — vrai masque perlé de SMYLE (égérie officielle), image
+  // détourée : ui/img/smyle-logo.png (76x120, affichée ~24x38).
+  const LOGO_SVG = `<img class="stb-logo-img" src="/ui/img/smyle-logo.png?v=20261102" alt="" width="24" height="38" decoding="async" />`;
 
   // État local. On ne stocke que ce qui est dynamique (user, mix count).
   const _state = {
