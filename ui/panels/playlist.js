@@ -88,8 +88,6 @@ function openPlaylist(key, cardEl) {
           ${t.duration ? `<span class="track-dur">${fmtTime(t.duration)}</span>` : ''}
           <span class="track-plays" id="plays-${_esc(t.id)}">${fmtPlays(getPlayCount(t.id))} ▶</span>
           ${likeBtn}${addPlBtn}
-          <button class="add-to-mix-btn" title="Ajouter à My Mix"
-                  onclick="addToMix(event,'${key}',${i})">＋ Mix</button>
         </div>`;
       }).join('')
     : `<div style="padding:32px 28px;font-size:11px;letter-spacing:.25em;color:rgba(196,140,255,.90);text-transform:uppercase">Aucun fichier audio trouvé</div>`;

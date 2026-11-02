@@ -130,11 +130,10 @@
     BOUTIQUE
   </button>
 
-  <!-- Bouton MY MIX — à côté de BIBLIOTHÈQUE (navigation groupée) -->
-  <button class="mix-toggle-btn" onclick="toggleMixPanel()">
-    MY MIX
-    <span class="mix-count" id="mix-count">0</span>
-  </button>
+  <!-- MY MIX retiré du menu le 02/11 : fusionné dans « Playlists » ci-dessous
+       (likes, playlists, images likées). Le compteur #mix-count reste, caché,
+       pour les scripts qui l'alimentent encore. -->
+  <span class="mix-count" id="mix-count" hidden>0</span>
 
   <!-- Liens directs (02/11) — MES PLAYLISTS accessibles depuis toutes les pages
        (ui/watt-playlists.js). -->
@@ -562,13 +561,7 @@
         <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
       </svg>
     </button>
-    <button class="ctrl-btn ctrl-add-mix" id="btn-add-mix"
-            onclick="addCurrentToMix()"
-            title="Ajouter au My Mix">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-    </button>
+    <!-- « + My Mix » retiré (02/11) : le « + » de la mini-barre ajoute à une playlist. -->
     <button class="ctrl-btn ctrl-add-playlist" id="btn-add-playlist"
             onclick="(function(){const t=PLAYLISTS[currentPlaylist]&&PLAYLISTS[currentPlaylist].tracks[currentTrackIdx];if(t&&window.SmylePlaylists)SmylePlaylists.openAddToPlaylistModal(t.id);})()"
             title="Ajouter à une playlist">

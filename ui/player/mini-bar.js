@@ -200,7 +200,7 @@
 
       /* ── COL DROITE : loop | like | add | close ── */
       '<div class="smb-right">',
-        '<button class="smb-btn smb-mix"   id="smb-mix"   title="Ajouter à My Mix" style="display:none">♫</button>',
+
         '<button class="smb-btn smb-loop"  id="smb-loop"  title="Répéter">↺</button>',
         '<button class="smb-btn smb-like"  id="smb-like"  title="Like">♡</button>',
         '<button class="smb-btn smb-add"   id="smb-add"   title="Ajouter à une playlist">+</button>',
@@ -261,10 +261,7 @@
     });
 
     // Add to playlist — câblé direct
-    // Lot M — « Ajouter à My Mix » (accueil), repris de l'ancienne barre.
-    _barEl.querySelector('#smb-mix').addEventListener('click', function () {
-      if (typeof window.addCurrentToMix === 'function') window.addCurrentToMix();
-    });
+    // « Ajouter à My Mix » retiré (02/11) : MY MIX est fusionné dans Playlists.
 
     const _gauche = _barEl.querySelector('.smb-left');
     if (_gauche) {
@@ -413,8 +410,6 @@
       likeBtn.classList.remove('smb-liked');
     }
     if (addBtn) addBtn.style.opacity = _trackId ? '' : '0.3';
-    const mixBtn = document.getElementById('smb-mix');
-    if (mixBtn) mixBtn.style.display = (typeof window.addCurrentToMix === 'function' && window.smyleAudio && _audio === window.smyleAudio) ? '' : 'none';
     if (_barEl) _barEl.querySelector('.smb-left').classList.toggle('is-link', !!_trackId);
   }
 

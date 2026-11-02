@@ -20,9 +20,11 @@
       Ouverte automatiquement par ?playlist=<uuid> sur n'importe quelle page.
 
    3. MES PLAYLISTS — accessibles depuis le menu de toutes les pages
-      (bouton « Playlists ») : ♥ Mes likes + toutes mes playlists, lecture
-      directe, ouverture de la fiche, création.
-        - WattPlaylists.openMine()
+      (bouton « Playlists »). Remplace l'ancien MY MIX (fusion du 02/11) :
+        · volet Musique : ♥ Mes likes + mes playlists, lecture directe,
+          ouverture de la fiche, création ;
+        · volet Images : ♥ images likées (+ albums quand ils sont ouverts).
+        - WattPlaylists.openMine({ world: 'musique' | 'image' })
       Ouvert aussi par ?mes-playlists=1 (repli des pages sans ce script).
 
    Lecture : un seul <audio> partagé, posé dans le body pour que la musique
@@ -312,7 +314,18 @@
       '.wpl-swatch{flex:none;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;',
       'font-size:18px;background:linear-gradient(135deg,var(--wpl-rc,#8800ff),rgba(0,0,0,.35))}',
       '.wpl-foot{padding:12px 18px;border-top:1px solid var(--sp-border,rgba(255,255,255,.1))}',
-      '@media (max-width:520px){.wpl-sheet{border-left:none}.wpl-title{font-size:21px}}'
+      '.wpl-tabs{display:inline-flex;gap:4px;margin-top:12px;padding:3px;border-radius:999px;background:rgba(0,0,0,.28)}',
+      '.wpl-tab{border:none;background:none;color:rgba(255,255,255,.75);font:inherit;font-size:13px;font-weight:700;',
+      'padding:7px 14px;border-radius:999px;cursor:pointer}',
+      '.wpl-tab.is-on{background:#fff;color:#0b0812}',
+      '.wpl-section{margin:14px 8px 8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sp-text-faint,rgba(255,255,255,.55))}',
+      '.wpl-imgs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 8px}',
+      '.wpl-img{position:relative;aspect-ratio:1;border:none;padding:0;border-radius:10px;overflow:hidden;cursor:pointer;background:#2c2440}',
+      '.wpl-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}',
+      '.wpl-img-ph{display:flex;align-items:center;justify-content:center;height:100%;font-size:24px}',
+      '.wpl-img-cap{position:absolute;left:0;right:0;bottom:0;padding:14px 6px 5px;font-size:10.5px;color:#fff;text-align:left;',
+      'background:linear-gradient(transparent,rgba(0,0,0,.75));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '@media (max-width:520px){.wpl-sheet{border-left:none}.wpl-title{font-size:21px}.wpl-imgs{grid-template-columns:repeat(2,1fr)}}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -481,7 +494,28 @@
   }
 
   // ── 3. Mes playlists ────────────────────────────────────────────────────
-  function openMine() {
+  // Volet affiché : Musique (likes + playlists) ou Images (images likées +
+  // albums). Même clé que l'ancien panneau MY MIX (`mymix_mode`), que la
+  // tuile « Albums » du WATT BOARD pose avant de l'ouvrir.
+  var _WORLD_KEY = 'mymix_mode';
+  function _readWorld() {
+    try { return localStorage.getItem(_WORLD_KEY) === 'image' ? 'image' : 'musique'; }
+    catch (_) { return 'musique'; }
+  }
+  function _saveWorld(w) {
+    try { localStorage.setItem(_WORLD_KEY, w); } catch (_) {}
+  }
+  function _albumsOn() {
+    return !!(window.WATT_LAUNCH && window.WATT_LAUNCH.albums && window.SmyleAlbums);
+  }
+  function _imgPreview(key) {
+    if (!key) return '';
+    return '/watt/images/' + String(key).split('/').map(encodeURIComponent).join('/');
+  }
+
+  function openMine(opts) {
+    opts = opts || {};
+    if (opts.world === 'image' || opts.world === 'musique') _saveWorld(opts.world);
     if (!_hasToken()) {
       if (window.SmyleGate && typeof window.SmyleGate.requireAccount === 'function') {
         window.SmyleGate.requireAccount({ reason: 'Connecte-toi pour retrouver tes playlists.' });
@@ -490,32 +524,70 @@
       }
       return;
     }
+    var world = _readWorld();
     var ov = _mount(
       '<div class="wpl-hd"><div class="wpl-top"><span></span>' +
       '<button type="button" class="wpl-ico" data-act="close" aria-label="Fermer">✕</button></div>' +
-      '<p class="wpl-kicker">Ta musique</p><h2 class="wpl-title">Mes playlists</h2>' +
+      '<p class="wpl-kicker">Ta collection</p><h2 class="wpl-title">Mes playlists</h2>' +
       '<p class="wpl-meta">Chargement…</p></div><div class="wpl-body"></div>',
-      '#0055ff', null
+      world === 'image' ? '#cc88ff' : '#0055ff', null
     );
     ov.querySelector('[data-act="close"]').addEventListener('click', _close);
 
-    Promise.all([
-      _api('/playlists/wishlist').catch(function () { return null; }),
-      _api('/playlists/me').catch(function () { return []; }),
-      _me(),
-    ]).then(function (res) {
-      if (_current !== ov) return;
-      var wish = res[0];
-      var mine = (Array.isArray(res[1]) ? res[1] : [])
-        .filter(function (p) { return !wish || String(p.id) !== String(wish.id); })
-        .sort(function (a, b) { return String(b.created_at || '').localeCompare(String(a.created_at || '')); });
-      var slug = _slugOf(res[2]);
-      _renderMine(ov, wish, mine, slug);
-    });
+    var charge = world === 'image'
+      ? Promise.all([
+          _api('/me/likes/prompts?product_type=image').catch(function () { return null; }),
+          _albumsOn() && window.SmyleAlbums.loadMyAlbums
+            ? Promise.resolve(window.SmyleAlbums.loadMyAlbums()).catch(function () { return []; })
+            : Promise.resolve(null),
+        ]).then(function (res) {
+          if (_current !== ov) return;
+          var imgs = (res[0] && Array.isArray(res[0].images)) ? res[0].images : [];
+          _renderMineImages(ov, imgs, Array.isArray(res[1]) ? res[1] : null);
+        })
+      : Promise.all([
+          _api('/playlists/wishlist').catch(function () { return null; }),
+          _api('/playlists/me').catch(function () { return []; }),
+          _me(),
+        ]).then(function (res) {
+          if (_current !== ov) return;
+          var wish = res[0];
+          var mine = (Array.isArray(res[1]) ? res[1] : [])
+            .filter(function (p) { return !wish || String(p.id) !== String(wish.id); })
+            .sort(function (a, b) { return String(b.created_at || '').localeCompare(String(a.created_at || '')); });
+          _renderMine(ov, wish, mine, _slugOf(res[2]));
+        });
+    return charge;
+  }
+
+  // En-tête commun aux deux volets, avec le commutateur Musique / Images.
+  function _mineHeader(world, meta) {
+    function tab(w, label) {
+      var on = w === world;
+      return '<button type="button" class="wpl-tab' + (on ? ' is-on' : '') + '" data-act="world" data-world="' + w +
+        '" role="tab" aria-selected="' + (on ? 'true' : 'false') + '">' + label + '</button>';
+    }
+    return '<div class="wpl-hd"><div class="wpl-top"><span></span>' +
+        '<button type="button" class="wpl-ico" data-act="close" aria-label="Fermer">✕</button></div>' +
+        '<p class="wpl-kicker">Ta collection</p><h2 class="wpl-title">Mes playlists</h2>' +
+        '<div class="wpl-tabs" role="tablist" aria-label="Musique ou images">' +
+          tab('musique', '🎵 Musique') + tab('image', '🖼 Images') +
+        '</div>' +
+        '<p class="wpl-meta">' + _esc(meta) + '</p></div>';
+  }
+
+  function _onMineCommon(sheet, e) {
+    var b = e.target.closest('[data-act]');
+    if (!b || !sheet.contains(b)) return null;
+    var act = b.dataset.act;
+    if (act === 'close') { _close(); return null; }
+    if (act === 'world') { openMine({ world: b.dataset.world }); return null; }
+    return b;
   }
 
   function _renderMine(ov, wish, mine, slug) {
     var sheet = _freshSheet(ov);
+    sheet.style.setProperty('--wpl-c', '#0055ff');
     var items = [];
     if (wish) items.push({ p: wish, wish: true });
     mine.forEach(function (p) { items.push({ p: p, wish: false }); });
@@ -538,10 +610,7 @@
 
     var canCreate = !!(window.SmylePlaylists && typeof window.SmylePlaylists.openCreatePlaylistModal === 'function');
     sheet.innerHTML =
-      '<div class="wpl-hd"><div class="wpl-top"><span></span>' +
-        '<button type="button" class="wpl-ico" data-act="close" aria-label="Fermer">✕</button></div>' +
-        '<p class="wpl-kicker">Ta musique</p><h2 class="wpl-title">Mes playlists</h2>' +
-        '<p class="wpl-meta">' + items.length + ' playlist' + (items.length > 1 ? 's' : '') + '</p></div>' +
+      _mineHeader('musique', items.length + ' playlist' + (items.length > 1 ? 's' : '')) +
       '<div class="wpl-body">' +
         (items.length > (wish ? 1 : 0) ? rows
           : rows + '<div class="wpl-empty">Tu n’as pas encore de playlist.<br>' +
@@ -550,10 +619,9 @@
       (canCreate ? '<div class="wpl-foot"><button type="button" class="wpl-btn wpl-btn--main" data-act="create">+ Nouvelle playlist</button></div>' : '');
 
     sheet.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-act]');
-      if (!b || !sheet.contains(b)) return;
+      var b = _onMineCommon(sheet, e);
+      if (!b) return;
       var act = b.dataset.act;
-      if (act === 'close') { _close(); return; }
       if (act === 'create') {
         window.SmylePlaylists.openCreatePlaylistModal(function () { openMine(); });
         return;
@@ -571,6 +639,58 @@
       }
       if (act === 'share') { sharePlaylist(it.p, slug); return; }
       if (act === 'open') open(it.p.id, { slug: slug, fromMine: true, isWishlist: it.wish });
+    });
+  }
+
+  // Volet Images — repris de l'ancien MY MIX : images likées (+ albums quand
+  // les albums sont ouverts). Clic image → fiche d'achat de l'image.
+  function _renderMineImages(ov, imgs, albums) {
+    var sheet = _freshSheet(ov);
+    sheet.style.setProperty('--wpl-c', '#cc88ff');
+    var grid = imgs.length
+      ? '<div class="wpl-imgs">' + imgs.map(function (im, i) {
+          var url = _imgPreview(im.previewKey || im.preview_r2_key || '');
+          return '<button type="button" class="wpl-img" data-act="img" data-i="' + i + '" title="' + _esc(im.title || 'Image') + '">' +
+            '<span class="wpl-img-ph">🖼</span>' +
+            (url ? '<img src="' + _esc(url) + '" alt="" loading="lazy" onerror="this.remove()" />' : '') +
+            '<span class="wpl-img-cap">' + _esc(im.title || 'Image IA') + '</span></button>';
+        }).join('') + '</div>'
+      : '<div class="wpl-empty">Aucune image likée pour l’instant.<br>Le ♥ sur une image l’ajoute ici.</div>';
+
+    var albumsHtml = '';
+    if (albums) {
+      albumsHtml = '<div class="wpl-section">Mes albums</div>' +
+        (albums.length ? albums.map(function (al, i) {
+          var n = al.image_count != null ? al.image_count : ((al.images && al.images.length) || 0);
+          return '<div class="wpl-row wpl-list-row" data-act="album" data-i="' + i + '">' +
+            '<span class="wpl-swatch" style="--wpl-rc:#cc88ff">🖼</span>' +
+            '<div class="wpl-row-txt"><span class="wpl-row-title">' + _esc(al.title || 'Album') + '</span>' +
+            '<div class="wpl-row-sub">' + n + ' image' + (n > 1 ? 's' : '') + '</div></div></div>';
+        }).join('') : '<div class="wpl-empty">Pas encore d’album.</div>');
+    }
+
+    sheet.innerHTML =
+      _mineHeader('image', imgs.length + ' image' + (imgs.length > 1 ? 's' : '') + ' likée' + (imgs.length > 1 ? 's' : '')) +
+      '<div class="wpl-body"><div class="wpl-section">♥ Images likées</div>' + grid + albumsHtml + '</div>';
+
+    sheet.addEventListener('click', function (e) {
+      var b = _onMineCommon(sheet, e);
+      if (!b) return;
+      var act = b.dataset.act;
+      var i = Number(b.dataset.i);
+      if (act === 'img' && imgs[i]) {
+        if (window.PurchaseDrawer && typeof window.PurchaseDrawer.open === 'function') {
+          _close();
+          window.PurchaseDrawer.open({ type: 'image', id: imgs[i].id, title: imgs[i].title || null, price: imgs[i].priceCredits });
+        } else {
+          location.href = '/images';
+        }
+        return;
+      }
+      if (act === 'album' && albums && albums[i] && window.SmyleAlbums && window.SmyleAlbums.openAlbumViewModal) {
+        _close();
+        window.SmyleAlbums.openAlbumViewModal(albums[i].id);
+      }
     });
   }
 
@@ -595,6 +715,10 @@
       open(pl, { slug: _pageSlug() });
       return;
     }
+    // Ancien lien « ouvrir My Mix » (tuile Albums du WATT BOARD) → Playlists.
+    var ouvrir = false;
+    try { ouvrir = localStorage.getItem('mymix_open') === '1'; if (ouvrir) localStorage.removeItem('mymix_open'); } catch (_) {}
+    if (ouvrir) { openMine(); return; }
     if (params.get('mes-playlists') === '1') {
       params.delete('mes-playlists');
       var q = params.toString();
