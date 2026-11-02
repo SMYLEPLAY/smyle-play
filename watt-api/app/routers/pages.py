@@ -99,9 +99,14 @@ async def launch_flags_js() -> Response:
 _BRAND = "WATT"
 # Wording neutre et factuel (règle « copywriting honnête ») — à affiner par Tom.
 _BRAND_DESC = "WATT — plateforme de creations audiovisuelles generatives."
-# Image de marque par defaut : aucune pour l'instant (il faut un asset
-# 1200x630). Sans image, on degrade proprement en twitter:card=summary.
-_DEFAULT_OG_IMAGE: str | None = None
+# Image de marque par defaut (1200x630, visage de SMYLE) : apercu des liens
+# partages (WhatsApp, iMessage, X, Discord…) quand une page n'a pas d'image.
+_DEFAULT_OG_IMAGE = "/ui/pwa/icones/og-watt.png"
+
+
+def _og_defaut(request: Request) -> str | None:
+    """URL absolue de l'image de marque (les apercus exigent une URL complete)."""
+    return _absolute(request, _DEFAULT_OG_IMAGE)
 
 _HEAD_CLOSE = "</head>"
 
@@ -221,7 +226,7 @@ async def _artist_meta(slug: str, request: Request) -> dict | None:
             "title": f"{name} \u2014 {_BRAND}",
             "description": desc,
             "url": f"{_base_url(request)}/u/{slug}",
-            "image": image or _DEFAULT_OG_IMAGE,
+            "image": image or _og_defaut(request),
             "page_type": "profile",
         }
     except Exception:  # noqa: BLE001
@@ -273,7 +278,7 @@ async def _oeuvre_meta(slug: str, request: Request) -> dict | None:
                 "title": f"{title} \u2014 {_BRAND}",
                 "description": desc,
                 "url": f"{_base_url(request)}/collection/{slug}",
-                "image": image or _DEFAULT_OG_IMAGE,
+                "image": image or _og_defaut(request),
                 "page_type": "article",
             }
     except Exception:  # noqa: BLE001
@@ -315,7 +320,7 @@ async def _oeuvre_c4_meta(oeuvre_id: str, request: Request) -> dict | None:
             "description": desc,
             "url": f"{_base_url(request)}/o/{data['id']}",
             "image": _preview_image_url(request, data["image"].get("previewKey"))
-            or _DEFAULT_OG_IMAGE,
+            or _og_defaut(request),
             "page_type": "music.song",
         }
     except Exception:  # noqa: BLE001
@@ -402,6 +407,12 @@ def _bloc_pwa(low: str, actif: bool) -> str:
     if 'rel="apple-touch-icon"' not in low:
         parts.append('<link rel="apple-touch-icon" href="/apple-touch-icon.png" />')
     if 'rel="icon"' not in low:
+        # 48x48 en premier : Google affiche le favicon dans ses resultats et
+        # demande un multiple de 48 px. Le 32x32 reste pour les onglets.
+        parts.append(
+            '<link rel="icon" type="image/png" sizes="48x48" '
+            f'href="/ui/pwa/icones/favicon-48.png?v={_version("icones/favicon-48.png")}" />'
+        )
         parts.append(
             '<link rel="icon" type="image/png" sizes="32x32" '
             f'href="/ui/pwa/icones/favicon-32.png?v={_version("icones/favicon-32.png")}" />'
@@ -532,7 +543,7 @@ async def index_page(request: Request):
         title=_BRAND,
         description=_BRAND_DESC,
         url=_base_url(request),
-        image=_DEFAULT_OG_IMAGE,
+        image=_og_defaut(request),
     )
 
 
