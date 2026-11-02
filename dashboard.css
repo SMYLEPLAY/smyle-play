@@ -4327,3 +4327,10 @@ html { scroll-behavior: smooth; }
   .dash-cover-col { flex-wrap: wrap; }
   .dash-cover-col > * { max-width: 100%; }
 }
+
+/* 02/11/2026 — logo WATT BOARD : vrai masque perlé de SMYLE (même image que
+   la barre du haut des autres pages), halo violet, plein éclat. */
+.dash-topbar-logo { opacity: 1; }
+.dash-topbar-mark { height: 32px; width: auto; flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(150, 70, 255, .55)); transition: transform .15s; }
+.dash-topbar-logo:hover .dash-topbar-mark { transform: scale(1.06); }
