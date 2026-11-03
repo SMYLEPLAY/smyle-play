@@ -4720,3 +4720,12 @@ body:not(.ap-owner) .ap-meta-sep:has(+ .ap-meta-chip.ap-editable-empty) { displa
 .ap-oe-grid[data-filtre="oeuvre"] .ap-oe-card:not([data-kind="oeuvre"]),
 .ap-oe-grid[data-filtre="son"] .ap-oe-card:not([data-kind="son"]),
 .ap-oe-grid[data-filtre="image"] .ap-oe-card:not([data-kind="image"]) { display: none; }
+
+/* 03/11 — section « Œuvres » en dépliant (fermé par défaut). */
+.ap-oe-toggle { width: 100%; background: none; border: 0; padding: 0 0 14px; margin: 0; cursor: pointer;
+  text-align: left; color: inherit; font: inherit; user-select: none; }
+.ap-oe-toggle .ap-oe-arrow { margin-left: auto; }
+.ap-oe-toggle[aria-expanded="true"] .ap-oe-arrow { transform: rotate(180deg); }
+.ap-oe-toggle:hover .ap-oe-title { color: #ffd700; }
+.ap-oe-toggle:focus-visible { outline: 2px solid #ffd700; outline-offset: 4px; border-radius: 8px; }
+.ap-oe-depliant[hidden] { display: none; }
