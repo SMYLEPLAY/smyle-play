@@ -139,6 +139,17 @@ async def _relire_sous_verrou(db: AsyncSession, prompt_id) -> Prompt:
     if (row is None or not row.is_published or row.is_deleted
             or row.taken_down_at is not None):
         raise PromptNotPurchasable("Cette recette est introuvable ou n'est plus en vente.")
+    # Lot O (03/11) — rien ne s'achète chez un vendeur banni (lien direct,
+    # ancien partage, cache).
+    vendeur = getattr(row, "artist_id", None)
+    if vendeur is not None:
+        from app.models.user import User  # import local : pas de cycle
+
+        banni = (await db.execute(
+            select(User.is_banned).where(User.id == vendeur)
+        )).scalar_one_or_none()
+        if banni:
+            raise PromptNotPurchasable("Cette recette est introuvable ou n'est plus en vente.")
     return row
 
 

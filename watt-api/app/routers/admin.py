@@ -339,6 +339,15 @@ async def admin_profil_vitrine(
     if body.visible and u.is_banned:
         raise HTTPException(status_code=409, detail="Compte banni : il ne peut pas revenir en vitrine.")
     u.profile_public = bool(body.visible)
+    # Lot O (03/11) — trace : un profil retiré par l'admin ne peut plus se
+    # remettre en vitrine seul (vérifié dans /watt/me/profile/publish).
+    from app.services.moderation import journaliser
+
+    await journaliser(
+        db, admin_id=admin.id,
+        action="vitrine_remise" if body.visible else "vitrine_retiree",
+        cible_type="user", cible_id=str(u.id),
+    )
     await db.commit()
     return {"ok": True, "id": str(u.id), "enVitrine": bool(u.profile_public)}
 

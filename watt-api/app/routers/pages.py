@@ -677,6 +677,15 @@ _BLOC_PRO = re.compile(r"<!--SI_PRO-->.*?<!--FIN_PRO-->", re.S)
 _BLOC_PARTICULIER = re.compile(r"<!--SI_PARTICULIER-->.*?<!--FIN_PARTICULIER-->", re.S)
 _BLOC_VENTE = re.compile(r"<!--SI_VENTE-->.*?<!--FIN_VENTE-->", re.S)
 _BLOC_SANS_VENTE = re.compile(r"<!--SI_SANS_VENTE-->.*?<!--FIN_SANS_VENTE-->", re.S)
+_BLOC_ADN = re.compile(r"<!--SI_ADN-->.*?<!--FIN_ADN-->", re.S)
+
+
+def _etat_adn(texte: str) -> str:
+    """Lot O (03/11) — les remises liées aux ADN ne sont décrites que quand
+    les ADN sont visibles (item `adn` du mode lancement)."""
+    if settings.launch_flags_dict()["adn"]:
+        return texte.replace("<!--SI_ADN-->", "").replace("<!--FIN_ADN-->", "")
+    return _BLOC_ADN.sub("", texte)
 
 
 def _etat_vente(texte: str) -> str:
@@ -728,9 +737,74 @@ async def legal_page():
         raise HTTPException(status_code=404)
     texte = _page_injectee(str(path), mtime_ns, pwa_active(), _commit())
     return _PageHTML(
-        content=_etat_vente(_coordonnees_editeur(texte)),
+        content=_etat_adn(_etat_vente(_coordonnees_editeur(texte))),
         headers={"Cache-Control": "no-cache"},
     )
+
+
+# ── Lot O (03/11) — référencement : robots.txt et plan du site ───────────
+_ROBOTS_PRIVES = ("/gestion", "/dashboard", "/mes-oeuvres", "/library", "/reset",
+                  "/watt/", "/admin", "/credits/", "/me/", "/auth/")
+
+
+@router.get("/robots.txt", include_in_schema=False)
+async def robots_txt(request: Request):
+    base = (settings.PUBLIC_BASE_URL or "").rstrip("/") or _base_url(request)
+    lignes = ["User-agent: *", "Allow: /"]
+    lignes += [f"Disallow: {p}" for p in _ROBOTS_PRIVES]
+    lignes += ["", f"Sitemap: {base}/sitemap.xml", ""]
+    return Response("\n".join(lignes), media_type="text/plain; charset=utf-8",
+                    headers={"Cache-Control": "public, max-age=3600"})
+
+
+@router.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml(request: Request):
+    """Pages publiques + profils en vitrine + Œuvres en vente (image publiée
+    d'un profil public non banni). Jamais d'erreur : base indisponible → seules
+    les pages fixes."""
+    from app.core.slug import derive_artist_slug
+    from app.models.user import User
+
+    base = (settings.PUBLIC_BASE_URL or "").rstrip("/") or _base_url(request)
+    urls: list[tuple[str, str | None]] = [
+        (f"{base}/", None), (f"{base}/comment-ca-marche", None), (f"{base}/legal", None),
+    ]
+    try:
+        async with SessionLocal() as db:
+            artistes = (await db.execute(
+                select(User).where(User.profile_public.is_(True), User.is_banned.is_(False))
+                .limit(5000)
+            )).scalars().all()
+            for u in artistes:
+                slug = derive_artist_slug(u)
+                if slug:
+                    urls.append((f"{base}/u/{slug}", None))
+            oeuvres = (await db.execute(
+                select(Prompt.id, Prompt.updated_at)
+                .join(User, User.id == Prompt.artist_id)
+                .where(
+                    Prompt.product_type == "image",
+                    Prompt.is_published.is_(True),
+                    Prompt.is_deleted.is_(False),
+                    Prompt.taken_down_at.is_(None),
+                    User.profile_public.is_(True),
+                    User.is_banned.is_(False),
+                )
+                .order_by(Prompt.updated_at.desc())
+                .limit(10000)
+            )).all()
+            for oid, maj in oeuvres:
+                urls.append((f"{base}/o/{oid}", maj.date().isoformat() if maj else None))
+    except Exception:  # noqa: BLE001 — le plan du site ne casse jamais
+        pass
+    corps = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, maj in urls:
+        corps.append("<url><loc>" + _html.escape(loc) + "</loc>"
+                     + (f"<lastmod>{maj}</lastmod>" if maj else "") + "</url>")
+    corps.append("</urlset>")
+    return Response("\n".join(corps), media_type="application/xml",
+                    headers={"Cache-Control": "public, max-age=3600"})
 
 
 @router.get("/reset", include_in_schema=False)
