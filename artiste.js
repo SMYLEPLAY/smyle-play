@@ -2900,13 +2900,21 @@ function renderOeuvres(artist, oeuvres) {
 
   section.style.display = '';
   section.dataset.filtre = filtre;
+  // 03/11 (Tom) — la section est un DÉPLIANT, fermé par défaut comme les
+  // autres sections du profil ; l'état ouvert survit aux re-rendus.
+  const ouvert = section.dataset.ouvert === '1';
   section.innerHTML =
-    '<div class="ap-oe-hdr"><h2 class="ap-oe-title">Œuvres</h2>' +
-    '<span class="ap-oe-count">' + esc(compte) + '</span></div>' +
-    '<p class="ap-oe-sub">Écoute, regarde, puis débloque l\'Œuvre entière (son + image), ou un son ou une image avec sa recette.</p>' +
-    filtres +
-    '<div class="ap-oe-grid" data-filtre="' + esc(filtre) + '">' +
-      oeuvres.map(carteOeuvre).join('') + sons.map(carteSon).join('') + images.map(carteImage).join('') +
+    '<button type="button" class="ap-oe-hdr ap-oe-toggle" data-oe-toggle aria-expanded="' + ouvert + '" aria-controls="ap-oe-depliant">' +
+      '<h2 class="ap-oe-title">Œuvres</h2>' +
+      '<span class="ap-oe-count">' + esc(compte) + '</span>' +
+      '<span class="ap-section-arrow ap-oe-arrow" aria-hidden="true">▼</span>' +
+    '</button>' +
+    '<div class="ap-oe-depliant" id="ap-oe-depliant"' + (ouvert ? '' : ' hidden') + '>' +
+      '<p class="ap-oe-sub">Écoute, regarde, puis débloque l\'Œuvre entière (son + image), ou un son ou une image avec sa recette.</p>' +
+      filtres +
+      '<div class="ap-oe-grid" data-filtre="' + esc(filtre) + '">' +
+        oeuvres.map(carteOeuvre).join('') + sons.map(carteSon).join('') + images.map(carteImage).join('') +
+      '</div>' +
     '</div>';
   if (window.SmylePlaylists) {
     try { if (typeof window.SmylePlaylists.hydrateImgLikes === 'function') window.SmylePlaylists.hydrateImgLikes(); } catch (_) {}
@@ -2925,6 +2933,8 @@ function renderOeuvres(artist, oeuvres) {
     section.dataset.wired = '1';
     section.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-like-btn]') || ev.target.closest('[data-add-to-playlist]') || ev.target.closest('[data-img-like-btn]')) return;
+      const tog = ev.target.closest('[data-oe-toggle]');
+      if (tog) { _apOeDeplier(section, tog.getAttribute('aria-expanded') !== 'true'); return; }
       const f = ev.target.closest('[data-oe-filtre]');
       if (f) {
         const k = f.getAttribute('data-oe-filtre');
@@ -2959,6 +2969,16 @@ function renderOeuvres(artist, oeuvres) {
     });
   }
   apSectionNav();
+}
+
+// Ouvre / ferme le dépliant « Œuvres ».
+function _apOeDeplier(section, ouvrir) {
+  if (!section) return;
+  section.dataset.ouvert = ouvrir ? '1' : '0';
+  const tog = section.querySelector('[data-oe-toggle]');
+  const corps = section.querySelector('.ap-oe-depliant');
+  if (tog) tog.setAttribute('aria-expanded', String(!!ouvrir));
+  if (corps) corps.hidden = !ouvrir;
 }
 
 let _apOeTimer = null;
@@ -3079,6 +3099,7 @@ function _apSectionNavNow() {
       if (!cible) return;
       const body = cible.querySelector('.ap-tracks-body');
       if (body && !body.classList.contains('is-open')) cible.querySelector('.ap-tracks-hdr')?.click();
+      if (cible.id === 'ap-oeuvres-section') _apOeDeplier(cible, true);
       cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
       nav.querySelectorAll('a').forEach(x => x.classList.toggle('is-active', x === a));
     });
