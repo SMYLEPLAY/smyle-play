@@ -4721,11 +4721,29 @@ body:not(.ap-owner) .ap-meta-sep:has(+ .ap-meta-chip.ap-editable-empty) { displa
 .ap-oe-grid[data-filtre="son"] .ap-oe-card:not([data-kind="son"]),
 .ap-oe-grid[data-filtre="image"] .ap-oe-card:not([data-kind="image"]) { display: none; }
 
-/* 03/11 — section « Œuvres » en dépliant (fermé par défaut). */
+/* 03/11 — section « Œuvres » en dépliant : fermée = 3 aperçus compacts,
+   ouverte = toutes les créations avec filtres. */
 .ap-oe-toggle { width: 100%; background: none; border: 0; padding: 0 0 14px; margin: 0; cursor: pointer;
   text-align: left; color: inherit; font: inherit; user-select: none; }
 .ap-oe-toggle .ap-oe-arrow { margin-left: auto; }
 .ap-oe-toggle[aria-expanded="true"] .ap-oe-arrow { transform: rotate(180deg); }
 .ap-oe-toggle:hover .ap-oe-title { color: #ffd700; }
-.ap-oe-toggle:focus-visible { outline: 2px solid #ffd700; outline-offset: 4px; border-radius: 8px; }
-.ap-oe-depliant[hidden] { display: none; }
+.ap-oe-toggle:focus-visible, .ap-oe-more:focus-visible { outline: 2px solid #ffd700; outline-offset: 4px; border-radius: 8px; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-sub,
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-filtres { display: none; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-width: 720px; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-grid > .ap-oe-card:nth-child(n+4) { display: none; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-prix,
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-actions,
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-msg,
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-plays,
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-tag { display: none; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-body { padding: 7px 9px 9px; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-name { font-size: .8rem; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-play { width: 34px; height: 34px; left: 7px; bottom: 7px; }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-play svg { width: 12px; height: 12px; }
+.ap-oe-more { display: block; width: 100%; margin: 12px 0 0; padding: 11px 14px; border-radius: 12px;
+  border: 1px solid rgba(255,215,0,.35); background: rgba(255,215,0,.06); color: #ffd700;
+  font-weight: 800; font-size: .88rem; cursor: pointer; }
+.ap-oe-more:hover { background: rgba(255,215,0,.12); }
+.ap-oe-wrap[data-ouvert="0"] .ap-oe-more { max-width: 720px; }

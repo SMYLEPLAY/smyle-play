@@ -2904,17 +2904,22 @@ function renderOeuvres(artist, oeuvres) {
   // autres sections du profil ; l'état ouvert survit aux re-rendus.
   const ouvert = section.dataset.ouvert === '1';
   section.innerHTML =
-    '<button type="button" class="ap-oe-hdr ap-oe-toggle" data-oe-toggle aria-expanded="' + ouvert + '" aria-controls="ap-oe-depliant">' +
+    '<button type="button" class="ap-oe-hdr ap-oe-toggle" data-oe-toggle aria-expanded="' + ouvert + '" aria-controls="ap-oe-wrap">' +
       '<h2 class="ap-oe-title">Œuvres</h2>' +
       '<span class="ap-oe-count">' + esc(compte) + '</span>' +
       '<span class="ap-section-arrow ap-oe-arrow" aria-hidden="true">▼</span>' +
     '</button>' +
-    '<div class="ap-oe-depliant" id="ap-oe-depliant"' + (ouvert ? '' : ' hidden') + '>' +
+    // 03/11 (Tom) — fermé : 3 aperçus compacts ; ouvert : tout, avec filtres.
+    '<div class="ap-oe-wrap" id="ap-oe-wrap" data-ouvert="' + (ouvert ? '1' : '0') + '">' +
       '<p class="ap-oe-sub">Écoute, regarde, puis débloque l\'Œuvre entière (son + image), ou un son ou une image avec sa recette.</p>' +
       filtres +
-      '<div class="ap-oe-grid" data-filtre="' + esc(filtre) + '">' +
+      '<div class="ap-oe-grid" data-filtre="' + esc(ouvert ? filtre : 'tout') + '">' +
         oeuvres.map(carteOeuvre).join('') + sons.map(carteSon).join('') + images.map(carteImage).join('') +
       '</div>' +
+      (total > 3
+        ? '<button type="button" class="ap-oe-more" data-oe-toggle aria-controls="ap-oe-wrap">' +
+            (ouvert ? 'Réduire ▲' : 'Voir les ' + total + ' créations ▼') + '</button>'
+        : '') +
     '</div>';
   if (window.SmylePlaylists) {
     try { if (typeof window.SmylePlaylists.hydrateImgLikes === 'function') window.SmylePlaylists.hydrateImgLikes(); } catch (_) {}
@@ -2975,10 +2980,23 @@ function renderOeuvres(artist, oeuvres) {
 function _apOeDeplier(section, ouvrir) {
   if (!section) return;
   section.dataset.ouvert = ouvrir ? '1' : '0';
-  const tog = section.querySelector('[data-oe-toggle]');
-  const corps = section.querySelector('.ap-oe-depliant');
-  if (tog) tog.setAttribute('aria-expanded', String(!!ouvrir));
-  if (corps) corps.hidden = !ouvrir;
+  const wrap = section.querySelector('.ap-oe-wrap');
+  if (wrap) wrap.setAttribute('data-ouvert', ouvrir ? '1' : '0');
+  section.querySelectorAll('[data-oe-toggle]').forEach(b => b.setAttribute('aria-expanded', String(!!ouvrir)));
+  const plus = section.querySelector('.ap-oe-more');
+  const n = section.querySelectorAll('.ap-oe-card').length;
+  if (plus) plus.textContent = ouvrir ? 'Réduire ▲' : 'Voir les ' + n + ' créations ▼';
+  // Fermé : les 3 aperçus sont toujours les premières créations (filtre « Tout »).
+  if (!ouvrir) {
+    section.dataset.filtre = 'tout';
+    const grid = section.querySelector('.ap-oe-grid'); if (grid) grid.setAttribute('data-filtre', 'tout');
+    section.querySelectorAll('[data-oe-filtre]').forEach(b => {
+      const on = b.getAttribute('data-oe-filtre') === 'tout';
+      b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on));
+    });
+    const hdr = section.querySelector('.ap-oe-hdr');
+    if (hdr && hdr.getBoundingClientRect().top < 0) hdr.scrollIntoView({ block: 'start' });
+  }
 }
 
 let _apOeTimer = null;
