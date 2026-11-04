@@ -231,12 +231,94 @@ async def send_confirmation_achat_smyles(
     <p style="color:{_MUTED};font-size:13px;line-height:1.6;margin:0;">
       Conditions générales de vente applicables (version {esc(cgu_version or "en vigueur")}) :
       https://watt.place/legal#cgv-smyles<br>
-      Référence du paiement : {esc(paiement_id)}
+      Référence du paiement : {esc(paiement_id)}<br>
+      Renoncer au contrat ici : https://watt.place/retractation
     </p>"""
         return await _send(to, f"Confirmation d'achat — {smyles} Smyles",
                            _layout("Merci pour ton achat ⚡", body))
     except Exception:  # noqa: BLE001
         logger.warning("email.confirmation_achat_echec", exc_info=True)
+        return False
+
+
+def _ligne_declaration(libelle: str, valeur) -> str:
+    return (
+        f'<tr><td style="color:{_MUTED};font-size:13px;padding:6px 10px 6px 0;'
+        f'vertical-align:top;white-space:nowrap;">{esc(libelle)}</td>'
+        f'<td style="color:{_TEXT};font-size:13px;padding:6px 0;">{esc(valeur)}</td></tr>'
+    )
+
+
+async def send_accuse_retractation(
+    to: str,
+    *,
+    nom_prenom: str,
+    contrat: str,
+    message: str | None,
+    recue_le_texte: str,
+    reference: str,
+) -> bool:
+    """Accusé de réception d'une déclaration de rétractation, sur support
+    durable (art. D221-5 du Code de la consommation) : reprend le contenu de
+    la déclaration, avec sa date et son heure. Best-effort : ne lève jamais."""
+    try:
+        lignes = (
+            _ligne_declaration("Nom et prénom", nom_prenom)
+            + _ligne_declaration("Achat concerné", contrat)
+            + (_ligne_declaration("Précisions", message) if message else "")
+            + _ligne_declaration("Reçue le", recue_le_texte)
+            + _ligne_declaration("Référence", reference)
+        )
+        body = f"""\
+    <p style="color:{_MUTED};font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Nous avons bien reçu ta déclaration de rétractation. En voici le contenu.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 16px;">{lignes}</table>
+    <p style="color:{_MUTED};font-size:13px;line-height:1.6;margin:0;">
+      Nous revenons vers toi par email. Garde ce message : il prouve la date
+      et l'heure de ta demande. Questions : réponds simplement à cet email.
+    </p>"""
+        from app.core.legal import CONTACT_EMAIL
+        return await _send(to, "Accusé de réception — ta rétractation",
+                           _layout("Rétractation reçue", body), reply_to=CONTACT_EMAIL)
+    except Exception:  # noqa: BLE001
+        logger.warning("email.accuse_retractation_echec", exc_info=True)
+        return False
+
+
+async def send_alerte_retractation(
+    to: str,
+    *,
+    nom_prenom: str,
+    contrat: str,
+    email_client: str,
+    message: str | None,
+    recue_le_texte: str,
+    reference: str,
+) -> bool:
+    """Prévient l'équipe WATT qu'une rétractation est à traiter."""
+    try:
+        lignes = (
+            _ligne_declaration("Nom et prénom", nom_prenom)
+            + _ligne_declaration("Email", email_client)
+            + _ligne_declaration("Achat concerné", contrat)
+            + (_ligne_declaration("Précisions", message) if message else "")
+            + _ligne_declaration("Reçue le", recue_le_texte)
+            + _ligne_declaration("Référence", reference)
+        )
+        body = f"""\
+    <p style="color:{_MUTED};font-size:14px;line-height:1.6;margin:0 0 16px;">
+      Une déclaration de rétractation vient d'arriver. À traiter rapidement
+      (remboursement sous 14 jours si le droit s'applique).
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 16px;">{lignes}</table>
+    <p style="color:{_MUTED};font-size:13px;line-height:1.6;margin:0;">
+      Liste complète : /admin/retractations
+    </p>"""
+        return await _send(to, f"⚠ Rétractation à traiter — {nom_prenom[:60]}",
+                           _layout("Rétractation à traiter", body), reply_to=email_client)
+    except Exception:  # noqa: BLE001
+        logger.warning("email.alerte_retractation_echec", exc_info=True)
         return False
 
 

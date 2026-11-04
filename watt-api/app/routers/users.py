@@ -250,6 +250,9 @@ async def update_me(
     db: AsyncSession = Depends(get_db),
 ):
     update_data = payload.model_dump(exclude_unset=True)
+    # Colonne NOT NULL : un `null` explicite veut dire « pas de changement ».
+    if update_data.get("vendeur_pro", False) is None:
+        update_data.pop("vendeur_pro")
 
     for field, value in update_data.items():
         setattr(current_user, field, value)

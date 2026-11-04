@@ -738,6 +738,13 @@ async def reset_page():
     return _page("reset.html")
 
 
+@router.get("/retractation", include_in_schema=False)
+async def retractation_page():
+    # Fonction de rétractation en ligne (art. L221-21 du Code de la
+    # consommation) : cible du lien « Renoncer au contrat ici » du pied de page.
+    return _page("retractation.html")
+
+
 @router.get("/verifier-email", include_in_schema=False)
 async def verifier_email_page():
     # Phase A (2026-09-11) — page de vérification d'email, miroir de /reset.

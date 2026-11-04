@@ -209,6 +209,10 @@ async def _passage_purge() -> None:
         from app.services.moderation import purger_signalements_anciens
 
         s = await purger_signalements_anciens(db)
+        # Rétractations : déclarations supprimées 5 ans après réception.
+        from app.routers.retractation import purger_retractations_anciennes
+
+        r = await purger_retractations_anciennes(db)
         # Lot H — sons pas encore protégés (version d'écoute légère) : la
         # protection est inscrite dans la file, traitée juste en dessous.
         from app.services.apercu_audio import programmer_protections_manquantes
@@ -221,6 +225,8 @@ async def _passage_purge() -> None:
             _log.info("[mesure] purge : %s événements de plus de 13 mois supprimés", n)
         if s:
             _log.info("[signalements] purge : %s signalements décidés il y a plus de 3 ans", s)
+        if r:
+            _log.info("[retractations] purge : %s déclarations de plus de 5 ans", r)
     # Lot G — opérations sur les fichiers restées en attente (stockage
     # indisponible, bucket privé posé depuis…) : rejouées chaque jour.
     from app.services.fichiers_a_traiter import traiter_en_attente

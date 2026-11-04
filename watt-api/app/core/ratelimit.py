@@ -68,6 +68,7 @@ LIMIT_OEUVRES_ACTIONS = "30/minute;300/hour"   # « Mes Œuvres » : actions gro
 LIMIT_CODE_PIONNIER = "10/hour;30/day"       # Lot I : essais de codes Pionnier
 LIMIT_EXPORT = "5/hour;20/day"                 # export RGPD (JSON complet)
 LIMIT_SUPPRESSION_COMPTE = "5/hour"            # suppression de compte (mot de passe)
+LIMIT_RETRACTATION = "5/hour;20/day"           # déclarations de rétractation (emails)
 
 # Préfixe des clés côté Redis (évite toute collision avec un autre usage).
 _KEY_PREFIX = "watt-rl"

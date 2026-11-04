@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070608" />
+  <title>Renoncer au contrat · WATT</title>
+  <link rel="stylesheet" href="/ui/core/tokens.css?v=20261102lis" />
+  <style>
+    /* Fonction de rétractation en ligne (art. L221-21 et D221-5 du Code de la
+       consommation). Deux temps : déclaration, puis bouton « Confirmer la
+       rétractation » → accusé de réception affiché et envoyé par email. */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--sp-bg, #050508); color: var(--sp-text, #e8e8f0);
+      font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .rt-top { width: 100%; padding: 16px 22px; border-bottom: 1px solid var(--sp-border, rgba(255,255,255,.1)); }
+    .rt-top a { color: var(--sp-gold, #ffd700); text-decoration: none; font-weight: 800; letter-spacing: .1em; font-size: 14px; }
+    .rt-card {
+      width: calc(100% - 32px); max-width: 520px; margin: 6vh 16px 0;
+      background: var(--sp-surface, rgba(255,255,255,.04));
+      border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: var(--sp-radius-lg, 16px);
+      padding: 26px 22px;
+    }
+    h1 { font-size: 1.15rem; margin: 0 0 8px; }
+    .rt-sub { color: var(--sp-text-muted, rgba(255,255,255,.72)); font-size: .84rem; line-height: 1.6; margin: 0 0 18px; }
+    .rt-sub a { color: var(--sp-gold, #ffd700); }
+    label { display: block; font-size: .78rem; font-weight: 600; color: var(--sp-text-muted, rgba(255,255,255,.72)); margin: 0 0 6px; }
+    .rt-hint { font-weight: 400; color: var(--sp-text-faint, rgba(255,255,255,.55)); }
+    input, textarea {
+      width: 100%; padding: 12px 14px; margin-bottom: 14px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--sp-border, rgba(255,255,255,.1));
+      border-radius: var(--sp-radius-md, 10px);
+      color: var(--sp-text, #e8e8f0); font-size: .9rem; outline: none;
+      font-family: inherit;
+    }
+    textarea { min-height: 84px; resize: vertical; }
+    input:focus, textarea:focus { border-color: var(--sp-gold, #ffd700); }
+    button {
+      width: 100%; padding: 13px;
+      background: var(--sp-gold, #ffd700); color: #070608;
+      border: none; border-radius: var(--sp-radius-pill, 999px);
+      font-size: .9rem; font-weight: 800; cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: wait; }
+    .rt-msg { margin-top: 14px; font-size: .82rem; line-height: 1.6; display: none; }
+    .rt-msg.error { display: block; color: var(--sp-danger, #ff5577); }
+    .rt-ar { width: 100%; border-collapse: collapse; margin: 6px 0 16px; font-size: .85rem; }
+    .rt-ar td { padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.08); vertical-align: top; }
+    .rt-ar td:first-child { color: var(--sp-text-faint, rgba(255,255,255,.55)); padding-right: 12px; white-space: nowrap; }
+    .rt-ok { color: var(--sp-success, #4ade80); font-weight: 700; margin: 0 0 10px; }
+    .rt-note { color: var(--sp-text-muted, rgba(255,255,255,.72)); font-size: .8rem; line-height: 1.6; margin: 0; }
+  </style>
+</head>
+<body>
+
+<div class="rt-top"><a href="/">← ⚡ WATT</a></div>
+
+<!-- Temps 1 : la déclaration -->
+<div class="rt-card" id="rt-form-card">
+  <h1>Renoncer au contrat</h1>
+  <p class="rt-sub">
+    Remplis ce formulaire pour te rétracter d'un achat fait sur WATT, puis
+    clique sur « Confirmer la rétractation ». Tu reçois aussitôt un accusé de
+    réception par email, avec la date et l'heure de ta demande.
+  </p>
+  <p class="rt-sub">
+    À savoir : si, au moment de l'achat, tu as demandé la livraison immédiate
+    de tes Smyles et renoncé à ton droit de rétractation, ce droit ne
+    s'applique plus une fois les Smyles livrés. Les achats d'Œuvres à des
+    particuliers n'y ouvrent pas droit non plus
+    (<a href="/legal#cgv-smyles">CGV, article 6</a>). Ta demande est tout de
+    même enregistrée et examinée, et nous te répondons dans tous les cas.
+  </p>
+  <label for="rt-nom">Nom et prénom</label>
+  <input id="rt-nom" type="text" autocomplete="name" maxlength="120" />
+  <label for="rt-contrat">Achat concerné
+    <span class="rt-hint">— par exemple « 500 Smyles achetés le 03/11 », ou la référence du paiement</span></label>
+  <input id="rt-contrat" type="text" maxlength="500" />
+  <label for="rt-email">Email où recevoir l'accusé de réception</label>
+  <input id="rt-email" type="email" autocomplete="email" maxlength="320" placeholder="toi@email.com" />
+  <label for="rt-message">Précisions <span class="rt-hint">(facultatif)</span></label>
+  <textarea id="rt-message" maxlength="2000"></textarea>
+  <button id="rt-confirm" type="button">Confirmer la rétractation</button>
+  <div class="rt-msg" id="rt-msg"></div>
+</div>
+
+<!-- Temps 2 : l'accusé de réception -->
+<div class="rt-card" id="rt-ar-card" style="display:none">
+  <h1>Rétractation reçue</h1>
+  <p class="rt-ok" id="rt-ar-statut"></p>
+  <table class="rt-ar" id="rt-ar"></table>
+  <p class="rt-note" id="rt-ar-note"></p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+  // Connecté ? On pré-remplit l'email et on rattache la demande au compte.
+  var token = null;
+  try { token = localStorage.getItem('smyle_api_token'); } catch (_) {}
+  try {
+    var me = JSON.parse(localStorage.getItem('smyle_current_user') || 'null');
+    if (me && me.email) document.getElementById('rt-email').value = me.email;
+  } catch (_) {}
+
+  var btn = document.getElementById('rt-confirm');
+  function erreur(t) {
+    var el = document.getElementById('rt-msg');
+    el.textContent = t;
+    el.className = 'rt-msg error';
+  }
+
+  btn.addEventListener('click', async function () {
+    var nom = (document.getElementById('rt-nom').value || '').trim();
+    var contrat = (document.getElementById('rt-contrat').value || '').trim();
+    var email = (document.getElementById('rt-email').value || '').trim();
+    var message = (document.getElementById('rt-message').value || '').trim();
+    if (nom.length < 2) { erreur('Indique ton nom et ton prénom.'); return; }
+    if (contrat.length < 3) { erreur('Indique l’achat concerné.'); return; }
+    if (!email || email.indexOf('@') < 1) { erreur('Entre un email valide pour recevoir l’accusé de réception.'); return; }
+    btn.disabled = true;
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      var r = await fetch('/retractation', {
+        method: 'POST', headers: headers,
+        body: JSON.stringify({ nom_prenom: nom, contrat: contrat, email: email, message: message || null }),
+      });
+      var data = null;
+      try { data = await r.json(); } catch (_) {}
+      if (!r.ok) {
+        var d = data && data.detail;
+        throw new Error(r.status === 429
+          ? 'Trop de demandes depuis cette connexion. Réessaie plus tard ou écris à smyletheplan@gmail.com.'
+          : (typeof d === 'string' ? d : 'Vérifie les champs puis réessaie (erreur ' + r.status + ').'));
+      }
+      var lignes = [
+        ['Nom et prénom', data.nom_prenom],
+        ['Achat concerné', data.contrat],
+      ];
+      if (data.message) lignes.push(['Précisions', data.message]);
+      lignes.push(['Email', data.email], ['Reçue le', data.recue_le_texte], ['Référence', data.reference]);
+      document.getElementById('rt-ar').innerHTML = lignes.map(function (l) {
+        return '<tr><td>' + esc(l[0]) + '</td><td>' + esc(l[1]) + '</td></tr>';
+      }).join('');
+      document.getElementById('rt-ar-statut').textContent = data.accuse_envoye
+        ? '✔ Accusé de réception envoyé à ' + data.email + '.'
+        : '✔ Ta demande est enregistrée.';
+      document.getElementById('rt-ar-note').textContent = data.accuse_envoye
+        ? 'Garde cet email : il prouve la date et l’heure de ta demande. Nous revenons vers toi par email.'
+        : 'L’email d’accusé de réception n’a pas pu partir. Fais une capture de cette page : elle prouve la date et l’heure de ta demande. Nous revenons vers toi par email.';
+      document.getElementById('rt-form-card').style.display = 'none';
+      document.getElementById('rt-ar-card').style.display = '';
+      window.scrollTo(0, 0);
+    } catch (e) {
+      erreur(e.message);
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+<!-- Lot D : pied de page légal -->
+<script src="/ui/core/legal-footer.js?v=20261104retr" defer></script>
+</body>
+</html>

@@ -28,3 +28,8 @@ MESURE_RETENTION_MOIS = 13
 # (retrait ou rejet) : 3 ans (délai de prescription des actions civiles
 # courantes liées au contenu), annoncée dans la politique de confidentialité.
 SIGNALEMENTS_RETENTION_ANS = 3
+
+# Déclarations de rétractation (art. L221-21) : conservées 5 ans après leur
+# réception (délai de prescription de droit commun, art. 2224 du Code civil),
+# pour pouvoir prouver la demande et son traitement. Purge quotidienne.
+RETRACTATIONS_RETENTION_ANS = 5
