@@ -438,8 +438,17 @@ async def get_prompt_market(db: AsyncSession, prompt_id: UUID) -> dict | None:
         supply_left = max(0, int(p.max_supply) - int(sold))
         primary_available = supply_left > 0
     secondary = await get_resale_market(db, prompt_id=prompt_id)
+    # Statut du vendeur de l'offre primaire (art. L111-7 II du Code de la
+    # consommation) : affiché dans le tiroir d'achat. Le compte officiel
+    # appartient à l'éditeur de la plateforme → toujours professionnel.
+    from app.models.user import User
+    vendeur = (await db.execute(
+        select(User.vendeur_pro, User.is_official).where(User.id == p.artist_id)
+    )).one_or_none()
+    vendeur_pro = bool(vendeur and (vendeur.vendeur_pro or vendeur.is_official))
     return {
         "prompt_id": str(prompt_id),
+        "seller_pro": vendeur_pro,
         "title": p.title,
         "primary_price": p.price_credits,
         "max_supply": p.max_supply,

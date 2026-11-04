@@ -151,6 +151,17 @@ class User(Base):
         server_default="false",
     )
 
+    # Statut du vendeur (migration 0111, art. L111-7 II du Code de la
+    # consommation) : False = particulier (défaut), True = vend à titre
+    # professionnel. Déclaré par le créateur dans son WATT BOARD et affiché
+    # avant chaque achat. Le compte officiel est toujours traité comme pro.
+    vendeur_pro: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     # Compte TRÉSORERIE de la société (migration 0089, Brique 1). DISTINCT de
     # is_official : le vitrine « Smyle » est une identité artiste PUBLIQUE, la
     # trésorerie est un registre non public (profile_public=False, password_hash

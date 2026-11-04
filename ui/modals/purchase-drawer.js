@@ -288,6 +288,13 @@
           var el = document.getElementById('pd-market');
           if (!el || !m) return;
           var parts = [];
+          // Statut du vendeur (art. L111-7 II du Code de la consommation),
+          // dit AVANT l'achat. Absent de la réponse → rien d'affiché.
+          if (m.seller_pro === true) {
+            parts.push('🏢 Vendu par un <strong>professionnel</strong>');
+          } else if (m.seller_pro === false) {
+            parts.push('👤 Vendu par un <strong>particulier</strong> : le droit de rétractation et les garanties du droit de la consommation ne s’appliquent pas à cet achat (<a href="/legal#fonctionnement" target="_blank" rel="noopener">CGU art. 8 bis</a>)');
+          }
           if (m.is_limited) {
             if (m.supply_left > 0) parts.push('🎟️ Édition limitée · <strong>' + m.supply_left + '/' + m.max_supply + '</strong> au prix officiel');
             else parts.push('🔴 Édition limitée <strong>épuisée</strong> en primaire');

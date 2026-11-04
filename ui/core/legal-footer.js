@@ -3,7 +3,7 @@
    Pack légal v1 (2026-06-10), complété au Lot D. Injecte un pied de page
    discret et identique sur toutes les pages qui incluent ce script :
    Mentions légales, CGU, Confidentialité, Cookies / mesure d'audience (rouvre
-   le choix de consentement), Contact, Signaler un contenu.
+   le choix de consentement), Contact, Signaler un contenu, Renoncer au contrat.
    Zéro dépendance, zéro impact layout (simple bloc en fin de body).
    ───────────────────────────────────────────────────────────────────────── */
 (function injectLegalFooter() {
@@ -50,6 +50,9 @@
         '<button type="button" data-sp-cookies style="' + l + '">Cookies / mesure d’audience</button>' +
         '<button type="button" data-sp-contact style="' + l + '">Contact</button>' +
         '<a href="/legal#contenu" style="' + l + '">Signaler un contenu</a>' +
+        // Fonction de rétractation en ligne (art. L221-21 du Code de la
+        // consommation) : libellé imposé, visible sur toutes les pages.
+        '<a href="/retractation" style="' + l + '">Renoncer au contrat ici</a>' +
       '</nav>';
     f.querySelector('[data-sp-cookies]').addEventListener('click', ouvrirCookies);
     f.querySelector('[data-sp-contact]').addEventListener('click', ouvrirContact);

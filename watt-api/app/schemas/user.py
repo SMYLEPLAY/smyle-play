@@ -219,6 +219,7 @@ class UserRead(BaseModel):
     profile_bg_color:    str | None = None
     profile_brand_color: str | None = None
     profile_public: bool = False  # Chantier 1 — visible sur la vitrine /watt
+    vendeur_pro: bool = False  # Migration 0111 — vend à titre professionnel
     # Lot I — slug public calculé par le serveur (le front ne le devine plus
     # à partir de l'email).
     slug: str | None = None
@@ -318,6 +319,9 @@ class UserUpdate(BaseModel):
     # Validation : chaque code doit appartenir à ROLE_CODES.
     roles: list[str] | None = Field(default=None, max_length=len(ROLE_CODES))
     language: Literal["en", "fr", "es"] | None = None
+    # Migration 0111 — statut du vendeur (particulier / professionnel).
+    # None = pas de changement (jamais écrit tel quel en base, cf. update_me).
+    vendeur_pro: bool | None = None
 
     @field_validator("artist_name", "bio", "universe_description", "influences")
     @classmethod

@@ -4505,6 +4505,39 @@ function initSectionNav() {
   sections.forEach(s => observer.observe(s));
 }
 
+// ── Statut de vendeur (art. L111-7 II du Code de la consommation) ─────────────
+// Case « Je vends à titre professionnel » : lue depuis /users/me, enregistrée
+// aussitôt cochée/décochée. Affichée ensuite avant chaque achat.
+async function dashInitVendeurPro() {
+  const box = document.getElementById('dash-vendeur-pro');
+  if (!box || typeof apiFetch !== 'function') return;
+  const tok = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!tok) return;
+  try {
+    const me = await apiFetch('/users/me');
+    box.checked = !!(me && me.vendeur_pro);
+    box.disabled = false;
+  } catch (_) { /* silencieux : la case reste inactive */ }
+}
+
+async function dashSetVendeurPro(box) {
+  if (!box || typeof apiFetch !== 'function') return;
+  const voulu = !!box.checked;
+  box.disabled = true;
+  try {
+    await apiFetch('/users/me', { method: 'PATCH', json: { vendeur_pro: voulu } });
+    dashToast(voulu ? '✓ Tu vends désormais en tant que professionnel.'
+                    : '✓ Tu vends désormais en tant que particulier.');
+  } catch (err) {
+    box.checked = !voulu;
+    const m = (typeof window._humanizeApiError === 'function') ? window._humanizeApiError(err) : '';
+    dashToast('⚠ Statut non enregistré' + (m ? ' : ' + m : '') + '. Réessaie.');
+  }
+  box.disabled = false;
+}
+
+document.addEventListener('DOMContentLoaded', dashInitVendeurPro);
+
 // ── 12. DÉCONNEXION ───────────────────────────────────────────────────────────
 
 /* ── Suppression de compte RGPD (pack légal v1, 2026-06-10 ; Lot D) ──────

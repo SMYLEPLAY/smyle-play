@@ -51,7 +51,7 @@ _PROFILE_FIELDS = [
     "universe_description", "influences", "avatar_url", "cover_photo_url",
     "brand_color", "profile_bg_color", "profile_brand_color",
     "soundcloud", "instagram", "youtube", "tiktok", "spotify", "twitter_x",
-    "language", "profile_public", "is_official", "tier", "referral_code",
+    "language", "profile_public", "is_official", "vendeur_pro", "tier", "referral_code",
     "credits_balance", "credits_earned_total", "smyles_achetes", "smyles_gagnes",
     "smyles_gagnes_bloque", "smyles_promo", "smyles_promo_gagnes",
     "is_pioneer", "pioneer_rank", "pioneer_awarded_at",
@@ -177,6 +177,11 @@ async def export_account_data(db: AsyncSession, user: User) -> dict:
             "SELECT id, target_type, target_id, reason, detail, status, created_at, resolved_at "
             "FROM content_reports WHERE reporter_id = :u "
             "OR (:verifie AND lower(reporter_email) = lower(:e)) "
+            "ORDER BY created_at", e=user.email or "", verifie=bool(user.email_verified)),
+        "retractations": await q(
+            "SELECT id, nom_prenom, contrat, email, message, statut, created_at "
+            "FROM retractations WHERE user_id = :u "
+            "OR (:verifie AND lower(email) = lower(:e)) "
             "ORDER BY created_at", e=user.email or "", verifie=bool(user.email_verified)),
         "abonnements": {
             "je_suis": await q(
