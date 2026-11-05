@@ -519,7 +519,13 @@
     _grille.tranches.forEach((x) => { if (n >= x.seuil) t = x; });
     return t;
   }
-  function _centimes(n) { return Math.round(n * _tranche(n).m / 10); }
+  // Jamais plus cher que le seuil de la tranche suivante (même règle que le serveur).
+  function _centimes(n) {
+    let c = Math.round(n * _tranche(n).m / 10);
+    const suiv = _grille.tranches.find((t) => t.seuil > n);
+    if (suiv) c = Math.min(c, Math.round(suiv.seuil * suiv.m / 10));
+    return c;
+  }
   function _arrondi(n) {
     const p = _grille.pas;
     n = Math.ceil((parseInt(n, 10) || 0) / p) * p;
@@ -559,14 +565,15 @@
         const ajout = suiv.seuil - n;
         const diff = _centimes(suiv.seuil) - cents;
         astuce.textContent = diff <= 0
-          ? `Astuce : ${suiv.seuil.toLocaleString('fr-FR')} Smyles coûtent moins cher (${_eurosFr(_centimes(suiv.seuil))}) — tous à ${_unitFr(suiv.m)}.`
+          ? `Astuce : pour le même prix, prends ${suiv.seuil.toLocaleString('fr-FR')} Smyles (${_eurosFr(_centimes(suiv.seuil))}), tous à ${_unitFr(suiv.m)}.`
           : `Astuce : ajoute ${ajout.toLocaleString('fr-FR')} Smyles (+${_eurosFr(diff)}) et tous passent à ${_unitFr(suiv.m)}.`;
         astuce.hidden = false;
       } else {
         astuce.hidden = true;
       }
     }
-    _selectedPack = { id: 'pack_' + n, price: _eurosFr(cents) };
+    // Lot O — « libre_<n> » : jamais confondu avec un ancien identifiant de pack.
+    _selectedPack = { id: 'libre_' + n, price: _eurosFr(cents) };
     _refreshPayBtn();
   }
 

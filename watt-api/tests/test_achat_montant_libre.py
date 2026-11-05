@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.parametrize("credits,cents", [
-    (100, 800), (490, 3920), (500, 3500), (1000, 7000), (1990, 13930), (2000, 13000),
+    (100, 800), (490, 3500), (480, 3500), (430, 3440), (500, 3500), (1000, 7000), (1990, 13000), (2000, 13000),
     (3000, 19500), (5000, 31000), (10000, 60000), (25000, 147500), (50000, 295000),
 ])
 def test_prix_par_tranche(credits, cents):
@@ -32,7 +32,7 @@ def test_prix_par_tranche(credits, cents):
 
 
 @pytest.mark.parametrize("pid", ["pack_90", "pack_105", "pack_50010", "pack_0", "pack_-100",
-                                 "pack_abc", "libre_100", "", "pack_1000000"])
+                                 "pack_abc", "libre_105", "libre_60000", "", "pack_1000000"])
 def test_montants_refuses(pid):
     assert get_pack_by_id(pid) is None
 

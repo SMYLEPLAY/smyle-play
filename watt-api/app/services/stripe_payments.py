@@ -143,6 +143,34 @@ async def _stripe_post(path: str, data: dict) -> dict:
 
 # ── Création de la session de paiement ─────────────────────────────────────
 
+async def _verifier_plafond_compte_recent(db: AsyncSession, user, montant_cents: int) -> None:
+    """Lève StripeRequestError si un compte de moins de
+    ACHAT_COMPTE_RECENT_JOURS jours dépasse ACHAT_PLAFOND_24H_CENTS payés
+    sur les dernières 24 h (montant demandé compris)."""
+    plafond = int(settings.ACHAT_PLAFOND_24H_CENTS or 0)
+    if plafond <= 0:
+        return
+    cree = getattr(user, "created_at", None)
+    if cree is not None:
+        from datetime import datetime, timedelta, timezone
+
+        maintenant = datetime.now(timezone.utc)
+        if cree.tzinfo is None:
+            cree = cree.replace(tzinfo=timezone.utc)
+        if maintenant - cree > timedelta(days=int(settings.ACHAT_COMPTE_RECENT_JOURS)):
+            return
+    deja = (await db.execute(text(
+        "SELECT COALESCE(sum(amount_cents), 0) FROM stripe_payments "
+        "WHERE user_id = :u AND status = 'paye' AND created_at > now() - interval '24 hours'"
+    ), {"u": user.id})).scalar_one()
+    if int(deja) + int(montant_cents) > plafond:
+        reste = max(0, plafond - int(deja))
+        raise StripeRequestError(
+            f"Pour ta sécurité, un compte récent peut acheter jusqu'à {plafond // 100} € de Smyles "
+            f"par 24 h (il te reste {reste // 100} € aujourd'hui)."
+        )
+
+
 async def create_checkout(
     db: AsyncSession,
     *,
@@ -174,6 +202,9 @@ async def create_checkout(
         raise StripeRequestError(
             "Choisis entre 100 et 50 000 Smyles, par multiples de 10."
         )
+    # Lot O (03/11) — anti-fraude : un compte récent ne peut pas dépasser un
+    # plafond d'achats PAYÉS sur 24 h (carte volée + complice qui encaisse).
+    await _verifier_plafond_compte_recent(db, user, int(pack["price_eur_cents"]))
     if consent is not True:
         raise StripeRequestError(
             "Coche la case de renonciation au droit de rétractation pour continuer."

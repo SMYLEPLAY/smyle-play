@@ -877,7 +877,8 @@ function renderPlaylistsAdn(artist) {
   const brandColor = (artist && artist.brandColor) || '#cc88ff';
   const slug       = (artist && artist.slug) || '';
 
-  if (playlists.length === 0) { section.style.display = 'none'; return; }
+  // Lot O (03/11) — ADN de playlist fermés au lancement (item `adn`).
+  if (playlists.length === 0 || !(window.WATT_LAUNCH && window.WATT_LAUNCH.adn)) { section.style.display = 'none'; return; }
   section.style.display = '';
   setText('ap-playlists-adn-count', playlists.length + ' playlist' + (playlists.length > 1 ? 's' : ''));
 
@@ -1362,7 +1363,8 @@ function renderAdnChip(artist) {
   const priceEl = document.getElementById('ap-adn-chip-price');
   if (!chip) return;
   const adn = artist && artist.adn;
-  if (!adn || artist.isSelf) { chip.style.display = 'none'; return; }
+  // Lot O (03/11) — chip masquée tant que les ADN sont fermés.
+  if (!adn || artist.isSelf || !(window.WATT_LAUNCH && window.WATT_LAUNCH.adn)) { chip.style.display = 'none'; return; }
   chip.style.display = '';
   if (priceEl) priceEl.textContent = 'sur proposition';
 }
@@ -1385,6 +1387,12 @@ window.scrollToAdnCard = function() {
 // ADN en vente → relique pleine largeur · possédé → bord doré sans bouton.
 // Règle absolue : le contenu ADN n'est JAMAIS visible sans achat.
 function renderDna(artist) {
+  // Lot O (03/11) — ADN fermés au lancement (item `adn`) : pas de carte,
+  // pas de bouton « Débloquer » qui mène à une impasse.
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.adn)) {
+    const _c = document.getElementById('ap-dna-card'); if (_c) _c.style.display = 'none';
+    return;
+  }
   const card = $('ap-dna-card');
   if (!card) return;
   const adn = artist && artist.adn;
@@ -1544,6 +1552,12 @@ async function _applyAdnOwnedState(card, adnId) {
    palette / usage_guide / example_outputs) n'est JAMAIS exposé ici — le backend
    ne l'envoie pas. États identiques à l'ADN musical.                          */
 function renderVisualDna(artist) {
+  // Lot O (03/11) — ADN fermés au lancement (item `adn`) : pas de carte,
+  // pas de bouton « Débloquer » qui mène à une impasse.
+  if (!(window.WATT_LAUNCH && window.WATT_LAUNCH.adn)) {
+    const _c = document.getElementById('ap-vdna-card'); if (_c) _c.style.display = 'none';
+    return;
+  }
   const card = $('ap-vdna-card');
   if (!card) return;
   const adn = artist && artist.visualAdn;

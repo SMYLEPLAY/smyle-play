@@ -542,6 +542,19 @@ async def publish_my_profile(
     # Lot M — un compte banni ne peut pas se remettre en vitrine lui-même.
     if bool(getattr(current_user, "is_banned", False)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Compte suspendu.")
+    # Lot O (03/11) — un profil retiré de la vitrine par l'admin n'y revient
+    # que par l'admin (dernière décision du journal d'administration).
+    from sqlalchemy import text as _sql
+
+    derniere = (await db.execute(_sql(
+        "SELECT action FROM admin_journal WHERE cible_type = 'user' AND cible_id = :c "
+        "AND action IN ('vitrine_retiree', 'vitrine_remise') ORDER BY created_at DESC LIMIT 1"
+    ), {"c": str(current_user.id)})).scalar_one_or_none()
+    if derniere == "vitrine_retiree":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ton profil a été retiré de la vitrine par l'équipe WATT. Écris-nous pour en parler.",
+        )
 
     missing: list[str] = []
 

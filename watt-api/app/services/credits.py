@@ -78,12 +78,16 @@ def offre_sur_mesure(credits: int) -> dict | None:
         return None
     if credits % ACHAT_PAS_SMYLES:
         return None
-    return {
-        "id": f"pack_{credits}",
-        "credits": credits,
-        # credits multiple de 10 et prix en millièmes → centimes entiers.
-        "price_eur_cents": credits * prix_smyle_millieme(credits) // 10,
-    }
+    # credits multiple de 10 et prix en millièmes → centimes entiers.
+    cents = credits * prix_smyle_millieme(credits) // 10
+    # Lot O (03/11) — jamais plus cher que le seuil de la tranche suivante
+    # (490 Smyles ne coûtent pas plus que 500) : le prix total ne baisse
+    # jamais quand on prend plus.
+    for seuil, m in TRANCHES_PRIX:
+        if seuil > credits:
+            cents = min(cents, seuil * m // 10)
+            break
+    return {"id": f"pack_{credits}", "credits": credits, "price_eur_cents": cents}
 
 
 # Raccourcis proposés à l'écran (boutons rapides) : un par usage.
@@ -100,6 +104,12 @@ def get_pack_by_id(pack_id: str) -> dict | None:
 
     Les anciens packs fixes (pack_100 / pack_500 / pack_2000) gardent
     exactement leur prix (8 / 35 / 130 €) : ce sont des seuils de tranche."""
+    # Lot O (03/11) — le montant libre envoie « libre_<n> » : jamais d'alias
+    # (« pack_200 » désignait l'ancien pack de 2 000 Smyles ; un achat libre
+    # de 200 Smyles ne doit JAMAIS être converti en 2 000).
+    m = re.fullmatch(r"libre_(\d{1,6})", pack_id or "")
+    if m:
+        return offre_sur_mesure(int(m.group(1)))
     pack_id = _PACK_ALIASES.get(pack_id, pack_id)
     m = re.fullmatch(r"pack_(\d{1,6})", pack_id or "")
     return offre_sur_mesure(int(m.group(1))) if m else None

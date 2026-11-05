@@ -233,6 +233,9 @@ class Settings(BaseSettings):
     # Lot L — conditions d'achat par carte (relâchables par variable).
     ACHAT_MAJEUR_REQUIS: bool = True
     ACHAT_EXIGE_EMAIL_VERIFIE: bool = True
+    # Lot O (03/11) — plafond anti-fraude des comptes récents (0 = aucun).
+    ACHAT_PLAFOND_24H_CENTS: int = 30000
+    ACHAT_COMPTE_RECENT_JOURS: int = 30
     # Lot L : OFF — les ADN sont masqués (SHOW_ADN), leurs offres aussi.
     SHOW_OFFRES_ADN: bool = False    # offres sur ADN (/adn-offers)
     # Lot J (21/10/2026) — simplification : les ADN (musical, visuel, de

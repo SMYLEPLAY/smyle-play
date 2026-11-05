@@ -2702,15 +2702,9 @@
     _renderAll();
     _openSonFromQuery();
 
-    // Lot M — /?son=<id> (clic sur la barre de lecture depuis une autre
-    // page) : on ouvre directement la carte ID du son.
-    try {
-      const _sonQ = new URLSearchParams(location.search).get('son');
-      if (_sonQ) {
-        if (!_ouvrirCarteSon(_sonQ) && typeof showToast === 'function') showToast('Ce son n\'est plus disponible.');
-        history.replaceState(null, '', location.pathname + location.hash);
-      }
-    } catch (_) {}
+    // Lot O (03/11) — `?son=` est traité UNE seule fois, par
+    // _openSonFromQuery (ci-dessus). L'ancien bloc effaçait toute l'adresse,
+    // donc le code de parrainage `ref=` d'un lien partagé.
 
     // C4 étape 2 — commutateur Musique ⇄ Image + section Œuvre complète,
     // UNIQUEMENT sur la home (les pages dédiées /sons, /images… gardent leur
