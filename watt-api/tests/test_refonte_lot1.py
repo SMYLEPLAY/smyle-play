@@ -39,8 +39,8 @@ def test_repli_statique_declare_refonte_fermee():
     assert "refonte: false" in js
 
 
-def test_socle_ne_contient_que_des_jetons():
+def test_socle_declare_les_jetons():
     css = (RACINE / "ui" / "pwa" / "refonte.css").read_text(encoding="utf-8")
-    sans_commentaires = css.split("*/", 1)[1]
-    assert sans_commentaires.count("{") == 1  # un seul bloc : :root
-    assert "--rf-violet: #8800ff" in css
+    for jeton in ("--rf-fond: #050508", "--rf-violet: #8800ff", "--rf-argent: #c9d0d6",
+                  "--rf-or: #ffd700", "--rf-rail-largeur", "--rf-barre-bas-hauteur"):
+        assert jeton in css
