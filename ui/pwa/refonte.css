@@ -282,7 +282,7 @@ body > header,
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 22px rgba(136, 0, 255, .45));
 }
-.mp-hero-acronym { margin-bottom: 0; color: var(--rf-argent-2); }
+.mp-hero-acronym { margin-bottom: 22px; color: var(--rf-argent-2); }
 body.rf-connecte .watt-trust { display: none; }
 
 /* Pas de playlists sur l'accueil : elles sont sur le profil. */
