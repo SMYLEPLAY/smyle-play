@@ -247,6 +247,10 @@ class Settings(BaseSettings):
     SHOW_TROPHEES: bool = False     # trophées + leurs récompenses en Smyles
     SHOW_BEATS: bool = False        # création / achat de beats, packs recette+beat
     SHOW_ALBUMS: bool = False       # albums + ADN d'album
+    # Refonte de l'interface (nov. 2026) — nouvel habillage livré lot par
+    # lot. Fermé par défaut ; indépendant de MODE_LANCEMENT (couper le mode
+    # lancement ne l'allume pas). SHOW_REFONTE=true charge ui/pwa/refonte.css.
+    SHOW_REFONTE: bool = False
     # S-11 (2026-09-04, annexe A §M5) — l'achat de Smyles est masqué tant
     # que Stripe n'est pas branché : /credits/grant répond 403 à tout
     # compte non is_official, donc la modale d'achat promettait une
@@ -402,6 +406,8 @@ class Settings(BaseSettings):
             "trophees": self._item_visible(self.SHOW_TROPHEES),
             "beats": self._item_visible(self.SHOW_BEATS),
             "albums": self._item_visible(self.SHOW_ALBUMS),
+            # Pas de _item_visible : la refonte ne s'allume que sur demande.
+            "refonte": bool(self.SHOW_REFONTE),
         }
 
 

@@ -1,0 +1,57 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   WATT — ui/pwa/refonte.css · socle du nouvel habillage (lot 1).
+
+   Injecté par le serveur (app/routers/pages.py) sur toutes les pages,
+   APRÈS lissage.css, uniquement quand l'interrupteur `refonte` est ouvert
+   (SHOW_REFONTE=true). Fermé par défaut : rien ne change pour le public.
+
+   Ce lot ne pose que les jetons (variables --rf-*). Aucune règle visible :
+   les lots suivants (coquille, accueil, profil, pages) s'appuient dessus,
+   sans toucher aux id, data-* ni fonctions des pages.
+
+   Règles de la palette :
+     · un seul violet, discret : lumière et action principale ;
+     · l'argent / chrome prend le relais : logo, titres, filets, étiquettes ;
+     · l'or : Smyles et inscription ;
+     · fond très sombre pour faire ressortir les couleurs.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Fond */
+  --rf-fond: #050508;
+  --rf-fond-rail: rgba(5, 5, 8, .82);
+
+  /* Couleurs */
+  --rf-violet: #8800ff;
+  --rf-violet-halo: rgba(136, 0, 255, .55);
+  --rf-argent: #c9d0d6;
+  --rf-argent-2: #9aa3ab;
+  --rf-acier: #3c4349;
+  --rf-or: #ffd700;
+  --rf-chrome: linear-gradient(180deg, #ffffff 0%, #c9d0d6 38%, #6f7780 62%, #e3e7ea 100%);
+
+  /* Texte */
+  --rf-texte: #e8e8f0;
+  --rf-texte-2: #aab0b8;
+  --rf-texte-3: #8d939b;
+
+  /* Panneaux et filets */
+  --rf-panneau: rgba(255, 255, 255, .035);
+  --rf-filet: rgba(201, 208, 214, .16);
+  --rf-filet-fort: rgba(201, 208, 214, .32);
+
+  /* Rayons */
+  --rf-rayon-panneau: 20px;
+  --rf-rayon-bouton: 10px;
+  --rf-rayon-pilule: 999px;
+
+  /* Typographie */
+  --rf-police: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --rf-graisse-titre: 800;
+  --rf-espace-etiquette: .18em;
+
+  /* Coquille (lot 2) */
+  --rf-rail-largeur: 76px;
+  --rf-barre-bas-hauteur: 62px;
+  --rf-lecteur-hauteur: 68px;
+}

@@ -425,6 +425,12 @@ def _bloc_pwa(low: str, actif: bool) -> str:
     parts.append(
         f'<link rel="stylesheet" href="/ui/pwa/lissage.css?v={_version("lissage.css")}" />'
     )
+    # Refonte — socle du nouvel habillage (jetons), seulement si l'interrupteur
+    # `refonte` est ouvert. Chargé après le lissage pour pouvoir le surcharger.
+    if settings.launch_flags_dict().get("refonte"):
+        parts.append(
+            f'<link rel="stylesheet" href="/ui/pwa/refonte.css?v={_version("refonte.css")}" />'
+        )
     # Lot M — la barre de lecture sur TOUTES les pages : la musique reprend
     # (et la playlist continue) quelle que soit la page ouverte ensuite.
     if "mini-bar.js" not in low:
@@ -455,8 +461,10 @@ def injecter_pwa(html_text: str, actif: bool | None = None) -> str:
 
 
 @lru_cache(maxsize=64)
-def _page_injectee(path: str, mtime_ns: int, actif: bool, commit: str) -> str:
+def _page_injectee(path: str, mtime_ns: int, actif: bool, commit: str,
+                   refonte: bool = False) -> str:
     # `commit` dans la clé : un déploiement recalcule les « ?v= ».
+    # `refonte` dans la clé : l'interrupteur change le bloc injecté.
     return injecter_pwa(_read_page_cached(path, mtime_ns), actif)
 
 
@@ -531,7 +539,8 @@ def _page(filename: str) -> Response:
     except OSError:
         raise HTTPException(status_code=404)
     return _PageHTML(
-        content=_page_injectee(str(path), mtime_ns, pwa_active(), _commit()),
+        content=_page_injectee(str(path), mtime_ns, pwa_active(), _commit(),
+                               bool(settings.launch_flags_dict().get("refonte"))),
         headers={"Cache-Control": "no-cache"},
     )
 
@@ -735,7 +744,8 @@ async def legal_page():
         mtime_ns = path.stat().st_mtime_ns
     except OSError:
         raise HTTPException(status_code=404)
-    texte = _page_injectee(str(path), mtime_ns, pwa_active(), _commit())
+    texte = _page_injectee(str(path), mtime_ns, pwa_active(), _commit(),
+                               bool(settings.launch_flags_dict().get("refonte")))
     return _PageHTML(
         content=_etat_adn(_etat_vente(_coordonnees_editeur(texte))),
         headers={"Cache-Control": "no-cache"},
