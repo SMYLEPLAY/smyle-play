@@ -5,9 +5,9 @@
    APRÈS lissage.css, uniquement quand l'interrupteur `refonte` est ouvert
    (SHOW_REFONTE=true). Fermé par défaut : rien ne change pour le public.
 
-   Ce lot ne pose que les jetons (variables --rf-*). Aucune règle visible :
-   les lots suivants (coquille, accueil, profil, pages) s'appuient dessus,
-   sans toucher aux id, data-* ni fonctions des pages.
+   Lot 1 : les jetons (variables --rf-*). Lot 2 : la coquille (rail, barre
+   du bas, lecteur flottant). Les lots suivants (accueil, profil, pages)
+   s'ajoutent ici, sans toucher aux id, data-* ni fonctions des pages.
 
    Règles de la palette :
      · un seul violet, discret : lumière et action principale ;
@@ -51,7 +51,211 @@
   --rf-espace-etiquette: .18em;
 
   /* Coquille (lot 2) */
-  --rf-rail-largeur: 76px;
+  --rf-rail-largeur: 88px;
   --rf-barre-bas-hauteur: 62px;
   --rf-lecteur-hauteur: 68px;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LOT 2 — LA COQUILLE
+   Le menu texte du haut devient un rail à gauche (ordinateur) ou une barre
+   en bas (téléphone). Le lecteur flotte au-dessus. Aucun élément de page
+   n'est déplacé dans le code : seules ces règles changent sa place.
+   Trois barres existent sur le site et reçoivent le même traitement :
+     · body > header      (accueil)
+     · .stb-root          (barre partagée : profil, bibliothèque, textes…)
+     · .dash-topbar       (WATT BOARD)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Icônes du menu (dessinées en masque : elles prennent la couleur du lien) */
+:root {
+  --rf-ic-accueil: url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 11l9-8 9 8%22/%3E%3Cpath d=%22M5 10v10h5v-6h4v6h5V10%22/%3E%3C/svg%3E');
+  --rf-ic-board: url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpolygon points=%2213 2 3 14 12 14 11 22 21 10 12 10 13 2%22/%3E%3C/svg%3E');
+  --rf-ic-biblio: url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 19.5A2.5 2.5 0 0 1 6.5 17H20%22/%3E%3Cpath d=%22M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z%22/%3E%3C/svg%3E');
+  --rf-ic-boutique: url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 9l1-5h16l1 5%22/%3E%3Cpath d=%22M4 9v11h16V9%22/%3E%3Cpath d=%22M9 13h6%22/%3E%3C/svg%3E');
+  --rf-ic-playlists: url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 18v-6a9 9 0 0 1 18 0v6%22/%3E%3Cpath d=%22M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z%22/%3E%3C/svg%3E');
+  --rf-entete-h: 64px;
+}
+
+body { background-color: var(--rf-fond); }
+
+/* ── Barre du haut : même hauteur partout, plus de flou (le flou empêchait
+      le rail et la barre du bas de se fixer à l'écran). */
+body > header,
+.stb-root,
+.dash-topbar {
+  height: var(--rf-entete-h);
+  min-height: 0;
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: rgba(5, 5, 8, .96);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--rf-filet);
+}
+:root { --d-topbar-h: var(--rf-entete-h); }
+
+/* ── Logo : le masque garde son halo violet, WATT passe au chrome. */
+.header-logo-icon,
+.stb-logo-img,
+.dash-topbar-mark { filter: drop-shadow(0 0 8px var(--rf-violet-halo)); }
+.logo-text,
+.stb-logo-text,
+.dash-topbar-logo span {
+  background: var(--rf-chrome);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 10px var(--rf-violet-halo));
+  animation: none;
+}
+
+/* ── Liens du menu : icône au-dessus, nom en dessous. */
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button) {
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  height: auto;
+  padding: 0;
+  border-radius: 14px;
+  color: var(--rf-texte-3);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button)::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: currentColor;
+  -webkit-mask: var(--rf-ic) center / contain no-repeat;
+  mask: var(--rf-ic) center / contain no-repeat;
+}
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button) svg { display: none !important; }
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button) .wpl-nav-label { display: inline !important; }
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > a[href="/"] { --rf-ic: var(--rf-ic-accueil); }
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a[href="/dashboard"], .watt-toggle-btn) { --rf-ic: var(--rf-ic-board); }
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > a[href="/library"] { --rf-ic: var(--rf-ic-biblio); }
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > [onclick*="openBoutique"] { --rf-ic: var(--rf-ic-boutique); }
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > .wpl-nav-btn { --rf-ic: var(--rf-ic-playlists); }
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button):hover { background: none; color: var(--rf-texte-3); }
+@media (hover: hover) {
+  :is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button):hover {
+    background: rgba(201, 208, 214, .07);
+    color: var(--rf-argent);
+  }
+}
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button).is-active,
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button).is-active:hover {
+  background: rgba(136, 0, 255, .14);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(136, 0, 255, .45);
+}
+:is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button):focus-visible {
+  outline: 2px solid var(--rf-argent);
+  outline-offset: 2px;
+}
+
+/* ── ORDINATEUR : rail à gauche ──────────────────────────────────────── */
+@media (min-width: 861px) {
+  /* Seulement sur les pages qui ont le menu (les pages de texte sans
+     barre restent pleine largeur). */
+  body:has(> header > .hdr-nav),
+  body:has(> #smyle-topbar),
+  body:has(> .dash-topbar) { padding-left: var(--rf-rail-largeur); }
+  body > header:not(.dash-topbar),
+  body > #smyle-topbar { margin-left: calc(-1 * var(--rf-rail-largeur)); }
+
+  :is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) {
+    position: fixed;
+    z-index: 95;
+    top: var(--rf-entete-h);
+    bottom: 0;
+    left: 0;
+    width: var(--rf-rail-largeur);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 6px;
+    background: var(--rf-fond-rail);
+    border-right: 1px solid var(--rf-filet);
+  }
+  :is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button) { width: 100%; min-height: 62px; }
+
+  /* WATT BOARD : la bande d'onglets fixe commence après le rail. */
+  .dash-snav { left: var(--rf-rail-largeur); }
+
+  /* Lecteur flottant, décalé du rail. */
+  /* « html body » : mini-bar.css est chargée après cette feuille. */
+  html body #player,
+  html body #smyle-mini-bar {
+    left: calc(var(--rf-rail-largeur) + 16px);
+    right: 16px;
+    border: 1px solid var(--rf-filet);
+    border-radius: 18px;
+    background: rgba(10, 10, 14, .96);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .7);
+  }
+  #player { bottom: 14px; }
+  html body #smyle-mini-bar.smb-visible { bottom: 14px; }
+}
+
+/* ── TÉLÉPHONE : barre en bas ────────────────────────────────────────── */
+@media (max-width: 860px) {
+  :root { --rf-entete-h: 56px; --rf-bas: calc(var(--rf-barre-bas-hauteur) + env(safe-area-inset-bottom, 0px)); }
+  body { padding-bottom: calc(var(--rf-bas) + var(--player-h, 0px)); }
+  html body.smyle-mini-bar-open { padding-bottom: calc(var(--rf-bas) + 84px); }
+
+  body > header { flex-wrap: nowrap; padding-left: 14px; padding-right: 14px; }
+
+  :is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav),
+  .stb-root .stb-nav {
+    position: fixed;
+    /* Sous le lecteur (200) et sous les fenêtres (1000+) : une fenêtre
+       ouverte recouvre la barre, comme elle recouvre déjà le haut. */
+    z-index: 150;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: var(--rf-bas);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+    overflow: visible;
+    background: rgba(5, 5, 8, .97);
+    border-top: 1px solid var(--rf-filet);
+  }
+  :is(body > header > .hdr-nav, .stb-root .stb-nav, .dash-topbar .hdr-nav) > :is(a, button) { flex: 1 1 0; min-width: 0; height: auto; padding: 0; overflow: hidden; font-size: 8px; letter-spacing: .02em; }
+  #player { height: 60px; padding: 0 16px; gap: 12px; }
+  :root { --player-h: 60px; }
+
+  /* Lecteur flottant, posé au-dessus de la barre du bas. */
+  /* « html body » : mini-bar.css est chargée après cette feuille. */
+  html body #player,
+  html body #smyle-mini-bar {
+    left: 8px;
+    right: 8px;
+    border: 1px solid var(--rf-filet);
+    border-radius: 16px;
+    background: rgba(10, 10, 14, .97);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .7);
+  }
+  #player { bottom: calc(var(--rf-bas) + 8px); }
+  html body #smyle-mini-bar.smb-visible { bottom: calc(var(--rf-bas) + 8px); }
+  .support-btn-floating { bottom: calc(var(--rf-bas) + var(--player-h, 0px) + 18px); }
 }
