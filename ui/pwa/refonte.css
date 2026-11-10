@@ -264,19 +264,25 @@ body > header,
 
 /* ═════════════════════════════════════════════════════════════════════════
    LOT 3 — L'ACCUEIL
-   · Plus de grand WATT ni de phrase d'accroche (le logo est déjà en haut).
-   · Le bloc d'identité (SMYLE, ou le profil de la personne connectée) est
-     en tête, sur une couverture animée. ui/refonte/accueil.js le remonte
-     et applique la règle du bloc.
+   · Le titre WATT et « World Artist Ties Talent » restent en tête ; la
+     phrase d'accroche est retirée.
+   · Le bloc d'identité (SMYLE, ou le profil de la personne connectée)
+     vient juste dessous, sur une couverture animée. ui/refonte/accueil.js
+     le remonte et applique la règle du bloc.
    · Le bandeau d'inscription, la recherche, Musique / Image et la ligne de
      réassurance restent ; la réassurance disparaît une fois connecté.
    ═════════════════════════════════════════════════════════════════════════ */
-.mp-hero-title,
-.mp-hero-acronym,
 .mp-hero-sub,
 .mp-hero-search-hint { display: none; }
-.mp-hero { margin-top: 20px; margin-bottom: 20px; }
-.mp-hero:not(:has([data-goal-bar]:not([hidden]))) { margin: 16px auto 0; }
+.mp-hero { margin: 26px auto 20px; }
+.mp-hero-title {
+  background: var(--rf-chrome);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 22px rgba(136, 0, 255, .45));
+}
+.mp-hero-acronym { margin-bottom: 0; color: var(--rf-argent-2); }
 body.rf-connecte .watt-trust { display: none; }
 
 /* Pas de playlists sur l'accueil : elles sont sur le profil. */

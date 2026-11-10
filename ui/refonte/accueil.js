@@ -5,8 +5,8 @@
    et que la page contient la vitrine (#smyle-vitrine). Ne renomme et ne
    supprime rien : il déplace le bloc du haut et change son contenu.
 
-     1. Le bloc d'identité (la vitrine) remonte en tête de l'accueil, sur une
-        couverture animée.
+     1. Le bloc d'identité (la vitrine) remonte juste sous le titre WATT,
+        sur une couverture animée.
      2. Règle du bloc : par défaut c'est SMYLE. Si la personne est connectée
         ET que son profil est en ligne, son propre profil prend la place
         (« Poster un son » / « Voir ma page »). Sinon SMYLE reste.
@@ -68,10 +68,10 @@
       groupe.appendChild(el.lien);
       el.poster = b;
     }
-    // Le bloc remonte en tête de l'accueil (avant le hero).
+    // Le bloc remonte juste sous le titre WATT (après le hero).
     var hero = document.querySelector('.mp-hero');
-    if (hero && hero.parentNode && el.racine.previousElementSibling !== null) {
-      hero.parentNode.insertBefore(el.racine, hero);
+    if (hero && hero.parentNode && hero.nextElementSibling !== el.racine) {
+      hero.parentNode.insertBefore(el.racine, hero.nextSibling);
     }
     return true;
   }

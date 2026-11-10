@@ -47,7 +47,11 @@ def test_regle_du_bloc_profil_en_ligne_sinon_smyle():
     assert "bloquer" not in JS.lower().replace("débloque", "")
 
 
-def test_accueil_sans_grand_titre_ni_accroche():
-    for classe in (".mp-hero-title", ".mp-hero-acronym", ".mp-hero-sub"):
-        assert classe in CSS and f'class="{classe[1:]}"' in INDEX
+def test_accueil_garde_le_titre_sans_accroche():
+    # WATT et « World Artist Ties Talent » restent ; l'accroche est masquée.
+    assert ".mp-hero-sub,\n.mp-hero-search-hint { display: none; }" in CSS
+    masques = CSS.split(".mp-hero-sub,")[0].rsplit("}", 1)[-1]
+    assert ".mp-hero-title" not in masques and ".mp-hero-acronym" not in masques
+    for classe in ("mp-hero-title", "mp-hero-acronym", "mp-hero-sub"):
+        assert f'class="{classe}"' in INDEX
     assert "#ap-playlists-root { display: none !important; }" in CSS
