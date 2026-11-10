@@ -6,7 +6,8 @@
    (SHOW_REFONTE=true). Fermé par défaut : rien ne change pour le public.
 
    Lot 1 : les jetons (variables --rf-*). Lot 2 : la coquille (rail, barre
-   du bas, lecteur flottant). Les lots suivants (accueil, profil, pages)
+   du bas, lecteur flottant). Lot 3 : l'accueil (avec ui/refonte/accueil.js).
+   Les lots suivants (profil, pages)
    s'ajoutent ici, sans toucher aux id, data-* ni fonctions des pages.
 
    Règles de la palette :
@@ -258,4 +259,164 @@ body > header,
   #player { bottom: calc(var(--rf-bas) + 8px); }
   html body #smyle-mini-bar.smb-visible { bottom: calc(var(--rf-bas) + 8px); }
   .support-btn-floating { bottom: calc(var(--rf-bas) + var(--player-h, 0px) + 18px); }
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LOT 3 — L'ACCUEIL
+   · Plus de grand WATT ni de phrase d'accroche (le logo est déjà en haut).
+   · Le bloc d'identité (SMYLE, ou le profil de la personne connectée) est
+     en tête, sur une couverture animée. ui/refonte/accueil.js le remonte
+     et applique la règle du bloc.
+   · Le bandeau d'inscription, la recherche, Musique / Image et la ligne de
+     réassurance restent ; la réassurance disparaît une fois connecté.
+   ═════════════════════════════════════════════════════════════════════════ */
+.mp-hero-title,
+.mp-hero-acronym,
+.mp-hero-sub,
+.mp-hero-search-hint { display: none; }
+.mp-hero { margin-top: 20px; margin-bottom: 20px; }
+.mp-hero:not(:has([data-goal-bar]:not([hidden]))) { margin: 16px auto 0; }
+body.rf-connecte .watt-trust { display: none; }
+
+/* Pas de playlists sur l'accueil : elles sont sur le profil. */
+.smyle-vitrine.rf-bloc > #ap-playlists-root { display: none !important; }
+
+.smyle-vitrine.rf-bloc {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  max-width: 1180px;
+  min-height: 300px;
+  margin: 24px auto 28px;
+  padding: 0;
+  display: flex;
+  align-items: flex-end;
+  border: 1px solid var(--rf-filet);
+  border-radius: var(--rf-rayon-panneau);
+  background: #08080c;
+}
+.rf-bloc-couverture {
+  position: absolute;
+  inset: -20%;
+  z-index: -2;
+  background:
+    radial-gradient(38% 46% at 22% 30%, rgba(136, 0, 255, .50), transparent 70%),
+    radial-gradient(34% 42% at 78% 24%, rgba(201, 208, 214, .24), transparent 70%),
+    radial-gradient(46% 52% at 60% 82%, rgba(136, 0, 255, .26), transparent 72%),
+    #08080c;
+  filter: blur(26px);
+  animation: rf-fumee 26s ease-in-out infinite alternate;
+}
+.rf-bloc-couverture.rf-avec-image {
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: none;
+  animation: rf-derive 30s ease-in-out infinite alternate;
+}
+@keyframes rf-fumee {
+  0%   { transform: translate3d(-3%, -2%, 0) scale(1) rotate(0deg); }
+  50%  { transform: translate3d(3%, 2%, 0) scale(1.12) rotate(4deg); }
+  100% { transform: translate3d(-1%, 4%, 0) scale(1.05) rotate(-3deg); }
+}
+@keyframes rf-derive {
+  0%   { transform: scale(1.04) translate3d(-1%, 0, 0); }
+  100% { transform: scale(1.12) translate3d(1%, -1%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rf-bloc-couverture { animation: none; }
+}
+/* Voile sombre : le texte reste lisible quelle que soit la couverture. */
+.smyle-vitrine.rf-bloc::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(5, 5, 8, .10) 0%, rgba(5, 5, 8, .55) 52%, rgba(5, 5, 8, .94) 100%);
+  pointer-events: none;
+}
+.smyle-vitrine.rf-bloc .smyle-vitrine-head {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 26px 30px;
+  gap: 20px;
+}
+.smyle-vitrine.rf-bloc .smyle-vitrine-avatar {
+  width: 76px;
+  height: 76px;
+  background: #0d0d12;
+  border: 1px solid var(--rf-filet-fort);
+  box-shadow: 0 0 26px var(--rf-violet-halo);
+}
+/* SMYLE sans photo : son masque dans le rond, à la place de l'initiale. */
+.smyle-vitrine.rf-bloc:not(.rf-bloc-moi) .smyle-vitrine-avatar:not(:has(img)) {
+  font-size: 0;
+  background: #0d0d12 url("/ui/img/smyle-logo.png?v=20261102") center / auto 64% no-repeat;
+}
+.smyle-vitrine.rf-bloc .smyle-vitrine-name {
+  font-family: var(--rf-police);
+  font-size: 28px;
+  font-weight: var(--rf-graisse-titre);
+  color: #fff;
+}
+.smyle-vitrine.rf-bloc .smyle-vitrine-checkmark { color: var(--rf-argent); filter: none; }
+.smyle-vitrine.rf-bloc.rf-bloc-moi .smyle-vitrine-checkmark { display: none; }
+.smyle-vitrine.rf-bloc .smyle-vitrine-bio { color: var(--rf-texte-2); }
+.smyle-vitrine.rf-bloc .smyle-vitrine-bio:empty { display: none; }
+.smyle-vitrine.rf-bloc .smyle-vitrine-stats { color: var(--rf-texte-3); }
+.smyle-vitrine.rf-bloc .smyle-vitrine-stats b { color: var(--rf-argent); }
+
+.rf-bloc-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rf-bloc-actions [hidden] { display: none !important; }
+.smyle-vitrine.rf-bloc .smyle-vitrine-cta,
+.rf-bloc-poster {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 20px;
+  border-radius: var(--rf-rayon-bouton);
+  font-family: var(--rf-police);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+/* SMYLE : « Voir le profil » est l'action principale (violet). */
+.smyle-vitrine.rf-bloc .smyle-vitrine-cta {
+  background: var(--rf-violet);
+  border: 1px solid var(--rf-violet);
+  color: #fff;
+  box-shadow: 0 0 22px rgba(136, 0, 255, .35);
+}
+/* Son profil : « Poster un son » devient l'action principale. */
+.rf-bloc-poster {
+  background: var(--rf-violet);
+  border: 1px solid var(--rf-violet);
+  color: #fff;
+  box-shadow: 0 0 22px rgba(136, 0, 255, .35);
+}
+.smyle-vitrine.rf-bloc.rf-bloc-moi .smyle-vitrine-cta {
+  background: rgba(255, 255, 255, .04);
+  border-color: var(--rf-filet-fort);
+  color: var(--rf-argent);
+  box-shadow: none;
+}
+
+@media (max-width: 860px) {
+  .smyle-vitrine.rf-bloc { margin: 14px 12px 20px; min-height: 280px; }
+  .smyle-vitrine.rf-bloc .smyle-vitrine-head {
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "avatar identity" "cta cta";
+    padding: 18px 16px;
+    gap: 14px;
+  }
+  .smyle-vitrine.rf-bloc .smyle-vitrine-avatar { width: 58px; height: 58px; font-size: 24px; }
+  .smyle-vitrine.rf-bloc .smyle-vitrine-name { font-size: 22px; }
+  .rf-bloc-actions { grid-area: cta; }
+  .rf-bloc-actions > a { flex: 1 1 0; }
 }
