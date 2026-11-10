@@ -24,4 +24,5 @@ window.WATT_LAUNCH = window.WATT_LAUNCH || {
   trophees: false,
   beats: false,
   albums: false,
+  refonte: false,   // nouvel habillage : fermé par défaut
 };
