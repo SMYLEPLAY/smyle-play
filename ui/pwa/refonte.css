@@ -7,7 +7,7 @@
 
    Lot 1 : les jetons (variables --rf-*). Lot 2 : la coquille (rail, barre
    du bas, lecteur flottant). Lot 3 : l'accueil (avec ui/refonte/accueil.js). Lot 4 : le profil.
-   Les lots suivants (pages)
+   Lot 5 : Board, Bibliothèque, Boutique, Playlists. Les lots suivants
    s'ajoutent ici, sans toucher aux id, data-* ni fonctions des pages.
 
    Règles de la palette :
@@ -531,4 +531,186 @@ body.rf-connecte .watt-trust { display: none; }
 @media (max-width: 860px) {
   .ap-page .ap-hero { margin-top: 12px; padding: 0 12px; }
   .ap-page .ap-hero-banner { height: 170px; }
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LOT 5 — BOARD, BIBLIOTHÈQUE, BOUTIQUE, PLAYLISTS
+   Même en-tête que l'accueil et le profil (panneau sur couverture animée),
+   même palette : un seul violet pour l'action principale, l'argent pour le
+   reste, l'or réservé aux Smyles. Le contenu et les fonctions ne changent
+   pas ; la Boutique reste une fenêtre et les Playlists un panneau.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── WATT BOARD ─────────────────────────────────────────────────────────── */
+#wb3-board .wb3-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding-top: 30px;
+  padding-bottom: 30px;
+  border: 1px solid var(--rf-filet);
+  border-radius: var(--rf-rayon-panneau);
+  background: #08080c;
+}
+#wb3-board .wb3-hero::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  background:
+    radial-gradient(38% 46% at 18% 30%, rgba(136, 0, 255, .42), transparent 70%),
+    radial-gradient(34% 42% at 82% 24%, rgba(201, 208, 214, .18), transparent 70%),
+    radial-gradient(46% 52% at 60% 90%, rgba(136, 0, 255, .20), transparent 72%);
+  filter: blur(26px);
+  animation: rf-fumee 26s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+#wb3-board .wb3-hero-avatar {
+  background: #0d0d12;
+  border-color: var(--rf-filet-fort);
+  box-shadow: 0 0 26px var(--rf-violet-halo);
+}
+#wb3-board .wb3-hero-name {
+  font-family: var(--rf-police);
+  font-weight: var(--rf-graisse-titre);
+  color: #fff;
+}
+#wb3-board .wb3-stat-val { color: var(--rf-argent); font-weight: var(--rf-graisse-titre); }
+#wb3-board .wb3-stat-lbl { color: var(--rf-texte-3); }
+#wb3-board .wb3-hero-edit {
+  border-color: var(--rf-filet-fort);
+  border-radius: var(--rf-rayon-bouton);
+  color: var(--rf-argent);
+}
+#wb3-board .wb3-monde-switch { border-color: var(--rf-filet); }
+#wb3-board .wb3-monde-btn.is-active {
+  background: var(--rf-violet);
+  box-shadow: 0 0 18px rgba(136, 0, 255, .35);
+}
+/* Publier / Créer : l'action principale passe au violet (l'or = Smyles). */
+/* « !important » : le lissage (lot M) imposait l'or de la même façon. */
+#wb3-board .wb3-create-btn,
+#wb3-board .wb3-tile-btn.wb3-tile-btn--primary {
+  background: var(--rf-violet) !important;
+  border-color: var(--rf-violet) !important;
+  color: #fff !important;
+  border-radius: var(--rf-rayon-bouton);
+  box-shadow: 0 0 22px rgba(136, 0, 255, .35);
+}
+#wb3-board .wb3-tile,
+#wb3-board .wb3-cross-btn {
+  background: var(--rf-panneau);
+  border-color: var(--rf-filet);
+}
+#wb3-board .wb3-tile { border-radius: var(--rf-rayon-panneau); }
+#wb3-board .wb3-tile-ico { border-color: var(--rf-filet-fort); }
+#wb3-board .wb3-tile-btn:not(.wb3-tile-btn--primary) {
+  border-color: var(--rf-filet-fort);
+  border-radius: var(--rf-rayon-bouton);
+  color: var(--rf-argent);
+}
+
+/* ── BIBLIOTHÈQUE ───────────────────────────────────────────────────────── */
+.lib-page .lib-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 34px 30px;
+  border: 1px solid var(--rf-filet);
+  border-radius: var(--rf-rayon-panneau);
+  background: #08080c;
+}
+.lib-page .lib-hero::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  background:
+    radial-gradient(38% 46% at 18% 30%, rgba(136, 0, 255, .42), transparent 70%),
+    radial-gradient(34% 42% at 82% 24%, rgba(201, 208, 214, .18), transparent 70%),
+    radial-gradient(46% 52% at 60% 90%, rgba(136, 0, 255, .20), transparent 72%);
+  filter: blur(26px);
+  animation: rf-fumee 26s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.lib-page .lib-hero-badge {
+  background: rgba(201, 208, 214, .06);
+  border-color: var(--rf-filet-fort);
+  color: var(--rf-argent);
+}
+.lib-page .lib-hero-title {
+  font-family: var(--rf-police);
+  font-weight: var(--rf-graisse-titre);
+}
+.lib-page .lib-hero-sub { color: var(--rf-texte-2); }
+.lib-page .lib-mode-switch { border-color: var(--rf-filet); }
+.lib-page .lib-mode-btn.is-active {
+  background: var(--rf-violet);
+  box-shadow: 0 0 18px rgba(136, 0, 255, .35);
+}
+.lib-page .lib-adn-col {
+  background: var(--rf-panneau);
+  border-color: var(--rf-filet);
+  border-radius: var(--rf-rayon-panneau);
+}
+.lib-page .lib-empty-cta {
+  border-color: var(--rf-filet-fort);
+  border-radius: var(--rf-rayon-bouton);
+  color: var(--rf-argent);
+}
+
+/* ── BOUTIQUE (fenêtre) — ses styles sont posés dans le code de la page,
+      d'où les « !important ». ─────────────────────────────────────────── */
+#bqBoutiqueModal > div,
+#bqPackModal > div {
+  background: #0a0a0e !important;
+  border: 1px solid var(--rf-filet-fort) !important;
+  border-radius: var(--rf-rayon-panneau) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .8), 0 0 60px rgba(136, 0, 255, .12) !important;
+  font-family: var(--rf-police);
+}
+#bqBody > div > div,
+#bqEarnStreak, #bqEarnRef, #bqPackCard, #bqMarketCard {
+  background: var(--rf-panneau) !important;
+  border-color: var(--rf-filet) !important;
+}
+#bqBuySmyles {
+  background: linear-gradient(110deg, rgba(136, 0, 255, .28), rgba(255, 255, 255, .03)) !important;
+  border-color: rgba(136, 0, 255, .6) !important;
+}
+#bqOpenBtn,
+.bqBuyResale {
+  background: var(--rf-violet) !important;
+  border-radius: var(--rf-rayon-bouton) !important;
+}
+
+/* ── PLAYLISTS (panneau) — sa feuille est écrite par le script après
+      celle-ci : « html body » pour passer devant. ─────────────────────── */
+html body .wpl-sheet {
+  background: #0a0a0e;
+  border-left: 1px solid var(--rf-filet-fort);
+  font-family: var(--rf-police);
+}
+html body .wpl-hd {
+  background:
+    radial-gradient(70% 120% at 15% 0%, rgba(136, 0, 255, .42), transparent 70%),
+    radial-gradient(60% 100% at 95% 0%, rgba(201, 208, 214, .14), transparent 70%),
+    #08080c;
+  border-bottom: 1px solid var(--rf-filet);
+}
+html body .wpl-kicker { color: var(--rf-argent-2); }
+html body .wpl-title { font-weight: var(--rf-graisse-titre); }
+html body .wpl-tab.is-on { background: var(--rf-argent); color: #08080c; }
+html body .wpl-btn--main {
+  background: var(--rf-violet);
+  color: #fff;
+  border-radius: var(--rf-rayon-bouton);
+  box-shadow: 0 0 22px rgba(136, 0, 255, .35);
+}
+html body .wpl-btn--ghost { border-radius: var(--rf-rayon-bouton); }
+
+@media (prefers-reduced-motion: reduce) {
+  #wb3-board .wb3-hero::before,
+  .lib-page .lib-hero::before { animation: none; }
 }
