@@ -39,6 +39,7 @@ def test_les_elements_habilles_existent_dans_la_page():
 
 def test_les_regles_du_profil_restent_dans_la_page_profil():
     bloc = CSS.split("LOT 4", 1)[1].split("*/", 1)[1]
+    bloc = bloc.split("LOT 5", 1)[0].rsplit("/*", 1)[0]
     bloc = re.sub(r"/\*.*?\*/", "", bloc, flags=re.S)
     for selecteur in re.findall(r"(?m)^([^{}@\n][^{}]*)\{", bloc):
         for partie in selecteur.split(","):
