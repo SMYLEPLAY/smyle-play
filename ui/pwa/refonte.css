@@ -6,8 +6,8 @@
    (SHOW_REFONTE=true). Fermé par défaut : rien ne change pour le public.
 
    Lot 1 : les jetons (variables --rf-*). Lot 2 : la coquille (rail, barre
-   du bas, lecteur flottant). Lot 3 : l'accueil (avec ui/refonte/accueil.js).
-   Les lots suivants (profil, pages)
+   du bas, lecteur flottant). Lot 3 : l'accueil (avec ui/refonte/accueil.js). Lot 4 : le profil.
+   Les lots suivants (pages)
    s'ajoutent ici, sans toucher aux id, data-* ni fonctions des pages.
 
    Règles de la palette :
@@ -425,4 +425,110 @@ body.rf-connecte .watt-trust { display: none; }
   .smyle-vitrine.rf-bloc .smyle-vitrine-name { font-size: 22px; }
   .rf-bloc-actions { grid-area: cta; }
   .rf-bloc-actions > a { flex: 1 1 0; }
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LOT 4 — LA PAGE PROFIL (.ap-page)
+   Même bloc d'en-tête que l'accueil : couverture animée, identité dessous.
+   Un seul violet (actions principales), l'argent pour le reste, l'or pour
+   les Smyles. Le contenu et les fonctions de la page ne changent pas :
+   playlists dans « Collections », déblocage des recettes ici seulement.
+   ═════════════════════════════════════════════════════════════════════════ */
+.ap-page { --brand: #8800ff; --brand-rgb: 136, 0, 255; background-color: var(--rf-fond); }
+.ap-page::before { opacity: .35; }   /* quadrillage de fond : plus discret */
+
+/* ── En-tête : la bannière devient la couverture, dans un panneau arrondi. */
+.ap-page .ap-hero { max-width: 964px; margin: 24px auto 0; padding: 0 24px; box-sizing: border-box; }
+.ap-page .ap-hero-banner {
+  height: 240px;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--rf-filet);
+  border-radius: var(--rf-rayon-panneau);
+  background-color: #08080c;
+}
+.ap-page .ap-hero-banner:not(.has-image) { background-image: none; }
+.ap-page .ap-hero-banner:not(.has-image)::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  background:
+    radial-gradient(38% 46% at 22% 30%, rgba(136, 0, 255, .50), transparent 70%),
+    radial-gradient(34% 42% at 78% 24%, rgba(201, 208, 214, .24), transparent 70%),
+    radial-gradient(46% 52% at 60% 82%, rgba(136, 0, 255, .26), transparent 72%);
+  filter: blur(26px);
+  animation: rf-fumee 26s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-page .ap-hero-banner::before { animation: none; }
+}
+
+/* ── Identité. */
+.ap-page .ap-avatar {
+  background: #0d0d12;
+  border: 1px solid var(--rf-filet-fort);
+  box-shadow: 0 0 0 4px rgba(5, 5, 8, .9), 0 0 28px var(--rf-violet-halo);
+  text-shadow: none;
+}
+.ap-page.rf-officiel .ap-avatar:not(:has(img)) {
+  font-size: 0;
+  background: #0d0d12 url("/ui/img/smyle-logo.png?v=20261102") center / auto 64% no-repeat;
+}
+.ap-page .ap-artist-name {
+  font-family: var(--rf-police);
+  font-weight: var(--rf-graisse-titre);
+  letter-spacing: -.01em;
+  color: #fff;
+  text-shadow: none;
+  filter: none;
+  animation: none;
+}
+.ap-page .ap-copy-link-btn { border-color: var(--rf-filet); color: var(--rf-texte-3); }
+.ap-page .ap-roles > *,
+.ap-page .ap-hero-meta .ap-meta-chip {
+  border-color: var(--rf-filet);
+  color: var(--rf-argent-2);
+}
+
+/* ── Chiffres : argent, plus de violet. */
+.ap-page .ap-stat {
+  background: var(--rf-panneau);
+  border: 1px solid var(--rf-filet);
+  border-radius: 14px;
+  box-shadow: none;
+}
+.ap-page .ap-stat-value {
+  color: var(--rf-argent);
+  text-shadow: none;
+  filter: none;
+  font-weight: var(--rf-graisse-titre);
+}
+.ap-page .ap-stat-label { color: var(--rf-texte-3); }
+
+/* ── Onglets et « voir tout » : l'argent remplace l'or (l'or = Smyles). */
+.ap-page .ap-oe-more {
+  border-color: var(--rf-filet-fort);
+  background: rgba(255, 255, 255, .03);
+  color: var(--rf-argent);
+  border-radius: var(--rf-rayon-bouton);
+}
+.ap-page .ap-oe-more:hover { background: rgba(201, 208, 214, .08); }
+
+/* ── Déblocage : l'action principale de la page, en violet plein. */
+.ap-page .ap-relic-unlock-btn {
+  border-radius: var(--rf-rayon-bouton);
+  border-color: var(--rf-violet);
+  background: var(--rf-violet);
+  box-shadow: 0 0 22px rgba(136, 0, 255, .35);
+}
+
+/* ── Lecteur du profil : caché tant qu'aucun son n'est lancé (il n'affichait
+      qu'une barre vide par-dessus la page). */
+.ap-page #player:has(#player-info[style*="none"]) { display: none; }
+
+@media (max-width: 860px) {
+  .ap-page .ap-hero { margin-top: 12px; padding: 0 12px; }
+  .ap-page .ap-hero-banner { height: 170px; }
 }

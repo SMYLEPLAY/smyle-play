@@ -439,6 +439,14 @@ def _bloc_pwa(low: str, actif: bool) -> str:
             except OSError:
                 v_acc = "0"
             parts.append(f'<script src="/ui/refonte/accueil.js?v={v_acc}" defer></script>')
+        # Lot 4 — profil : seulement sur la page d'un artiste.
+        if 'id="ap-profile"' in low:
+            pro = REPO_ROOT / "ui" / "refonte" / "profil.js"
+            try:
+                v_pro = _empreinte(str(pro), pro.stat().st_mtime_ns)
+            except OSError:
+                v_pro = "0"
+            parts.append(f'<script src="/ui/refonte/profil.js?v={v_pro}" defer></script>')
     # Lot M — la barre de lecture sur TOUTES les pages : la musique reprend
     # (et la playlist continue) quelle que soit la page ouverte ensuite.
     if "mini-bar.js" not in low:
