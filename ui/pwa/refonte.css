@@ -7,7 +7,8 @@
 
    Lot 1 : les jetons (variables --rf-*). Lot 2 : la coquille (rail, barre
    du bas, lecteur flottant). Lot 3 : l'accueil (avec ui/refonte/accueil.js). Lot 4 : le profil.
-   Lot 5 : Board, Bibliothèque, Boutique, Playlists. Les lots suivants
+   Lot 5 : Board, Bibliothèque, Boutique, Playlists. Lot 6 : pages de texte
+   et formulaires. Les lots suivants
    s'ajoutent ici, sans toucher aux id, data-* ni fonctions des pages.
 
    Règles de la palette :
@@ -713,4 +714,132 @@ html body .wpl-btn--ghost { border-radius: var(--rf-rayon-bouton); }
 @media (prefers-reduced-motion: reduce) {
   #wb3-board .wb3-hero::before,
   .lib-page .lib-hero::before { animation: none; }
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   LOT 6 — PAGES DE TEXTE ET FORMULAIRES
+   Comment ça marche, informations légales, offres, tarifs, rétractation,
+   mot de passe oublié, vérification d'email. Ces pages n'ont pas le menu :
+   elles restent pleine largeur. Même palette que le reste : titres blancs
+   gras, l'argent pour les repères et les liens, un seul violet pour le
+   bouton principal, l'or réservé aux Smyles. Les textes ne changent pas.
+   (Les pages d'administration ne sont pas concernées.)
+   ═════════════════════════════════════════════════════════════════════════ */
+body:has(> :is(.lg-wrap, .off-wrap, .tarifs-wrap, .rt-card, .rs-card, .ve-card, body > .wrap:has(> .back))),
+body:has(> :is(.lg-top, .rt-top, .rs-top, .ve-top)) { background: var(--rf-fond); }
+
+/* Bandeau du haut de ces pages : le retour vers WATT, en chrome. */
+:is(.lg-top, .rt-top, .rs-top, .ve-top) {
+  background: rgba(5, 5, 8, .96);
+  border-bottom: 1px solid var(--rf-filet);
+}
+:is(.lg-top, .rt-top, .rs-top, .ve-top) a {
+  color: var(--rf-argent);
+  font-family: var(--rf-police);
+  font-weight: 800;
+  letter-spacing: .22em;
+}
+
+/* Titres. */
+:is(.lg-wrap, .off-wrap, .tarifs-wrap, .rt-card, .rs-card, .ve-card, body > .wrap:has(> .back)) :is(h1, .off-h1, .tarifs-h1) {
+  font-family: var(--rf-police);
+  font-weight: var(--rf-graisse-titre);
+  letter-spacing: -.01em;
+  color: #fff;
+}
+:is(.lg-wrap, .off-wrap, .tarifs-wrap, .rt-card, .rs-card, .ve-card, body > .wrap:has(> .back)) h2 { color: var(--rf-argent); }
+
+/* Repères (étiquettes, numéros d'étape, retours) : l'argent. */
+body > .wrap:has(> .back) .tag,
+.off-eyebrow,
+.tarifs-eyebrow { color: var(--rf-argent-2); }
+body > .wrap:has(> .back) .step .n {
+  background: rgba(201, 208, 214, .08);
+  border: 1px solid var(--rf-filet-fort);
+  color: var(--rf-argent);
+}
+body > .wrap:has(> .back) .term b { color: var(--rf-argent); }
+body > .wrap:has(> .back) .back,
+.off-back,
+.tarifs-back,
+.rs-back,
+.ve-back { color: var(--rf-texte-2); }
+:is(.off-back, .tarifs-back, .rs-back, .ve-back):hover { color: #fff; }
+
+/* Liens dans le texte. */
+.lg-wrap a,
+.lg-toc a,
+.rt-sub a,
+.off-foot a { color: var(--rf-argent); }
+.lg-toc a:hover { color: #fff; }
+
+/* Panneaux. */
+body > .wrap:has(> .back) :is(.step, .term),
+.lg-note,
+.off-card,
+.tarifs-card,
+.rt-card,
+.rs-card,
+.ve-card {
+  background: var(--rf-panneau);
+  border: 1px solid var(--rf-filet);
+  border-radius: var(--rf-rayon-panneau);
+}
+.off-card.is-current,
+.off-card:hover { border-color: var(--rf-filet-fort); }
+.off-perks .ic { color: var(--rf-argent-2); }
+.off-badge,
+.tarifs-card-badge {
+  background: rgba(201, 208, 214, .08);
+  border-color: var(--rf-filet-fort);
+  color: var(--rf-argent);
+}
+.off-cta {
+  background: rgba(255, 255, 255, .03);
+  border-color: var(--rf-filet-fort);
+  border-radius: var(--rf-rayon-bouton);
+  color: var(--rf-argent);
+}
+
+/* Bouton principal : violet. */
+body > .wrap:has(> .back) .btn.p,
+.tarifs-btn,
+:is(.rt-card, .rs-card, .ve-card) button {
+  background: var(--rf-violet);
+  border: 1px solid var(--rf-violet);
+  border-radius: var(--rf-rayon-bouton);
+  color: #fff;
+  box-shadow: 0 0 22px rgba(136, 0, 255, .30);
+}
+:is(.rt-card, .rs-card, .ve-card) button:disabled { box-shadow: none; }
+body > .wrap:has(> .back) .btn.s {
+  border-color: var(--rf-filet-fort);
+  border-radius: var(--rf-rayon-bouton);
+  color: var(--rf-argent);
+}
+
+/* Champs de saisie. */
+:is(.rt-card, .rs-card, .ve-card) :is(input, textarea) {
+  border-color: var(--rf-filet-fort);
+  border-radius: var(--rf-rayon-bouton);
+}
+:is(.rt-card, .rs-card, .ve-card) :is(input, textarea):focus {
+  border-color: var(--rf-argent);
+  box-shadow: 0 0 0 3px rgba(136, 0, 255, .25);
+  outline: none;
+}
+
+/* ── Sous-écrans du WATT BOARD (identité, création, analytique) : leurs
+      repères dorés passent à l'argent en changeant les variables du Board.
+      Le solde de Smyles en haut garde son or. ─────────────────────────── */
+.dash-page .dash-main {
+  --d-gold: var(--rf-argent);
+  --d-gold-2: var(--rf-argent-2);
+  --d-gold-dim: rgba(201, 208, 214, .55);
+  --d-gold-glow: rgba(136, 0, 255, .18);
+  --d-deep: var(--rf-argent-2);
+  --d-border: var(--rf-filet);
+  --d-border-hover: var(--rf-filet-fort);
+  --d-bg: var(--rf-fond);
 }
