@@ -26,6 +26,7 @@
   /* Couleurs */
   --rf-violet: #8800ff;
   --rf-violet-halo: rgba(136, 0, 255, .55);
+  --rf-bleu: #0055ff;            /* le monde visuel (la musique = violet) */
   --rf-argent: #c9d0d6;
   --rf-argent-2: #9aa3ab;
   --rf-acier: #3c4349;
@@ -585,20 +586,38 @@ body.rf-connecte .watt-trust { display: none; }
   color: var(--rf-argent);
 }
 #wb3-board .wb3-monde-switch { border-color: var(--rf-filet); }
-#wb3-board .wb3-monde-btn.is-active {
+/* Deux mondes, deux couleurs : la musique en violet, le visuel en bleu.
+   Le Board prend la couleur du monde choisi (--rf-monde). */
+#wb3-board { --rf-monde: var(--rf-violet); --rf-monde-halo: rgba(136, 0, 255, .35); --wb3-accent: var(--rf-monde); }
+#wb3-board[data-monde="visuel"] { --rf-monde: var(--rf-bleu); --rf-monde-halo: rgba(0, 85, 255, .40); --wb3-accent: var(--rf-monde); }
+#wb3-board .wb3-monde-btn.is-active[data-monde="audio"] {
   background: var(--rf-violet);
+  color: #fff;
   box-shadow: 0 0 18px rgba(136, 0, 255, .35);
 }
-/* Publier / Créer : l'action principale passe au violet (l'or = Smyles). */
-/* « !important » : le lissage (lot M) imposait l'or de la même façon. */
+#wb3-board .wb3-monde-btn.is-active[data-monde="visuel"] {
+  background: var(--rf-bleu);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(0, 85, 255, .40);
+}
+/* Publier / Créer : l'action principale prend la couleur du monde
+   (l'or = Smyles). « !important » : le lissage (lot M) imposait l'or de
+   la même façon. */
 #wb3-board .wb3-create-btn,
 #wb3-board .wb3-tile-btn.wb3-tile-btn--primary {
-  background: var(--rf-violet) !important;
-  border-color: var(--rf-violet) !important;
+  background: var(--rf-monde) !important;
+  border-color: var(--rf-monde) !important;
   color: #fff !important;
   border-radius: var(--rf-rayon-bouton);
-  box-shadow: 0 0 22px rgba(136, 0, 255, .35);
+  box-shadow: 0 0 22px var(--rf-monde-halo);
 }
+#wb3-board[data-monde="visuel"] .wb3-hero::before {
+  background:
+    radial-gradient(38% 46% at 18% 30%, rgba(0, 85, 255, .46), transparent 70%),
+    radial-gradient(34% 42% at 82% 24%, rgba(201, 208, 214, .18), transparent 70%),
+    radial-gradient(46% 52% at 60% 90%, rgba(0, 85, 255, .22), transparent 72%);
+}
+#wb3-board[data-monde="visuel"] .wb3-hero-avatar { box-shadow: 0 0 26px rgba(0, 85, 255, .55); }
 #wb3-board .wb3-tile,
 #wb3-board .wb3-cross-btn {
   background: var(--rf-panneau);
@@ -648,7 +667,12 @@ body.rf-connecte .watt-trust { display: none; }
 .lib-page .lib-mode-switch { border-color: var(--rf-filet); }
 .lib-page .lib-mode-btn.is-active {
   background: var(--rf-violet);
+  color: #fff;
   box-shadow: 0 0 18px rgba(136, 0, 255, .35);
+}
+.lib-page .lib-mode-btn.is-active[data-mode="image"] {
+  background: var(--rf-bleu);
+  box-shadow: 0 0 18px rgba(0, 85, 255, .40);
 }
 .lib-page .lib-adn-col {
   background: var(--rf-panneau);
@@ -842,4 +866,29 @@ body > .wrap:has(> .back) .btn.s {
   --d-border: var(--rf-filet);
   --d-border-hover: var(--rf-filet-fort);
   --d-bg: var(--rf-fond);
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   RETOURS — deux mondes, deux couleurs (musique violet, visuel bleu) sur
+   les choix Musique / Image de l'accueil ; couverture par défaut plus
+   visible sur le profil.
+   ═════════════════════════════════════════════════════════════════════════ */
+html body .mp-mode-btn.is-active[data-mode="musique"] {
+  background: var(--rf-violet);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(136, 0, 255, .35);
+}
+html body .mp-mode-btn.is-active[data-mode="image"] {
+  background: var(--rf-bleu);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 85, 255, .40);
+}
+.ap-page .ap-hero-banner:not(.has-image)::before {
+  inset: -10%;
+  background:
+    radial-gradient(42% 60% at 20% 35%, rgba(136, 0, 255, .78), transparent 70%),
+    radial-gradient(36% 56% at 80% 28%, rgba(201, 208, 214, .34), transparent 70%),
+    radial-gradient(50% 70% at 58% 90%, rgba(0, 85, 255, .40), transparent 72%);
+  filter: blur(22px);
 }
