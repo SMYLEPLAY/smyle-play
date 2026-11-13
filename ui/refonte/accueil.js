@@ -25,6 +25,7 @@
   var moi = null;        // profil de la personne connectée, s'il est en ligne
   var smyle = null;      // contenu SMYLE mémorisé avant remplacement
   var enCours = false;   // évite de réagir à nos propres écritures
+  var couvSmyle = '';    // photo de couverture du compte officiel, si elle existe
 
   function $(id) { return document.getElementById(id); }
   function fmt(n) {
@@ -128,7 +129,7 @@
   function afficherSmyle() {
     el.racine.classList.remove('rf-bloc-moi');
     if (el.poster) el.poster.hidden = true;
-    couverture('');
+    couverture(couvSmyle);
     if (!smyle) return;
     enCours = true;
     if (el.avatar) el.avatar.innerHTML = smyle.avatar;
@@ -175,6 +176,14 @@
         else if (!moi) { smyle = null; memoriserSmyle(); }
       }).observe(el.racine, { childList: true, subtree: true, characterData: true });
     }
+    // Photo de couverture de SMYLE : la vitrine ne la connaît pas, on la
+    // demande à sa fiche publique (lecture seule).
+    fetch('/watt/artists/smyle').then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var a = d && d.artist ? d.artist : d;
+        couvSmyle = (a && a.coverPhotoUrl) || '';
+        if (!moi) couverture(couvSmyle);
+      }).catch(function () {});
     appliquer();
     if (window.SmyleEvents && window.SmyleEvents.on) {
       window.SmyleEvents.on('smyle:auth-changed', function () { setTimeout(appliquer, 0); });
