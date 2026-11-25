@@ -118,7 +118,16 @@ def _read_page_cached(path: str, mtime_ns: int) -> str:
 
 
 def _base_url(request: Request) -> str:
-    """Origine publique, en tenant compte du proxy Railway."""
+    """Origine publique, en tenant compte du proxy Railway.
+
+    SEO (2026-11-25) : si PUBLIC_BASE_URL est posée (variable Railway, déjà
+    utilisée pour les emails et les paiements), c'est ELLE qui fait foi — liens
+    canoniques, og:url et sitemap pointent tous vers le domaine officiel, même
+    quand la page est servie par l'adresse technique Railway (sinon Google
+    indexe deux sites en double)."""
+    officiel = (settings.PUBLIC_BASE_URL or "").strip().rstrip("/")
+    if officiel.startswith("http://") or officiel.startswith("https://"):
+        return officiel
     proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "https")
     proto = proto.split(",")[0].strip()
     host = (
@@ -161,8 +170,12 @@ def _social_head(
     url: str,
     image: str | None = None,
     page_type: str = "website",
+    jsonld: dict | None = None,
 ) -> str:
     parts = [
+        # SEO (2026-11-25) — adresse de référence : /@slug et /u/slug servent
+        # la même page, Google ne doit en garder qu'une.
+        f'<link rel="canonical" href="{_html.escape(url, quote=True)}" />' if url else "",
         _tag("description", description, name=True),
         _tag("og:type", page_type),
         _tag("og:site_name", _BRAND),
@@ -178,8 +191,61 @@ def _social_head(
         _tag("twitter:title", title, name=True),
         _tag("twitter:description", description, name=True),
         _tag("twitter:image", image, name=True),
+        _jsonld(jsonld),
     ]
     return "\n".join(p for p in parts if p) + "\n"
+
+
+def _jsonld(data: dict | None) -> str:
+    """Données structurées schema.org (Google : artiste, morceau, image dans
+    les résultats). `</` est neutralisé : un titre saisi par un créateur ne
+    peut jamais fermer la balise <script>."""
+    if not data:
+        return ""
+    corps = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    corps = corps.replace("</", "<\\/")
+    return f'<script type="application/ld+json">{corps}</script>'
+
+
+# SEO (2026-11-25) — balises de page réécrites quand l'entité est publique.
+_TITLE_RE = re.compile(r"<title>.*?</title>", re.S | re.I)
+_ROBOTS_RE = re.compile(r'<meta\s+name="robots"[^>]*>\s*', re.I)
+_BODY_OPEN_RE = re.compile(r"<body[^>]*>", re.I)
+_NOINDEX = '<meta name="robots" content="noindex" />\n'
+
+
+def _seo_page(text: str, title: str, description: str) -> str:
+    """Titre de l'onglet et des résultats Google = celui de l'entité (au lieu
+    du générique « Artiste · WATT ») ; l'éventuel noindex en dur du gabarit
+    saute (on n'arrive ici que pour une entité PUBLIQUE) ; un texte lisible
+    sans JavaScript (titre + description) est posé en tête de <body>."""
+    text = _TITLE_RE.sub(lambda _m: f"<title>{_html.escape(title)}</title>", text, count=1)
+    text = _ROBOTS_RE.sub("", text)
+    m = _BODY_OPEN_RE.search(text)
+    if m:
+        bloc = (
+            f"\n<noscript><h1>{_html.escape(title)}</h1>"
+            + (f"<p>{_html.escape(description)}</p>" if description else "")
+            + "</noscript>"
+        )
+        text = text[: m.end()] + bloc + text[m.end():]
+    return text
+
+
+def _page_noindex(filename: str) -> Response:
+    """Page brute d'une entité privée / introuvable : servie à l'identique
+    (le front affiche son propre message), mais jamais indexée — sinon Google
+    enregistre des pages vides en double (« soft 404 »)."""
+    try:
+        path = REPO_ROOT / filename
+        text = _read_page_cached(str(path), path.stat().st_mtime_ns)
+        if not _ROBOTS_RE.search(text):
+            idx = text.lower().find(_HEAD_CLOSE)
+            if idx != -1:
+                text = text[:idx] + _NOINDEX + text[idx:]
+        return _PageHTML(content=injecter_pwa(text), headers={"Cache-Control": "no-cache"})
+    except Exception:  # noqa: BLE001 - jamais casser une page pour des meta
+        return _page(filename)
 
 
 def _page_social(filename: str, **meta) -> Response:
@@ -188,6 +254,7 @@ def _page_social(filename: str, **meta) -> Response:
         path = REPO_ROOT / filename
         text = _read_page_cached(str(path), path.stat().st_mtime_ns)
         block = _social_head(**meta)
+        text = _seo_page(text, meta.get("title") or _BRAND, meta.get("description") or "")
         low = text.lower()
         idx = low.find(_HEAD_CLOSE)
         if idx == -1:
@@ -201,8 +268,15 @@ def _page_social(filename: str, **meta) -> Response:
         return _page(filename)
 
 
-async def _artist_meta(slug: str, request: Request) -> dict | None:
-    """Metadonnees sociales d'un profil PUBLIC. None si introuvable/prive.
+# SEO (2026-11-25) — « introuvable / privé » (page brute + noindex) est
+# distinct de « base indisponible » (None → page brute SANS noindex : une
+# panne passagère ne doit pas faire désindexer les profils).
+_ABSENT = object()
+
+
+async def _artist_meta(slug: str, request: Request):
+    """Metadonnees sociales d'un profil PUBLIC. _ABSENT si introuvable/prive,
+    None si la base ne répond pas.
 
     La session est ouverte ICI (pas via Depends) : une base indisponible doit
     degrader vers la page brute, jamais renvoyer 500 sur une page publique.
@@ -218,22 +292,39 @@ async def _artist_meta(slug: str, request: Request) -> dict | None:
             # lieu de TOUTE la table users, homonymes departages officiel >
             # plus ancien, et gate profile_public — sans viewer, un profil
             # prive ou introuvable leve 404, rattrape ci-dessous → page brute.
-            user = await _find_artist_by_slug(db, slug)
+            try:
+                user = await _find_artist_by_slug(db, slug)
+            except HTTPException as exc:
+                if getattr(exc, "status_code", None) == 404:
+                    return _ABSENT
+                raise
         name = (user.artist_name or slug).strip() or slug
         desc = _clip(user.bio) or f"Profil de {name} sur {_BRAND}."
         image = _absolute(request, user.avatar_url or user.cover_photo_url)
+        url = f"{_base_url(request)}/u/{slug}"
+        personne = {"@type": "Person", "name": name, "url": url}
+        if user.bio:
+            personne["description"] = _clip(user.bio, 300)
+        if image:
+            personne["image"] = image
         return {
             "title": f"{name} \u2014 {_BRAND}",
             "description": desc,
-            "url": f"{_base_url(request)}/u/{slug}",
+            "url": url,
             "image": image or _og_defaut(request),
             "page_type": "profile",
+            "jsonld": {
+                "@context": "https://schema.org",
+                "@type": "ProfilePage",
+                "url": url,
+                "mainEntity": personne,
+            },
         }
     except Exception:  # noqa: BLE001
         return None
 
 
-async def _oeuvre_meta(slug: str, request: Request) -> dict | None:
+async def _oeuvre_meta(slug: str, request: Request):
     """Metadonnees sociales d'une oeuvre PUBLIQUE (album + playlist jumeaux)."""
     try:
         async with SessionLocal() as db:
@@ -252,7 +343,7 @@ async def _oeuvre_meta(slug: str, request: Request) -> dict | None:
                 )
             ).scalars().first()
             if album is None and playlist is None:
-                return None
+                return _ABSENT
             title = (
                 getattr(album, "title", None)
                 or getattr(playlist, "title", None)
@@ -274,12 +365,23 @@ async def _oeuvre_meta(slug: str, request: Request) -> dict | None:
                 base = settings.effective_r2_public_base_url
                 if key and base:
                     image = f"{base.rstrip('/')}/{str(key).lstrip('/')}"
+            url = f"{_base_url(request)}/collection/{slug}"
+            liste = {
+                "@context": "https://schema.org",
+                "@type": "MusicPlaylist",
+                "name": title,
+                "description": desc,
+                "url": url,
+            }
+            if image:
+                liste["image"] = image
             return {
                 "title": f"{title} \u2014 {_BRAND}",
                 "description": desc,
-                "url": f"{_base_url(request)}/collection/{slug}",
+                "url": url,
                 "image": image or _og_defaut(request),
                 "page_type": "article",
+                "jsonld": liste,
             }
     except Exception:  # noqa: BLE001
         return None
@@ -296,7 +398,7 @@ def _preview_image_url(request: Request, key: str | None) -> str | None:
     return _absolute(request, f"/watt/images/{str(key).lstrip('/')}")
 
 
-async def _oeuvre_c4_meta(oeuvre_id: str, request: Request) -> dict | None:
+async def _oeuvre_c4_meta(oeuvre_id: str, request: Request):
     """Metadonnees sociales d'une ŒUVRE (1 son + 1 image, Lot 2). None si
     introuvable / non publique → page brute, aucune fuite."""
     try:
@@ -304,24 +406,43 @@ async def _oeuvre_c4_meta(oeuvre_id: str, request: Request) -> dict | None:
 
         from app.services.links import public_oeuvre
 
-        oid = _uuid.UUID(str(oeuvre_id))
+        try:
+            oid = _uuid.UUID(str(oeuvre_id))
+        except ValueError:
+            return _ABSENT
         async with SessionLocal() as db:
             data = await public_oeuvre(db, oid)
         if data is None:
-            return None
+            return _ABSENT
         title = (data.get("title") or "\u0152uvre").strip()
         name = (data["creator"].get("name") or "").strip()
         desc = (
             f"\u0152uvre de {name} sur {_BRAND} \u2014 un son et une image."
             if name else f"\u0152uvre sur {_BRAND} \u2014 un son et une image."
         )
+        url = f"{_base_url(request)}/o/{data['id']}"
+        image = _preview_image_url(request, data["image"].get("previewKey"))
+        morceau = {
+            "@context": "https://schema.org",
+            "@type": "MusicRecording",
+            "name": title,
+            "url": url,
+        }
+        if name:
+            slug = (data["creator"].get("slug") or "").strip()
+            artiste = {"@type": "Person", "name": name}
+            if slug:
+                artiste["url"] = f"{_base_url(request)}/u/{slug}"
+            morceau["byArtist"] = artiste
+        if image:
+            morceau["image"] = image
         return {
             "title": f"{title} \u2014 {name}" if name else f"{title} \u2014 {_BRAND}",
             "description": desc,
-            "url": f"{_base_url(request)}/o/{data['id']}",
-            "image": _preview_image_url(request, data["image"].get("previewKey"))
-            or _og_defaut(request),
+            "url": url,
+            "image": image or _og_defaut(request),
             "page_type": "music.song",
+            "jsonld": morceau,
         }
     except Exception:  # noqa: BLE001
         return None
@@ -622,6 +743,8 @@ async def user_page(slug: str, request: Request):
     # par le createur est le canal d'acquisition n°1). Profil prive ou
     # introuvable → page brute, aucune fuite de donnees.
     meta = await _artist_meta(slug, request)
+    if meta is _ABSENT:
+        return _page_noindex("artiste.html")
     if meta is None:
         return _page("artiste.html")
     return _page_social("artiste.html", **meta)
@@ -631,6 +754,8 @@ async def user_page(slug: str, request: Request):
 async def user_page_at(slug: str, request: Request):
     # URL courte — même page profil, artiste.js extrait le slug des 2 formes.
     meta = await _artist_meta(slug, request)
+    if meta is _ABSENT:
+        return _page_noindex("artiste.html")
     if meta is None:
         return _page("artiste.html")
     return _page_social("artiste.html", **meta)
@@ -645,6 +770,8 @@ async def collection_page(slug: str, request: Request):
     if not settings.launch_flags_dict()["albums"]:
         return RedirectResponse("/", status_code=302)
     meta = await _oeuvre_meta(slug, request)
+    if meta is _ABSENT:
+        return _page_noindex("oeuvre.html")
     if meta is None:
         return _page("oeuvre.html")
     return _page_social("oeuvre.html", **meta)
@@ -661,6 +788,8 @@ async def oeuvre_c4_page(oeuvre_id: str, request: Request):
     # Lot 2 — page à partager d'une ŒUVRE (1 son + 1 image). C'est le lien
     # que le créateur poste : aperçu social (image + titre) injecté ici.
     meta = await _oeuvre_c4_meta(oeuvre_id, request)
+    if meta is _ABSENT:
+        return _page_noindex("o.html")
     if meta is None:
         return _page("o.html")
     return _page_social("o.html", **meta)
@@ -769,8 +898,13 @@ async def legal_page():
 
 
 # ── Lot O (03/11) — référencement : robots.txt et plan du site ───────────
-_ROBOTS_PRIVES = ("/gestion", "/dashboard", "/mes-oeuvres", "/library", "/reset",
-                  "/watt/", "/admin", "/credits/", "/me/", "/auth/")
+# SEO (2026-11-25) : « /watt/ » N'EST PLUS bloqué. Les pages publiques
+# (profil, Œuvre) se remplissent en JavaScript à partir de /watt/… : bloqué,
+# Google voyait des pages vides au rendu. Ces routes ne servent que des
+# données déjà publiques (les champs payants sont filtrés côté serveur).
+_ROBOTS_PRIVES = ("/gestion", "/pret-a-sortir", "/dashboard", "/mes-oeuvres",
+                  "/library", "/reset", "/verifier-email", "/retractation",
+                  "/admin", "/credits/", "/me/", "/auth/")
 
 
 @router.get("/robots.txt", include_in_schema=False)
@@ -793,17 +927,29 @@ async def sitemap_xml(request: Request):
 
     base = (settings.PUBLIC_BASE_URL or "").rstrip("/") or _base_url(request)
     urls: list[tuple[str, str | None]] = [
-        (f"{base}/", None), (f"{base}/comment-ca-marche", None), (f"{base}/legal", None),
+        (f"{base}/", None), (f"{base}/artistes", None),
+        (f"{base}/comment-ca-marche", None), (f"{base}/legal", None),
     ]
     try:
         async with SessionLocal() as db:
             artistes = (await db.execute(
-                select(User).where(User.profile_public.is_(True), User.is_banned.is_(False))
+                select(User).where(
+                    User.profile_public.is_(True),
+                    User.is_banned.is_(False),
+                    # SEO (2026-11-25) : seuls les profils qui ont un nom
+                    # d'artiste (pas de « membre-xxxx » sans contenu).
+                    User.artist_name.is_not(None),
+                )
+                .order_by(User.created_at.asc())
                 .limit(5000)
             )).scalars().all()
+            vus: set[str] = set()
             for u in artistes:
                 slug = derive_artist_slug(u)
-                if slug:
+                # Homonymes : un seul /u/<slug> (la page résout vers un seul
+                # compte) — pas d'adresse en double dans le plan.
+                if slug and not slug.startswith("membre-") and slug not in vus:
+                    vus.add(slug)
                     urls.append((f"{base}/u/{slug}", None))
             oeuvres = (await db.execute(
                 select(Prompt.id, Prompt.updated_at)
@@ -813,6 +959,10 @@ async def sitemap_xml(request: Request):
                     Prompt.is_published.is_(True),
                     Prompt.is_deleted.is_(False),
                     Prompt.taken_down_at.is_(None),
+                    # SEO (2026-11-25) : une image sans son ni recette n'est
+                    # pas une Œuvre (la page /o/ serait vide → « soft 404 »).
+                    (Prompt.linked_track_id.is_not(None))
+                    | (Prompt.linked_prompt_id.is_not(None)),
                     User.profile_public.is_(True),
                     User.is_banned.is_(False),
                 )
@@ -821,6 +971,17 @@ async def sitemap_xml(request: Request):
             )).all()
             for oid, maj in oeuvres:
                 urls.append((f"{base}/o/{oid}", maj.date().isoformat() if maj else None))
+            # Collections publiques — seulement quand les albums sont ouverts
+            # (sinon /collection/… redirige vers l'accueil).
+            if settings.launch_flags_dict()["albums"]:
+                slugs_coll = (await db.execute(
+                    select(Playlist.oeuvre_slug).where(
+                        Playlist.visibility == "public",
+                        Playlist.oeuvre_slug.is_not(None),
+                    ).distinct().limit(5000)
+                )).scalars().all()
+                for cs in slugs_coll:
+                    urls.append((f"{base}/collection/{cs}", None))
     except Exception:  # noqa: BLE001 — le plan du site ne casse jamais
         pass
     corps = ['<?xml version="1.0" encoding="UTF-8"?>',
